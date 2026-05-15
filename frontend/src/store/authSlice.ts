@@ -1,4 +1,6 @@
 import { createSlice,type PayloadAction } from '@reduxjs/toolkit';
+import { LOCAL_STORAGE_PARAMETERS } from '../helpers/constants';
+import { getItemFromLocalstorage, removeItemFromLocalstorage, setItemToLocalstorage } from '../helpers/utils';
 
 interface AuthState {
   token: string | null;
@@ -8,10 +10,10 @@ interface AuthState {
 }
 
 const initialState: AuthState = {
-  token: localStorage.getItem('token'),
-  role: localStorage.getItem('role'),
-  username: localStorage.getItem('username'),
-  isAuthenticated: !!localStorage.getItem('token'),
+  token: getItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.TOKEN),
+  role: getItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.ROLE),
+  username: getItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.USERNAME),
+  isAuthenticated: !!getItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.TOKEN),
 };
 
 const authSlice = createSlice({
@@ -23,18 +25,18 @@ const authSlice = createSlice({
       state.role = action.payload.role;
       state.username = action.payload.username;
       state.isAuthenticated = true;
-      localStorage.setItem('token', action.payload.token);
-      localStorage.setItem('role', action.payload.role);
-      localStorage.setItem('username', action.payload.username);
+      setItemToLocalstorage(LOCAL_STORAGE_PARAMETERS.TOKEN, action.payload.token);
+      setItemToLocalstorage(LOCAL_STORAGE_PARAMETERS.ROLE, action.payload.role);
+      setItemToLocalstorage(LOCAL_STORAGE_PARAMETERS.USERNAME, action.payload.username);
     },
     logout(state) {
       state.token = null;
       state.role = null;
       state.username = null;
       state.isAuthenticated = false;
-      localStorage.removeItem('token');
-      localStorage.removeItem('role');
-      localStorage.removeItem('username');
+      removeItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.TOKEN);
+      removeItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.ROLE);
+      removeItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.USERNAME);
     },
   },
 });
