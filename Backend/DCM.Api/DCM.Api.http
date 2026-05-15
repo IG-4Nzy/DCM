@@ -1,0 +1,6 @@
+@DCM.Api_HostAddress = http://localhost:5237
+
+GET {{DCM.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
