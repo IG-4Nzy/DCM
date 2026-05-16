@@ -23,12 +23,16 @@ const theme = createTheme({
   },
 });
 
+import { ToastProvider } from './contexts/ToastContext';
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <Provider store={store}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <App />
+        <ToastProvider>
+          <App />
+        </ToastProvider>
       </ThemeProvider>
     </Provider>
   </React.StrictMode>

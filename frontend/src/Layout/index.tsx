@@ -4,7 +4,6 @@ import { styled, useTheme, type Theme, type CSSObject } from '@mui/material/styl
 import { 
   Box, 
   Toolbar, 
-  Typography, 
   List, 
   ListItem, 
   ListItemIcon, 
@@ -140,21 +139,21 @@ const Layout: React.FC = () => {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: '500' }}>
+          <label style={{ flexGrow: 1, fontWeight: '500', fontSize: '1.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {wordings.dataCentreManagement}
-          </Typography>
+          </label>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#666' }}>
+            <label style={{ fontWeight: 'bold', color: '#666', fontSize: '0.875rem' }}>
               {wordings.welcome}, {username} ({role})
-            </Typography>
+            </label>
           </Box>
         </Toolbar>
       </AppBar>
       <Drawer variant="permanent" open={open}>
         <DrawerHeader>
-          <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 'bold', color: '#1976d2', flexGrow: 1, ml: 2 }}>
+          <label style={{ fontWeight: 'bold', color: '#1976d2', flexGrow: 1, marginLeft: '16px', fontSize: '1.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {wordings.dcm}
-          </Typography>
+          </label>
           <IconButton onClick={handleDrawerClose}>
             {theme.direction === 'rtl' ? <ChevronRightIcon /> : <ChevronLeftIcon />}
           </IconButton>

@@ -42,3 +42,30 @@ class UpdateItemModel(BaseModel):
             }
         },
     )
+
+class UserModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    username: str
+    role: str
+    status: str
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateUserModel(BaseModel):
+    username: str
+    password: str
+    role: str = "User"
+    status: str = "Active"
+
+class UpdateUserModel(BaseModel):
+    username: Optional[str] = None
+    password: Optional[str] = None
+    role: Optional[str] = None
+    status: Optional[str] = None
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )

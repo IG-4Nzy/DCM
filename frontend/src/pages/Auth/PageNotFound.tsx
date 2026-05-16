@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Button, Container } from '@mui/material';
+import { Box, Button, Container } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
 const PageNotFound: React.FC = () => {
@@ -17,27 +17,25 @@ const PageNotFound: React.FC = () => {
           textAlign: 'center',
         }}
       >
-      <Typography
-          variant="h1"
-          component="h1"
-          gutterBottom
-          sx={{ fontWeight: 'bold', color: 'primary.main' }}
-        >
-          404
-        </Typography>
-        <Typography variant="h4" gutterBottom>
-          Oops! Page Not Found
-        </Typography>
-       <Typography
-          variant="body1"
-          sx={{
-            color: "text.secondary",
-            mb: 4,
-          }}
-        >
-          The page you are looking for might have been removed, had its name changed,
-          or is temporarily unavailable.
-        </Typography>
+      <label
+        style={{
+          fontSize: '10rem',
+          fontWeight: 900,
+          color: '#1976d2',
+          textShadow: '2px 4px 10px rgba(0,0,0,0.1)',
+          display: 'block'
+        }}
+      >
+        404
+      </label>
+      <label style={{ fontSize: '2.125rem', display: 'block', marginBottom: '0.35em' }}>
+        Page Not Found
+      </label>
+      <label
+        style={{ display: 'block', marginBottom: '32px', color: 'rgba(0, 0, 0, 0.6)', maxWidth: '500px', margin: '0 auto 32px auto' }}
+      >
+        The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.
+      </label>
         <Button
           variant="contained"
           size="large"

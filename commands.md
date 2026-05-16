@@ -32,3 +32,5 @@ cd /home/vssc/Desktop/DCM/Backend
 source env/bin/activate
 python3 create_superuser.py <new_username> <new_password>
 
+
+-e VITE_API_BASE_URL = ""
