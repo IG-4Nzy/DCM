@@ -29,7 +29,6 @@ import { logout } from '../store/authSlice';
 import type { RootState } from '../store';
 import wordings from '../helpers/wordings';
 import { SIDEBAR_OPTIONS } from './constants';
-import styles from './index.module.scss';
 
 const drawerWidth = 240;
 
@@ -125,7 +124,7 @@ const Layout: React.FC = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', textAlign: 'left' }} className={styles.layout}>
+    <Box sx={{ display: 'flex', textAlign: 'left' }}>
       <CssBaseline />
       <AppBar position="fixed" open={open}>
         <Toolbar>
