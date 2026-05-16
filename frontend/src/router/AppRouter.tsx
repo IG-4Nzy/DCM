@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import { ROUTE_CONSTANTS } from './constant';
 import Loader from '../components/Loader';
+import Layout from '../Layout';
 
 const Login = lazy(() => import('../pages/Auth/Login'));
 const Dashboard = lazy(() => import('../pages/Dashboard/Dashboard'));
@@ -14,14 +15,12 @@ const AppRouter: React.FC = () => {
       <Suspense fallback={<Loader />}>
         <Routes>
           <Route path={ROUTE_CONSTANTS.LOGIN} element={<Login />} />
-          <Route
-            path={ROUTE_CONSTANTS.DASHBOARD}
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
+          <Route path={ROUTE_CONSTANTS.BASE} element={<Login />} />
+
+          <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+            <Route path={ROUTE_CONSTANTS.DASHBOARD} element={<Dashboard />} />
+          </Route>
+          
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       </Suspense>
