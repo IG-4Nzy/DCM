@@ -1,0 +1,44 @@
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.functional_validators import BeforeValidator
+from typing_extensions import Annotated
+from typing import Optional
+
+# Represents an ObjectId field in the database.
+# It will be represented as a `str` on the model so that it can be serialized to JSON.
+PyObjectId = Annotated[str, BeforeValidator(str)]
+
+class ItemModel(BaseModel):
+    """
+    Container for a single item record.
+    """
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    name: str = Field(...)
+    description: Optional[str] = Field(default=None)
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_schema_extra={
+            "example": {
+                "name": "Sample Item",
+                "description": "This is a sample description."
+            }
+        },
+    )
+
+class UpdateItemModel(BaseModel):
+    """
+    A set of optional updates to be made to a document in the database.
+    """
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        json_schema_extra={
+            "example": {
+                "name": "Updated Item",
+                "description": "This is an updated description."
+            }
+        },
+    )
