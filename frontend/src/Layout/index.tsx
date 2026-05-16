@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { styled, useTheme, type Theme, type CSSObject } from '@mui/material/styles';
 import { 
   Box, 
@@ -16,16 +16,19 @@ import {
 } from '@mui/material';
 import MuiDrawer from '@mui/material/Drawer';
 import MuiAppBar, { type AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
-import { 
-  Menu as MenuIcon, 
-  Dashboard as DashboardIcon, 
-  Logout as LogoutIcon,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon
-} from '@mui/icons-material';
+import { Icons } from '../helpers/icons';
+
+const {
+  MenuIcon,
+  LogoutIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
+} = Icons;
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store/authSlice';
 import type { RootState } from '../store';
+import wordings from '../helpers/wordings';
+import { SIDEBAR_OPTIONS } from './constants';
 import styles from './index.module.scss';
 
 const drawerWidth = 240;
@@ -55,7 +58,6 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'flex-end',
-  padding: theme.spacing(0, 1),
   // necessary for content to be below app bar
   ...theme.mixins.toolbar,
 }));
@@ -107,6 +109,7 @@ const Layout: React.FC = () => {
   const [open, setOpen] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { username, role } = useSelector((state: RootState) => state.auth);
 
   const handleDrawerOpen = () => {
@@ -139,11 +142,11 @@ const Layout: React.FC = () => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: '500' }}>
-            DCM Platform
+            {wordings.dataCentreManagement}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#666' }}>
-              Welcome, {username} ({role})
+              {wordings.welcome}, {username} ({role})
             </Typography>
           </Box>
         </Toolbar>
@@ -151,7 +154,7 @@ const Layout: React.FC = () => {
       <Drawer variant="permanent" open={open}>
         <DrawerHeader>
           <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 'bold', color: '#1976d2', flexGrow: 1, ml: 2 }}>
-            DCM
+            {wordings.dcm}
           </Typography>
           <IconButton onClick={handleDrawerClose}>
             {theme.direction === 'rtl' ? <ChevronRightIcon /> : <ChevronLeftIcon />}
@@ -159,27 +162,41 @@ const Layout: React.FC = () => {
         </DrawerHeader>
         <Divider />
         <List>
-          <ListItem disablePadding sx={{ display: 'block' }}>
-            <ListItemButton
-              onClick={() => navigate('/dashboard')}
-              sx={{
-                minHeight: 48,
-                justifyContent: open ? 'initial' : 'center',
-                px: 2.5,
-              }}
-            >
-              <ListItemIcon
-                sx={{
-                  minWidth: 0,
-                  mr: open ? 3 : 'auto',
-                  justifyContent: 'center',
-                }}
-              >
-                <DashboardIcon />
-              </ListItemIcon>
-              <ListItemText primary="Dashboard" sx={{ opacity: open ? 1 : 0 }} />
-            </ListItemButton>
-          </ListItem>
+          {
+            SIDEBAR_OPTIONS?.map((option,index) => {
+              const isSelected = location.pathname === option.route;
+              return (
+                <ListItem key={`sidebar-item-${index}`} disablePadding sx={{ display: 'block' }} title={option.label} >
+                  <ListItemButton
+                    onClick={() => navigate(option?.route)}
+                    sx={{
+                      minHeight: 48,
+                      justifyContent: open ? 'initial' : 'center',
+                      px: 2.5,
+                      background: isSelected ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+                      color: isSelected ? '#1976d2' : 'inherit',
+                      borderRight: isSelected ? '3px solid #1976d2' : 'none',
+                      '&:hover': {
+                        background: isSelected ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)',
+                      }
+                    }}
+                  >
+                    <ListItemIcon
+                      sx={{
+                        minWidth: 0,
+                        mr: open ? 3 : 'auto',
+                        justifyContent: 'center',
+                        color: isSelected ? '#1976d2' : 'inherit'
+                      }}
+                    >
+                      <option.icon />
+                    </ListItemIcon>
+                    <ListItemText primary={option.label} sx={{ opacity: open ? 1 : 0 }} />
+                  </ListItemButton>
+                </ListItem>
+              );
+            })
+          }
         </List>
         
         <Box sx={{ flexGrow: 1 }} />
@@ -206,12 +223,12 @@ const Layout: React.FC = () => {
               >
                 <LogoutIcon />
               </ListItemIcon>
-              <ListItemText primary="Logout" sx={{ opacity: open ? 1 : 0 }} />
+              <ListItemText primary={wordings.logout} sx={{ opacity: open ? 1 : 0 }} />
             </ListItemButton>
           </ListItem>
         </List>
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 3, minHeight: '100vh', background: '#f5f7fa', boxSizing: 'border-box' }}>
+      <Box component="main" sx={{ flexGrow: 1, minHeight: '100vh', background: '#f5f7fa', boxSizing: 'border-box' }}>
         <DrawerHeader />
         <Outlet />
       </Box>
