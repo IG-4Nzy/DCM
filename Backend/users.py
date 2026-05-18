@@ -1,23 +1,44 @@
-from fastapi import APIRouter, HTTPException, status, Body
+from fastapi import APIRouter, HTTPException, status, Body, Query
 from fastapi.responses import JSONResponse
-from typing import List
+from typing import List, Optional
 from database import db
-from models import UserModel, CreateUserModel, UpdateUserModel
+from models import UserModel, CreateUserModel, UpdateUserModel, PaginatedUsersModel
 from bson import ObjectId
 import bcrypt
 
 router = APIRouter()
 users_collection = db.get_collection("users")
 
-@router.get("/", response_description="List all users", response_model=List[UserModel])
-async def list_users():
-    users = await users_collection.find().to_list(1000)
+@router.get("/", response_description="List all users", response_model=PaginatedUsersModel, response_model_by_alias=False)
+async def list_users(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(5, ge=1),
+    sort_by: str = Query("username"),
+    order: str = Query("asc"),
+    search: Optional[str] = None
+):
+    query = {}
+    if search:
+        query = {
+            "$or": [
+                {"username": {"$regex": search, "$options": "i"}},
+                {"role": {"$regex": search, "$options": "i"}},
+            ]
+        }
+        
+    sort_order = 1 if order == "asc" else -1
+    
+    total = await users_collection.count_documents(query)
+    cursor = users_collection.find(query).sort(sort_by, sort_order).skip(skip).limit(limit)
+    users = await cursor.to_list(length=limit)
+    
     for user in users:
         if "status" not in user:
-            user["status"] = "Active"
-    return users
+            user["status"] = True
+            
+    return {"data": users, "total": total}
 
-@router.post("/", response_description="Create a new user", response_model=UserModel, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_description="Create a new user", response_model=UserModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False)
 async def create_user(user: CreateUserModel = Body(...)):
     user_dict = user.model_dump()
     
@@ -31,18 +52,18 @@ async def create_user(user: CreateUserModel = Body(...)):
     created_user = await users_collection.find_one({"_id": new_user.inserted_id})
     return created_user
 
-@router.get("/{id}", response_description="Get a single user", response_model=UserModel)
+@router.get("/{id}", response_description="Get a single user", response_model=UserModel, response_model_by_alias=False)
 async def show_user(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
         
     if (user := await users_collection.find_one({"_id": ObjectId(id)})) is not None:
         if "status" not in user:
-            user["status"] = "Active"
+            user["status"] = True
         return user
     raise HTTPException(status_code=404, detail=f"User {id} not found")
 
-@router.put("/{id}", response_description="Update a user", response_model=UserModel)
+@router.put("/{id}", response_description="Update a user", response_model=UserModel, response_model_by_alias=False)
 async def update_user(id: str, user: UpdateUserModel = Body(...)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -60,12 +81,12 @@ async def update_user(id: str, user: UpdateUserModel = Body(...)):
         if update_result.modified_count == 1:
             if (updated_user := await users_collection.find_one({"_id": ObjectId(id)})) is not None:
                 if "status" not in updated_user:
-                    updated_user["status"] = "Active"
+                    updated_user["status"] = True
                 return updated_user
 
     if (existing_user := await users_collection.find_one({"_id": ObjectId(id)})) is not None:
         if "status" not in existing_user:
-            existing_user["status"] = "Active"
+            existing_user["status"] = True
         return existing_user
 
     raise HTTPException(status_code=404, detail=f"User {id} not found")

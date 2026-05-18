@@ -1,23 +1,22 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Paper, Tooltip, IconButton, MenuItem, Select, FormControl, InputLabel } from '@mui/material';
+import { Box, Paper, Tooltip, IconButton} from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';
-import TextField from '../../components/TextField';
 import Table, { type Column } from '../../components/Table';
-import Modal from '../../components/Modal';
 import { useToast } from '../../contexts/ToastContext';
 import { fetchUsers, createUser, updateUser, deleteUser } from './action';
-import styles from "./index.module.scss";
 import type { AppDispatch, RootState } from '../../store';
 import type { UserData } from './model';
+import UserFormModal from './UserFormModal';
+import styles from "./index.module.scss";
 
 type Order = 'asc' | 'desc';
 
 const Users: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { users, loading, error } = useSelector((state: RootState) => state.users);
+  const { users, totalCount, loading, error } = useSelector((state: RootState) => state.users);
   const { showToast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -32,11 +31,18 @@ const Users: React.FC = () => {
   const [formUsername, setFormUsername] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [formRole, setFormRole] = useState('User');
-  const [formStatus, setFormStatus] = useState('Active');
+  const [formStatus, setFormStatus] = useState(true);
 
   useEffect(() => {
-    dispatch(fetchUsers());
-  }, [dispatch]);
+    dispatch(fetchUsers({
+      skip: page * rowsPerPage,
+      limit: rowsPerPage,
+      sortBy: orderBy as string,
+      order,
+      search: searchQuery,
+      showToast
+    }));
+  }, [dispatch, showToast, page, rowsPerPage, orderBy, order, searchQuery]);
 
   const handleOpenModal = (user?: UserData) => {
     if (user) {
@@ -50,7 +56,7 @@ const Users: React.FC = () => {
       setFormUsername('');
       setFormPassword('');
       setFormRole('User');
-      setFormStatus('Active');
+      setFormStatus(true);
     }
     setIsModalOpen(true);
   };
@@ -72,30 +78,30 @@ const Users: React.FC = () => {
         if (formPassword) {
           payload.password = formPassword;
         }
-        await dispatch(updateUser(payload)).unwrap();
-        showToast('User updated successfully', 'success');
+        await dispatch(updateUser({ payload, showToast })).unwrap();
       } else {
         await dispatch(createUser({
-          username: formUsername,
-          password: formPassword,
-          role: formRole,
-          status: formStatus
+          payload: {
+            username: formUsername,
+            password: formPassword,
+            role: formRole,
+            status: formStatus
+          },
+          showToast
         })).unwrap();
-        showToast('User created successfully', 'success');
       }
       handleCloseModal();
     } catch (err: any) {
-      showToast(err || 'Failed to save user', 'error');
+      // Toast shown in thunk
     }
   };
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this user?")) {
       try {
-        await dispatch(deleteUser(id)).unwrap();
-        showToast('User deleted successfully', 'success');
-      } catch(err: any) {
-        showToast(err || 'Failed to delete user', 'error');
+        await dispatch(deleteUser({ id, showToast })).unwrap();
+      } catch (err: any) {
+        // Toast shown in thunk
       }
     }
   }
@@ -115,45 +121,24 @@ const Users: React.FC = () => {
     setPage(0);
   };
 
-  const filteredAndSortedUsers = useMemo(() => {
-    if (!users) return [];
-    
-    let result = users.filter((user) =>
-      user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchQuery.toLowerCase())
-    );
 
-    result = [...result].sort((a, b) => {
-      if (b[orderBy] < a[orderBy]) {
-        return order === 'asc' ? 1 : -1;
-      }
-      if (b[orderBy] > a[orderBy]) {
-        return order === 'asc' ? -1 : 1;
-      }
-      return 0;
-    });
-
-    return result;
-  }, [users, searchQuery, order, orderBy]);
-
-  const paginatedUsers = filteredAndSortedUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   const columns: Column<UserData>[] = [
     { id: 'username', label: 'Username', sortable: true },
     { id: 'role', label: 'Role', sortable: true },
-    { 
-      id: 'status', 
-      label: 'Status', 
+    {
+      id: 'status',
+      label: 'Status',
       sortable: true,
       render: (row) => (
-        <label 
-          style={{ 
-            color: row.status === 'Active' ? '#2e7d32' : '#d32f2f',
+        <label
+          style={{
+            color: row.status ? '#2e7d32' : '#d32f2f',
             fontWeight: 'bold',
             fontSize: '0.875rem'
           }}
         >
-          {row.status}
+          {row.status ? 'Active' : 'Inactive'}
         </label>
       )
     },
@@ -180,20 +165,19 @@ const Users: React.FC = () => {
 
   return (
     <Box className={styles.users} sx={{ p: 3 }}>
-      {/* Header Section */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <label style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
           Users
         </label>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-          <SearchBar 
-            value={searchQuery} 
-            onChange={setSearchQuery} 
-            placeholder="Search users..." 
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search users..."
           />
-          <Button 
-            variant="contained" 
-            color="primary" 
+          <Button
+            variant="contained"
+            color="primary"
             startIcon={<AddIcon />}
             onClick={() => handleOpenModal()}
           >
@@ -206,7 +190,7 @@ const Users: React.FC = () => {
         {/* Table */}
         <Table
           columns={columns}
-          data={paginatedUsers}
+          data={users || []}
           orderBy={orderBy as string}
           order={order}
           onRequestSort={(prop) => handleRequestSort(prop as keyof UserData)}
@@ -214,70 +198,23 @@ const Users: React.FC = () => {
           rowsPerPage={rowsPerPage}
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
-          totalCount={filteredAndSortedUsers.length}
+          totalCount={totalCount || 0}
         />
       </Paper>
-
-      <Modal 
-        open={isModalOpen} 
-        handleClose={handleCloseModal} 
-        title={editingUser ? "Edit User" : "Create User"}
-      >
-        <form onSubmit={handleSubmit}>
-          <TextField
-            fullWidth
-            label="Username"
-            margin="normal"
-            value={formUsername}
-            onChange={(e) => setFormUsername(e.target.value)}
-            required
-          />
-          <TextField
-            fullWidth
-            label="Password"
-            type="password"
-            margin="normal"
-            value={formPassword}
-            onChange={(e) => setFormPassword(e.target.value)}
-            required={!editingUser}
-            helperText={editingUser ? "Leave blank to keep existing password" : ""}
-            sx={{
-              '& .MuiFormHelperText-root': {
-                color: '#637381'
-              }
-            }}
-          />
-          <FormControl fullWidth margin="normal" size="small" sx={{ mt: 2 }}>
-            <InputLabel>Role</InputLabel>
-            <Select
-              value={formRole}
-              label="Role"
-              onChange={(e) => setFormRole(e.target.value as string)}
-              sx={{ borderRadius: '8px' }}
-            >
-              <MenuItem value="User">User</MenuItem>
-              <MenuItem value="Manager">Manager</MenuItem>
-              <MenuItem value="Super Admin">Super Admin</MenuItem>
-            </Select>
-          </FormControl>
-          <FormControl fullWidth margin="normal" size="small" sx={{ mt: 2 }}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={formStatus}
-              label="Status"
-              onChange={(e) => setFormStatus(e.target.value as string)}
-              sx={{ borderRadius: '8px' }}
-            >
-              <MenuItem value="Active">Active</MenuItem>
-              <MenuItem value="Inactive">Inactive</MenuItem>
-            </Select>
-          </FormControl>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4, gap: 2 }}>
-            <Button variant="text" onClick={handleCloseModal}>Cancel</Button>
-            <Button type="submit" variant="contained" color="primary">Save</Button>
-          </Box>
-        </form>
-      </Modal>
+      <UserFormModal
+        isModalOpen={isModalOpen}
+        handleCloseModal={handleCloseModal}
+        editingUser={editingUser}
+        setFormUsername={setFormUsername}
+        formUsername={formUsername}
+        formPassword={formPassword}
+        setFormPassword={setFormPassword}
+        setFormRole={setFormRole}
+        formRole={formRole}
+        formStatus={formStatus}
+        setFormStatus={setFormStatus}
+        handleSubmit={handleSubmit}
+      />
     </Box>
   );
 };

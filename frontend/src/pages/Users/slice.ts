@@ -4,6 +4,7 @@ import { fetchUsers, createUser, updateUser, deleteUser } from './action';
 
 const initialState: UsersState = {
   users: [],
+  totalCount: 0,
   loading: false,
   error: null,
 };
@@ -20,7 +21,8 @@ const usersSlice = createSlice({
     });
     builder.addCase(fetchUsers.fulfilled, (state, action) => {
       state.loading = false;
-      state.users = action.payload;
+      state.users = action.payload.data;
+      state.totalCount = action.payload.total;
     });
     builder.addCase(fetchUsers.rejected, (state, action) => {
       state.loading = false;
@@ -34,7 +36,8 @@ const usersSlice = createSlice({
     });
     builder.addCase(createUser.fulfilled, (state, action) => {
       state.loading = false;
-      state.users.push(action.payload);
+      state.users.unshift(action.payload);
+      state.totalCount += 1;
     });
     builder.addCase(createUser.rejected, (state, action) => {
       state.loading = false;
@@ -66,6 +69,7 @@ const usersSlice = createSlice({
     builder.addCase(deleteUser.fulfilled, (state, action) => {
       state.loading = false;
       state.users = state.users.filter((u) => u.id !== action.payload);
+      state.totalCount -= 1;
     });
     builder.addCase(deleteUser.rejected, (state, action) => {
       state.loading = false;

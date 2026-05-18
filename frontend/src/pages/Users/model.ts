@@ -2,14 +2,14 @@ export interface UserData {
   id: string;
   username: string;
   role: string;
-  status: string;
+  status: boolean;
 }
 
 export interface CreateUserPayload {
   username: string;
   password?: string;
   role: string;
-  status: string;
+  status: boolean;
 }
 
 export interface UpdateUserPayload {
@@ -17,11 +17,12 @@ export interface UpdateUserPayload {
   username: string;
   password?: string;
   role: string;
-  status: string;
+  status: boolean;
 }
 
 export interface UsersState {
   users: UserData[];
+  totalCount: number;
   loading: boolean;
   error: string | null;
 }

@@ -1,34 +1,25 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { loginApi } from './action';
 import { Box, Button, TextField, Paper } from '@mui/material';
 import { motion } from 'framer-motion';
-import { loginSuccess } from '../../store/authSlice';
+import { useToast } from '../../contexts/ToastContext';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<any>();
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const response = await axios.post('http://127.0.0.1:8000/api/auth/login', {
-        username,
-        password
-      });
-      dispatch(loginSuccess(response.data));
-      navigate('/dashboard');
-    } catch (err: any) {
-      if (err.response && err.response.data && err.response.data.detail) {
-        setError(err.response.data.detail);
-      } else {
-        setError('An error occurred during login.');
-      }
-    }
+    await dispatch(loginApi({ credentials: { username, password }, navigateToDashboard, showToast }));
+  };
+
+  const navigateToDashboard = () => {
+    navigate('/dashboard');
   };
 
   return (
@@ -101,19 +92,6 @@ const Login: React.FC = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-
-            {error && (
-              <label
-                style={{
-                  display: 'block',
-                  color: 'red',
-                  marginTop: '8px',
-                  fontSize: '14px',
-                }}
-              >
-                {error}
-              </label>
-            )}
 
             <Button
               fullWidth

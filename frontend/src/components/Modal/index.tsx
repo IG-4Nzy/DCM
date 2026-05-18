@@ -17,8 +17,8 @@ const Modal: React.FC<ModalProps> = ({ open, handleClose, children, title, maxWi
       onClose={handleClose} 
       maxWidth={maxWidth} 
       fullWidth
-      PaperProps={{
-        sx: {
+      sx={{
+        '& .MuiDialog-paper': {
           borderRadius: '12px',
           padding: '16px',
           boxShadow: '0 8px 32px rgba(0,0,0,0.08)'
