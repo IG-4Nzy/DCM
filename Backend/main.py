@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routes import router as items_router
 from auth import router as auth_router
 from users import router as users_router
+from roles import router as roles_router
 
 app = FastAPI(
     title="DCM Backend",
@@ -22,6 +23,7 @@ app.add_middleware(
 app.include_router(items_router, tags=["items"], prefix="/items")
 app.include_router(auth_router, tags=["auth"], prefix="/api/auth")
 app.include_router(users_router, tags=["users"], prefix="/api/users")
+app.include_router(roles_router, tags=["roles"], prefix="/api/roles")
 
 @app.get("/", tags=["root"])
 async def root():

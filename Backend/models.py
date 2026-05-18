@@ -74,3 +74,31 @@ class PaginatedUsersModel(BaseModel):
     data: List[UserModel]
     total: int
 
+class RoleModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    name: str
+    status: bool
+    privileges: List[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateRoleModel(BaseModel):
+    name: str
+    status: bool = True
+    privileges: List[str] = Field(default_factory=list)
+
+class UpdateRoleModel(BaseModel):
+    name: Optional[str] = None
+    status: Optional[bool] = None
+    privileges: Optional[List[str]] = None
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedRolesModel(BaseModel):
+    data: List[RoleModel]
+    total: int

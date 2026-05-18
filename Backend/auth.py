@@ -19,6 +19,7 @@ class LoginResponse(BaseModel):
     token: str
     role: str
     username: str
+    privileges: list[str]
 
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -47,11 +48,16 @@ async def login(credentials: LoginRequest):
         
     role = user.get("role", "User")
     
+    roles_collection = db.get_collection("roles")
+    role_obj = await roles_collection.find_one({"name": role})
+    privileges = role_obj.get("privileges", []) if role_obj else []
+    
     # Generate the JWT
-    access_token = create_access_token(data={"sub": user["username"], "role": role})
+    access_token = create_access_token(data={"sub": user["username"], "role": role, "privileges": privileges})
     
     return LoginResponse(
         token=access_token,
         role=role,
-        username=user["username"]
+        username=user["username"],
+        privileges=privileges
     )

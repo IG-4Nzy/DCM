@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, status, Body, Query
+from fastapi import APIRouter, HTTPException, status, Body, Query, Depends
+from auth_utils import require_privilege
 from fastapi.responses import JSONResponse
 from typing import List, Optional
 from database import db
@@ -9,7 +10,7 @@ import bcrypt
 router = APIRouter()
 users_collection = db.get_collection("users")
 
-@router.get("/", response_description="List all users", response_model=PaginatedUsersModel, response_model_by_alias=False)
+@router.get("/", response_description="List all users", response_model=PaginatedUsersModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View User"))])
 async def list_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(5, ge=1),
@@ -38,7 +39,7 @@ async def list_users(
             
     return {"data": users, "total": total}
 
-@router.post("/", response_description="Create a new user", response_model=UserModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False)
+@router.post("/", response_description="Create a new user", response_model=UserModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create User"))])
 async def create_user(user: CreateUserModel = Body(...)):
     user_dict = user.model_dump()
     
@@ -52,7 +53,7 @@ async def create_user(user: CreateUserModel = Body(...)):
     created_user = await users_collection.find_one({"_id": new_user.inserted_id})
     return created_user
 
-@router.get("/{id}", response_description="Get a single user", response_model=UserModel, response_model_by_alias=False)
+@router.get("/{id}", response_description="Get a single user", response_model=UserModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View User"))])
 async def show_user(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -63,7 +64,7 @@ async def show_user(id: str):
         return user
     raise HTTPException(status_code=404, detail=f"User {id} not found")
 
-@router.put("/{id}", response_description="Update a user", response_model=UserModel, response_model_by_alias=False)
+@router.put("/{id}", response_description="Update a user", response_model=UserModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update User"))])
 async def update_user(id: str, user: UpdateUserModel = Body(...)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -91,7 +92,7 @@ async def update_user(id: str, user: UpdateUserModel = Body(...)):
 
     raise HTTPException(status_code=404, detail=f"User {id} not found")
 
-@router.delete("/{id}", response_description="Delete a user")
+@router.delete("/{id}", response_description="Delete a user", dependencies=[Depends(require_privilege("Delete User"))])
 async def delete_user(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
