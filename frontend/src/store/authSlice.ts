@@ -6,6 +6,7 @@ interface AuthState {
   token: string | null;
   role: string | null;
   username: string | null;
+  privileges: string[];
   isAuthenticated: boolean;
 }
 
@@ -13,6 +14,7 @@ const initialState: AuthState = {
   token: getItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.TOKEN),
   role: getItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.ROLE),
   username: getItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.USERNAME),
+  privileges: JSON.parse(getItemFromLocalstorage('PRIVILEGES') || '[]'),
   isAuthenticated: !!getItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.TOKEN),
 };
 
@@ -20,23 +22,27 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    loginSuccess(state, action: PayloadAction<{ token: string; role: string; username: string }>) {
+    loginSuccess(state, action: PayloadAction<{ token: string; role: string; username: string; privileges: string[] }>) {
       state.token = action.payload.token;
       state.role = action.payload.role;
       state.username = action.payload.username;
+      state.privileges = action.payload.privileges || [];
       state.isAuthenticated = true;
       setItemToLocalstorage(LOCAL_STORAGE_PARAMETERS.TOKEN, action.payload.token);
       setItemToLocalstorage(LOCAL_STORAGE_PARAMETERS.ROLE, action.payload.role);
       setItemToLocalstorage(LOCAL_STORAGE_PARAMETERS.USERNAME, action.payload.username);
+      setItemToLocalstorage('PRIVILEGES', JSON.stringify(action.payload.privileges || []));
     },
     logout(state) {
       state.token = null;
       state.role = null;
       state.username = null;
+      state.privileges = [];
       state.isAuthenticated = false;
       removeItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.TOKEN);
       removeItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.ROLE);
       removeItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.USERNAME);
+      removeItemFromLocalstorage('PRIVILEGES');
     },
   },
 });

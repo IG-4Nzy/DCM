@@ -1,9 +1,10 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { type UsersState } from './model';
-import { fetchUsers, createUser, updateUser, deleteUser } from './action';
+import { fetchUsers, createUser, updateUser, deleteUser, fetchAllRolesForDropdown } from './action';
 
 const initialState: UsersState = {
   users: [],
+  availableRoles: [],
   totalCount: 0,
   loading: false,
   error: null,
@@ -25,6 +26,20 @@ const usersSlice = createSlice({
       state.totalCount = action.payload.total;
     });
     builder.addCase(fetchUsers.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload as string;
+    });
+
+    // fetchAllRolesForDropdown
+    builder.addCase(fetchAllRolesForDropdown.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
+    builder.addCase(fetchAllRolesForDropdown.fulfilled, (state, action) => {
+      state.loading = false;
+      state.availableRoles = action.payload;
+    });
+    builder.addCase(fetchAllRolesForDropdown.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload as string;
     });

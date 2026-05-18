@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { styled, useTheme, type Theme, type CSSObject } from '@mui/material/styles';
-import { 
-  Box, 
-  Toolbar, 
-  List, 
-  ListItem, 
-  ListItemIcon, 
-  ListItemText, 
-  IconButton, 
-  ListItemButton, 
+import {
+  Box,
+  Toolbar,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  IconButton,
+  ListItemButton,
   Divider,
   CssBaseline
 } from '@mui/material';
@@ -28,6 +28,7 @@ import { logout } from '../store/authSlice';
 import type { RootState } from '../store';
 import wordings from '../helpers/wordings';
 import { SIDEBAR_OPTIONS } from './constants';
+import { hasAnyPrivilege } from '../helpers/authUtils';
 
 const drawerWidth = 240;
 
@@ -161,7 +162,10 @@ const Layout: React.FC = () => {
         <Divider />
         <List>
           {
-            SIDEBAR_OPTIONS?.map((option,index) => {
+            SIDEBAR_OPTIONS?.map((option, index) => {
+              if (option.privileges && !hasAnyPrivilege(option.privileges)) {
+                return null;
+              }
               const isSelected = location.pathname === option.route;
               return (
                 <ListItem key={`sidebar-item-${index}`} disablePadding sx={{ display: 'block' }} title={option.label} >
@@ -196,10 +200,10 @@ const Layout: React.FC = () => {
             })
           }
         </List>
-        
+
         <Box sx={{ flexGrow: 1 }} />
         <Divider />
-        
+
         <List>
           <ListItem disablePadding sx={{ display: 'block' }}>
             <ListItemButton

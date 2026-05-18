@@ -1,9 +1,10 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { type RolesState } from './model';
-import { fetchRoles, createRole, updateRole, deleteRole } from './action';
+import { fetchRoles, createRole, updateRole, deleteRole, fetchPrivileges } from './action';
 
 const initialState: RolesState = {
   roles: [],
+  availablePrivileges: [],
   totalCount: 0,
   loading: false,
   error: null,
@@ -25,6 +26,20 @@ const rolesSlice = createSlice({
       state.totalCount = action.payload.total;
     });
     builder.addCase(fetchRoles.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload as string;
+    });
+
+    // fetchPrivileges
+    builder.addCase(fetchPrivileges.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
+    builder.addCase(fetchPrivileges.fulfilled, (state, action) => {
+      state.loading = false;
+      state.availablePrivileges = action.payload;
+    });
+    builder.addCase(fetchPrivileges.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload as string;
     });

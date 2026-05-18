@@ -6,17 +6,18 @@ import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';
 import { useToast } from '../../contexts/ToastContext';
-import { fetchUsers, createUser, updateUser, deleteUser } from './action';
+import { createUser, deleteUser, fetchUsers, updateUser, fetchAllRolesForDropdown } from './action';
 import type { AppDispatch, RootState } from '../../store';
 import type { UserData } from './model';
 import UserFormModal from './UserFormModal';
+import { hasPrivilege } from '../../helpers/authUtils';
 import styles from "./index.module.scss";
 
 type Order = 'asc' | 'desc';
 
 const Users: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { users, totalCount, loading, error } = useSelector((state: RootState) => state.users);
+  const { users, availableRoles, totalCount, loading, error } = useSelector((state: RootState) => state.users);
   const { showToast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,8 +31,12 @@ const Users: React.FC = () => {
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
   const [formUsername, setFormUsername] = useState('');
   const [formPassword, setFormPassword] = useState('');
-  const [formRole, setFormRole] = useState('User');
+  const [formRole, setFormRole] = useState('');
   const [formStatus, setFormStatus] = useState(true);
+
+  useEffect(() => {
+    dispatch(fetchAllRolesForDropdown());
+  }, [dispatch]);
 
   useEffect(() => {
     dispatch(fetchUsers({
@@ -55,7 +60,7 @@ const Users: React.FC = () => {
       setEditingUser(null);
       setFormUsername('');
       setFormPassword('');
-      setFormRole('User');
+      setFormRole('');
       setFormStatus(true);
     }
     setIsModalOpen(true);
@@ -141,27 +146,34 @@ const Users: React.FC = () => {
           {row.status ? 'Active' : 'Inactive'}
         </label>
       )
-    },
-    {
+    }
+  ];
+
+  if (hasPrivilege('Update User') || hasPrivilege('Delete User')) {
+    columns.push({
       id: 'actions',
       label: 'Actions',
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          <Tooltip title="Edit User">
-            <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }} onClick={() => handleOpenModal(row)}>
-              <EditIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Delete User">
-            <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }} onClick={() => handleDelete(row.id)}>
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+          {hasPrivilege('Update User') && (
+            <Tooltip title="Edit User">
+              <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }} onClick={() => handleOpenModal(row)}>
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {hasPrivilege('Delete User') && (
+            <Tooltip title="Delete User">
+              <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }} onClick={() => handleDelete(row.id)}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
         </Box>
       )
-    }
-  ];
+    });
+  }
 
   return (
     <Box className={styles.users} sx={{ p: 3 }}>
@@ -175,14 +187,16 @@ const Users: React.FC = () => {
             onChange={setSearchQuery}
             placeholder="Search users..."
           />
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenModal()}
-          >
-            Create User
-          </Button>
+          {hasPrivilege('Create User') && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenModal()}
+            >
+              Create User
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -211,8 +225,9 @@ const Users: React.FC = () => {
         setFormPassword={setFormPassword}
         setFormRole={setFormRole}
         formRole={formRole}
-        formStatus={formStatus}
         setFormStatus={setFormStatus}
+        formStatus={formStatus}
+        availableRoles={availableRoles}
         handleSubmit={handleSubmit}
       />
     </Box>

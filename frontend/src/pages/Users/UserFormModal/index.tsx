@@ -16,10 +16,11 @@ interface PropType {
     formRole: string;
     formStatus: boolean;
     setFormStatus: (value: boolean) => void;
+    availableRoles: { id: string; name: string }[];
     handleSubmit: (e: React.FormEvent) => void;
 }
 
-const UserFormModal = ({ isModalOpen, handleCloseModal, editingUser, setFormUsername, formUsername, formPassword, setFormPassword, setFormRole, formRole, formStatus, setFormStatus, handleSubmit }:PropType) => {
+const UserFormModal = ({ isModalOpen, handleCloseModal, editingUser, setFormUsername, formUsername, formPassword, setFormPassword, setFormRole, formRole, formStatus, setFormStatus, availableRoles, handleSubmit }:PropType) => {
     return (
         <Modal
             open={isModalOpen}
@@ -62,9 +63,9 @@ const UserFormModal = ({ isModalOpen, handleCloseModal, editingUser, setFormUser
                             onChange={(e) => setFormRole(e.target.value as string)}
                             sx={{ borderRadius: '8px' }}
                         >
-                            <MenuItem value="User">User</MenuItem>
-                            <MenuItem value="Manager">Manager</MenuItem>
-                            <MenuItem value="Super Admin">Super Admin</MenuItem>
+                            {(availableRoles || []).map((role) => (
+                                <MenuItem key={role.id} value={role.name}>{role.name}</MenuItem>
+                            ))}
                         </Select>
                     </FormControl>
                     <FormControl fullWidth className={styles.field}>

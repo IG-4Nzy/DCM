@@ -9,14 +9,15 @@ import { useToast } from '../../contexts/ToastContext';
 import type { AppDispatch, RootState } from '../../store';
 import type { RoleData } from './model';
 import RoleFormModal from './RolesFormModal';
+import { hasPrivilege } from '../../helpers/authUtils';
 import styles from "./index.module.scss";
-import { createRole, deleteRole, fetchRoles, updateRole } from './action';
+import { createRole, deleteRole, fetchRoles, updateRole, fetchPrivileges } from './action';
 
 type Order = 'asc' | 'desc';
 
 const Roles: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { roles, totalCount, loading, error } = useSelector((state: RootState) => state?.roles);
+  const { roles, availablePrivileges, totalCount, loading, error } = useSelector((state: RootState) => state?.roles);
   const { showToast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,6 +31,11 @@ const Roles: React.FC = () => {
   const [editingRole, setEditingRole] = useState<RoleData | null>(null);
   const [formName, setFormName] = useState('');
   const [formStatus, setFormStatus] = useState(true);
+  const [formPrivileges, setFormPrivileges] = useState<string[]>([]);
+
+  useEffect(() => {
+    dispatch(fetchPrivileges());
+  }, [dispatch]);
 
   useEffect(() => {
     dispatch(fetchRoles({
@@ -47,10 +53,12 @@ const Roles: React.FC = () => {
       setEditingRole(role);
       setFormName(role.name);
       setFormStatus(role.status);
+      setFormPrivileges(role.privileges || []);
     } else {
       setEditingRole(null);
       setFormName('');
       setFormStatus(true);
+      setFormPrivileges([]);
     }
     setIsModalOpen(true);
   };
@@ -66,14 +74,16 @@ const Roles: React.FC = () => {
         const payload: any = {
           id: editingRole.id,
           name: formName,
-          status: formStatus
+          status: formStatus,
+          privileges: formPrivileges
         };
         await dispatch(updateRole({ payload, showToast })).unwrap();
       } else {
         await dispatch(createRole({
           payload: {
             name: formName,
-            status: formStatus
+            status: formStatus,
+            privileges: formPrivileges
           },
           showToast
         })).unwrap();
@@ -126,27 +136,34 @@ const Roles: React.FC = () => {
           {row.status ? 'Active' : 'Inactive'}
         </label>
       )
-    },
-    {
+    }
+  ];
+
+  if (hasPrivilege('Update Role') || hasPrivilege('Delete Role')) {
+    columns.push({
       id: 'actions',
       label: 'Actions',
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          <Tooltip title="Edit Role">
-            <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }} onClick={() => handleOpenModal(row)}>
-              <EditIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Delete Role">
-            <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }} onClick={() => handleDelete(row.id)}>
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+          {hasPrivilege('Update Role') && (
+            <Tooltip title="Edit Role">
+              <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }} onClick={() => handleOpenModal(row)}>
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {hasPrivilege('Delete Role') && (
+            <Tooltip title="Delete Role">
+              <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }} onClick={() => handleDelete(row.id)}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
         </Box>
       )
-    }
-  ];
+    });
+  }
 
   return (
     <Box className={styles.users} sx={{ p: 3 }}>
@@ -160,14 +177,16 @@ const Roles: React.FC = () => {
             onChange={setSearchQuery}
             placeholder="Search roles..."
           />
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenModal()}
-          >
-            Create Role
-          </Button>
+          {hasPrivilege('Create Role') && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenModal()}
+            >
+              Create Role
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -194,6 +213,9 @@ const Roles: React.FC = () => {
         formName={formName}
         formStatus={formStatus}
         setFormStatus={setFormStatus}
+        formPrivileges={formPrivileges}
+        setFormPrivileges={setFormPrivileges}
+        availablePrivileges={availablePrivileges}
         handleSubmit={handleSubmit}
       />
     </Box>

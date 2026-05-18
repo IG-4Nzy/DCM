@@ -22,6 +22,7 @@ export interface UpdateUserPayload {
 
 export interface UsersState {
   users: UserData[];
+  availableRoles: { id: string; name: string }[];
   totalCount: number;
   loading: boolean;
   error: string | null;

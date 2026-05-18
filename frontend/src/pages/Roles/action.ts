@@ -30,6 +30,18 @@ export const fetchRoles = createAsyncThunk(
   }
 );
 
+export const fetchPrivileges = createAsyncThunk(
+  'roles/fetchPrivileges',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await request.get(`${ROLES_ENDPOINT}/privileges`);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to fetch privileges');
+    }
+  }
+);
+
 export const createRole = createAsyncThunk(
   'roles/createRole',
   async ({ payload, showToast }: { payload: CreateRolePayload; showToast: ToastFunction }, { rejectWithValue }) => {

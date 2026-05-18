@@ -31,6 +31,18 @@ export const fetchUsers = createAsyncThunk(
   }
 );
 
+export const fetchAllRolesForDropdown = createAsyncThunk(
+  'users/fetchAllRolesForDropdown',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await request.get('/api/roles', { params: { limit: 1000 } });
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to fetch roles');
+    }
+  }
+);
+
 export const createUser = createAsyncThunk(
   'users/createUser',
   async ({ payload, showToast }: { payload: CreateUserPayload; showToast: ToastFunction }, { rejectWithValue }) => {
