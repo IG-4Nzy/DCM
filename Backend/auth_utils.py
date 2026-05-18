@@ -34,8 +34,8 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 
 def require_privilege(required_privilege: str):
     def privilege_checker(current_user: dict = Depends(get_current_user)):
-        user_role = current_user.get("role", "")
-        if user_role == "Super Admin":
+        is_superuser = current_user.get("isSuperuser", False)
+        if is_superuser:
             return current_user
             
         user_privileges = current_user.get("privileges", [])

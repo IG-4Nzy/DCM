@@ -109,7 +109,7 @@ const Layout: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { username, role } = useSelector((state: RootState) => state.auth);
+  const { username, role, isSuperuser } = useSelector((state: RootState) => state.auth);
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -163,7 +163,7 @@ const Layout: React.FC = () => {
         <List>
           {
             SIDEBAR_OPTIONS?.map((option, index) => {
-              if (option.privileges && !hasAnyPrivilege(option.privileges)) {
+              if (!isSuperuser && option.privileges && !hasAnyPrivilege(option.privileges)) {
                 return null;
               }
               const isSelected = location.pathname === option.route;

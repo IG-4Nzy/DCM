@@ -20,6 +20,7 @@ class LoginResponse(BaseModel):
     role: str
     username: str
     privileges: list[str]
+    isSuperuser: bool = False
 
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -52,12 +53,15 @@ async def login(credentials: LoginRequest):
     role_obj = await roles_collection.find_one({"name": role})
     privileges = role_obj.get("privileges", []) if role_obj else []
     
+    is_superuser = user.get("is_superuser", False)
+    
     # Generate the JWT
-    access_token = create_access_token(data={"sub": user["username"], "role": role, "privileges": privileges})
+    access_token = create_access_token(data={"sub": user["username"], "role": role, "privileges": privileges, "isSuperuser": is_superuser})
     
     return LoginResponse(
         token=access_token,
         role=role,
         username=user["username"],
-        privileges=privileges
+        privileges=privileges,
+        isSuperuser=is_superuser
     )
