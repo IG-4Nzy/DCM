@@ -4,11 +4,12 @@ import ProtectedRoute from "./ProtectedRoute";
 import { ROUTE_CONSTANTS } from "./constant";
 import Loader from "../components/Loader";
 import Layout from "../Layout";
-import Users from "../pages/Users";
 
 const Login = lazy(() => import("../pages/Auth/Login"));
 const Dashboard = lazy(() => import("../pages/Dashboard/Dashboard"));
 const PageNotFound = lazy(() => import("../pages/Auth/PageNotFound"));
+const Users = lazy(() => import("../pages/Users"));
+const Roles = lazy(() => import("../pages/Roles"));
 
 const AppRouter: React.FC = () => {
   return (
@@ -27,6 +28,7 @@ const AppRouter: React.FC = () => {
           >
             <Route path={ROUTE_CONSTANTS.DASHBOARD} element={<Dashboard />} />
             <Route path={ROUTE_CONSTANTS.USERS} element={<Users />} />
+            <Route path={ROUTE_CONSTANTS.ROLES} element={<Roles />} />
           </Route>
 
           <Route path="*" element={<PageNotFound />} />

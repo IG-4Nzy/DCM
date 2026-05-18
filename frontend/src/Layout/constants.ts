@@ -12,5 +12,10 @@ export const SIDEBAR_OPTIONS = [
         label:wordings.users,
         icon: Icons.UsersIcon,
         route: ROUTE_CONSTANTS.USERS
+    },
+    {
+        label:wordings.roles,
+        icon: Icons.RolesIcon,
+        route: ROUTE_CONSTANTS.ROLES
     }
 ]
