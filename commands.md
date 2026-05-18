@@ -24,3 +24,13 @@ npm install
 npm run dev
 
 *(The frontend will start and listen on a local port, usually `http://localhost:5173`)*
+
+
+
+Create Super User: 
+cd /home/vssc/Desktop/DCM/Backend
+source env/bin/activate
+python3 create_superuser.py <new_username> <new_password>
+
+
+-e VITE_API_BASE_URL = ""

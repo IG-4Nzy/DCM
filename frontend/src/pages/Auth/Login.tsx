@@ -1,41 +1,32 @@
 import React, { useState } from 'react';
-import { Box, Button, TextField, Typography, Paper } from '@mui/material';
-import { motion } from 'framer-motion';
 import { useDispatch } from 'react-redux';
-import { loginSuccess } from '../store/authSlice';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { loginApi } from './action';
+import { Box, Button, TextField, Paper } from '@mui/material';
+import { motion } from 'framer-motion';
+import { useToast } from '../../contexts/ToastContext';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<any>();
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      // Temporary: Replace with actual backend API call
-      // const response = await axios.post('/api/auth/login', { username, password });
-      // dispatch(loginSuccess(response.data));
-      
-      // Mock login for UI testing
-      if (username === 'admin' && password === 'admin') {
-        dispatch(loginSuccess({ token: 'mock-token', role: 'Admin', username: 'admin' }));
-        navigate('/dashboard');
-      } else {
-        setError('Invalid credentials');
-      }
-    } catch (err) {
-      setError('An error occurred during login.');
-    }
+    await dispatch(loginApi({ credentials: { username, password }, navigateToDashboard, showToast }));
+  };
+
+  const navigateToDashboard = () => {
+    navigate('/dashboard');
   };
 
   return (
     <Box
       sx={{
         height: '100vh',
+        width: '100%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -57,12 +48,30 @@ const Login: React.FC = () => {
             backdropFilter: 'blur(10px)',
           }}
         >
-          <Typography variant="h4" fontWeight="bold" textAlign="center" mb={1} color="primary">
+          <label
+            style={{
+              display: 'block',
+              textAlign: 'center',
+              fontSize: '32px',
+              fontWeight: 'bold',
+              color: '#1976d2',
+              marginBottom: '8px',
+            }}
+          >
             DCM
-          </Typography>
-          <Typography variant="body2" textAlign="center" mb={4} color="textSecondary">
+          </label>
+
+          <label
+            style={{
+              display: 'block',
+              textAlign: 'center',
+              fontSize: '14px',
+              color: '#666',
+              marginBottom: '32px',
+            }}
+          >
             Data Centre Staff Management
-          </Typography>
+          </label>
 
           <form onSubmit={handleLogin}>
             <TextField
@@ -73,6 +82,7 @@ const Login: React.FC = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />
+
             <TextField
               fullWidth
               label="Password"
@@ -82,12 +92,6 @@ const Login: React.FC = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-
-            {error && (
-              <Typography color="error" variant="body2" mt={1}>
-                {error}
-              </Typography>
-            )}
 
             <Button
               fullWidth

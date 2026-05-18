@@ -1,0 +1,7 @@
+.dashboard{
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 64px);
+    place-items: center;
+    justify-content: center;
+}

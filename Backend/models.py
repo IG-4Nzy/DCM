@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated
-from typing import Optional
+from typing import Optional, List
 
 # Represents an ObjectId field in the database.
 # It will be represented as a `str` on the model so that it can be serialized to JSON.
@@ -42,3 +42,63 @@ class UpdateItemModel(BaseModel):
             }
         },
     )
+
+class UserModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    username: str
+    role: str
+    status: bool
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateUserModel(BaseModel):
+    username: str
+    password: str
+    role: str = "User"
+    status: bool = True
+
+class UpdateUserModel(BaseModel):
+    username: Optional[str] = None
+    password: Optional[str] = None
+    role: Optional[str] = None
+    status: Optional[bool] = None
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedUsersModel(BaseModel):
+    data: List[UserModel]
+    total: int
+
+class RoleModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    name: str
+    status: bool
+    privileges: List[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateRoleModel(BaseModel):
+    name: str
+    status: bool = True
+    privileges: List[str] = Field(default_factory=list)
+
+class UpdateRoleModel(BaseModel):
+    name: Optional[str] = None
+    status: Optional[bool] = None
+    privileges: Optional[List[str]] = None
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedRolesModel(BaseModel):
+    data: List[RoleModel]
+    total: int
