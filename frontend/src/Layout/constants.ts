@@ -32,5 +32,11 @@ export const SIDEBAR_OPTIONS = [
         icon: Icons.DepartmentIcon,
         route: ROUTE_CONSTANTS.DEPARTMENTS,
         privileges: ["View Department", "Create Department", "Update Department", "Delete Department"]
+    },
+    {
+        label: wordings.roaster,
+        icon: Icons.RoasterIcon,
+        route: ROUTE_CONSTANTS.ROASTER,
+        privileges: ["View Roaster", "Create Roaster", "Update Roaster", "Delete Roaster"]
     }
 ]

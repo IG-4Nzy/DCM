@@ -6,6 +6,7 @@ export const ROUTE_CONSTANTS = {
     USERS: '/users',
     ROLES: '/roles',
     WORKS: '/works',
-    DEPARTMENTS:'/departments',
-    USER_PROFILE: '/profile'
+    DEPARTMENTS: '/departments',
+    USER_PROFILE: '/profile',
+    ROASTER: '/roaster',
 }

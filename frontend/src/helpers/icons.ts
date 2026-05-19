@@ -18,6 +18,8 @@ import {
 
 } from "react-icons/cg";
 
+import { FaPeopleGroup as RoasterIcon } from "react-icons/fa6";
+
 export const Icons = {
   MenuIcon,
   DashboardIcon,
@@ -27,5 +29,6 @@ export const Icons = {
   UsersIcon,
   RolesIcon,
   WorksIcon,
-  DepartmentIcon
+  DepartmentIcon,
+  RoasterIcon
 };

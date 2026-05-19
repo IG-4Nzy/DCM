@@ -225,3 +225,36 @@ class UpdateDepartmentModel(BaseModel):
 class PaginatedDepartmentsModel(BaseModel):
     data: List[DepartmentModel]
     total: int
+
+class RoasterModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    date: str
+    shift: str
+    assignees: List[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+    createdBy: Optional[str] = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateRoasterModel(BaseModel):
+    date: str
+    shift: str
+    assignees: List[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+
+class UpdateRoasterModel(BaseModel):
+    date: Optional[str] = None
+    shift: Optional[str] = None
+    assignees: Optional[List[str]] = None
+    notes: Optional[str] = None
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedRoastersModel(BaseModel):
+    data: List[RoasterModel]
+    total: int

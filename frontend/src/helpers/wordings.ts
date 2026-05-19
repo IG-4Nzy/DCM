@@ -13,4 +13,5 @@ export default {
   roles: "Roles",
   works: "Works",
   departments: "Departments",
+  roaster: "Roaster",
 };
