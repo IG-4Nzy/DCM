@@ -32,6 +32,7 @@ interface ReusableTableProps<T> {
   onPageChange: (event: unknown, newPage: number) => void;
   onRowsPerPageChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   totalCount: number;
+  onRowClick?: (row: T) => void;
 }
 
 function Table<T extends { id: string | number }>(props: ReusableTableProps<T>) {
@@ -45,7 +46,8 @@ function Table<T extends { id: string | number }>(props: ReusableTableProps<T>) 
     rowsPerPage,
     onPageChange,
     onRowsPerPageChange,
-    totalCount
+    totalCount,
+    onRowClick
   } = props;
 
   return (
@@ -108,7 +110,9 @@ function Table<T extends { id: string | number }>(props: ReusableTableProps<T>) 
                     role="checkbox"
                     tabIndex={-1}
                     key={row.id}
+                    onClick={() => onRowClick && onRowClick(row)}
                     sx={{
+                      cursor: onRowClick ? 'pointer' : 'default',
                       '&:hover': { backgroundColor: '#f9fafb !important' },
                       transition: 'background-color 0.2s ease',
                       '& td': { borderBottom: isLast ? 'none' : '1px solid #f1f3f4' }

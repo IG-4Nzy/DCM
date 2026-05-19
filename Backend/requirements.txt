@@ -4,3 +4,4 @@ motor
 pydantic
 bcrypt
 pyjwt
+python-multipart

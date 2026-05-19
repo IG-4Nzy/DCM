@@ -5,6 +5,7 @@ import {
   MdChevronLeft as ChevronLeftIcon,
   MdChevronRight as ChevronRightIcon,
   MdPeople as UsersIcon,
+  MdOutlineWork as WorksIcon
 } from 'react-icons/md';
 
 import {
@@ -19,5 +20,6 @@ export const Icons = {
   ChevronLeftIcon,
   ChevronRightIcon,
   UsersIcon,
-  RolesIcon
+  RolesIcon,
+  WorksIcon
 };

@@ -4,5 +4,6 @@ export const ROUTE_CONSTANTS = {
     DASHBOARD: '/dashboard',
     PAGE_NOT_FOUND: '/page-not-found',
     USERS: '/users',
-    ROLES: '/roles'
+    ROLES: '/roles',
+    WORKS: '/works'
 }

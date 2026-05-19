@@ -11,5 +11,5 @@ export default {
     users: 'Users',
     comingSoon: "Coming Soon",
     roles: 'Roles',
-
+works: 'Works'
 }

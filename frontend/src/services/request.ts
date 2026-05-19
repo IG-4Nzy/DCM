@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getItemFromLocalstorage } from '../helpers/utils';
 import { LOCAL_STORAGE_PARAMETERS } from '../helpers/constants';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'; // Configurable via Docker -e VITE_API_BASE_URL
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'; // Configurable via Docker -e VITE_API_BASE_URL
 
 const request = axios.create({
   baseURL: API_BASE_URL,
@@ -33,6 +33,8 @@ request.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       console.warn("Unauthorized request, token may have expired.");
+      localStorage.clear();
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }

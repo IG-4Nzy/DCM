@@ -20,5 +20,11 @@ export const SIDEBAR_OPTIONS = [
         icon: Icons.RolesIcon,
         route: ROUTE_CONSTANTS.ROLES,
         privileges: ["View Role", "Create Role", "Update Role", "Delete Role"]
+    },
+    {
+        label: wordings.works,
+        icon: Icons.WorksIcon,
+        route: ROUTE_CONSTANTS.WORKS,
+        privileges: ["View All Work", "View Assigned Work", "Create Work", "Update Work", "Delete Work", "Work Status Update"]
     }
 ]
