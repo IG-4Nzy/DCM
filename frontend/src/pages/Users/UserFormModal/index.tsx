@@ -1,6 +1,6 @@
 import Modal from '../../../components/Modal'
 import TextField from '../../../components/TextField'
-import { Box, Button, FormControl, InputLabel, MenuItem, Select } from '@mui/material'
+import { Button, FormControl, InputLabel, MenuItem, Select } from '@mui/material'
 import type { UpdateUserPayload } from '../model';
 import DatePicker from '../../../components/DatePicker';
 import Dropdown from '../../../components/Dropdown';

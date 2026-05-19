@@ -169,7 +169,7 @@ const Roles: React.FC = () => {
     <Box className={styles.users} sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <label style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
-          Role Management
+          Roles
         </label>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
           <SearchBar

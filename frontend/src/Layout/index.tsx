@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { styled, useTheme, type Theme, type CSSObject } from '@mui/material/styles';
 import {
@@ -11,7 +11,9 @@ import {
   IconButton,
   ListItemButton,
   Divider,
-  CssBaseline
+  CssBaseline,
+  Avatar,
+  Tooltip
 } from '@mui/material';
 import MuiDrawer from '@mui/material/Drawer';
 import MuiAppBar, { type AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
@@ -29,6 +31,8 @@ import type { RootState } from '../store';
 import wordings from '../helpers/wordings';
 import { SIDEBAR_OPTIONS } from './constants';
 import { hasAnyPrivilege } from '../helpers/authUtils';
+import { ROUTE_CONSTANTS } from '../router/constant';
+import request from '../services/request';
 
 const drawerWidth = 240;
 
@@ -110,6 +114,22 @@ const Layout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { username, role, isSuperuser } = useSelector((state: RootState) => state.auth);
+  const [userInitials, setUserInitials] = useState('');
+
+  useEffect(() => {
+    const fetchInitials = async () => {
+      try {
+        const res = await request.get('/api/auth/me');
+        const { firstName, lastName } = res.data;
+        const f = (firstName || '').charAt(0).toUpperCase();
+        const l = (lastName || '').charAt(0).toUpperCase();
+        setUserInitials(l ? `${f}${l}` : f || (username || '?').charAt(0).toUpperCase());
+      } catch {
+        setUserInitials((username || '?').charAt(0).toUpperCase());
+      }
+    };
+    fetchInitials();
+  }, [username]);
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -147,6 +167,27 @@ const Layout: React.FC = () => {
             <label style={{ fontWeight: 'bold', color: '#666', fontSize: '0.875rem' }}>
               {wordings.welcome}, {username} ({role})
             </label>
+            <Tooltip title="My Profile">
+              <Avatar
+                onClick={() => navigate(ROUTE_CONSTANTS.USER_PROFILE)}
+                sx={{
+                  width: 38,
+                  height: 38,
+                  cursor: 'pointer',
+                  background: 'linear-gradient(135deg, #1976d2 0%, #7c4dff 100%)',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  border: '2px solid #e0e0e0',
+                  transition: 'box-shadow 0.2s, transform 0.2s',
+                  '&:hover': {
+                    boxShadow: '0 2px 12px rgba(25,118,210,0.3)',
+                    transform: 'scale(1.08)',
+                  }
+                }}
+              >
+                {userInitials}
+              </Avatar>
+            </Tooltip>
           </Box>
         </Toolbar>
       </AppBar>

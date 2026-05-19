@@ -11,18 +11,7 @@
     gap: 16px;
   }
 
-  .field {
-    flex: 1;
-    margin: 0;
 
-    // Fix for helper text pushing fields out of alignment in flex layout
-    position: relative;
-    
-    :global(.MuiFormHelperText-root) {
-      position: absolute;
-      bottom: -20px;
-    }
-  }
 
   .actions {
     display: flex;
@@ -31,5 +20,20 @@
     margin-top: 16px;
     padding-top: 20px;
     border-top: 1px solid #f0f2f5;
+  }
+}
+
+.field {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: 58.88px;
+
+  // Fix for helper text pushing fields out of alignment in flex layout
+  position: relative;
+
+  :global(.MuiFormHelperText-root) {
+    position: absolute;
+    bottom: -20px;
   }
 }
