@@ -3,13 +3,15 @@ import authReducer from './authSlice';
 import usersReducer from '../pages/Users/slice';
 import rolesReducer from '../pages/Roles/slice';
 import worksReducer from '../pages/Work/slice';
+import departmentsReducer from '../pages/Departments/slice';
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     users: usersReducer,
     roles: rolesReducer,
-    works: worksReducer
+    works: worksReducer,
+    departments: departmentsReducer
   },
 });
 

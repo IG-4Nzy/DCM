@@ -17,5 +17,9 @@
     "View All Work",
     "Update Work",
     "Delete Work",
-    "Work Status Update"
+    "Work Status Update",
+    "Create Department",
+    "View Department",
+    "Update Department",
+    "Delete Department"
 ]

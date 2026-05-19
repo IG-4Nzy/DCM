@@ -3,6 +3,14 @@ export interface UserData {
   username: string;
   role: string;
   status: boolean;
+  firstName?: string;
+  lastName?: string;
+  dob?: string;
+  mobile?: string;
+  bloodGroup?: string;
+  address?: string;
+  dateOfJoin?: string;
+  department?: string;
 }
 
 export interface CreateUserPayload {
@@ -10,6 +18,14 @@ export interface CreateUserPayload {
   password?: string;
   role: string;
   status: boolean;
+  firstName?: string;
+  lastName?: string;
+  dob?: string;
+  mobile?: string;
+  bloodGroup?: string;
+  address?: string;
+  dateOfJoin?: string;
+  department?: string;
 }
 
 export interface UpdateUserPayload {
@@ -18,11 +34,20 @@ export interface UpdateUserPayload {
   password?: string;
   role: string;
   status: boolean;
+  firstName?: string;
+  lastName?: string;
+  dob?: string;
+  mobile?: string;
+  bloodGroup?: string;
+  address?: string;
+  dateOfJoin?: string;
+  department?: string;
 }
 
 export interface UsersState {
   users: UserData[];
   availableRoles: { id: string; name: string }[];
+  availableDepartments: any[];
   totalCount: number;
   loading: boolean;
   error: string | null;

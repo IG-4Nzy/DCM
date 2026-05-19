@@ -88,3 +88,17 @@ export const deleteUser = createAsyncThunk(
     }
   }
 );
+
+export const fetchAllDepartmentsForDropdown = createAsyncThunk(
+  'users/fetchAllDepartmentsForDropdown',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await request.get('/api/departments/', {
+        params: { limit: 1000 }
+      });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to fetch departments');
+    }
+  }
+);

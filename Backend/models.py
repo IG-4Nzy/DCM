@@ -48,6 +48,14 @@ class UserModel(BaseModel):
     username: str
     role: str
     status: bool
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
+    dob: Optional[str] = None
+    mobile: Optional[str] = None
+    bloodGroup: Optional[str] = None
+    address: Optional[str] = None
+    dateOfJoin: Optional[str] = None
+    department: Optional[str] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -59,12 +67,28 @@ class CreateUserModel(BaseModel):
     password: str
     role: str = "User"
     status: bool = True
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
+    dob: Optional[str] = None
+    mobile: Optional[str] = None
+    bloodGroup: Optional[str] = None
+    address: Optional[str] = None
+    dateOfJoin: Optional[str] = None
+    department: Optional[str] = None
 
 class UpdateUserModel(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     role: Optional[str] = None
     status: Optional[bool] = None
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
+    dob: Optional[str] = None
+    mobile: Optional[str] = None
+    bloodGroup: Optional[str] = None
+    address: Optional[str] = None
+    dateOfJoin: Optional[str] = None
+    department: Optional[str] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -171,4 +195,30 @@ class UpdateWorkModel(BaseModel):
 
 class PaginatedWorksModel(BaseModel):
     data: List[WorkModel]
+    total: int
+
+class DepartmentModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    name: str
+    status: bool
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateDepartmentModel(BaseModel):
+    name: str
+    status: bool = True
+
+class UpdateDepartmentModel(BaseModel):
+    name: Optional[str] = None
+    status: Optional[bool] = None
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedDepartmentsModel(BaseModel):
+    data: List[DepartmentModel]
     total: int

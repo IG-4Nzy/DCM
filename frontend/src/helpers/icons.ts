@@ -13,6 +13,11 @@ import {
 
 } from "react-icons/io";
 
+import { 
+  CgOrganisation as DepartmentIcon
+
+} from "react-icons/cg";
+
 export const Icons = {
   MenuIcon,
   DashboardIcon,
@@ -21,5 +26,6 @@ export const Icons = {
   ChevronRightIcon,
   UsersIcon,
   RolesIcon,
-  WorksIcon
+  WorksIcon,
+  DepartmentIcon
 };

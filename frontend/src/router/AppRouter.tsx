@@ -11,6 +11,7 @@ const PageNotFound = lazy(() => import("../pages/Auth/PageNotFound"));
 const Users = lazy(() => import("../pages/Users"));
 const Roles = lazy(() => import("../pages/Roles"));
 const Works = lazy(() => import("../pages/Work"));
+const Departments = lazy(() => import("../pages/Departments"));
 
 const AppRouter: React.FC = () => {
   return (
@@ -31,6 +32,7 @@ const AppRouter: React.FC = () => {
             <Route path={ROUTE_CONSTANTS.USERS} element={<Users />} />
             <Route path={ROUTE_CONSTANTS.ROLES} element={<Roles />} />
             <Route path={ROUTE_CONSTANTS.WORKS} element={<Works />} />
+            <Route path={ROUTE_CONSTANTS.DEPARTMENTS} element={<Departments />} />
           </Route>
 
           <Route path="*" element={<PageNotFound />} />

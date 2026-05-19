@@ -2,6 +2,8 @@ import Modal from '../../../components/Modal'
 import TextField from '../../../components/TextField'
 import { Box, Button, FormControl, InputLabel, MenuItem, Select } from '@mui/material'
 import type { UpdateUserPayload } from '../model';
+import DatePicker from '../../../components/DatePicker';
+import Dropdown from '../../../components/Dropdown';
 import styles from './index.module.scss';
 
 interface PropType {
@@ -18,9 +20,53 @@ interface PropType {
     setFormStatus: (value: boolean) => void;
     availableRoles: { id: string; name: string }[];
     handleSubmit: (e: React.FormEvent) => void;
+    formFirstName: string;
+    setFormFirstName: (v: string) => void;
+    formLastName: string;
+    setFormLastName: (v: string) => void;
+    formDob: string;
+    setFormDob: (v: string) => void;
+    formMobile: string;
+    setFormMobile: (v: string) => void;
+    formBloodGroup: string;
+    setFormBloodGroup: (v: string) => void;
+    formAddress: string;
+    setFormAddress: (v: string) => void;
+    formDateOfJoin: string;
+    setFormDateOfJoin: (v: string) => void;
+    formDepartment: string;
+    setFormDepartment: (v: string) => void;
+    availableDepartments: any[];
 }
 
-const UserFormModal = ({ isModalOpen, handleCloseModal, editingUser, setFormUsername, formUsername, formPassword, setFormPassword, setFormRole, formRole, formStatus, setFormStatus, availableRoles, handleSubmit }:PropType) => {
+const BLOOD_GROUPS = [
+    { label: "A+", value: "A+" },
+    { label: "A-", value: "A-" },
+    { label: "B+", value: "B+" },
+    { label: "B-", value: "B-" },
+    { label: "O+", value: "O+" },
+    { label: "O-", value: "O-" },
+    { label: "AB+", value: "AB+" },
+    { label: "AB-", value: "AB-" }
+];
+
+const UserFormModal = ({ 
+    isModalOpen, handleCloseModal, editingUser, 
+    setFormUsername, formUsername, 
+    formPassword, setFormPassword, 
+    setFormRole, formRole, 
+    formStatus, setFormStatus, 
+    availableRoles, handleSubmit,
+    formFirstName, setFormFirstName,
+    formLastName, setFormLastName,
+    formDob, setFormDob,
+    formMobile, setFormMobile,
+    formBloodGroup, setFormBloodGroup,
+    formAddress, setFormAddress,
+    formDateOfJoin, setFormDateOfJoin,
+    formDepartment, setFormDepartment,
+    availableDepartments
+}:PropType) => {
     return (
         <Modal
             open={isModalOpen}
@@ -80,6 +126,80 @@ const UserFormModal = ({ isModalOpen, handleCloseModal, editingUser, setFormUser
                             <MenuItem value="false">Inactive</MenuItem>
                         </Select>
                     </FormControl>
+                </div>
+                
+                <div className={styles.row}>
+                    <TextField
+                        className={styles.field}
+                        fullWidth
+                        label="First Name"
+                        value={formFirstName}
+                        onChange={(e) => setFormFirstName(e.target.value)}
+                    />
+                    <TextField
+                        className={styles.field}
+                        fullWidth
+                        label="Last Name"
+                        value={formLastName}
+                        onChange={(e) => setFormLastName(e.target.value)}
+                    />
+                </div>
+
+                <div className={styles.row}>
+                    <DatePicker
+                        className={styles.field}
+                        fullWidth
+                        label="Date of Birth"
+                        value={formDob}
+                        onChange={setFormDob}
+                    />
+                    <TextField
+                        className={styles.field}
+                        fullWidth
+                        label="Mobile Number"
+                        value={formMobile}
+                        onChange={(e) => setFormMobile(e.target.value)}
+                    />
+                </div>
+
+                <div className={styles.row}>
+                    <Dropdown
+                        className={styles.field}
+                        fullWidth
+                        label="Blood Group"
+                        options={BLOOD_GROUPS}
+                        value={formBloodGroup}
+                        onChange={setFormBloodGroup}
+                        clearable
+                    />
+                    <Dropdown
+                        className={styles.field}
+                        fullWidth
+                        label="Department"
+                        options={(availableDepartments || []).map(d => ({ label: d.name, value: d.name }))}
+                        value={formDepartment}
+                        onChange={setFormDepartment}
+                        clearable
+                    />
+                </div>
+                
+                <div className={styles.row}>
+                    <TextField
+                        className={styles.field}
+                        fullWidth
+                        label="Address"
+                        value={formAddress}
+                        onChange={(e) => setFormAddress(e.target.value)}
+                        multiline
+                        maxRows={3}
+                    />
+                    <DatePicker
+                        className={styles.field}
+                        fullWidth
+                        label="Date of Join"
+                        value={formDateOfJoin}
+                        onChange={setFormDateOfJoin}
+                    />
                 </div>
 
                 <div className={styles.actions}>
