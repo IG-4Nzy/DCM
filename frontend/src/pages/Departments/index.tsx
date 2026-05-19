@@ -12,6 +12,7 @@ import type { DepartmentData } from './model';
 import { hasPrivilege } from '../../helpers/authUtils';
 import styles from "./index.module.scss";
 import DepartmentFormModal from './DepartmentFormModal';
+import request from '../../services/request';
 
 type Order = 'asc' | 'desc';
 
@@ -30,6 +31,8 @@ const Departments: React.FC = () => {
   const [editingDepartment, setEditingDepartment] = useState<DepartmentData | null>(null);
   const [formName, setFormName] = useState('');
   const [formStatus, setFormStatus] = useState(true);
+  const [formDepartmentHead, setFormDepartmentHead] = useState('');
+  const [usersList, setUsersList] = useState<any[]>([]);
 
   useEffect(() => {
     dispatch(fetchDepartments({
@@ -40,6 +43,16 @@ const Departments: React.FC = () => {
       search: searchQuery,
       showToast
     }));
+
+    const fetchAllUsers = async () => {
+      try {
+        const res = await request.get('/api/users/', { params: { limit: 1000 } });
+        setUsersList(res.data.data || []);
+      } catch (err) {
+        console.error("Failed to fetch users", err);
+      }
+    };
+    fetchAllUsers();
   }, [dispatch, showToast, page, rowsPerPage, orderBy, order, searchQuery]);
 
   const handleOpenModal = (department?: DepartmentData) => {
@@ -47,10 +60,12 @@ const Departments: React.FC = () => {
       setEditingDepartment(department);
       setFormName(department.name);
       setFormStatus(department.status);
+      setFormDepartmentHead(department.departmentHead || '');
     } else {
       setEditingDepartment(null);
       setFormName('');
       setFormStatus(true);
+      setFormDepartmentHead('');
     }
     setIsModalOpen(true);
   };
@@ -62,12 +77,12 @@ const Departments: React.FC = () => {
     try {
       if (editingDepartment) {
         await dispatch(updateDepartment({
-          payload: { id: editingDepartment.id || (editingDepartment as any)._id, name: formName, status: formStatus },
+          payload: { id: editingDepartment.id || (editingDepartment as any)._id, name: formName, status: formStatus, departmentHead: formDepartmentHead || undefined },
           showToast
         })).unwrap();
       } else {
         await dispatch(createDepartment({
-          payload: { name: formName, status: formStatus },
+          payload: { name: formName, status: formStatus, departmentHead: formDepartmentHead || undefined },
           showToast
         })).unwrap();
       }
@@ -95,6 +110,7 @@ const Departments: React.FC = () => {
 
   const columns: Column<DepartmentData>[] = [
     { id: 'name', label: 'Department Name', sortable: true },
+    { id: 'departmentHead', label: 'Department Head', sortable: true, render: (row) => row.departmentHead || 'N/A' },
     {
       id: 'status',
       label: 'Status',
@@ -178,6 +194,9 @@ const Departments: React.FC = () => {
         setFormName={setFormName}
         formStatus={formStatus}
         setFormStatus={setFormStatus}
+        formDepartmentHead={formDepartmentHead}
+        setFormDepartmentHead={setFormDepartmentHead}
+        usersList={usersList}
         handleSubmit={handleSubmit}
       />
     </Box>

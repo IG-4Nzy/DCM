@@ -13,7 +13,7 @@ export const fetchDepartments = createAsyncThunk(
     showToast?: (msg: string, type: 'success' | 'error') => void;
   }, { rejectWithValue }) => {
     try {
-      const response = await request.get('/departments/', {
+      const response = await request.get('/api/departments/', {
         params: { skip, limit, sort_by: sortBy, order, search }
       });
       return response.data;
@@ -29,7 +29,7 @@ export const createDepartment = createAsyncThunk(
   'departments/createDepartment',
   async ({ payload, showToast }: { payload: CreateDepartmentPayload; showToast: (msg: string, type: 'success' | 'error') => void }, { rejectWithValue }) => {
     try {
-      const response = await request.post('/departments/', payload);
+      const response = await request.post('/api/departments/', payload);
       showToast('Department created successfully', 'success');
       return response.data;
     } catch (error: any) {
@@ -45,7 +45,7 @@ export const updateDepartment = createAsyncThunk(
   async ({ payload, showToast }: { payload: UpdateDepartmentPayload; showToast: (msg: string, type: 'success' | 'error') => void }, { rejectWithValue }) => {
     try {
       const { id, ...updateData } = payload;
-      const response = await request.put(`/departments/${id}`, updateData);
+      const response = await request.put(`/api/departments/${id}`, updateData);
       showToast('Department updated successfully', 'success');
       return response.data;
     } catch (error: any) {
@@ -60,7 +60,7 @@ export const deleteDepartment = createAsyncThunk(
   'departments/deleteDepartment',
   async ({ id, showToast }: { id: string; showToast: (msg: string, type: 'success' | 'error') => void }, { rejectWithValue }) => {
     try {
-      await request.delete(`/departments/${id}`);
+      await request.delete(`/api/departments/${id}`);
       showToast('Department deleted successfully', 'success');
       return id;
     } catch (error: any) {

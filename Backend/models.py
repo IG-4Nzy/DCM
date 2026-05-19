@@ -201,6 +201,7 @@ class DepartmentModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     name: str
     status: bool
+    departmentHead: Optional[str] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -210,10 +211,12 @@ class DepartmentModel(BaseModel):
 class CreateDepartmentModel(BaseModel):
     name: str
     status: bool = True
+    departmentHead: Optional[str] = None
 
 class UpdateDepartmentModel(BaseModel):
     name: Optional[str] = None
     status: Optional[bool] = None
+    departmentHead: Optional[str] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
