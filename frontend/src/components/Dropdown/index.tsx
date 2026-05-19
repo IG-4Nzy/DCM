@@ -5,10 +5,12 @@ import {
   Select,
   MenuItem,
   Checkbox,
-  ListItemText,
   type SelectChangeEvent,
   FormHelperText,
+  IconButton,
+  ListItemText,
 } from '@mui/material';
+import { MdClear } from 'react-icons/md';
 
 export interface DropdownOption {
   label: string;
@@ -28,6 +30,8 @@ export interface DropdownProps {
   error?: boolean;
   size?: 'small' | 'medium';
   sx?: any;
+  className?:string;
+  clearable?: boolean;
 }
 
 const ITEM_HEIGHT = 48;
@@ -46,6 +50,8 @@ const Dropdown: React.FC<DropdownProps> = ({
   error = false,
   size = 'medium',
   sx = {},
+  className = "",
+  clearable = false
 }) => {
   const handleChange = (event: SelectChangeEvent<any>) => {
     onChange(event.target.value);
@@ -73,12 +79,13 @@ const Dropdown: React.FC<DropdownProps> = ({
         },
         ...sx,
       }}
+      className={className}
     >
       <InputLabel>{label}</InputLabel>
 
       <Select
         multiple={multiple}
-        value={displayValue}
+        value={displayValue}  
         onChange={handleChange}
         label={label}
         renderValue={
@@ -112,6 +119,21 @@ const Dropdown: React.FC<DropdownProps> = ({
             },
           },
         }}
+        endAdornment={
+          clearable && (multiple ? displayValue.length > 0 : displayValue) ? (
+            <IconButton
+              size="small"
+              sx={{ position: 'absolute', right: 28, top: 'calc(50% - 14px)' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange(multiple ? [] : '');
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <MdClear fontSize="small" />
+            </IconButton>
+          ) : undefined
+        }
       >
         {options.map((option) => (
           <MenuItem

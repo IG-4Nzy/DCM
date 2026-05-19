@@ -11,5 +11,11 @@
     "Create Checklist",
     "View Checklist",
     "Update Checklist",
-    "Delete Checklist"
+    "Delete Checklist",
+    "Create Work",
+    "View Assigned Work",
+    "View All Work",
+    "Update Work",
+    "Delete Work",
+    "Work Status Update"
 ]

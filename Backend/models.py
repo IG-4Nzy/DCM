@@ -1,7 +1,7 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated
-from typing import Optional, List
+from typing import Optional, List, Any
 
 # Represents an ObjectId field in the database.
 # It will be represented as a `str` on the model so that it can be serialized to JSON.
@@ -101,4 +101,74 @@ class UpdateRoleModel(BaseModel):
 
 class PaginatedRolesModel(BaseModel):
     data: List[RoleModel]
+    total: int
+
+class WorkModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    workName: str
+    assignee: str
+    priority: str
+    dueDate: str
+    description: str
+    attachments: List[dict] = Field(default_factory=list)
+    status: str = "Pending"
+    comments: List[dict] = Field(default_factory=list)
+
+    @field_validator('attachments', mode='before')
+    @classmethod
+    def parse_attachments(cls, v: Any) -> List[dict]:
+        if not isinstance(v, list):
+            return []
+        parsed = []
+        for a in v:
+            if isinstance(a, str):
+                parsed.append({"name": a, "url": f"/{a}"})
+            elif isinstance(a, dict):
+                parsed.append(a)
+        return parsed
+
+    @field_validator('comments', mode='before')
+    @classmethod
+    def parse_comments(cls, v: Any) -> List[dict]:
+        if not isinstance(v, list):
+            return []
+        parsed = []
+        for c in v:
+            if isinstance(c, str):
+                parsed.append({"text": c, "user": "Unknown", "timestamp": "2023-01-01T00:00:00.000Z"})
+            elif isinstance(c, dict):
+                parsed.append(c)
+        return parsed
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateWorkModel(BaseModel):
+    workName: str
+    assignee: str
+    priority: str
+    dueDate: str
+    description: str
+    attachments: List[dict] = Field(default_factory=list)
+    status: str = "Pending"
+    comments: List[dict] = Field(default_factory=list)
+
+class UpdateWorkModel(BaseModel):
+    workName: Optional[str] = None
+    assignee: Optional[str] = None
+    priority: Optional[str] = None
+    dueDate: Optional[str] = None
+    description: Optional[str] = None
+    attachments: Optional[List[dict]] = None
+    status: Optional[str] = None
+    comments: Optional[List[dict]] = None
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedWorksModel(BaseModel):
+    data: List[WorkModel]
     total: int

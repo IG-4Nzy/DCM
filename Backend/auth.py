@@ -9,7 +9,7 @@ router = APIRouter()
 
 SECRET_KEY = "super-secret-jwt-key-replace-me-in-production"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 480 # Token valid for 8 hours
+ACCESS_TOKEN_EXPIRE_MINUTES = 960 # Token valid for 16 hours
 
 class LoginRequest(BaseModel):
     username: str

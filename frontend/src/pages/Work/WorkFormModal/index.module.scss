@@ -1,0 +1,166 @@
+.formContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem 0.5rem;
+}
+
+.modalContent {
+  border-radius: 20px;
+  padding: 1rem;
+  background: #ffffff;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+}
+
+.row {
+  display: flex;
+  gap: 1.25rem;
+  width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+
+.field {
+  flex: 1;
+
+  :global(.MuiOutlinedInput-root) {
+    min-height: 58px;
+    border-radius: 14px;
+    background: #fafafa;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: #f5f5f5;
+    }
+
+    &.Mui-focused {
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.12);
+    }
+
+    input,
+    textarea {
+      padding: 16px 18px;
+      font-size: 1rem;
+    }
+
+    textarea {
+      line-height: 1.6;
+    }
+  }
+
+  :global(.MuiInputLabel-root) {
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  :global(.MuiInputLabel-shrink) {
+    font-size: 0.9rem;
+  }
+}
+
+.uploadSection {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.uploadButton {
+  border-radius: 12px !important;
+  flex: 1;
+  height: 54px;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  border: 1px dashed #1976d2 !important;
+  background: rgba(25, 118, 210, 0.04) !important;
+
+  &:hover {
+    background: rgba(25, 118, 210, 0.08) !important;
+  }
+}
+
+.fileList {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 120px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+  }
+}
+
+.fileItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: #f8f9fb;
+  border: 1px solid #e5e7eb;
+}
+
+.fileName {
+  color: #555;
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileInfo {
+  flex: 1;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: #f8f9fb;
+  border: 1px solid #e5e7eb;
+  color: #555;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #ececec;
+
+  @media (max-width: 600px) {
+    flex-direction: column-reverse;
+  }
+
+  button {
+    min-width: 120px;
+    height: 44px;
+    border-radius: 10px;
+    text-transform: none;
+    font-weight: 600;
+  }
+
+  :global(.MuiButton-containedPrimary) {
+    box-shadow: none;
+
+    &:hover {
+      box-shadow: 0 6px 18px rgba(25, 118, 210, 0.2);
+    }
+  }
+}

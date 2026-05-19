@@ -1,4 +1,6 @@
 import { store } from '../store';
+import { LOCAL_STORAGE_PARAMETERS } from './constants';
+import { getItemFromLocalstorage } from './utils';
 
 /**
  * Checks if the currently authenticated user has the specified privilege.
@@ -10,8 +12,8 @@ export const hasPrivilege = (privilege: string): boolean => {
     const state = store.getState();
     const userPrivileges = state.auth.privileges || [];
     
-    const userRole = state.auth.role;
-    if (userRole === 'Super Admin') return true;
+    const isSuperUser = getItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.IS_SUPERUSER);
+    if (isSuperUser) return true;
 
     return userPrivileges.includes(privilege);
 };
@@ -25,9 +27,10 @@ export const hasPrivilege = (privilege: string): boolean => {
 export const hasAnyPrivilege = (privileges: string[]): boolean => {
     const state = store.getState();
     const userPrivileges = state.auth.privileges || [];
-    const userRole = state.auth.role;
-    if (userRole === 'Super Admin') return true;
-
+  
+    const isSuperUser = getItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.IS_SUPERUSER);
+    if (isSuperUser) return true;
+    
     return privileges.some(p => userPrivileges.includes(p));
 };
 
