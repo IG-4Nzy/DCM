@@ -5,6 +5,7 @@ from typing import Optional, List
 from database import db
 from models import RoasterModel, CreateRoasterModel, UpdateRoasterModel, PaginatedRoastersModel
 from bson import ObjectId
+from datetime import datetime, timezone
 
 router = APIRouter()
 roasters_collection = db.get_collection("roasters")
@@ -52,6 +53,7 @@ async def create_roaster(
 
     roaster_dict = roaster.model_dump()
     roaster_dict["createdBy"] = current_user.get("sub", "")
+    roaster_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
 
     # Check for duplicate: same date + shift
     existing = await roasters_collection.find_one({"date": roaster_dict["date"], "shift": roaster_dict["shift"]})
@@ -70,6 +72,7 @@ async def update_roaster(id: str, roaster: UpdateRoasterModel = Body(...)):
     roaster_dict = {k: v for k, v in roaster.model_dump().items() if v is not None}
 
     if len(roaster_dict) >= 1:
+        roaster_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
         update_result = await roasters_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": roaster_dict}
         )

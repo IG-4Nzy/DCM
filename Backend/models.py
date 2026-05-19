@@ -233,6 +233,7 @@ class RoasterModel(BaseModel):
     assignees: List[str] = Field(default_factory=list)
     notes: Optional[str] = None
     createdBy: Optional[str] = None
+    updatedAt: Optional[str] = None
 
     model_config = ConfigDict(
         populate_by_name=True,

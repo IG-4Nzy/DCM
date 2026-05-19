@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends
-from auth_utils import require_privilege
+from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import List, Optional
 from database import db
@@ -16,16 +16,28 @@ async def list_users(
     limit: int = Query(5, ge=1),
     sort_by: str = Query("username"),
     order: str = Query("asc"),
-    search: Optional[str] = None
+    search: Optional[str] = None,
+    department: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
 ):
     query = {}
+    
+    if department == "me":
+        query["department"] = current_user.get("department")
+    elif department:
+        query["department"] = department
+
     if search:
-        query = {
+        search_query = {
             "$or": [
                 {"username": {"$regex": search, "$options": "i"}},
                 {"role": {"$regex": search, "$options": "i"}},
             ]
         }
+        if query:
+            query = {"$and": [query, search_query]}
+        else:
+            query = search_query
         
     sort_order = 1 if order == "asc" else -1
     
