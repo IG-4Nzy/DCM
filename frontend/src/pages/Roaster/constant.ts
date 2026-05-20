@@ -46,5 +46,6 @@ export const dummy = {
 export const tableHeader = [
     "Day","Shift-1 (06:30 AM to 02:30 PM)",
     "Shift-2 (02:30 PM to 10:30 PM)*",
-    "Shift-3 (10:30 PM to 06:30 AM)*"
+    "Shift-3 (10:30 PM to 06:30 AM)*",
+    "Leave"
 ]

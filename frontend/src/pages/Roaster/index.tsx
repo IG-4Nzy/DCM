@@ -8,8 +8,10 @@ import {
   Tooltip,
   Chip,
   Menu,
-  MenuItem
+  MenuItem,
+  IconButton
 } from "@mui/material";
+import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon } from "react-icons/md";
 import dayjs, { Dayjs } from "dayjs";
 import isoWeekPlugin from "dayjs/plugin/isoWeek";
 import WeekPicker from "../../components/WeekPicker";
@@ -223,7 +225,7 @@ const RoasterPage: React.FC = () => {
           }}
         >
           <Typography
-            variant="h5"
+            variant="h6"
             className={styles["container__header--title"]}
             sx={{ marginBottom: "0px !important", fontWeight: "bold" }}
           >
@@ -233,24 +235,43 @@ const RoasterPage: React.FC = () => {
         
           {canEdit &&
             (isEditMode ? (
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleSave}
-                size="small"
-              >
-                Save Roster
-              </Button>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Tooltip title="Save Roster">
+                  <IconButton
+                    color="primary"
+                    onClick={handleSave}
+                    size="small"
+                    sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }}
+                  >
+                    <SaveIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Cancel Edit">
+                  <IconButton
+                    color="error"
+                    onClick={() => {
+                      setIsEditMode(false);
+                      fetchRosters(); // reset unsaved changes
+                    }}
+                    size="small"
+                    sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }}
+                  >
+                    <CancelIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             ) : (
-              <Button
-                variant="outlined"
-                color="primary"
-                onClick={() => setIsEditMode(true)}
-                size="small"
-                className="hide-on-print"
-              >
-                Edit Roster
-              </Button>
+              <Tooltip title="Edit Roster">
+                <IconButton
+                  color="primary"
+                  onClick={() => setIsEditMode(true)}
+                  size="small"
+                  className="hide-on-print"
+                  sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }}
+                >
+                  <EditIcon />
+                </IconButton>
+              </Tooltip>
             ))}
 
         
@@ -263,8 +284,9 @@ const RoasterPage: React.FC = () => {
                 size="small"
                 className="hide-on-print"
                 onClick={(e) => setAnchorEl(e.currentTarget)}
+                sx={{ width: '150px', height: '32px', fontSize: '12px' }}
               >
-                Update Status
+                Approve/Reject
               </Button>
               <Menu
                 anchorEl={anchorEl}
@@ -288,7 +310,7 @@ const RoasterPage: React.FC = () => {
 
               {/* Last Updated Info */}
           {Object.values(rosterData).some(r => r.updatedAt) && (
-            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', ml: 2, mr: 2 ,gap: '8px'}}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', ml: 2, mr: 2 ,gap: '0px'}}>
               <Typography variant="caption" color="textSecondary" sx={{ fontStyle: 'italic' }}>
                 Last updated: {dayjs(Math.max(...Object.values(rosterData).map(r => r.updatedAt ? new Date(r.updatedAt).getTime() : 0))).format('DD MMM YYYY, hh:mm A')}
               </Typography>
@@ -306,6 +328,7 @@ const RoasterPage: React.FC = () => {
               size="small"
               onClick={() => setSelectedWeek(dayjs())}
               className="hide-on-print"
+              sx={{ width: '100px', height: '32px', fontSize: '12px' }}
             >
               This Week
             </Button>
@@ -350,9 +373,7 @@ const RoasterPage: React.FC = () => {
             {tableHeader?.map((header) => (
               <div
                 key={header}
-                className={
-                  styles["container__roasterContainer__table--header-cell"]
-                }
+                className={`${styles["container__roasterContainer__table--header-cell"]} ${header === "Leave" ? "hide-on-print" : ""}`}
               >
                 <label>{header}</label>
               </div>
@@ -385,21 +406,17 @@ const RoasterPage: React.FC = () => {
                     <label>{currentDay.format("dddd")}</label>
                   </div>
 
-                  {["Shift-1", "Shift-2", "Shift-3"].map((shift) => {
+                  {["Shift-1", "Shift-2", "Shift-3", "Leave"].map((shift) => {
                     const key = `${dateStr}_${shift}`;
                     const assignees = rosterData[key]?.assignees || [];
-                    const otherShiftsAssignees = ["Shift-1", "Shift-2", "Shift-3"]
+                    const otherShiftsAssignees = ["Shift-1", "Shift-2", "Shift-3", "Leave"]
                       .filter((s) => s !== shift)
                       .flatMap((s) => rosterData[`${dateStr}_${s}`]?.assignees || []);
 
                     return (
                       <div
                         key={shift}
-                        className={
-                          styles[
-                          "container__roasterContainer__table--body-cell--row2"
-                          ]
-                        }
+                        className={`${styles["container__roasterContainer__table--body-cell--row2"]} ${shift === "Leave" ? "hide-on-print" : ""}`}
                       >
                         {isEditMode ? (
                           <Autocomplete
@@ -411,7 +428,7 @@ const RoasterPage: React.FC = () => {
                             }
                             value={assignees}
                             onChange={(e, val) => {
-                              if (val.length <= 2) {
+                              if (shift === "Leave" || val.length <= 2) {
                                 setRosterData((prev) => ({
                                   ...prev,
                                   [key]: { ...(prev[key] || {}), assignees: val },
@@ -443,10 +460,20 @@ const RoasterPage: React.FC = () => {
                                 );
                               })
                             }
-                            getOptionDisabled={(option) => assignees.length >= 2 && !assignees.includes(option)}
+                            getOptionDisabled={(option) => shift !== "Leave" && assignees.length >= 2 && !assignees.includes(option)}
                             sx={{ width: "90%" }}
                             disableCloseOnSelect
                           />
+                        ) : shift === "Leave" ? (
+                          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, p: 1, justifyContent: "center", width: "100%", height: "100%", alignItems: "center" }}>
+                            {assignees.length > 0 ? (
+                              assignees.map((a) => (
+                                <Chip key={a} label={getUserDisplayName(a)} color="error" variant="outlined" size="small" />
+                              ))
+                            ) : (
+                              <label style={{ display: "flex", flex: "1", border: "none", alignItems: "center", justifyContent: "center" }}>-</label>
+                            )}
+                          </Box>
                         ) : (
                           <>
                             {assignees.length > 0 ? (
@@ -561,6 +588,8 @@ const RoasterPage: React.FC = () => {
           </article>
         </footer>
       </section>
+
+
     </Box>
   );
 };

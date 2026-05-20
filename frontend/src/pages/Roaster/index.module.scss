@@ -5,6 +5,7 @@
 
 .container {
   padding: 24px;
+  background-color: #fff;
 
   &__header {
     display: flex;
@@ -202,5 +203,13 @@
     /* Subtract left and right offsets */
     box-sizing: border-box;
     /* removed border: none so the border actually prints! */
+  }
+
+  /* Fix overlapping border on the right side when the Leave column is hidden during print */
+  .container__roasterContainer__table--header-cell:nth-last-child(2) {
+    border-right: none !important;
+  }
+  .container__roasterContainer__table--body-cell--row2:nth-last-child(2) > label {
+    border-right: none !important;
   }
 }
