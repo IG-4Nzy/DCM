@@ -53,6 +53,7 @@ docker run -d \
   --name dcm_backend \
   -p 8080:8000 \
   -e MONGO_URI="mongodb://admin:password@192.168.1.100:27017/" \
+  -e FRONTEND_URL="http://192.168.1.50:3000" \
   dcm-backend
 
 
