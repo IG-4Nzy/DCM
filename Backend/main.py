@@ -15,10 +15,12 @@ app = FastAPI(
     version="1.0.0"
 )
 
+import os
+
 # Allow CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Change this to specific domains in production
+    allow_origin_regex=".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
