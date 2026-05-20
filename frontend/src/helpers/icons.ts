@@ -5,20 +5,17 @@ import {
   MdChevronLeft as ChevronLeftIcon,
   MdChevronRight as ChevronRightIcon,
   MdPeople as UsersIcon,
-  MdOutlineWork as WorksIcon
-} from 'react-icons/md';
+  MdOutlineWork as WorksIcon,
+} from "react-icons/md";
+
+import { IoIosUnlock as RolesIcon } from "react-icons/io";
+
+import { CgOrganisation as DepartmentIcon } from "react-icons/cg";
 
 import {
-  IoIosUnlock as RolesIcon
-
-} from "react-icons/io";
-
-import { 
-  CgOrganisation as DepartmentIcon
-
-} from "react-icons/cg";
-
-import { FaPeopleGroup as RoasterIcon } from "react-icons/fa6";
+  FaPeopleGroup as RoasterIcon,
+  FaEye as EyeIcon,
+} from "react-icons/fa6";
 
 export const Icons = {
   MenuIcon,
@@ -30,5 +27,6 @@ export const Icons = {
   RolesIcon,
   WorksIcon,
   DepartmentIcon,
-  RoasterIcon
+  RoasterIcon,
+  EyeIcon,
 };

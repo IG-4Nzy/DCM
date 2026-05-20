@@ -11,7 +11,7 @@ import {
   MenuItem,
   IconButton
 } from "@mui/material";
-import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon } from "react-icons/md";
+import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon, MdPrint as PrintIcon } from "react-icons/md";
 import dayjs, { Dayjs } from "dayjs";
 import isoWeekPlugin from "dayjs/plugin/isoWeek";
 import WeekPicker from "../../components/WeekPicker";
@@ -336,6 +336,16 @@ const RoasterPage: React.FC = () => {
             value={selectedWeek}
             onChange={(newVal) => setSelectedWeek(newVal)}
           />
+          <Tooltip title="Print Roster">
+            <IconButton
+              className="hide-on-print"
+              onClick={() => window.print()}
+              size="small"
+              sx={{ color: 'primary.main' }}
+            >
+              <PrintIcon size={20} />
+            </IconButton>
+          </Tooltip>
         </Box>
       </header>
 

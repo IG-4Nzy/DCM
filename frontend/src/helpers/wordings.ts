@@ -14,4 +14,5 @@ export default {
   works: "Works",
   departments: "Departments",
   roaster: "Roaster",
+  observations:"Observations"
 };

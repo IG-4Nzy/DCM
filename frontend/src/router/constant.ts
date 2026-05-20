@@ -9,4 +9,5 @@ export const ROUTE_CONSTANTS = {
     DEPARTMENTS: '/departments',
     USER_PROFILE: '/profile',
     ROASTER: '/roaster',
+    OBSERVATIONS: '/observations'
 }

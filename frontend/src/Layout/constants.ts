@@ -38,5 +38,11 @@ export const SIDEBAR_OPTIONS = [
         icon: Icons.RoasterIcon,
         route: ROUTE_CONSTANTS.ROASTER,
         privileges: ["View Roaster", "Create Roaster", "Update Roaster", "Delete Roaster"]
+    },
+    {
+        label:wordings.observations,
+        icon:Icons.EyeIcon,
+        route:ROUTE_CONSTANTS.OBSERVATIONS,
+        privileges:["View Observations","Create Observations","Update Observations","Delete Observations"]
     }
 ]
