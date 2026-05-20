@@ -6,7 +6,9 @@ import {
   Autocomplete,
   TextField,
   Tooltip,
-  Chip
+  Chip,
+  Menu,
+  MenuItem
 } from "@mui/material";
 import dayjs, { Dayjs } from "dayjs";
 import isoWeekPlugin from "dayjs/plugin/isoWeek";
@@ -26,6 +28,8 @@ dayjs.extend(isoWeekPlugin);
 interface RosterData {
   id?: string;
   assignees: string[];
+  updatedAt?: string;
+  updatedByFullName?: string;
 }
 
 const RoasterPage: React.FC = () => {
@@ -33,14 +37,22 @@ const RoasterPage: React.FC = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [rosterData, setRosterData] = useState<Record<string, RosterData>>({});
   const [users, setUsers] = useState<any[]>([]);
+  const [rosterStatus, setRosterStatus] = useState<any>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const { showToast } = useToast();
   const isSuperuser = useSelector((state: RootState) => state.auth.isSuperuser);
   const token = useSelector((state: RootState) => state.auth.token);
+  
+  const canView = isSuperuser || hasPrivilege("View Roaster");
   const canEdit =
     isSuperuser ||
     hasPrivilege("Create Roaster") ||
     hasPrivilege("Update Roaster");
+  const canDelete = isSuperuser || hasPrivilege("Delete Roaster");
+  const canApprove = isSuperuser || hasPrivilege("Approve Roaster");
+
+  const userDepartment = token ? (jwtDecode(token) as any).department || "" : "";
 
   const weekDates = Array.from({ length: 7 }).map((_, index) =>
     selectedWeek.startOf("isoWeek").add(index, "day").format("YYYY-MM-DD")
@@ -61,6 +73,8 @@ const RoasterPage: React.FC = () => {
         newRosterData[`${r.date}_${r.shift}`] = {
           id: r.id || r._id,
           assignees: r.assignees,
+          updatedAt: r.updatedAt,
+          updatedByFullName: r.updatedByFullName
         };
       });
       setRosterData(newRosterData);
@@ -90,15 +104,58 @@ const RoasterPage: React.FC = () => {
     }
   };
 
+  const fetchRosterStatus = async () => {
+    if (!userDepartment) return;
+    const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
+    try {
+      const res = await request.get(`/api/roasters/status?weekStartDate=${startDate}&department=${userDepartment}`);
+      setRosterStatus(res.data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchRosters();
+    fetchRosterStatus();
   }, [selectedWeek]);
 
   useEffect(() => {
-    if (isEditMode && users.length === 0) {
+    if (users.length === 0) {
       fetchUsers();
     }
-  }, [isEditMode]);
+  }, []);
+
+  const handleStatusChange = async (newStatus: string) => {
+    setAnchorEl(null);
+    if (!userDepartment) return;
+    const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
+    try {
+      const res = await request.post('/api/roasters/status', {
+        weekStartDate: startDate,
+        department: userDepartment,
+        status: newStatus
+      });
+      setRosterStatus(res.data);
+      if (newStatus !== "Pending") {
+        showToast("Status updated", "success");
+      }
+    } catch (e) {
+      console.error(e);
+      if (newStatus !== "Pending") {
+        showToast("Failed to update status", "error");
+      }
+    }
+  };
+
+  const getUserDisplayName = (username: string) => {
+    const user = users.find((u) => u.username === username);
+    if (user) {
+      const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+      return fullName ? fullName : username;
+    }
+    return username;
+  };
 
   const handleSave = async () => {
     try {
@@ -119,6 +176,22 @@ const RoasterPage: React.FC = () => {
         }
       });
       await Promise.all(promises);
+      
+      // Automatically reset status to Pending when edits are made
+      if (userDepartment) {
+        try {
+          const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
+          const res = await request.post('/api/roasters/status/reset', {
+            weekStartDate: startDate,
+            department: userDepartment,
+            status: "Pending"
+          });
+          setRosterStatus(res.data);
+        } catch (e) {
+          console.error("Failed to reset status", e);
+        }
+      }
+
       showToast("Roster saved successfully", "success");
       setIsEditMode(false);
       fetchRosters();
@@ -127,6 +200,16 @@ const RoasterPage: React.FC = () => {
       showToast("Failed to save roster", "error");
     }
   };
+
+  if (!canView) {
+    return (
+      <Box className={styles.container} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <Typography variant="h6" color="textSecondary">
+          You do not have permission to view the Duty Roster.
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box className={styles.container}>
@@ -146,6 +229,8 @@ const RoasterPage: React.FC = () => {
           >
             Duty Roster
           </Typography>
+          
+        
           {canEdit &&
             (isEditMode ? (
               <Button
@@ -167,11 +252,69 @@ const RoasterPage: React.FC = () => {
                 Edit Roster
               </Button>
             ))}
+
+        
+
+          {canApprove && (
+            <>
+              <Button
+                variant="outlined"
+                color="secondary"
+                size="small"
+                className="hide-on-print"
+                onClick={(e) => setAnchorEl(e.currentTarget)}
+              >
+                Update Status
+              </Button>
+              <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={() => setAnchorEl(null)}
+              >
+                <MenuItem onClick={() => handleStatusChange("Approved")}>Approve</MenuItem>
+                <MenuItem onClick={() => handleStatusChange("Rejected")}>Reject</MenuItem>
+              </Menu>
+            </>
+          )}
+
+            {rosterStatus && (
+            <Chip
+              label={rosterStatus.status}
+              color={rosterStatus.status === 'Approved' ? 'success' : rosterStatus.status === 'Rejected' ? 'error' : 'warning'}
+              size="small"
+              sx={{ fontWeight: 'bold' }}
+            />
+          )}
+
+              {/* Last Updated Info */}
+          {Object.values(rosterData).some(r => r.updatedAt) && (
+            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', ml: 2, mr: 2 ,gap: '8px'}}>
+              <Typography variant="caption" color="textSecondary" sx={{ fontStyle: 'italic' }}>
+                Last updated: {dayjs(Math.max(...Object.values(rosterData).map(r => r.updatedAt ? new Date(r.updatedAt).getTime() : 0))).format('DD MMM YYYY, hh:mm A')}
+              </Typography>
+              <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 'bold' }}>
+                by {Object.values(rosterData).sort((a, b) => (b.updatedAt ? new Date(b.updatedAt).getTime() : 0) - (a.updatedAt ? new Date(a.updatedAt).getTime() : 0))[0]?.updatedByFullName || 'Unknown'}
+              </Typography>
+            </Box>
+          )}
+
         </Box>
-        <WeekPicker
-          value={selectedWeek}
-          onChange={(newVal) => setSelectedWeek(newVal)}
-        />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {!dayjs().isSame(selectedWeek, 'isoWeek') && (
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setSelectedWeek(dayjs())}
+              className="hide-on-print"
+            >
+              This Week
+            </Button>
+          )}
+          <WeekPicker
+            value={selectedWeek}
+            onChange={(newVal) => setSelectedWeek(newVal)}
+          />
+        </Box>
       </header>
 
       <section className={styles["container__roasterContainer"]}>
@@ -329,7 +472,7 @@ const RoasterPage: React.FC = () => {
                                       : "inherit",
                                   }}
                                 >
-                                  {assignees[0]}
+                                  {getUserDisplayName(assignees[0])}
                                 </label>
                               </Tooltip>
                             ) : (
@@ -359,7 +502,7 @@ const RoasterPage: React.FC = () => {
                                       : "inherit",
                                   }}
                                 >
-                                  {assignees[1]}
+                                  {getUserDisplayName(assignees[1])}
                                 </label>
                               </Tooltip>
                             ) : (

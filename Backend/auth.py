@@ -66,7 +66,13 @@ async def login(credentials: LoginRequest):
     is_superuser = user.get("is_superuser", False)
     
     # Generate the JWT
-    access_token = create_access_token(data={"sub": user["username"], "role": role, "privileges": privileges, "isSuperuser": is_superuser})
+    access_token = create_access_token(data={
+        "sub": user["username"], 
+        "role": role, 
+        "privileges": privileges, 
+        "isSuperuser": is_superuser,
+        "department": user.get("department", "")
+    })
     
     return LoginResponse(
         token=access_token,

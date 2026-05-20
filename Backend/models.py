@@ -234,6 +234,7 @@ class RoasterModel(BaseModel):
     notes: Optional[str] = None
     createdBy: Optional[str] = None
     updatedAt: Optional[str] = None
+    updatedByFullName: Optional[str] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -259,3 +260,21 @@ class UpdateRoasterModel(BaseModel):
 class PaginatedRoastersModel(BaseModel):
     data: List[RoasterModel]
     total: int
+
+class RoasterStatusModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    weekStartDate: str
+    department: str
+    status: str
+    updatedByFullName: Optional[str] = None
+    updatedAt: Optional[str] = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateRoasterStatusModel(BaseModel):
+    weekStartDate: str
+    department: str
+    status: str

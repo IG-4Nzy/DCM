@@ -21,5 +21,10 @@
     "Create Department",
     "View Department",
     "Update Department",
-    "Delete Department"
+    "Delete Department",
+    "Create Roaster",
+    "Approve Roaster",
+    "View Roaster",
+    "Update Roaster",
+    "Delete Roaster"
 ]
