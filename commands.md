@@ -34,3 +34,39 @@ python3 create_superuser.py <new_username> <new_password>
 
 
 -e VITE_API_BASE_URL = ""
+
+
+
+Docker-----
+
+create superuser:
+docker exec -it dcm_backend python create_superuser.py
+
+
+Backend--
+
+cd /home/vssc/Desktop/DCM/Backend
+
+docker build -t dcm-backend .
+
+docker run -d \
+  --name dcm_backend \
+  -p 8080:8000 \
+  -e MONGO_URI="mongodb://admin:password@192.168.1.100:27017/" \
+  dcm-backend
+
+
+
+Frontend--
+
+cd /home/vssc/Desktop/DCM/frontend
+
+docker build -t dcm-frontend .
+
+docker run -d \
+  --name dcm_frontend \
+  -p 3000:80 \
+  -e VITE_API_BASE_URL="http://192.168.1.50:8080" \
+  dcm-frontend
+
+
