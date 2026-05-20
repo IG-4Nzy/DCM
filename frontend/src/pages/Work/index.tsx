@@ -214,8 +214,12 @@ const Works: React.FC = () => {
       label: 'Assignee', 
       sortable: true,
       render: (row) => {
-        const user = users.find((u: any) => u.id === row.assignee || u._id === row.assignee);
-        return user ? (user.username || user.name) : row.assignee;
+        if (!row.assignee) return "Unassigned";
+        const user = users.find((u: any) => u.id === row.assignee || u._id === row.assignee || u.username === row.assignee);
+        if (user) {
+           return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || user.name;
+        }
+        return "User Removed";
       }
     },
     { 

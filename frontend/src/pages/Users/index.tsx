@@ -193,6 +193,13 @@ const Users: React.FC = () => {
 
   const columns: Column<UserData>[] = [
     { id: "username", label: "Username", sortable: true },
+    { 
+      id: "fullName", 
+      label: "Full Name", 
+      sortable: false,
+      render: (row) => `${row.firstName || ''} ${row.lastName || ''}`.trim() || '-'
+    },
+    { id: "department", label: "Department", sortable: true, render: (row) => row.department || '-' },
     { id: "role", label: "Role", sortable: true },
     {
       id: "status",

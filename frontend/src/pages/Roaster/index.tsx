@@ -53,8 +53,7 @@ const RoasterPage: React.FC = () => {
     hasPrivilege("Update Roaster");
   const canDelete = isSuperuser || hasPrivilege("Delete Roaster");
   const canApprove = isSuperuser || hasPrivilege("Approve Roaster");
-
-  const userDepartment = token ? (jwtDecode(token) as any).department || "" : "";
+  const userDepartment = token ? (jwtDecode(token) as any).department || "General" : "General";
 
   const weekDates = Array.from({ length: 7 }).map((_, index) =>
     selectedWeek.startOf("isoWeek").add(index, "day").format("YYYY-MM-DD")
@@ -219,7 +218,7 @@ const RoasterPage: React.FC = () => {
         <Box
           sx={{
             display: "flex",
-            placeItems: "center",
+            alignItems: "center",
             justifyContent: "center",
             gap: "12px",
           }}
@@ -276,7 +275,7 @@ const RoasterPage: React.FC = () => {
 
         
 
-          {canApprove && (
+          {canApprove && rosterStatus?.status !== "Approved" && (
             <>
               <Button
                 variant="outlined"
@@ -312,7 +311,7 @@ const RoasterPage: React.FC = () => {
           {Object.values(rosterData).some(r => r.updatedAt) && (
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', ml: 2, mr: 2 ,gap: '0px'}}>
               <Typography variant="caption" color="textSecondary" sx={{ fontStyle: 'italic' }}>
-                Last updated: {dayjs(Math.max(...Object.values(rosterData).map(r => r.updatedAt ? new Date(r.updatedAt).getTime() : 0))).format('DD MMM YYYY, hh:mm A')}
+                Roster last updated: {dayjs(Math.max(...Object.values(rosterData).map(r => r.updatedAt ? new Date(r.updatedAt).getTime() : 0))).format('DD MMM YYYY, hh:mm A')}
               </Typography>
               <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 'bold' }}>
                 by {Object.values(rosterData).sort((a, b) => (b.updatedAt ? new Date(b.updatedAt).getTime() : 0) - (a.updatedAt ? new Date(a.updatedAt).getTime() : 0))[0]?.updatedByFullName || 'Unknown'}

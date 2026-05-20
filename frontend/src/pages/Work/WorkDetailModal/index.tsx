@@ -73,12 +73,12 @@ const WorkDetailModal = ({
   if (!work) return null;
 
   const assigneeUser = users.find(
-    (u: any) => u.id === work.assignee || u._id === work.assignee,
+    (u: any) => u.id === work.assignee || u._id === work.assignee || u.username === work.assignee,
   );
   const assigneeName = assigneeUser
-    ? assigneeUser.username || assigneeUser.name
+    ? `${assigneeUser.firstName || ''} ${assigneeUser.lastName || ''}`.trim() || assigneeUser.username || assigneeUser.name
     : work.assignee
-      ? work.assignee
+      ? "User Removed"
       : "Unassigned";
 
   const getStatusColor = (status: string) => {
