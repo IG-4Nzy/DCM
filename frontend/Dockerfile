@@ -1,18 +1,18 @@
 # Build Stage
-FROM node:18-alpine as build
+FROM node:22-alpine AS build
 
 WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 # Copy the rest of the application code
 COPY . .
 
 # Embed a specific placeholder string at build time
 ENV VITE_API_BASE_URL=RUNTIME_API_BASE_URL_PLACEHOLDER
-RUN npm run build
+RUN npx vite build
 
 # Production Stage
 FROM nginx:alpine
