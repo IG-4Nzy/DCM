@@ -24,6 +24,7 @@ import type { UserData } from "./model";
 import UserFormModal from "./UserFormModal";
 import { hasPrivilege } from "../../helpers/authUtils";
 import styles from "./index.module.scss";
+import { PRIVILEGES } from "../../helpers/privileges";
 
 type Order = "asc" | "desc";
 
@@ -225,14 +226,14 @@ const Users: React.FC = () => {
     },
   ];
 
-  if (hasPrivilege("Update User") || hasPrivilege("Delete User")) {
+  if (hasPrivilege(PRIVILEGES.USER_UPDATE) || hasPrivilege(PRIVILEGES.USER_DELETE)) {
     columns.push({
       id: "actions",
       label: "Actions",
       align: "right",
       render: (row) => (
         <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
-          {hasPrivilege("Update User") && (
+          {hasPrivilege(PRIVILEGES.USER_UPDATE) && (
             <Tooltip title="Edit User">
               <IconButton
                 size="small"
@@ -244,7 +245,7 @@ const Users: React.FC = () => {
               </IconButton>
             </Tooltip>
           )}
-          {hasPrivilege("Delete User") && (
+          {hasPrivilege(PRIVILEGES.USER_DELETE) && (
             <Tooltip title="Delete User">
               <IconButton
                 size="small"
@@ -287,7 +288,7 @@ const Users: React.FC = () => {
             onChange={setSearchQuery}
             placeholder="Search users..."
           />
-          {hasPrivilege("Create User") && (
+          {hasPrivilege(PRIVILEGES.USER_CREATE) && (
             <Button
               variant="contained"
               color="primary"
@@ -321,7 +322,7 @@ const Users: React.FC = () => {
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
           totalCount={totalCount || 0}
-          onRowClick={(hasPrivilege("View User") || hasPrivilege("Update User")) ? (row) => handleOpenModal(row, false) : undefined}
+          onRowClick={(hasPrivilege(PRIVILEGES.USER_VIEW) || hasPrivilege(PRIVILEGES.USER_UPDATE)) ? (row) => handleOpenModal(row, false) : undefined}
         />
       </Paper>
       <UserFormModal
@@ -330,7 +331,7 @@ const Users: React.FC = () => {
         editingUser={editingUser}
         isEditMode={isEditMode}
         setIsEditMode={setIsEditMode}
-        hasUpdatePrivilege={hasPrivilege("Update User")}
+        hasUpdatePrivilege={hasPrivilege(PRIVILEGES.USER_UPDATE)}
         setFormUsername={setFormUsername}
         formUsername={formUsername}
         formPassword={formPassword}

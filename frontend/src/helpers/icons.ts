@@ -6,6 +6,7 @@ import {
   MdChevronRight as ChevronRightIcon,
   MdPeople as UsersIcon,
   MdOutlineWork as WorksIcon,
+  MdShoppingCart as InventoryIcon,
 } from "react-icons/md";
 
 import { IoIosUnlock as RolesIcon } from "react-icons/io";
@@ -29,4 +30,5 @@ export const Icons = {
   DepartmentIcon,
   RoasterIcon,
   EyeIcon,
+  InventoryIcon
 };

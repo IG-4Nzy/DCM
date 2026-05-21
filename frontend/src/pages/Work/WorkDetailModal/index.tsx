@@ -22,6 +22,7 @@ import type { RootState } from "../../../store";
 import { API_BASE_URL } from "../../../services/request";
 import type { WorkData } from "../model";
 import { hasPrivilege } from "../../../helpers/authUtils";
+import { PRIVILEGES } from "../../../helpers/privileges";
 import { useConfirm } from "../../../contexts/ConfirmContext";
 import styles from "./index.module.scss";
 
@@ -51,7 +52,7 @@ const WorkDetailModal = ({
         (state?.auth as any)?.user?.username || state?.auth?.username,
     ) || "User";
 
-  const canUpdateWork = hasPrivilege("Update Work");
+  const canUpdateWork = hasPrivilege(PRIVILEGES.WORK_UPDATE);
   const isLocked = currentStatus === "Completed" && !canUpdateWork;
   
   const assigneeUser = users.find(
@@ -59,7 +60,7 @@ const WorkDetailModal = ({
   );
   
   const isAssignee = assigneeUser && assigneeUser.username === currentUser;
-  const hasStatusUpdate = canUpdateWork || (hasPrivilege("View Assigned Work") && isAssignee);
+  const hasStatusUpdate = canUpdateWork || (hasPrivilege(PRIVILEGES.WORK_VIEW_ASSIGNED) && isAssignee);
   const canUpdateStatus = hasStatusUpdate && !isLocked;
 
   const availableStatusOptions = [

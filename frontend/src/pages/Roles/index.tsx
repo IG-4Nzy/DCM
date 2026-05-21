@@ -11,6 +11,7 @@ import type { AppDispatch, RootState } from '../../store';
 import type { RoleData } from './model';
 import RoleFormModal from './RolesFormModal';
 import { hasPrivilege } from '../../helpers/authUtils';
+import { PRIVILEGES } from '../../helpers/privileges';
 import styles from "./index.module.scss";
 import { createRole, deleteRole, fetchRoles, updateRole, fetchPrivileges } from './action';
 
@@ -142,21 +143,21 @@ const Roles: React.FC = () => {
     }
   ];
 
-  if (hasPrivilege('Update Role') || hasPrivilege('Delete Role')) {
+  if (hasPrivilege(PRIVILEGES.ROLE_UPDATE) || hasPrivilege(PRIVILEGES.ROLE_DELETE)) {
     columns.push({
       id: 'actions',
       label: 'Actions',
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          {hasPrivilege('Update Role') && (
+          {hasPrivilege(PRIVILEGES.ROLE_UPDATE) && (
             <Tooltip title="Edit Role">
               <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }} onClick={() => handleOpenModal(row)}>
                 <EditIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           )}
-          {hasPrivilege('Delete Role') && (
+          {hasPrivilege(PRIVILEGES.ROLE_DELETE) && (
             <Tooltip title="Delete Role">
               <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }} onClick={() => handleDelete(row.id)}>
                 <DeleteIcon fontSize="small" />
@@ -180,7 +181,7 @@ const Roles: React.FC = () => {
             onChange={setSearchQuery}
             placeholder="Search roles..."
           />
-          {hasPrivilege('Create Role') && (
+          {hasPrivilege(PRIVILEGES.ROLE_CREATE) && (
             <Button
               variant="contained"
               color="primary"

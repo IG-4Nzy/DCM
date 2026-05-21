@@ -20,6 +20,7 @@ import { tableHeader } from "./constant";
 import request from "../../services/request";
 import { useToast } from "../../contexts/ToastContext";
 import { hasPrivilege } from "../../helpers/authUtils";
+import { PRIVILEGES } from "../../helpers/privileges";
 import { useSelector } from "react-redux";
 import type { RootState } from "../../store";
 import { jwtDecode } from "jwt-decode";
@@ -47,13 +48,13 @@ const RoasterPage: React.FC = () => {
   const isSuperuser = useSelector((state: RootState) => state.auth.isSuperuser);
   const token = useSelector((state: RootState) => state.auth.token);
   
-  const canView = isSuperuser || hasPrivilege("View Roaster");
+  const canView = isSuperuser || hasPrivilege(PRIVILEGES.ROASTER_VIEW);
   const canEdit =
     isSuperuser ||
-    hasPrivilege("Create Roaster") ||
-    hasPrivilege("Update Roaster");
-  const canDelete = isSuperuser || hasPrivilege("Delete Roaster");
-  const canApprove = isSuperuser || hasPrivilege("Approve Roaster");
+    hasPrivilege(PRIVILEGES.ROASTER_CREATE) ||
+    hasPrivilege(PRIVILEGES.ROASTER_UPDATE);
+  const canDelete = isSuperuser || hasPrivilege(PRIVILEGES.ROASTER_DELETE);
+  const canApprove = isSuperuser || hasPrivilege(PRIVILEGES.ROASTER_APPROVE);
   const userDepartment = token ? (jwtDecode(token) as any).department || "General" : "General";
 
   const weekDates = Array.from({ length: 7 }).map((_, index) =>

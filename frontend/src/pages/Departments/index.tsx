@@ -11,6 +11,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import type { AppDispatch, RootState } from '../../store';
 import type { DepartmentData } from './model';
 import { hasPrivilege } from '../../helpers/authUtils';
+import { PRIVILEGES } from '../../helpers/privileges';
 import styles from "./index.module.scss";
 import DepartmentFormModal from './DepartmentFormModal';
 import request from '../../services/request';
@@ -141,21 +142,21 @@ const Departments: React.FC = () => {
     }
   ];
 
-  if (hasPrivilege('Update Department') || hasPrivilege('Delete Department')) {
+  if (hasPrivilege(PRIVILEGES.DEPARTMENT_UPDATE) || hasPrivilege(PRIVILEGES.DEPARTMENT_DELETE)) {
     columns.push({
       id: 'actions',
       label: 'Actions',
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          {hasPrivilege('Update Department') && (
+          {hasPrivilege(PRIVILEGES.DEPARTMENT_UPDATE) && (
             <Tooltip title="Edit Department">
               <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }} onClick={() => handleOpenModal(row)}>
                 <EditIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           )}
-          {hasPrivilege('Delete Department') && (
+          {hasPrivilege(PRIVILEGES.DEPARTMENT_DELETE) && (
             <Tooltip title="Delete Department">
               <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }} onClick={() => handleDelete(row.id || (row as any)._id)}>
                 <DeleteIcon fontSize="small" />
@@ -175,7 +176,7 @@ const Departments: React.FC = () => {
         </label>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
           <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search departments..." />
-          {hasPrivilege('Create Department') && (
+          {hasPrivilege(PRIVILEGES.DEPARTMENT_CREATE) && (
             <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => handleOpenModal()}>
               Create Department
             </Button>

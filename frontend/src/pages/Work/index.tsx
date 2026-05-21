@@ -11,6 +11,7 @@ import type { AppDispatch, RootState } from '../../store';
 import WorkFormModal from './WorkFormModal';
 import WorkDetailModal from './WorkDetailModal';
 import { hasPrivilege } from '../../helpers/authUtils';
+import { PRIVILEGES } from '../../helpers/privileges';
 import request from '../../services/request';
 import styles from "./index.module.scss";
 
@@ -286,26 +287,21 @@ const Works: React.FC = () => {
     },
   ];
 
-  if (hasPrivilege('Update Work') || hasPrivilege('Delete Work')) {
+  if (hasPrivilege(PRIVILEGES.WORK_UPDATE) || hasPrivilege(PRIVILEGES.WORK_DELETE)) {
     columns.push({
       id: 'actions',
       label: 'Actions',
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          {/* <Tooltip title="View Details">
-            <IconButton size="small" color="info" sx={{ backgroundColor: 'rgba(2, 136, 209, 0.04)' }} onClick={(e) => { e.stopPropagation(); handleOpenDetailModal(row); }}>
-              <ViewIcon fontSize="small" />
-            </IconButton>
-          </Tooltip> */}
-          {hasPrivilege('Update Work') && (
+          {hasPrivilege(PRIVILEGES.WORK_UPDATE) && (
             <Tooltip title="Edit Work">
               <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }} onClick={(e) => { e.stopPropagation(); handleOpenModal(row); }}>
                 <EditIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           )}
-          {hasPrivilege('Delete Work') && (
+          {hasPrivilege(PRIVILEGES.WORK_DELETE) && (
             <Tooltip title="Delete Work">
               <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }} onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}>
                 <DeleteIcon fontSize="small" />
@@ -317,7 +313,7 @@ const Works: React.FC = () => {
     });
   }
 
-  const canClickRow = hasPrivilege('Update Work') || hasPrivilege('View Assigned Work');
+  const canClickRow = hasPrivilege(PRIVILEGES.WORK_UPDATE) || hasPrivilege(PRIVILEGES.WORK_VIEW_ASSIGNED);
 
   return (
     <Box className={styles.users} sx={{ p: 3 }}>
@@ -331,7 +327,7 @@ const Works: React.FC = () => {
             onChange={setSearchQuery}
             placeholder="Search works..."
           />
-          {hasPrivilege('Create Work') && (
+          {hasPrivilege(PRIVILEGES.WORK_CREATE) && (
             <Button
               variant="contained"
               color="primary"

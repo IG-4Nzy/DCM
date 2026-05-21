@@ -12,6 +12,7 @@ import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';
 import ObservationFormModal from './ObservationFormModal';
 import { hasPrivilege } from '../../helpers/authUtils';
+import { PRIVILEGES } from '../../helpers/privileges';
 import { useConfirm } from '../../contexts/ConfirmContext';
 
 type Order = 'asc' | 'desc';
@@ -239,7 +240,7 @@ const ObservationList: React.FC = () => {
 
   const statusOptions = [{ value: 'New', label: 'New' }, { value: 'Closed', label: 'Closed' }];
 
-  const canClickRow = hasUpdatePrivilege || hasPrivilege('View Observations');
+  const canClickRow = hasUpdatePrivilege || hasPrivilege(PRIVILEGES.OBSERVATION_VIEW);
 
   return (
     <Box sx={{ width: '100%' }}>
