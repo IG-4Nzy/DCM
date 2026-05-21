@@ -13,6 +13,7 @@ users_collection = db.get_collection("users")
 @router.get("/", response_description="List all users", response_model=PaginatedUsersModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View User"))])
 async def list_users(
     skip: int = Query(0, ge=0),
+    pagination: bool = Query(True),
     limit: int = Query(5, ge=1),
     sort_by: str = Query("username"),
     order: str = Query("asc"),
@@ -42,8 +43,12 @@ async def list_users(
     sort_order = 1 if order == "asc" else -1
     
     total = await users_collection.count_documents(query)
-    cursor = users_collection.find(query).sort(sort_by, sort_order).skip(skip).limit(limit)
-    users = await cursor.to_list(length=limit)
+    cursor = users_collection.find(query).sort(sort_by, sort_order)
+    if pagination:
+        cursor = cursor.skip(skip).limit(limit)
+        users = await cursor.to_list(length=limit)
+    else:
+        users = await cursor.to_list(length=None)
     
     for user in users:
         if "status" not in user:

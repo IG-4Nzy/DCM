@@ -13,6 +13,7 @@ import RoleFormModal from './RolesFormModal';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
 import styles from "./index.module.scss";
+import { useTableState } from '../../hooks/useTableState';
 import { createRole, deleteRole, fetchRoles, updateRole, fetchPrivileges } from './action';
 
 type Order = 'asc' | 'desc';
@@ -22,11 +23,11 @@ const Roles: React.FC = () => {
   const { roles, availablePrivileges, totalCount, loading, error } = useSelector((state: RootState) => state?.roles);
   const { showToast } = useToast();
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [order, setOrder] = useState<Order>('asc');
-  const [orderBy, setOrderBy] = useState<keyof RoleData>('name');
+  const [searchQuery, setSearchQuery] = useTableState('roles_search', '');
+  const [page, setPage] = useTableState('roles_page', 0);
+  const [rowsPerPage, setRowsPerPage] = useTableState('roles_rowsPerPage', 5);
+  const [order, setOrder] = useTableState<Order>('roles_order', 'asc');
+  const [orderBy, setOrderBy] = useTableState<keyof RoleData>('roles_orderBy', 'name');
 
   // Modal and Form state
   const [isModalOpen, setIsModalOpen] = useState(false);

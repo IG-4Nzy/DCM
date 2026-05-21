@@ -15,6 +15,7 @@ works_collection = db.get_collection("works")
 @router.get("/", response_description="List all works", response_model=PaginatedWorksModel, response_model_by_alias=False)
 async def list_works(
     skip: int = Query(0, ge=0),
+    pagination: bool = Query(True),
     limit: int = Query(10, ge=1),
     sort_by: str = Query("workName"),
     order: str = Query("asc"),
@@ -49,8 +50,12 @@ async def list_works(
     sort_order = 1 if order == "asc" else -1
     
     total = await works_collection.count_documents(query)
-    cursor = works_collection.find(query).sort(sort_by, sort_order).skip(skip).limit(limit)
-    works = await cursor.to_list(length=limit)
+    cursor = works_collection.find(query).sort(sort_by, sort_order)
+    if pagination:
+        cursor = cursor.skip(skip).limit(limit)
+        works = await cursor.to_list(length=limit)
+    else:
+        works = await cursor.to_list(length=None)
             
     return {"data": works, "total": total}
 

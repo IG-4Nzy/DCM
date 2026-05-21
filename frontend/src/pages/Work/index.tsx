@@ -13,6 +13,7 @@ import WorkDetailModal from './WorkDetailModal';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
 import request from '../../services/request';
+import { useTableState } from '../../hooks/useTableState';
 import styles from "./index.module.scss";
 
 // Import fetchUsers from users action to populate assignee dropdown
@@ -27,11 +28,11 @@ const Works: React.FC = () => {
   const { users } = useSelector((state: RootState) => state?.users || { users: [] });
   const { showToast } = useToast();
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [order, setOrder] = useState<Order>('asc');
-  const [orderBy, setOrderBy] = useState<string>('workName');
+  const [searchQuery, setSearchQuery] = useTableState('work_search', '');
+  const [page, setPage] = useTableState('work_page', 0);
+  const [rowsPerPage, setRowsPerPage] = useTableState('work_rowsPerPage', 5);
+  const [order, setOrder] = useTableState<Order>('work_order', 'asc');
+  const [orderBy, setOrderBy] = useTableState<string>('work_orderBy', 'workName');
 
   const { works, totalCount, loading } = useSelector((state: RootState) => state?.works || { works: [], totalCount: 0, loading: false });
 
@@ -52,12 +53,8 @@ const Works: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchUsers({
-      skip: 0,
-      limit: 100,
-      sortBy: 'username',
-      order: 'asc',
-      search: '',
-      showToast: undefined // No need to show toast on silent fetch
+      pagination: false,
+      showToast: undefined
     }));
   }, [dispatch]);
 

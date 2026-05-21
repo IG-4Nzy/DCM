@@ -15,6 +15,8 @@ const Departments = lazy(() => import("../pages/Departments"));
 const UserProfile = lazy(() => import("../pages/UserProfile"));
 const Roaster = lazy(() => import("../pages/Roaster"));
 const Observations = lazy(() => import("../pages/Observations"));
+const Inventory = lazy(() => import("../pages/Inventory"));
+
 
 const AppRouter: React.FC = () => {
   return (
@@ -39,6 +41,7 @@ const AppRouter: React.FC = () => {
             <Route path={ROUTE_CONSTANTS.USER_PROFILE} element={<UserProfile />} />
             <Route path={ROUTE_CONSTANTS.ROASTER} element={<Roaster />} />
             <Route path={ROUTE_CONSTANTS.OBSERVATIONS} element={<Observations />} />
+            <Route path={ROUTE_CONSTANTS.INVENTORY} element={<Inventory />} />
           </Route>
 
           <Route path="*" element={<PageNotFound />} />

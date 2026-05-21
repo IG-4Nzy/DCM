@@ -14,6 +14,7 @@ import ObservationFormModal from './ObservationFormModal';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { useTableState } from '../../hooks/useTableState';
 
 type Order = 'asc' | 'desc';
 
@@ -24,15 +25,15 @@ const ObservationList: React.FC = () => {
   const { users } = useSelector((state: RootState) => state.users);
   const { isSuperuser, privileges, username } = useSelector((state: RootState) => state.auth);
 
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [order, setOrder] = useState<Order>('desc');
-  const [orderBy, setOrderBy] = useState<string>('observationId');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useTableState('obs_page', 0);
+  const [rowsPerPage, setRowsPerPage] = useTableState('obs_rowsPerPage', 5);
+  const [order, setOrder] = useTableState<Order>('obs_order', 'desc');
+  const [orderBy, setOrderBy] = useTableState<string>('obs_orderBy', 'observationId');
+  const [searchQuery, setSearchQuery] = useTableState('obs_search', '');
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const [statusFilter, setStatusFilter] = useState('New');
-  const [dateFilter, setDateFilter] = useState(todayStr);
+  const [statusFilter, setStatusFilter] = useTableState('obs_status', 'New');
+  const [dateFilter, setDateFilter] = useTableState('obs_date', todayStr);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingObs, setEditingObs] = useState<any>(null);
@@ -57,9 +58,9 @@ const ObservationList: React.FC = () => {
   const hasDeletePrivilege = isSuperuser || privileges?.includes('Delete Observation');
 
   useEffect(() => {
-    dispatch(fetchObservationCategories({ limit: 100 }));
-    dispatch(fetchDepartments({ limit: 100 }));
-    dispatch(fetchUsers({ limit: 1000 }));
+    dispatch(fetchObservationCategories({ pagination: false }));
+    dispatch(fetchDepartments({ pagination: false }));
+    dispatch(fetchUsers({ pagination: false }));
   }, [dispatch]);
 
   useEffect(() => {

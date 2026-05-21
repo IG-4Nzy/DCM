@@ -353,3 +353,43 @@ class UpdateObservationModel(BaseModel):
 class PaginatedObservationsModel(BaseModel):
     data: List[ObservationModel]
     total: int
+
+class InventoryHistoryModel(BaseModel):
+    date: str
+    action: str
+    quantityChange: int
+    remainingQuantity: int
+    givenTo: Optional[str] = None
+    user: str
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+class InventoryModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    itemName: str
+    quantity: int
+    description: Optional[str] = None
+    lastUpdatedDate: str
+    lastUpdatedBy: str
+    history: List[InventoryHistoryModel] = []
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateInventoryModel(BaseModel):
+    itemName: str
+    quantity: int
+    description: Optional[str] = None
+    date: str
+
+class UpdateInventoryModel(BaseModel):
+    quantityChange: int
+    action: str
+    givenTo: Optional[str] = None
+    date: str
+
+class PaginatedInventoryModel(BaseModel):
+    data: List[InventoryModel]
+    total: int

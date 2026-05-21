@@ -18,6 +18,7 @@ categories_collection = db.get_collection("observation_categories")
 @router.get("/categories", response_description="List all categories", response_model=PaginatedObservationCategoriesModel, response_model_by_alias=False)
 async def list_categories(
     skip: int = Query(0, ge=0),
+    pagination: bool = Query(True),
     limit: int = Query(100, ge=1),
     search: Optional[str] = None
 ):
@@ -26,8 +27,12 @@ async def list_categories(
         query = {"name": {"$regex": search, "$options": "i"}}
         
     total = await categories_collection.count_documents(query)
-    cursor = categories_collection.find(query).skip(skip).limit(limit)
-    categories = await cursor.to_list(length=limit)
+    cursor = categories_collection.find(query)
+    if pagination:
+        cursor = cursor.skip(skip).limit(limit)
+        categories = await cursor.to_list(length=limit)
+    else:
+        categories = await cursor.to_list(length=None)
             
     return {"data": categories, "total": total}
 
@@ -70,6 +75,7 @@ async def delete_category(id: str):
 @router.get("/", response_description="List all observations", response_model=PaginatedObservationsModel, response_model_by_alias=False)
 async def list_observations(
     skip: int = Query(0, ge=0),
+    pagination: bool = Query(True),
     limit: int = Query(10, ge=1),
     sort_by: str = Query("observationId"),
     order: str = Query("desc"),
@@ -113,8 +119,12 @@ async def list_observations(
     sort_order = 1 if order == "asc" else -1
     
     total = await obs_collection.count_documents(query)
-    cursor = obs_collection.find(query).sort(sort_by, sort_order).skip(skip).limit(limit)
-    observations = await cursor.to_list(length=limit)
+    cursor = obs_collection.find(query).sort(sort_by, sort_order)
+    if pagination:
+        cursor = cursor.skip(skip).limit(limit)
+        observations = await cursor.to_list(length=limit)
+    else:
+        observations = await cursor.to_list(length=None)
             
     return {"data": observations, "total": total}
 

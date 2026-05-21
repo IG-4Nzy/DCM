@@ -5,6 +5,7 @@ import rolesReducer from '../pages/Roles/slice';
 import worksReducer from '../pages/Work/slice';
 import departmentsReducer from '../pages/Departments/slice';
 import observationsReducer from '../pages/Observations/slice';
+import inventoryReducer from '../pages/Inventory/slice';
 
 export const store = configureStore({
   reducer: {
@@ -13,7 +14,8 @@ export const store = configureStore({
     roles: rolesReducer,
     works: worksReducer,
     departments: departmentsReducer,
-    observations: observationsReducer
+    observations: observationsReducer,
+    inventory: inventoryReducer
   },
 });
 

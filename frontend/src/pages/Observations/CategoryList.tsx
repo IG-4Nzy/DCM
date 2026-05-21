@@ -10,6 +10,7 @@ import SearchBar from '../../components/SearchBar';
 import CategoryFormModal from './CategoryFormModal';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { useTableState } from '../../hooks/useTableState';
 
 type Order = 'asc' | 'desc';
 
@@ -18,11 +19,11 @@ const CategoryList: React.FC = () => {
   const { categories, loading } = useSelector((state: RootState) => state.observations);
   const { isSuperuser, privileges } = useSelector((state: RootState) => state.auth);
 
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [order, setOrder] = useState<Order>('asc');
-  const [orderBy, setOrderBy] = useState<string>('name');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useTableState('category_page', 0);
+  const [rowsPerPage, setRowsPerPage] = useTableState('category_rowsPerPage', 10);
+  const [order, setOrder] = useTableState<Order>('category_order', 'asc');
+  const [orderBy, setOrderBy] = useTableState<string>('category_orderBy', 'name');
+  const [searchQuery, setSearchQuery] = useTableState('category_search', '');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
@@ -36,8 +37,12 @@ const CategoryList: React.FC = () => {
   const hasDelete = isSuperuser || privileges?.includes('Delete Observation');
 
   useEffect(() => {
-    dispatch(fetchObservationCategories({ limit: 100, search: searchQuery }));
-  }, [dispatch, searchQuery]);
+    dispatch(fetchObservationCategories({ 
+      skip: page * rowsPerPage, 
+      limit: rowsPerPage, 
+      search: searchQuery 
+    }));
+  }, [dispatch, page, rowsPerPage, searchQuery]);
 
   const handleOpenModal = (category?: any) => {
     if (category) {
@@ -74,7 +79,7 @@ const CategoryList: React.FC = () => {
       }));
     }
     handleCloseModal();
-    dispatch(fetchObservationCategories({ limit: 100, search: searchQuery }));
+    dispatch(fetchObservationCategories({ skip: page * rowsPerPage, limit: rowsPerPage, search: searchQuery }));
   };
 
   const { confirm } = useConfirm();
@@ -82,7 +87,7 @@ const CategoryList: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (await confirm('Are you sure you want to delete this category?', 'Delete Category')) {
       await dispatch(deleteObservationCategory(id));
-      dispatch(fetchObservationCategories({ limit: 100, search: searchQuery }));
+      dispatch(fetchObservationCategories({ skip: page * rowsPerPage, limit: rowsPerPage, search: searchQuery }));
     }
   };
 

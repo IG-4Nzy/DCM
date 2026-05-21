@@ -11,6 +11,7 @@ import SearchBar from "../../components/SearchBar";
 import Table, { type Column } from "../../components/Table";
 import { useToast } from "../../contexts/ToastContext";
 import { useConfirm } from "../../contexts/ConfirmContext";
+import { useTableState } from "../../hooks/useTableState";
 import {
   createUser,
   deleteUser,
@@ -40,11 +41,11 @@ const Users: React.FC = () => {
   } = useSelector((state: RootState) => state.users);
   const { showToast } = useToast();
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [order, setOrder] = useState<Order>("asc");
-  const [orderBy, setOrderBy] = useState<keyof UserData>("username");
+  const [searchQuery, setSearchQuery] = useTableState("users_search", "");
+  const [page, setPage] = useTableState("users_page", 0);
+  const [rowsPerPage, setRowsPerPage] = useTableState("users_rowsPerPage", 5);
+  const [order, setOrder] = useTableState<Order>("users_order", "asc");
+  const [orderBy, setOrderBy] = useTableState<keyof UserData>("users_orderBy", "username");
 
   // Modal and Form state
   const [isModalOpen, setIsModalOpen] = useState(false);

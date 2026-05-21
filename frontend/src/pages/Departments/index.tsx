@@ -12,6 +12,7 @@ import type { AppDispatch, RootState } from '../../store';
 import type { DepartmentData } from './model';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
+import { useTableState } from '../../hooks/useTableState';
 import styles from "./index.module.scss";
 import DepartmentFormModal from './DepartmentFormModal';
 import request from '../../services/request';
@@ -23,11 +24,11 @@ const Departments: React.FC = () => {
   const { departments, totalCount, loading } = useSelector((state: RootState) => state.departments);
   const { showToast } = useToast();
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [order, setOrder] = useState<Order>('asc');
-  const [orderBy, setOrderBy] = useState<keyof DepartmentData>('name');
+  const [searchQuery, setSearchQuery] = useTableState('departments_search', '');
+  const [page, setPage] = useTableState('departments_page', 0);
+  const [rowsPerPage, setRowsPerPage] = useTableState('departments_rowsPerPage', 5);
+  const [order, setOrder] = useTableState<Order>('departments_order', 'asc');
+  const [orderBy, setOrderBy] = useTableState<keyof DepartmentData>('departments_orderBy', 'name');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<DepartmentData | null>(null);

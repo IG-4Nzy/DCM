@@ -17,14 +17,15 @@ import isoWeekPlugin from "dayjs/plugin/isoWeek";
 import WeekPicker from "../../components/WeekPicker";
 import styles from "./index.module.scss";
 import { tableHeader } from "./constant";
-import request from "../../services/request";
 import { useToast } from "../../contexts/ToastContext";
 import { hasPrivilege } from "../../helpers/authUtils";
 import { PRIVILEGES } from "../../helpers/privileges";
-import { useSelector } from "react-redux";
-import type { RootState } from "../../store";
+import { useSelector, useDispatch } from "react-redux";
+import type { RootState, AppDispatch } from "../../store";
 import { jwtDecode } from "jwt-decode";
 import { validateRoster } from "./validation";
+import { fetchUsers, fetchAllDepartmentsForDropdown } from "../Users/action";
+import { fetchRostersData, fetchRosterStatusData, updateRosterStatus, resetRosterStatus, createRoster, updateRoster } from "./action";
 
 dayjs.extend(isoWeekPlugin);
 
@@ -39,21 +40,20 @@ const RoasterPage: React.FC = () => {
   const [selectedWeek, setSelectedWeek] = useState<Dayjs>(dayjs());
   const [isEditMode, setIsEditMode] = useState(false);
   const [rosterData, setRosterData] = useState<Record<string, RosterData>>({});
-  const [users, setUsers] = useState<any[]>([]);
-  const [departmentsList, setDepartmentsList] = useState<any[]>([]);
   const [rosterStatus, setRosterStatus] = useState<any>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
+  const dispatch = useDispatch<AppDispatch>();
   const { showToast } = useToast();
   const isSuperuser = useSelector((state: RootState) => state.auth.isSuperuser);
   const token = useSelector((state: RootState) => state.auth.token);
+  const { users, availableDepartments: departmentsList } = useSelector((state: RootState) => state.users);
   
   const canView = isSuperuser || hasPrivilege(PRIVILEGES.ROASTER_VIEW);
   const canEdit =
     isSuperuser ||
     hasPrivilege(PRIVILEGES.ROASTER_CREATE) ||
     hasPrivilege(PRIVILEGES.ROASTER_UPDATE);
-  const canDelete = isSuperuser || hasPrivilege(PRIVILEGES.ROASTER_DELETE);
   const canApprove = isSuperuser || hasPrivilege(PRIVILEGES.ROASTER_APPROVE);
   const userDepartment = token ? (jwtDecode(token) as any).department || "General" : "General";
 
@@ -67,10 +67,7 @@ const RoasterPage: React.FC = () => {
     const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
     const endDate = selectedWeek.endOf("isoWeek").format("YYYY-MM-DD");
     try {
-      const res = await request.get(
-        `/api/roasters/?startDate=${startDate}&endDate=${endDate}&limit=100`,
-      );
-      const data = res.data.data;
+      const data = await dispatch(fetchRostersData({ startDate, endDate, department: userDepartment || '' })).unwrap();
       const newRosterData: Record<string, RosterData> = {};
       data.forEach((r: any) => {
         newRosterData[`${r.date}_${r.shift}`] = {
@@ -87,41 +84,12 @@ const RoasterPage: React.FC = () => {
     }
   };
 
-  const fetchUsers = async () => {
-    try {
-      let department = "";
-      if (token) {
-        const decoded: any = jwtDecode(token);
-        department = decoded.department || "";
-      }
-      
-      let url = `/api/users/`;
-      if (department) {
-        url += `?department=${department}`;
-      }
-      
-      const res = await request.get(url);
-      setUsers(res.data.data || []);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const fetchDepartments = async () => {
-    try {
-      const res = await request.get('/api/departments/?limit=100');
-      setDepartmentsList(res.data.data || []);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const fetchRosterStatus = async () => {
     if (!userDepartment) return;
     const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
     try {
-      const res = await request.get(`/api/roasters/status?weekStartDate=${startDate}&department=${userDepartment}`);
-      setRosterStatus(res.data);
+      const data = await dispatch(fetchRosterStatusData({ weekStartDate: startDate, department: userDepartment })).unwrap();
+      setRosterStatus(data);
     } catch (e) {
       console.error(e);
     }
@@ -133,25 +101,26 @@ const RoasterPage: React.FC = () => {
   }, [selectedWeek]);
 
   useEffect(() => {
-    if (users.length === 0) {
-      fetchUsers();
+    let department = "";
+    if (token) {
+      const decoded: any = jwtDecode(token);
+      department = decoded.department || "";
     }
-    if (departmentsList.length === 0) {
-      fetchDepartments();
-    }
-  }, []);
+    dispatch(fetchUsers({ department, pagination: false }));
+    dispatch(fetchAllDepartmentsForDropdown());
+  }, [dispatch, token]);
 
   const handleStatusChange = async (newStatus: string) => {
     setAnchorEl(null);
     if (!userDepartment) return;
     const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
     try {
-      const res = await request.post('/api/roasters/status', {
+      const data = await dispatch(updateRosterStatus({
         weekStartDate: startDate,
         department: userDepartment,
         status: newStatus
-      });
-      setRosterStatus(res.data);
+      })).unwrap();
+      setRosterStatus(data);
       if (newStatus !== "Pending") {
         showToast("Status updated", "success");
       }
@@ -177,17 +146,18 @@ const RoasterPage: React.FC = () => {
       const promises = Object.entries(rosterData).map(async ([key, data]) => {
         const [date, shift] = key.split("_");
         if (data.id) {
-          await request.put(`/api/roasters/${data.id}`, {
+          await dispatch(updateRoster({
+            id: data.id,
             date,
             shift,
             assignees: data.assignees,
-          });
+          })).unwrap();
         } else if (data.assignees.length > 0) {
-          await request.post(`/api/roasters/`, {
+          await dispatch(createRoster({
             date,
             shift,
             assignees: data.assignees,
-          });
+          })).unwrap();
         }
       });
       await Promise.all(promises);
@@ -196,12 +166,12 @@ const RoasterPage: React.FC = () => {
       if (userDepartment) {
         try {
           const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
-          const res = await request.post('/api/roasters/status/reset', {
+          const data = await dispatch(resetRosterStatus({
             weekStartDate: startDate,
             department: userDepartment,
             status: "Pending"
-          });
-          setRosterStatus(res.data);
+          })).unwrap();
+          setRosterStatus(data);
         } catch (e) {
           console.error("Failed to reset status", e);
         }
@@ -225,6 +195,8 @@ const RoasterPage: React.FC = () => {
       </Box>
     );
   }
+
+  const hasRosterData = Object.values(rosterData).some((r) => r.id);
 
   return (
     <Box className={styles.container}>
@@ -289,7 +261,7 @@ const RoasterPage: React.FC = () => {
 
         
 
-          {canApprove && rosterStatus?.status !== "Approved" && (
+          {canApprove && rosterStatus?.status !== "Approved" && hasRosterData && (
             <>
               <Button
                 variant="outlined"
@@ -312,7 +284,7 @@ const RoasterPage: React.FC = () => {
             </>
           )}
 
-            {rosterStatus && (
+            {rosterStatus && hasRosterData && (
             <Chip
               label={rosterStatus.status}
               color={rosterStatus.status === 'Approved' ? 'success' : rosterStatus.status === 'Rejected' ? 'error' : 'warning'}

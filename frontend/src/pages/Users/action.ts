@@ -7,20 +7,22 @@ const USERS_ENDPOINT = '/api/users';
 type ToastFunction = (msg: string, severity?: 'error' | 'success') => void;
 
 interface FetchUsersParams {
-  skip: number;
-  limit: number;
-  sortBy: string;
-  order: string;
-  search: string;
+  skip?: number;
+  limit?: number;
+  sortBy?: string;
+  order?: string;
+  search?: string;
+  department?: string;
+  pagination?: boolean;
   showToast?: ToastFunction;
 }
 
 export const fetchUsers = createAsyncThunk(
   'users/fetchUsers',
-  async ({ skip, limit, sortBy, order, search, showToast }: FetchUsersParams, { rejectWithValue }) => {
+  async ({ skip = 0, limit = 10, sortBy = 'firstName', order = 'asc', search = '', department, pagination = true, showToast }: FetchUsersParams, { rejectWithValue }) => {
     try {
       const response = await request.get(USERS_ENDPOINT, {
-        params: { skip, limit, sort_by: sortBy, order, search }
+        params: { skip, limit, sort_by: sortBy, order, search, department, pagination }
       });
       return response.data;
     } catch (error: any) {
@@ -35,7 +37,7 @@ export const fetchAllRolesForDropdown = createAsyncThunk(
   'users/fetchAllRolesForDropdown',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await request.get('/api/roles', { params: { limit: 1000 } });
+      const response = await request.get('/api/roles', { params: { pagination: false } });
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.detail || 'Failed to fetch roles');
@@ -94,7 +96,7 @@ export const fetchAllDepartmentsForDropdown = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await request.get('/api/departments/', {
-        params: { limit: 1000 }
+        params: { pagination: false }
       });
       return response.data;
     } catch (error: any) {

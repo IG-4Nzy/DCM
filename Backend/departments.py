@@ -12,6 +12,7 @@ departments_collection = db.get_collection("departments")
 @router.get("/", response_description="List all departments", response_model=PaginatedDepartmentsModel, response_model_by_alias=False)
 async def list_departments(
     skip: int = Query(0, ge=0),
+    pagination: bool = Query(True),
     limit: int = Query(10, ge=1),
     sort_by: str = Query("name"),
     order: str = Query("asc"),
@@ -31,8 +32,12 @@ async def list_departments(
     sort_order = 1 if order == "asc" else -1
     
     total = await departments_collection.count_documents(query)
-    cursor = departments_collection.find(query).sort(sort_by, sort_order).skip(skip).limit(limit)
-    departments = await cursor.to_list(length=limit)
+    cursor = departments_collection.find(query).sort(sort_by, sort_order)
+    if pagination:
+        cursor = cursor.skip(skip).limit(limit)
+        departments = await cursor.to_list(length=limit)
+    else:
+        departments = await cursor.to_list(length=None)
             
     return {"data": departments, "total": total}
 
