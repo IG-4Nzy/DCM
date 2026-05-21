@@ -11,6 +11,8 @@ export interface UserData {
   address?: string;
   dateOfJoin?: string;
   department?: string;
+  is_superuser?: boolean;
+  isSuperuser?: boolean;
 }
 
 export interface CreateUserPayload {

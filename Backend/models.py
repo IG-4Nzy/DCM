@@ -56,6 +56,7 @@ class UserModel(BaseModel):
     address: Optional[str] = None
     dateOfJoin: Optional[str] = None
     department: Optional[str] = None
+    is_superuser: Optional[bool] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
