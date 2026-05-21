@@ -7,6 +7,7 @@ import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';
 import { useToast } from '../../contexts/ToastContext';
 import { fetchDepartments, createDepartment, updateDepartment, deleteDepartment } from './action';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import type { AppDispatch, RootState } from '../../store';
 import type { DepartmentData } from './model';
 import { hasPrivilege } from '../../helpers/authUtils';
@@ -92,8 +93,10 @@ const Departments: React.FC = () => {
     }
   };
 
+  const { confirm } = useConfirm();
+
   const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this department?")) {
+    if (await confirm("Are you sure you want to delete this department?", "Delete Department")) {
       try {
         await dispatch(deleteDepartment({ id, showToast })).unwrap();
       } catch (err: any) {
@@ -110,7 +113,16 @@ const Departments: React.FC = () => {
 
   const columns: Column<DepartmentData>[] = [
     { id: 'name', label: 'Department Name', sortable: true },
-    { id: 'departmentHead', label: 'Department Head', sortable: true, render: (row) => row.departmentHead || 'N/A' },
+    { 
+      id: 'departmentHead', 
+      label: 'Department Head', 
+      sortable: true, 
+      render: (row) => {
+        if (!row.departmentHead) return 'N/A';
+        const user = usersList.find((u: any) => u.username === row.departmentHead || u.id === row.departmentHead);
+        return user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : row.departmentHead;
+      }
+    },
     {
       id: 'status',
       label: 'Status',

@@ -278,3 +278,78 @@ class CreateRoasterStatusModel(BaseModel):
     weekStartDate: str
     department: str
     status: str
+
+class ObservationCategoryModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    name: str
+    status: bool = True
+    reportsTo: Optional[str] = None
+    remarks: Optional[str] = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateObservationCategoryModel(BaseModel):
+    name: str
+    status: bool = True
+    reportsTo: Optional[str] = None
+    remarks: Optional[str] = None
+
+class UpdateObservationCategoryModel(BaseModel):
+    name: Optional[str] = None
+    status: Optional[bool] = None
+    reportsTo: Optional[str] = None
+    remarks: Optional[str] = None
+
+class PaginatedObservationCategoriesModel(BaseModel):
+    data: List[ObservationCategoryModel]
+    total: int
+
+class ObservationModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    observationId: str
+    observedDate: str
+    observedTime: str
+    category: str
+    description: str
+    amc: str
+    informedTo: str
+    informedToOther: Optional[str] = None
+    loggedBy: str
+    status: str = "New"
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateObservationModel(BaseModel):
+    observedDate: str
+    observedTime: str
+    category: str
+    description: str
+    amc: str
+    informedTo: str
+    informedToOther: Optional[str] = None
+    loggedBy: str
+    status: str = "New"
+
+class UpdateObservationModel(BaseModel):
+    observedDate: Optional[str] = None
+    observedTime: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    amc: Optional[str] = None
+    informedTo: Optional[str] = None
+    informedToOther: Optional[str] = None
+    status: Optional[str] = None
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedObservationsModel(BaseModel):
+    data: List[ObservationModel]
+    total: int

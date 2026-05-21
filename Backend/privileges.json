@@ -17,7 +17,6 @@
     "View All Work",
     "Update Work",
     "Delete Work",
-    "Work Status Update",
     "Create Department",
     "View Department",
     "Update Department",
@@ -26,5 +25,13 @@
     "Approve Roaster",
     "View Roaster",
     "Update Roaster",
-    "Delete Roaster"
+    "Delete Roaster",
+    "Create Observation",
+    "View Observations",
+    "Update Observation",
+    "Delete Observation",
+    "Create Observation Category",
+    "View Observation Category",
+    "Update Observation Category",
+    "Delete Observation Category"
 ]

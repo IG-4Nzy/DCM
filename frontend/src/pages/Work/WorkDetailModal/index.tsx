@@ -22,6 +22,7 @@ import type { RootState } from "../../../store";
 import { API_BASE_URL } from "../../../services/request";
 import type { WorkData } from "../model";
 import { hasPrivilege } from "../../../helpers/authUtils";
+import { useConfirm } from "../../../contexts/ConfirmContext";
 import styles from "./index.module.scss";
 
 interface PropType {
@@ -52,7 +53,14 @@ const WorkDetailModal = ({
 
   const canUpdateWork = hasPrivilege("Update Work");
   const isLocked = currentStatus === "Completed" && !canUpdateWork;
-  const canUpdateStatus = hasPrivilege("Work Status Update") && !isLocked;
+  
+  const assigneeUser = users.find(
+    (u: any) => u.id === work?.assignee || u._id === work?.assignee || u.username === work?.assignee,
+  );
+  
+  const isAssignee = assigneeUser && assigneeUser.username === currentUser;
+  const hasStatusUpdate = canUpdateWork || (hasPrivilege("View Assigned Work") && isAssignee);
+  const canUpdateStatus = hasStatusUpdate && !isLocked;
 
   const availableStatusOptions = [
     { label: "Pending", value: "Pending" },
@@ -72,9 +80,6 @@ const WorkDetailModal = ({
 
   if (!work) return null;
 
-  const assigneeUser = users.find(
-    (u: any) => u.id === work.assignee || u._id === work.assignee || u.username === work.assignee,
-  );
   const assigneeName = assigneeUser
     ? `${assigneeUser.firstName || ''} ${assigneeUser.lastName || ''}`.trim() || assigneeUser.username || assigneeUser.name
     : work.assignee
@@ -96,13 +101,16 @@ const WorkDetailModal = ({
     }
   };
 
+  const { confirm } = useConfirm();
+
   const handleStatusChange = async (newVal: string) => {
     if (!canUpdateStatus) return;
     if (newVal === currentStatus) return;
 
     if (
-      window.confirm(
+      await confirm(
         `Are you sure you want to change the status to "${newVal}"?`,
+        "Change Status"
       )
     ) {
       try {

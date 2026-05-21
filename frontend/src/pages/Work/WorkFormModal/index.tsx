@@ -48,7 +48,7 @@ const WorkFormModal = ({
   handleSubmit,
 }: PropType) => {
   const formattedUsers = (users || []).map((user) => ({
-    label: user.username || user.name, 
+    label: (user.firstName || user.lastName) ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : (user.username || user.name),
     value: user.id || user._id, 
   }));
 

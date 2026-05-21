@@ -39,6 +39,7 @@ const RoasterPage: React.FC = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [rosterData, setRosterData] = useState<Record<string, RosterData>>({});
   const [users, setUsers] = useState<any[]>([]);
+  const [departmentsList, setDepartmentsList] = useState<any[]>([]);
   const [rosterStatus, setRosterStatus] = useState<any>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -105,6 +106,15 @@ const RoasterPage: React.FC = () => {
     }
   };
 
+  const fetchDepartments = async () => {
+    try {
+      const res = await request.get('/api/departments/?limit=100');
+      setDepartmentsList(res.data.data || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const fetchRosterStatus = async () => {
     if (!userDepartment) return;
     const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
@@ -124,6 +134,9 @@ const RoasterPage: React.FC = () => {
   useEffect(() => {
     if (users.length === 0) {
       fetchUsers();
+    }
+    if (departmentsList.length === 0) {
+      fetchDepartments();
     }
   }, []);
 
@@ -432,9 +445,15 @@ const RoasterPage: React.FC = () => {
                             multiple
                             size="small"
                             options={users
+                              .filter((u) => {
+                                const deptHeads = departmentsList.map((d: any) => d.departmentHead).filter(Boolean);
+                                const isSuper = u.is_superuser || u.isSuperuser;
+                                const isDeptHead = deptHeads.includes(u.username) || deptHeads.includes(u.id) || deptHeads.includes(u._id);
+                                return !isSuper && !isDeptHead && !otherShiftsAssignees.includes(u.username);
+                              })
                               .map((u) => u.username)
-                              .filter((username) => !otherShiftsAssignees.includes(username))
                             }
+                            getOptionLabel={(option) => getUserDisplayName(option)}
                             value={assignees}
                             onChange={(e, val) => {
                               if (shift === "Leave" || val.length <= 2) {

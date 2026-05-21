@@ -24,6 +24,7 @@ const theme = createTheme({
 });
 
 import { ToastProvider } from './contexts/ToastContext';
+import { ConfirmProvider } from './contexts/ConfirmContext';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
@@ -31,7 +32,9 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <ToastProvider>
-          <App />
+          <ConfirmProvider>
+            <App />
+          </ConfirmProvider>
         </ToastProvider>
       </ThemeProvider>
     </Provider>

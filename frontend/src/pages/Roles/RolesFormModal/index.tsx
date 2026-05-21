@@ -1,7 +1,6 @@
 import Modal from '../../../components/Modal'
 import TextField from '../../../components/TextField'
-import Dropdown from '../../../components/Dropdown'
-import { Button, FormControl, InputLabel, MenuItem, Select } from '@mui/material'
+import { Button, FormControl, InputLabel, MenuItem, Select, Autocomplete, TextField as MuiTextField, Box, Chip } from '@mui/material'
 import type { UpdateRolePayload } from '../model';
 import styles from './index.module.scss';
 
@@ -32,8 +31,6 @@ const RoleFormModal = ({
     availablePrivileges,
     handleSubmit 
 }:PropType) => {
-    const formattedPrivileges = (availablePrivileges || []).map(priv => ({ label: priv, value: priv }));
-
     return (
         <Modal
             open={isModalOpen}
@@ -65,14 +62,40 @@ const RoleFormModal = ({
                 </div>
                 
                 <div className={styles.row}>
-                    <Dropdown
-                        label="Privileges"
-                        options={formattedPrivileges}
-                        value={formPrivileges}
-                        onChange={setFormPrivileges}
-                        multiple={true}
-                        fullWidth={true}
-                    />
+                    <FormControl fullWidth className={styles.field}>
+                        <Autocomplete
+                            multiple
+                            id="privileges-autocomplete"
+                            options={availablePrivileges || []}
+                            value={formPrivileges || []}
+                            filterSelectedOptions
+                            onChange={(event, newValue) => {
+                                setFormPrivileges(newValue);
+                            }}
+                            renderTags={(value: readonly string[], getTagProps) =>
+                                value.map((option: string, index: number) => {
+                                    const { key, ...tagProps } = getTagProps({ index });
+                                    return (
+                                        <Chip
+                                            key={key}
+                                            variant="outlined"
+                                            label={option}
+                                            {...tagProps}
+                                            color="primary"
+                                        />
+                                    );
+                                })
+                            }
+                            renderInput={(params) => (
+                                <MuiTextField
+                                    {...params}
+                                    variant="outlined"
+                                    label="Privileges"
+                                    placeholder="Search privileges..."
+                                />
+                            )}
+                        />
+                    </FormControl>
                 </div>
 
                 <div className={styles.actions}>

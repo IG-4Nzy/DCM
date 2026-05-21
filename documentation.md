@@ -4,6 +4,7 @@ Observations ->
 Create Observations:user can add new observation with date,time,observation category,description,AMC,Informed to,logged by(current user)
 
 View Observations: Table view,ID,Observed Date,Category,descrption,AMC,Informed to,Logged by . On row click,detailed view modal and inside modal option to edit and save
+Category tab - > Categories ,with inform to contacts.
 
 2 tabs filter - New Observations,Closed Observations
 add a date filter(calandar)
@@ -110,4 +111,6 @@ only for admin,
 create roles by combining privileges
 table view,
 create,update,delete
+
+Important Contacts -> Directory,Critical Contacts
 

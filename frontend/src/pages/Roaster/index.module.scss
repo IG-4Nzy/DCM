@@ -23,6 +23,8 @@
   &__roasterContainer {
     border: #333 solid 1px;
     overflow: hidden;
+    width: 80% !important;
+    margin: 0 auto !important;
 
     &__header {
       display: flex;
@@ -178,8 +180,8 @@
 
 @media print {
   @page {
+    size: A4 portrait;
     margin: 0 !important;
-    /* Must be exactly 0 to force browser to hide headers and footers */
   }
 
   body * {
@@ -192,17 +194,24 @@
     visibility: visible;
   }
 
-  /* Position it at the top left of the printed page but with physical margin */
+  /* Reset layout constraints so it prints centered */
+  body, #root, main, .container {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    position: static !important;
+    display: block !important;
+  }
+
   .container__roasterContainer {
-    position: absolute;
-    left: 1cm;
-    /* Push away from the left edge */
-    top: 1cm;
-    /* Push away from the top edge */
-    width: calc(100% - 2cm);
-    /* Subtract left and right offsets */
-    box-sizing: border-box;
-    /* removed border: none so the border actually prints! */
+    position: absolute !important;
+    left: 2cm !important;
+    top: 2cm !important;
+    width: calc(100% - 4cm) !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    transform: none !important;
   }
 
   /* Fix overlapping border on the right side when the Leave column is hidden during print */

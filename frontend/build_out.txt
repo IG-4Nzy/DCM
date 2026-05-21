@@ -1,0 +1,59 @@
+
+> frontend@0.0.0 build
+> tsc -b && vite build
+
+src/components/SearchBar/index.tsx(20,7): error TS2322: Type '{ variant: "outlined"; size: "small"; placeholder: string; value: string; onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement, Element>) => void; InputProps: { ...; }; sx: { ...; }; }' is not assignable to type 'IntrinsicAttributes & TextFieldProps'.
+  Property 'InputProps' does not exist on type 'IntrinsicAttributes & OutlinedTextFieldProps'.
+src/components/WeekPicker/index.tsx(78,48): error TS6133: 'other' is declared but its value is never read.
+src/contexts/ToastContext.tsx(1,67): error TS1484: 'ReactNode' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/contexts/ToastContext.tsx(21,24): error TS6133: 'event' is declared but its value is never read.
+src/pages/Departments/index.tsx(21,36): error TS6133: 'loading' is declared but its value is never read.
+src/pages/Observations/CategoryList.tsx(3,10): error TS1484: 'AppDispatch' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/Observations/CategoryList.tsx(3,23): error TS1484: 'RootState' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/Observations/CategoryList.tsx(5,19): error TS2307: Cannot find module '../../components/Table/Table' or its corresponding type declarations.
+src/pages/Observations/CategoryList.tsx(6,20): error TS2307: Cannot find module '../../components/Button/Button' or its corresponding type declarations.
+src/pages/Observations/CategoryList.tsx(7,19): error TS2307: Cannot find module '../../components/Modal/Modal' or its corresponding type declarations.
+src/pages/Observations/CategoryList.tsx(8,23): error TS2307: Cannot find module '../../components/TextField/TextField' or its corresponding type declarations.
+src/pages/Observations/CategoryList.tsx(9,22): error TS2307: Cannot find module '../../components/Dropdown/Dropdown' or its corresponding type declarations.
+src/pages/Observations/CategoryList.tsx(14,11): error TS2339: Property 'user' does not exist on type 'AuthState'.
+src/pages/Observations/CategoryList.tsx(95,24): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/pages/Observations/CategoryList.tsx(105,24): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/pages/Observations/ObservationList.tsx(3,10): error TS1484: 'AppDispatch' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/Observations/ObservationList.tsx(3,23): error TS1484: 'RootState' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/Observations/ObservationList.tsx(7,19): error TS2307: Cannot find module '../../components/Table/Table' or its corresponding type declarations.
+src/pages/Observations/ObservationList.tsx(8,20): error TS2307: Cannot find module '../../components/Button/Button' or its corresponding type declarations.
+src/pages/Observations/ObservationList.tsx(9,19): error TS2307: Cannot find module '../../components/Modal/Modal' or its corresponding type declarations.
+src/pages/Observations/ObservationList.tsx(10,23): error TS2307: Cannot find module '../../components/TextField/TextField' or its corresponding type declarations.
+src/pages/Observations/ObservationList.tsx(11,22): error TS2307: Cannot find module '../../components/Dropdown/Dropdown' or its corresponding type declarations.
+src/pages/Observations/ObservationList.tsx(12,24): error TS2307: Cannot find module '../../components/DatePicker/DatePicker' or its corresponding type declarations.
+src/pages/Observations/ObservationList.tsx(18,11): error TS2339: Property 'user' does not exist on type 'AuthState'.
+src/pages/Observations/ObservationList.tsx(24,18): error TS6133: 'setSearch' is declared but its value is never read.
+src/pages/Observations/ObservationList.tsx(156,24): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/pages/Observations/ObservationList.tsx(169,22): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/pages/Observations/ObservationList.tsx(177,24): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/pages/Observations/ObservationList.tsx(184,24): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/pages/Observations/ObservationList.tsx(190,24): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/pages/Observations/ObservationList.tsx(197,24): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/pages/Observations/ObservationList.tsx(205,24): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/pages/Observations/ObservationList.tsx(216,26): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/pages/Observations/ObservationList.tsx(226,25): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/pages/Observations/action.ts(7,10): error TS2305: Module '"../../helpers/utils"' has no exported member 'handleAxiosError'.
+src/pages/Observations/slice.ts(1,28): error TS6133: 'PayloadAction' is declared but its value is never read.
+src/pages/Roaster/index.tsx(54,9): error TS6133: 'canDelete' is declared but its value is never read.
+src/pages/Roaster/index.tsx(439,40): error TS6133: 'e' is declared but its value is never read.
+src/pages/Roaster/index.tsx(454,42): error TS7006: Parameter 'option' implicitly has an 'any' type.
+src/pages/Roaster/index.tsx(454,50): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/pages/Roles/index.tsx(20,51): error TS6133: 'loading' is declared but its value is never read.
+src/pages/Roles/index.tsx(20,60): error TS6133: 'error' is declared but its value is never read.
+src/pages/Roles/index.tsx(113,29): error TS6133: 'event' is declared but its value is never read.
+src/pages/Users/index.tsx(1,27): error TS6133: 'useMemo' is declared but its value is never read.
+src/pages/Users/index.tsx(36,5): error TS6133: 'loading' is declared but its value is never read.
+src/pages/Users/index.tsx(37,5): error TS6133: 'error' is declared but its value is never read.
+src/pages/Users/index.tsx(183,29): error TS6133: 'event' is declared but its value is never read.
+src/pages/Work/WorkDetailModal/index.tsx(1,38): error TS6133: 'useRef' is declared but its value is never read.
+src/pages/Work/WorkDetailModal/index.tsx(6,3): error TS6133: 'IconButton' is declared but its value is never read.
+src/pages/Work/index.tsx(4,90): error TS6133: 'ViewIcon' is declared but its value is never read.
+src/pages/Work/index.tsx(34,30): error TS6133: 'loading' is declared but its value is never read.
+src/pages/Work/index.tsx(201,29): error TS6133: 'event' is declared but its value is never read.
+src/pages/Work/index.tsx(220,100): error TS2339: Property 'name' does not exist on type 'UserData'.
+src/pages/Work/slice.ts(1,28): error TS6133: 'PayloadAction' is declared but its value is never read.

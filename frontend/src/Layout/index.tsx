@@ -115,6 +115,7 @@ const Layout: React.FC = () => {
   const location = useLocation();
   const { username, role, isSuperuser } = useSelector((state: RootState) => state.auth);
   const [userInitials, setUserInitials] = useState('');
+  const [userFullName, setUserFullName] = useState(username);
 
   useEffect(() => {
     const fetchInitials = async () => {
@@ -124,12 +125,31 @@ const Layout: React.FC = () => {
         const f = (firstName || '').charAt(0).toUpperCase();
         const l = (lastName || '').charAt(0).toUpperCase();
         setUserInitials(l ? `${f}${l}` : f || (username || '?').charAt(0).toUpperCase());
+        setUserFullName(`${firstName || ''} ${lastName || ''}`.trim() || username);
       } catch {
         setUserInitials((username || '?').charAt(0).toUpperCase());
+        setUserFullName(username);
       }
     };
     fetchInitials();
   }, [username]);
+
+  useEffect(() => {
+    const currentOption = SIDEBAR_OPTIONS.find(opt => location.pathname.startsWith(opt.route));
+    if (currentOption) {
+      if (!isSuperuser && currentOption.privileges && !hasAnyPrivilege(currentOption.privileges)) {
+        const firstAvailable = SIDEBAR_OPTIONS.find(opt => isSuperuser || !opt.privileges || hasAnyPrivilege(opt.privileges));
+        if (firstAvailable) {
+          navigate(firstAvailable.route, { replace: true });
+        }
+      }
+    } else if (location.pathname === '/') {
+      const firstAvailable = SIDEBAR_OPTIONS.find(opt => isSuperuser || !opt.privileges || hasAnyPrivilege(opt.privileges));
+      if (firstAvailable) {
+        navigate(firstAvailable.route, { replace: true });
+      }
+    }
+  }, [location.pathname, isSuperuser, navigate]);
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -165,7 +185,7 @@ const Layout: React.FC = () => {
           </label>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <label style={{ fontWeight: 'bold', color: '#666', fontSize: '0.875rem' }}>
-              {wordings.welcome}, {username} ({role})
+              {wordings.welcome}, {userFullName} ({role})
             </label>
             <Tooltip title="My Profile">
               <Avatar

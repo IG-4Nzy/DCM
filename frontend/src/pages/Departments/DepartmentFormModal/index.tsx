@@ -67,8 +67,8 @@ const DepartmentFormModal = ({
             value={formDepartmentHead}
             onChange={(val) => setFormDepartmentHead(val)}
             options={usersList.map((user) => ({
-              label: user.firstName && user.lastName
-                ? `${user.firstName} ${user.lastName} (${user.username})`
+              label: (user.firstName || user.lastName)
+                ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
                 : user.username,
               value: user.username,
             }))}

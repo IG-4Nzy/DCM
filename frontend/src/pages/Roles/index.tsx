@@ -6,6 +6,7 @@ import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';
 import { useToast } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import type { AppDispatch, RootState } from '../../store';
 import type { RoleData } from './model';
 import RoleFormModal from './RolesFormModal';
@@ -94,8 +95,10 @@ const Roles: React.FC = () => {
     }
   };
 
+  const { confirm } = useConfirm();
+
   const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this role?")) {
+    if (await confirm("Are you sure you want to delete this role?", "Delete Role")) {
       try {
         await dispatch(deleteRole({ id, showToast })).unwrap();
       } catch (err: any) {

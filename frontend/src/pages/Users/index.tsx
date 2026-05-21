@@ -10,6 +10,7 @@ import Button from "../../components/Button";
 import SearchBar from "../../components/SearchBar";
 import Table, { type Column } from "../../components/Table";
 import { useToast } from "../../contexts/ToastContext";
+import { useConfirm } from "../../contexts/ConfirmContext";
 import {
   createUser,
   deleteUser,
@@ -59,6 +60,7 @@ const Users: React.FC = () => {
   const [formAddress, setFormAddress] = useState("");
   const [formDateOfJoin, setFormDateOfJoin] = useState("");
   const [formDepartment, setFormDepartment] = useState("");
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     dispatch(fetchAllRolesForDropdown());
@@ -78,7 +80,8 @@ const Users: React.FC = () => {
     );
   }, [dispatch, showToast, page, rowsPerPage, orderBy, order, searchQuery]);
 
-  const handleOpenModal = (user?: UserData) => {
+  const handleOpenModal = (user?: UserData, editMode: boolean = false) => {
+    setIsEditMode(editMode);
     if (user) {
       setEditingUser(user);
       setFormUsername(user.username);
@@ -94,6 +97,7 @@ const Users: React.FC = () => {
       setFormDateOfJoin(user.dateOfJoin || "");
       setFormDepartment(user.department || "");
     } else {
+      setIsEditMode(true);
       setEditingUser(null);
       setFormUsername("");
       setFormPassword("");
@@ -164,8 +168,10 @@ const Users: React.FC = () => {
     }
   };
 
+  const { confirm } = useConfirm();
+
   const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
+    if (await confirm("Are you sure you want to delete this user?", "Delete User")) {
       try {
         await dispatch(deleteUser({ id, showToast })).unwrap();
       } catch (err: any) {
@@ -232,7 +238,7 @@ const Users: React.FC = () => {
                 size="small"
                 color="primary"
                 sx={{ backgroundColor: "rgba(25, 118, 210, 0.04)" }}
-                onClick={() => handleOpenModal(row)}
+                onClick={(e) => { e.stopPropagation(); handleOpenModal(row, true); }}
               >
                 <EditIcon fontSize="small" />
               </IconButton>
@@ -244,7 +250,7 @@ const Users: React.FC = () => {
                 size="small"
                 color="error"
                 sx={{ backgroundColor: "rgba(211, 47, 47, 0.04)" }}
-                onClick={() => handleDelete(row.id)}
+                onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}
               >
                 <DeleteIcon fontSize="small" />
               </IconButton>
@@ -286,7 +292,7 @@ const Users: React.FC = () => {
               variant="contained"
               color="primary"
               startIcon={<AddIcon />}
-              onClick={() => handleOpenModal()}
+              onClick={() => handleOpenModal(undefined, true)}
             >
               Create User
             </Button>
@@ -315,12 +321,16 @@ const Users: React.FC = () => {
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
           totalCount={totalCount || 0}
+          onRowClick={(hasPrivilege("View User") || hasPrivilege("Update User")) ? (row) => handleOpenModal(row, false) : undefined}
         />
       </Paper>
       <UserFormModal
         isModalOpen={isModalOpen}
         handleCloseModal={handleCloseModal}
         editingUser={editingUser}
+        isEditMode={isEditMode}
+        setIsEditMode={setIsEditMode}
+        hasUpdatePrivilege={hasPrivilege("Update User")}
         setFormUsername={setFormUsername}
         formUsername={formUsername}
         formPassword={formPassword}

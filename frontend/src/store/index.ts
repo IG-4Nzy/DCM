@@ -4,6 +4,7 @@ import usersReducer from '../pages/Users/slice';
 import rolesReducer from '../pages/Roles/slice';
 import worksReducer from '../pages/Work/slice';
 import departmentsReducer from '../pages/Departments/slice';
+import observationsReducer from '../pages/Observations/slice';
 
 export const store = configureStore({
   reducer: {
@@ -11,7 +12,8 @@ export const store = configureStore({
     users: usersReducer,
     roles: rolesReducer,
     works: worksReducer,
-    departments: departmentsReducer
+    departments: departmentsReducer,
+    observations: observationsReducer
   },
 });
 

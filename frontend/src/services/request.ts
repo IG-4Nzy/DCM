@@ -32,9 +32,11 @@ request.interceptors.response.use(
   },
   (error) => {
     if (error.response && error.response.status === 401) {
-      console.warn("Unauthorized request, token may have expired.");
-      localStorage.clear();
-      window.location.href = '/login';
+      if (window.location.pathname !== '/login') {
+        console.warn("Unauthorized request, token may have expired.");
+        localStorage.clear();
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

@@ -25,7 +25,7 @@ export const SIDEBAR_OPTIONS = [
         label: wordings.works,
         icon: Icons.WorksIcon,
         route: ROUTE_CONSTANTS.WORKS,
-        privileges: ["View All Work", "View Assigned Work", "Create Work", "Update Work", "Delete Work", "Work Status Update"]
+        privileges: ["View All Work", "View Assigned Work", "Create Work", "Update Work", "Delete Work"]
     },
     {
         label: wordings.departments,
@@ -43,6 +43,6 @@ export const SIDEBAR_OPTIONS = [
         label:wordings.observations,
         icon:Icons.EyeIcon,
         route:ROUTE_CONSTANTS.OBSERVATIONS,
-        privileges:["View Observations","Create Observations","Update Observations","Delete Observations"]
+        privileges:["View Observations","Create Observation","Update Observation","Delete Observation"]
     }
 ]

@@ -131,8 +131,17 @@ async def update_work(id: str, work: UpdateWorkModel = Body(...), current_user: 
         status_only = update_keys.issubset({"status", "comments", "id", "_id"})
         
         if status_only:
-            if "Work Status Update" not in privileges and "Update Work" not in privileges:
-                raise HTTPException(status_code=403, detail="Need Work Status Update privilege")
+            has_status_update = "Update Work" in privileges
+            has_view_assigned = "View Assigned Work" in privileges
+            
+            if not has_status_update:
+                if has_view_assigned:
+                    users_collection = db.get_collection("users")
+                    user_record = await users_collection.find_one({"username": current_user["sub"]})
+                    if not user_record or existing_work.get("assignee") != str(user_record["_id"]):
+                        raise HTTPException(status_code=403, detail="You can only update status for works assigned to you")
+                else:
+                    raise HTTPException(status_code=403, detail="Need Update Work privilege")
         else:
             if "Update Work" not in privileges:
                 raise HTTPException(status_code=403, detail="Need Update Work privilege")

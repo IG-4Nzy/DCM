@@ -6,6 +6,7 @@ import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';
 import { useToast } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import type { AppDispatch, RootState } from '../../store';
 import WorkFormModal from './WorkFormModal';
 import WorkDetailModal from './WorkDetailModal';
@@ -176,8 +177,10 @@ const Works: React.FC = () => {
     }
   };
 
+  const { confirm } = useConfirm();
+
   const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this work ticket?")) {
+    if (await confirm("Are you sure you want to delete this work ticket?", "Delete Work")) {
       try {
         await dispatch(deleteWork({ id, showToast })).unwrap();
         // Re-fetch
@@ -314,7 +317,7 @@ const Works: React.FC = () => {
     });
   }
 
-  const canClickRow = hasPrivilege('Work Status Update') || hasPrivilege('Update Work');
+  const canClickRow = hasPrivilege('Update Work') || hasPrivilege('View Assigned Work');
 
   return (
     <Box className={styles.users} sx={{ p: 3 }}>
