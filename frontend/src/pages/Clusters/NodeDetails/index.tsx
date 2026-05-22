@@ -1,50 +1,55 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Box, Paper, Tooltip, IconButton } from '@mui/material';
+import { Box, Paper, Tooltip, IconButton, Typography } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
-import Button from '../../components/Button';
-import SearchBar from '../../components/SearchBar';
-import Table, { type Column } from '../../components/Table';
-import { useToast } from '../../contexts/ToastContext';
-import { useConfirm } from '../../contexts/ConfirmContext';
+import Button from '../../../components/Button';
+import SearchBar from '../../../components/SearchBar';
+import Table, { type Column } from '../../../components/Table';
+import { useToast } from '../../../contexts/ToastContext';
+import { useConfirm } from '../../../contexts/ConfirmContext';
 import { useSelector } from 'react-redux';
-import { type RootState } from '../../store';
-import { hasPrivilege } from '../../helpers/authUtils';
-import { PRIVILEGES } from '../../helpers/privileges';
-import { useTableState } from '../../hooks/useTableState';
-import { fetchServerDetails, createServerDetails, updateServerDetails, deleteServerDetails } from './action';
-import request from '../../services/request';
-import { type ServerDetailsData } from './model';
-import ServerDetailsModal from './ServerDetailsModal';
+import { type RootState } from '../../../store';
+import { hasPrivilege } from '../../../helpers/authUtils';
+import { PRIVILEGES } from '../../../helpers/privileges';
+import { useTableState } from '../../../hooks/useTableState';
+import { fetchNodeDetails, createNodeDetails, updateNodeDetails, deleteNodeDetails } from './action';
+import request from '../../../services/request';
+import { type NodeDetailsData } from './model';
+import NodeDetailsModal from './NodeDetailsModal';
 
 type Order = 'asc' | 'desc';
 
-const ServerDetails = () => {
-    const [data, setData] = useState<ServerDetailsData[]>([]);
+interface NodeDetailsProps {
+    clusterId: string;
+}
+
+const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
+    const [data, setData] = useState<NodeDetailsData[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [usersMap, setUsersMap] = useState<Record<string, string>>({});
 
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingItem, setEditingItem] = useState<ServerDetailsData | null>(null);
+    const [editingItem, setEditingItem] = useState<NodeDetailsData | null>(null);
 
     const { showToast } = useToast();
     const { confirm } = useConfirm();
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
-    const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
-    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_UPDATE);
-    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_DELETE);
+    const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_CREATE);
+    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_UPDATE);
+    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_DELETE);
 
-    const [searchQuery, setSearchQuery] = useTableState('serverDetails_search', '');
-    const [page, setPage] = useTableState('serverDetails_page', 0);
-    const [rowsPerPage, setRowsPerPage] = useTableState('serverDetails_rowsPerPage', 5);
-    const [order, setOrder] = useTableState<Order>('serverDetails_order', 'asc');
-    const [orderBy, setOrderBy] = useTableState<string>('serverDetails_orderBy', 'slNumber');
+    const [searchQuery, setSearchQuery] = useTableState(`nodeDetails_${clusterId}_search`, '');
+    const [page, setPage] = useTableState(`nodeDetails_${clusterId}_page`, 0);
+    const [rowsPerPage, setRowsPerPage] = useTableState(`nodeDetails_${clusterId}_rowsPerPage`, 5);
+    const [order, setOrder] = useTableState<Order>(`nodeDetails_${clusterId}_order`, 'asc');
+    const [orderBy, setOrderBy] = useTableState<string>(`nodeDetails_${clusterId}_orderBy`, 'slNumber');
 
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const result = await fetchServerDetails({
+            const result = await fetchNodeDetails({
+                clusterId,
                 skip: page * rowsPerPage,
                 limit: rowsPerPage,
                 sortBy: orderBy,
@@ -55,11 +60,11 @@ const ServerDetails = () => {
             setData(result.data);
             setTotalCount(result.total);
         } catch (e: any) {
-            showToast(e?.response?.data?.detail || 'Failed to load server details', 'error');
+            showToast(e?.response?.data?.detail || 'Failed to load node details', 'error');
         } finally {
             setLoading(false);
         }
-    }, [page, rowsPerPage, orderBy, order, searchQuery, showToast]);
+    }, [clusterId, page, rowsPerPage, orderBy, order, searchQuery, showToast]);
 
     useEffect(() => {
         loadData();
@@ -76,7 +81,7 @@ const ServerDetails = () => {
         }).catch(err => console.error("Failed to load users:", err));
     }, []);
 
-    const handleOpenModal = (item?: ServerDetailsData) => {
+    const handleOpenModal = (item?: NodeDetailsData) => {
         setEditingItem(item || null);
         setIsModalOpen(true);
     };
@@ -89,32 +94,32 @@ const ServerDetails = () => {
     const handleSubmit = async (payload: any) => {
         try {
             if (editingItem) {
-                await updateServerDetails(payload);
-                showToast('Server details updated successfully', 'success');
+                await updateNodeDetails(payload);
+                showToast('Node details updated successfully', 'success');
             } else {
-                await createServerDetails(payload);
-                showToast('Server details created successfully', 'success');
+                await createNodeDetails(payload);
+                showToast('Node details created successfully', 'success');
             }
             handleCloseModal();
             loadData();
         } catch (e: any) {
-            showToast(e?.response?.data?.detail || 'Failed to save server details', 'error');
+            showToast(e?.response?.data?.detail || 'Failed to save node details', 'error');
         }
     };
 
-    const handleDelete = async (item: ServerDetailsData) => {
-        const isConfirmed = await confirm(`Are you sure you want to delete ${item.hostName}?`, 'Delete Server Details');
+    const handleDelete = async (item: NodeDetailsData) => {
+        const isConfirmed = await confirm(`Are you sure you want to delete ${item.hostName}?`, 'Delete Node Details');
         if (isConfirmed) {
             try {
-                await deleteServerDetails(item.id);
-                showToast('Server details deleted successfully', 'success');
+                await deleteNodeDetails(item.id);
+                showToast('Node details deleted successfully', 'success');
                 if (data.length === 1 && page > 0) {
                     setPage(page - 1);
                 } else {
                     loadData();
                 }
             } catch (e: any) {
-                showToast(e?.response?.data?.detail || 'Failed to delete server details', 'error');
+                showToast(e?.response?.data?.detail || 'Failed to delete node details', 'error');
             }
         }
     };
@@ -134,7 +139,7 @@ const ServerDetails = () => {
         setPage(0);
     };
 
-    const columns: Column<ServerDetailsData>[] = [
+    const columns: Column<NodeDetailsData>[] = [
         { id: 'slNumber', label: 'SL No', sortable: true },
         { id: 'rack', label: 'Rack', sortable: true },
         { id: 'hostName', label: 'Host Name', sortable: true },
@@ -182,14 +187,14 @@ const ServerDetails = () => {
     }
 
     return (
-        <Box sx={{ p: 3, width: '100%', flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2, flexShrink: 0 }}>
-                <label style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Server Details</label>
+        <Box sx={{ width: '100%', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+                <Typography variant="h6" fontWeight="bold">Node Details</Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                     <SearchBar
                         value={searchQuery}
                         onChange={setSearchQuery}
-                        placeholder="Search server details..."
+                        placeholder="Search node details..."
                     />
                     {hasCreate && (
                         <Button
@@ -198,7 +203,7 @@ const ServerDetails = () => {
                             startIcon={<AddIcon />}
                             onClick={() => handleOpenModal()}
                         >
-                            Add Server Details
+                            Add Node Details
                         </Button>
                     )}
                 </Box>
@@ -213,21 +218,21 @@ const ServerDetails = () => {
                     rowsPerPage={rowsPerPage}
                     orderBy={orderBy}
                     order={order}
-                    onSort={handleRequestSort}
+                    onRequestSort={handleRequestSort}
                     onPageChange={handleChangePage}
                     onRowsPerPageChange={handleChangeRowsPerPage}
-                    loading={loading}
                 />
             </Box>
 
-            <ServerDetailsModal
+            <NodeDetailsModal
                 open={isModalOpen}
                 onClose={handleCloseModal}
                 onSubmit={handleSubmit}
                 editingItem={editingItem}
+                clusterId={clusterId}
             />
         </Box>
     );
 };
 
-export default ServerDetails;
+export default NodeDetails;

@@ -58,12 +58,7 @@ export const SIDEBAR_OPTIONS = [
         route: ROUTE_CONSTANTS.CONFIGURATIONS,
         privileges: [PRIVILEGES.CONFIGURATION_VIEW, PRIVILEGES.CONFIGURATION_CREATE, PRIVILEGES.CONFIGURATION_UPDATE, PRIVILEGES.CONFIGURATION_DELETE]
     },
-    {
-        label: wordings.serverDetails,
-        icon: Icons.ServerDetailsIcon,
-        route: ROUTE_CONSTANTS.SERVER_DETAILS,
-        privileges: [PRIVILEGES.SERVER_DETAILS_VIEW, PRIVILEGES.SERVER_DETAILS_CREATE, PRIVILEGES.SERVER_DETAILS_UPDATE, PRIVILEGES.SERVER_DETAILS_DELETE]
-    },
+
     {
         label: wordings.clusters,
         icon: Icons.ClusterIcon,

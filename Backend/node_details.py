@@ -3,31 +3,30 @@ from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional, List
 from database import db
-from models import ServerDetailsModel, CreateServerDetailsModel, UpdateServerDetailsModel, PaginatedServerDetailsModel
+from models import NodeDetailsModel, CreateNodeDetailsModel, UpdateNodeDetailsModel, PaginatedNodeDetailsModel
 from bson import ObjectId
 from datetime import datetime, timezone
 
 router = APIRouter()
-collection = db.get_collection("server_details")
+collection = db.get_collection("node_details")
 
-@router.get("/", response_description="List all server details", response_model=PaginatedServerDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Server Details"))])
+@router.get("/", response_description="List all node details", response_model=PaginatedNodeDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Cluster"))])
 async def list_items(
+    clusterId: str = Query(..., description="The ID of the cluster"),
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),
     pagination: bool = Query(True),
     search: Optional[str] = None
 ):
-    query = {}
+    query = {"clusterId": clusterId}
     
     if search:
-        query = {
-            "$or": [
-                {"hostName": {"$regex": search, "$options": "i"}},
-                {"ipAddress": {"$regex": search, "$options": "i"}},
-                {"rack": {"$regex": search, "$options": "i"}},
-                {"serverModel": {"$regex": search, "$options": "i"}}
-            ]
-        }
+        query["$or"] = [
+            {"hostName": {"$regex": search, "$options": "i"}},
+            {"ipAddress": {"$regex": search, "$options": "i"}},
+            {"rack": {"$regex": search, "$options": "i"}},
+            {"serverModel": {"$regex": search, "$options": "i"}}
+        ]
 
     total = await collection.count_documents(query)
     cursor = collection.find(query).sort("slNumber", 1)
@@ -40,9 +39,9 @@ async def list_items(
 
     return {"data": items, "total": total}
 
-@router.post("/", response_description="Create server details", response_model=ServerDetailsModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
+@router.post("/", response_description="Create node details", response_model=NodeDetailsModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Cluster"))])
 async def create_item(
-    payload: CreateServerDetailsModel = Body(...),
+    payload: CreateNodeDetailsModel = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
     item_dict = payload.model_dump()
@@ -50,7 +49,7 @@ async def create_item(
     item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
 
     # Auto-populate SL Number safely
-    cursor = collection.find({}, {"slNumber": 1})
+    cursor = collection.find({"clusterId": payload.clusterId}, {"slNumber": 1})
     max_sl = 0
     async for doc in cursor:
         sl_str = doc.get("slNumber", "0")
@@ -65,8 +64,8 @@ async def create_item(
     created = await collection.find_one({"_id": new_item.inserted_id})
     return created
 
-@router.put("/{id}", response_description="Update server details", response_model=ServerDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Server Details"))])
-async def update_item(id: str, payload: UpdateServerDetailsModel = Body(...)):
+@router.put("/{id}", response_description="Update node details", response_model=NodeDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Cluster"))])
+async def update_item(id: str, payload: UpdateNodeDetailsModel = Body(...)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -86,9 +85,9 @@ async def update_item(id: str, payload: UpdateServerDetailsModel = Body(...)):
     if (existing := await collection.find_one({"_id": ObjectId(id)})) is not None:
         return existing
 
-    raise HTTPException(status_code=404, detail="Server details not found")
+    raise HTTPException(status_code=404, detail="Node details not found")
 
-@router.delete("/{id}", response_description="Delete server details", dependencies=[Depends(require_privilege("Delete Server Details"))])
+@router.delete("/{id}", response_description="Delete node details", dependencies=[Depends(require_privilege("Delete Cluster"))])
 async def delete_item(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -98,4 +97,4 @@ async def delete_item(id: str):
     if delete_result.deleted_count == 1:
         return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
 
-    raise HTTPException(status_code=404, detail="Server details not found")
+    raise HTTPException(status_code=404, detail="Node details not found")

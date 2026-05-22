@@ -535,8 +535,9 @@ class PaginatedServerModelsModel(BaseModel):
     data: List[ServerModelModel]
     total: int
 
-class ServerDetailsModel(BaseModel):
+class NodeDetailsModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    clusterId: str
     slNumber: str
     rack: str
     hostName: str
@@ -562,7 +563,8 @@ class ServerDetailsModel(BaseModel):
         arbitrary_types_allowed=True,
     )
 
-class CreateServerDetailsModel(BaseModel):
+class CreateNodeDetailsModel(BaseModel):
+    clusterId: str
     slNumber: Optional[str] = None
     rack: str
     hostName: str
@@ -581,7 +583,7 @@ class CreateServerDetailsModel(BaseModel):
     redundancyPower: str
     remarks: Optional[str] = None
 
-class UpdateServerDetailsModel(BaseModel):
+class UpdateNodeDetailsModel(BaseModel):
     slNumber: Optional[str] = None
     rack: Optional[str] = None
     hostName: Optional[str] = None
@@ -604,8 +606,8 @@ class UpdateServerDetailsModel(BaseModel):
         arbitrary_types_allowed=True,
     )
 
-class PaginatedServerDetailsModel(BaseModel):
-    data: List[ServerDetailsModel]
+class PaginatedNodeDetailsModel(BaseModel):
+    data: List[NodeDetailsModel]
     total: int
 
 class ClusterModel(BaseModel):
@@ -742,3 +744,45 @@ class PaginatedVCenterDetailsModel(BaseModel):
     data: List[VCenterDetailsModel]
     total: int
 
+class VMDetailsModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    clusterId: str
+    ipAddress: str
+    applications: str
+    node: str
+    osAndExpiry: str
+    hdd: str
+    ram: str
+    cpu: str
+    
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateVMDetailsModel(BaseModel):
+    clusterId: str
+    ipAddress: str
+    applications: str
+    node: str
+    osAndExpiry: str
+    hdd: str
+    ram: str
+    cpu: str
+
+class UpdateVMDetailsModel(BaseModel):
+    ipAddress: Optional[str] = None
+    applications: Optional[str] = None
+    node: Optional[str] = None
+    osAndExpiry: Optional[str] = None
+    hdd: Optional[str] = None
+    ram: Optional[str] = None
+    cpu: Optional[str] = None
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedVMDetailsModel(BaseModel):
+    data: List[VMDetailsModel]
+    total: int

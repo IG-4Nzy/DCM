@@ -1,5 +1,6 @@
-export interface ServerDetailsData {
+export interface NodeDetailsData {
     id: string;
+    clusterId: string;
     slNumber: string;
     rack: string;
     hostName: string;
@@ -21,5 +22,5 @@ export interface ServerDetailsData {
     updatedAt?: string;
 }
 
-export type CreateServerDetailsPayload = Omit<ServerDetailsData, 'id' | 'createdBy' | 'updatedAt'>;
-export type UpdateServerDetailsPayload = Partial<CreateServerDetailsPayload> & { id: string };
+export type CreateNodeDetailsPayload = Omit<NodeDetailsData, 'id' | 'createdBy' | 'updatedAt'>;
+export type UpdateNodeDetailsPayload = Partial<CreateNodeDetailsPayload> & { id: string };

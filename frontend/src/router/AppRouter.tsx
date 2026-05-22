@@ -17,7 +17,7 @@ const Roaster = lazy(() => import("../pages/Roaster"));
 const Observations = lazy(() => import("../pages/Observations"));
 const Inventory = lazy(() => import("../pages/Inventory"));
 const Configurations = lazy(() => import("../pages/Configurations"));
-const ServerDetails = lazy(() => import("../pages/ServerDetails"));
+
 const Clusters = lazy(() => import("../pages/Clusters"));
 const ClusterDetails = lazy(() => import("../pages/Clusters/ClusterDetails"));
 
@@ -47,7 +47,7 @@ const AppRouter: React.FC = () => {
             <Route path={ROUTE_CONSTANTS.OBSERVATIONS} element={<Observations />} />
             <Route path={ROUTE_CONSTANTS.INVENTORY} element={<Inventory />} />
             <Route path={ROUTE_CONSTANTS.CONFIGURATIONS} element={<Configurations />} />
-            <Route path={ROUTE_CONSTANTS.SERVER_DETAILS} element={<ServerDetails />} />
+
             <Route path={ROUTE_CONSTANTS.CLUSTER} element={<Clusters />} />
             <Route path={ROUTE_CONSTANTS.CLUSTER_DETAILS} element={<ClusterDetails />} />
           </Route>

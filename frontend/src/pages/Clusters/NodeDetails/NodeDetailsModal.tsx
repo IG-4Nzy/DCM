@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Box } from '@mui/material';
-import Modal from '../../components/Modal';
-import TextField from '../../components/TextField';
-import Button from '../../components/Button';
-import Dropdown from '../../components/Dropdown';
-import { type ServerDetailsData, type CreateServerDetailsPayload, type UpdateServerDetailsPayload } from './model';
-import request from '../../services/request';
+import Modal from '../../../components/Modal';
+import TextField from '../../../components/TextField';
+import Button from '../../../components/Button';
+import Dropdown from '../../../components/Dropdown';
+import { type NodeDetailsData, type CreateNodeDetailsPayload, type UpdateNodeDetailsPayload } from './model';
+import request from '../../../services/request';
 
-interface ServerDetailsModalProps {
+interface NodeDetailsModalProps {
     open: boolean;
     onClose: () => void;
-    onSubmit: (data: CreateServerDetailsPayload | UpdateServerDetailsPayload) => void;
-    editingItem: ServerDetailsData | null;
+    onSubmit: (data: any) => void;
+    editingItem: NodeDetailsData | null;
+    clusterId: string;
 }
 
-const ServerDetailsModal: React.FC<ServerDetailsModalProps> = ({ open, onClose, onSubmit, editingItem }) => {
-    const [formData, setFormData] = useState<CreateServerDetailsPayload>({
+const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSubmit, editingItem, clusterId }) => {
+    const [formData, setFormData] = useState<CreateNodeDetailsPayload>({
+        clusterId: clusterId,
         slNumber: '',
         rack: '',
         hostName: '',
@@ -59,6 +61,7 @@ const ServerDetailsModal: React.FC<ServerDetailsModalProps> = ({ open, onClose, 
         if (open) {
             if (editingItem) {
                 setFormData({
+                    clusterId: editingItem.clusterId || clusterId,
                     slNumber: editingItem.slNumber,
                     rack: editingItem.rack,
                     hostName: editingItem.hostName,
@@ -79,6 +82,7 @@ const ServerDetailsModal: React.FC<ServerDetailsModalProps> = ({ open, onClose, 
                 });
             } else {
                 setFormData({
+                    clusterId: clusterId,
                     slNumber: '', rack: '', hostName: '', ipAddress: '', serverModel: '', serialNumber: '', admin: '',
                     adminCode: '', hypervisor: '', applications: '', clusterType: '', indentor: '', poNum: '', assetNum: '',
                     custodian: '', redundancyPower: 'No', remarks: ''
@@ -87,7 +91,7 @@ const ServerDetailsModal: React.FC<ServerDetailsModalProps> = ({ open, onClose, 
         }
     }, [open, editingItem]);
 
-    const handleChange = (field: keyof CreateServerDetailsPayload, value: string) => {
+    const handleChange = (field: keyof CreateNodeDetailsPayload, value: string) => {
         setFormData(prev => {
             const next = { ...prev, [field]: value };
             if (field === 'admin') {
@@ -115,7 +119,7 @@ const ServerDetailsModal: React.FC<ServerDetailsModalProps> = ({ open, onClose, 
         <Modal
             open={open}
             handleClose={onClose}
-            title={editingItem ? 'Edit Server Details' : 'Add Server Details'}
+            title={editingItem ? 'Edit Node Details' : 'Add Node Details'}
             maxWidth="md"
         >
             <form onSubmit={handleSubmit}>
@@ -238,4 +242,4 @@ const ServerDetailsModal: React.FC<ServerDetailsModalProps> = ({ open, onClose, 
     );
 };
 
-export default ServerDetailsModal;
+export default NodeDetailsModal;
