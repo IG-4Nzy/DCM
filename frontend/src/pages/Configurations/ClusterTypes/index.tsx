@@ -26,7 +26,7 @@ const ClusterTypes = () => {
     const [editingItem, setEditingItem] = useState<ClusterTypeData | null>(null);
 
     const { showToast } = useToast();
-    const confirm = useConfirm() as any;
+    const { confirm } = useConfirm();
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
     const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_CREATE);
@@ -89,24 +89,21 @@ const ClusterTypes = () => {
         }
     };
 
-    const handleDelete = (item: ClusterTypeData) => {
-        confirm({
-            title: 'Delete Cluster Type',
-            description: `Are you sure you want to delete ${item.clusterType}?`,
-            onConfirm: async () => {
-                try {
-                    await deleteClusterType(item.id);
-                    showToast('Cluster type deleted successfully', 'success');
-                    if (data.length === 1 && page > 0) {
-                        setPage(page - 1);
-                    } else {
-                        loadData();
-                    }
-                } catch (e: any) {
-                    showToast(e?.response?.data?.detail || 'Failed to delete cluster type', 'error');
+    const handleDelete = async (item: ClusterTypeData) => {
+        const isConfirmed = await confirm(`Are you sure you want to delete ${item.clusterType}?`, 'Delete Cluster Type');
+        if (isConfirmed) {
+            try {
+                await deleteClusterType(item.id);
+                showToast('Cluster type deleted successfully', 'success');
+                if (data.length === 1 && page > 0) {
+                    setPage(page - 1);
+                } else {
+                    loadData();
                 }
+            } catch (e: any) {
+                showToast(e?.response?.data?.detail || 'Failed to delete cluster type', 'error');
             }
-        });
+        }
     };
 
     const handleRequestSort = (property: string) => {

@@ -26,7 +26,7 @@ const Hypervisors = () => {
     const [editingItem, setEditingItem] = useState<HypervisorData | null>(null);
 
     const { showToast } = useToast();
-    const confirm = useConfirm() as any;
+    const { confirm } = useConfirm();
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
     const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_CREATE);
@@ -89,24 +89,21 @@ const Hypervisors = () => {
         }
     };
 
-    const handleDelete = (item: HypervisorData) => {
-        confirm({
-            title: 'Delete Hypervisor',
-            description: `Are you sure you want to delete ${item.hypervisor}?`,
-            onConfirm: async () => {
-                try {
-                    await deleteHypervisor(item.id);
-                    showToast('Hypervisor deleted successfully', 'success');
-                    if (data.length === 1 && page > 0) {
-                        setPage(page - 1);
-                    } else {
-                        loadData();
-                    }
-                } catch (e: any) {
-                    showToast(e?.response?.data?.detail || 'Failed to delete hypervisor', 'error');
+    const handleDelete = async (item: HypervisorData) => {
+        const isConfirmed = await confirm(`Are you sure you want to delete ${item.hypervisor}?`, 'Delete Hypervisor');
+        if (isConfirmed) {
+            try {
+                await deleteHypervisor(item.id);
+                showToast('Hypervisor deleted successfully', 'success');
+                if (data.length === 1 && page > 0) {
+                    setPage(page - 1);
+                } else {
+                    loadData();
                 }
+            } catch (e: any) {
+                showToast(e?.response?.data?.detail || 'Failed to delete hypervisor', 'error');
             }
-        });
+        }
     };
 
     const handleRequestSort = (property: string) => {

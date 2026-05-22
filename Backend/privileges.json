@@ -46,8 +46,9 @@
     "Create Server Details",
     "Update Server Details",
     "Delete Server Details",
-    "Create Server Details",
-    "Update Server Details",
     "Delete Server Details",
-    "View Server Details"
+    "View Cluster",
+    "Create Cluster",
+    "Update Cluster",
+    "Delete Cluster"
 ]

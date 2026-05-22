@@ -1,48 +1,50 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Box, Paper, Tooltip, IconButton } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { Box, Tooltip, IconButton } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
-import Button from '../../../components/Button';
-import SearchBar from '../../../components/SearchBar';
-import Table, { type Column } from '../../../components/Table';
-import { useToast } from '../../../contexts/ToastContext';
-import { useConfirm } from '../../../contexts/ConfirmContext';
+import Button from '../../components/Button';
+import SearchBar from '../../components/SearchBar';
+import Table, { type Column } from '../../components/Table';
+import { useToast } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import { useSelector } from 'react-redux';
-import { type RootState } from '../../../store';
-import { hasPrivilege } from '../../../helpers/authUtils';
-import { PRIVILEGES } from '../../../helpers/privileges';
-import { useTableState } from '../../../hooks/useTableState';
-import { fetchNodes, createNode, updateNode, deleteNode } from './action';
-import { type NodeData } from './model';
-import NodeModal from './NodeModal';
+import { type RootState } from '../../store';
+import { hasPrivilege } from '../../helpers/authUtils';
+import { PRIVILEGES } from '../../helpers/privileges';
+import { useTableState } from '../../hooks/useTableState';
+import { fetchClusters, createCluster, updateCluster, deleteCluster } from './action';
+import { type ClusterData } from './model';
+import ClusterModal from './ClusterModal';
 
 type Order = 'asc' | 'desc';
 
-const Nodes = () => {
-    const [data, setData] = useState<NodeData[]>([]);
+const Clusters = () => {
+    const navigate = useNavigate();
+    const [data, setData] = useState<ClusterData[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(false);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingItem, setEditingItem] = useState<NodeData | null>(null);
+    const [editingItem, setEditingItem] = useState<ClusterData | null>(null);
 
     const { showToast } = useToast();
     const { confirm } = useConfirm();
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
-    const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_CREATE);
-    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_UPDATE);
-    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_DELETE);
+    const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_CREATE);
+    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_UPDATE);
+    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_DELETE);
 
-    const [searchQuery, setSearchQuery] = useTableState('Nodes_search', '');
-    const [page, setPage] = useTableState('Nodes_page', 0);
-    const [rowsPerPage, setRowsPerPage] = useTableState('Nodes_rowsPerPage', 5);
-    const [order, setOrder] = useTableState<Order>('Nodes_order', 'asc');
-    const [orderBy, setOrderBy] = useTableState<string>('Nodes_orderBy', 'node');
+    const [searchQuery, setSearchQuery] = useTableState('cluster_search', '');
+    const [page, setPage] = useTableState('cluster_page', 0);
+    const [rowsPerPage, setRowsPerPage] = useTableState('cluster_rowsPerPage', 5);
+    const [order, setOrder] = useTableState<Order>('cluster_order', 'asc');
+    const [orderBy, setOrderBy] = useTableState<string>('cluster_orderBy', 'slNumber');
 
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const result = await fetchNodes({
+            const result = await fetchClusters({
                 skip: page * rowsPerPage,
                 limit: rowsPerPage,
                 sortBy: orderBy,
@@ -53,7 +55,7 @@ const Nodes = () => {
             setData(result.data);
             setTotalCount(result.total);
         } catch (e: any) {
-            showToast(e?.response?.data?.detail || 'Failed to load nodes', 'error');
+            showToast(e?.response?.data?.detail || 'Failed to load clusters', 'error');
         } finally {
             setLoading(false);
         }
@@ -63,7 +65,7 @@ const Nodes = () => {
         loadData();
     }, [loadData]);
 
-    const handleOpenModal = (item?: NodeData) => {
+    const handleOpenModal = (item?: ClusterData) => {
         setEditingItem(item || null);
         setIsModalOpen(true);
     };
@@ -73,35 +75,39 @@ const Nodes = () => {
         setEditingItem(null);
     };
 
-    const handleSubmit = async (payload: any) => {
+    const handleSubmit = async (formData: any) => {
         try {
             if (editingItem) {
-                await updateNode(payload);
-                showToast('Node updated successfully', 'success');
+                if (Object.keys(formData).length === 0) {
+                    handleCloseModal();
+                    return;
+                }
+                await updateCluster(editingItem.id, formData);
+                showToast('Cluster updated successfully', 'success');
             } else {
-                await createNode(payload);
-                showToast('Node created successfully', 'success');
+                await createCluster(formData);
+                showToast('Cluster created successfully', 'success');
             }
             handleCloseModal();
             loadData();
         } catch (e: any) {
-            showToast(e?.response?.data?.detail || 'Failed to save node', 'error');
+            showToast(e?.response?.data?.detail || 'Operation failed', 'error');
         }
     };
 
-    const handleDelete = async (item: NodeData) => {
-        const isConfirmed = await confirm(`Are you sure you want to delete ${item.node}?`, 'Delete Node');
+    const handleDelete = async (id: string) => {
+        const isConfirmed = await confirm('Are you sure you want to delete this Cluster? This action cannot be undone.', 'Delete Cluster');
         if (isConfirmed) {
             try {
-                await deleteNode(item.id);
-                showToast('Node deleted successfully', 'success');
+                await deleteCluster(id);
+                showToast('Cluster deleted successfully', 'success');
                 if (data.length === 1 && page > 0) {
                     setPage(page - 1);
                 } else {
                     loadData();
                 }
             } catch (e: any) {
-                showToast(e?.response?.data?.detail || 'Failed to delete node', 'error');
+                showToast(e?.response?.data?.detail || 'Failed to delete Cluster', 'error');
             }
         }
     };
@@ -121,9 +127,10 @@ const Nodes = () => {
         setPage(0);
     };
 
-    const columns: Column<NodeData>[] = [
-        { id: 'node', label: 'Node', sortable: true },
-        { id: 'remarks', label: 'Remarks', sortable: false }
+    const columns: Column<ClusterData>[] = [
+        { id: 'slNumber', label: 'SL No', sortable: true },
+        { id: 'clusterName', label: 'Cluster Name', sortable: true },
+        { id: 'ipAddress', label: 'IP Address', sortable: true }
     ];
 
     if (hasUpdate || hasDelete) {
@@ -143,7 +150,7 @@ const Nodes = () => {
                     )}
                     {hasDelete && (
                         <Tooltip title="Delete">
-                            <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }} onClick={(e) => { e.stopPropagation(); handleDelete(row); }}>
+                            <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }} onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}>
                                 <DeleteIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
@@ -154,14 +161,14 @@ const Nodes = () => {
     }
 
     return (
-        <Box sx={{ mt: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-                <Box sx={{ flexGrow: 1 }} />
+        <Box sx={{ p: 3, width: '100%', flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2, flexShrink: 0 }}>
+                <label style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Clusters</label>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                     <SearchBar
                         value={searchQuery}
                         onChange={setSearchQuery}
-                        placeholder="Search nodes..."
+                        placeholder="Search clusters..."
                     />
                     {hasCreate && (
                         <Button
@@ -170,13 +177,13 @@ const Nodes = () => {
                             startIcon={<AddIcon />}
                             onClick={() => handleOpenModal()}
                         >
-                            Add Node
+                            Add Cluster
                         </Button>
                     )}
                 </Box>
             </Box>
 
-            <Paper sx={{ width: '100%', mb: 2, p: 0, boxShadow: 'none', background: 'transparent' }}>
+            <Box sx={{ flexGrow: 1, width: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <Table
                     columns={columns}
                     data={data}
@@ -189,10 +196,11 @@ const Nodes = () => {
                     onPageChange={handleChangePage}
                     onRowsPerPageChange={handleChangeRowsPerPage}
                     loading={loading}
+                    onRowClick={(row) => navigate(`/cluster/${row.id}`)}
                 />
-            </Paper>
+            </Box>
 
-            <NodeModal
+            <ClusterModal
                 open={isModalOpen}
                 onClose={handleCloseModal}
                 onSubmit={handleSubmit}
@@ -202,4 +210,4 @@ const Nodes = () => {
     );
 };
 
-export default Nodes;
+export default Clusters;

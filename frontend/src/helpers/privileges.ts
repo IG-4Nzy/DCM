@@ -42,4 +42,8 @@ export const PRIVILEGES = {
     UPDATE_SERVER_DETAILS: "Update Server Details",
     DELETE_SERVER_DETAILS: "Delete Server Details",
     VIEW_SERVER_DETAILS: "View Server Details",
+    CLUSTER_VIEW:"View Cluster",
+    CLUSTER_CREATE:"Create Cluster",
+    CLUSTER_UPDATE:"Update Cluster",
+    CLUSTER_DELETE:"Delete Cluster"
 }

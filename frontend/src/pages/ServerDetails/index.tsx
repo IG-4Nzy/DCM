@@ -28,7 +28,7 @@ const ServerDetails = () => {
     const [editingItem, setEditingItem] = useState<ServerDetailsData | null>(null);
 
     const { showToast } = useToast();
-    const confirm = useConfirm() as any;
+    const { confirm } = useConfirm();
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
     const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
@@ -102,24 +102,21 @@ const ServerDetails = () => {
         }
     };
 
-    const handleDelete = (item: ServerDetailsData) => {
-        confirm({
-            title: 'Delete Server Details',
-            description: `Are you sure you want to delete ${item.hostName}?`,
-            onConfirm: async () => {
-                try {
-                    await deleteServerDetails(item.id);
-                    showToast('Server details deleted successfully', 'success');
-                    if (data.length === 1 && page > 0) {
-                        setPage(page - 1);
-                    } else {
-                        loadData();
-                    }
-                } catch (e: any) {
-                    showToast(e?.response?.data?.detail || 'Failed to delete server details', 'error');
+    const handleDelete = async (item: ServerDetailsData) => {
+        const isConfirmed = await confirm(`Are you sure you want to delete ${item.hostName}?`, 'Delete Server Details');
+        if (isConfirmed) {
+            try {
+                await deleteServerDetails(item.id);
+                showToast('Server details deleted successfully', 'success');
+                if (data.length === 1 && page > 0) {
+                    setPage(page - 1);
+                } else {
+                    loadData();
                 }
+            } catch (e: any) {
+                showToast(e?.response?.data?.detail || 'Failed to delete server details', 'error');
             }
-        });
+        }
     };
 
     const handleRequestSort = (property: string) => {

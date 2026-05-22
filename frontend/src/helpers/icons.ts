@@ -20,6 +20,9 @@ import {
   FaEye as EyeIcon,
 } from "react-icons/fa6";
 
+import { AiOutlineCluster as ClusterIcon } from "react-icons/ai";
+
+
 export const Icons = {
   MenuIcon,
   DashboardIcon,
@@ -34,5 +37,6 @@ export const Icons = {
   EyeIcon,
   InventoryIcon,
   ConfigurationsIcon,
-  ServerDetailsIcon
+  ServerDetailsIcon,
+  ClusterIcon
 };

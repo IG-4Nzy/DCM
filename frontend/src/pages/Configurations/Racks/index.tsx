@@ -26,7 +26,7 @@ const Racks = () => {
     const [editingItem, setEditingItem] = useState<ServerRackData | null>(null);
 
     const { showToast } = useToast();
-    const confirm = useConfirm() as any;
+    const { confirm } = useConfirm();
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
     const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_CREATE);
@@ -89,24 +89,21 @@ const Racks = () => {
         }
     };
 
-    const handleDelete = (item: ServerRackData) => {
-        confirm({
-            title: 'Delete Server Rack',
-            description: `Are you sure you want to delete ${item.serverRack}?`,
-            onConfirm: async () => {
-                try {
-                    await deleteServerRack(item.id);
-                    showToast('Server Rack deleted successfully', 'success');
-                    if (data.length === 1 && page > 0) {
-                        setPage(page - 1);
-                    } else {
-                        loadData();
-                    }
-                } catch (e: any) {
-                    showToast(e?.response?.data?.detail || 'Failed to delete serverRack', 'error');
+    const handleDelete = async (item: ServerRackData) => {
+        const isConfirmed = await confirm(`Are you sure you want to delete ${item.serverRack}?`, 'Delete Server Rack');
+        if (isConfirmed) {
+            try {
+                await deleteServerRack(item.id);
+                showToast('Server Rack deleted successfully', 'success');
+                if (data.length === 1 && page > 0) {
+                    setPage(page - 1);
+                } else {
+                    loadData();
                 }
+            } catch (e: any) {
+                showToast(e?.response?.data?.detail || 'Failed to delete serverRack', 'error');
             }
-        });
+        }
     };
 
     const handleRequestSort = (property: string) => {

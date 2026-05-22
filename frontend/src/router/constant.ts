@@ -12,5 +12,7 @@ export const ROUTE_CONSTANTS = {
     OBSERVATIONS: '/observations',
     INVENTORY: '/inventory',
     CONFIGURATIONS: '/configurations',
-    SERVER_DETAILS: '/server-details'
+    SERVER_DETAILS: '/server-details',
+    CLUSTER:'/cluster',
+    CLUSTER_DETAILS: '/cluster/:id'
 }

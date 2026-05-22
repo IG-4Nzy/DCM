@@ -607,3 +607,138 @@ class UpdateServerDetailsModel(BaseModel):
 class PaginatedServerDetailsModel(BaseModel):
     data: List[ServerDetailsModel]
     total: int
+
+class ClusterModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    slNumber: Optional[str] = None
+    clusterName: str
+    ipAddress: str
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateClusterModel(BaseModel):
+    clusterName: str
+    ipAddress: str
+
+class UpdateClusterModel(BaseModel):
+    clusterName: Optional[str] = None
+    ipAddress: Optional[str] = None
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedClustersModel(BaseModel):
+    data: List[ClusterModel]
+    total: int
+
+class ADDetailsModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    clusterId: str
+    ipAddress: str
+    name: str
+    hdd: str
+    ram: str
+    cpuCores: str
+    osVersion: str
+    osType: str
+    licenceExpiry: str
+    
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateADDetailsModel(BaseModel):
+    clusterId: str
+    ipAddress: str
+    name: str
+    hdd: str
+    ram: str
+    cpuCores: str
+    osVersion: str
+    osType: str
+    licenceExpiry: str
+
+class UpdateADDetailsModel(BaseModel):
+    ipAddress: Optional[str] = None
+    name: Optional[str] = None
+    hdd: Optional[str] = None
+    ram: Optional[str] = None
+    cpuCores: Optional[str] = None
+    osVersion: Optional[str] = None
+    osType: Optional[str] = None
+    licenceExpiry: Optional[str] = None
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedADDetailsModel(BaseModel):
+    data: List[ADDetailsModel]
+    total: int
+
+class VCenterDetailsModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    clusterId: str
+    ipAddress: str
+    name: str
+    hdd: str
+    ram: str
+    cpuCores: str
+    vcenterVersion: str
+    vcenterType: str
+    licenceExpiry: str
+    ha: str
+    drs: str
+    storage: str
+    portGroups: str
+    vmImageBackupLocation: str
+    
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateVCenterDetailsModel(BaseModel):
+    clusterId: str
+    ipAddress: str
+    name: str
+    hdd: str
+    ram: str
+    cpuCores: str
+    vcenterVersion: str
+    vcenterType: str
+    licenceExpiry: str
+    ha: str
+    drs: str
+    storage: str
+    portGroups: str
+    vmImageBackupLocation: str
+
+class UpdateVCenterDetailsModel(BaseModel):
+    ipAddress: Optional[str] = None
+    name: Optional[str] = None
+    hdd: Optional[str] = None
+    ram: Optional[str] = None
+    cpuCores: Optional[str] = None
+    vcenterVersion: Optional[str] = None
+    vcenterType: Optional[str] = None
+    licenceExpiry: Optional[str] = None
+    ha: Optional[str] = None
+    drs: Optional[str] = None
+    storage: Optional[str] = None
+    portGroups: Optional[str] = None
+    vmImageBackupLocation: Optional[str] = None
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedVCenterDetailsModel(BaseModel):
+    data: List[VCenterDetailsModel]
+    total: int
+

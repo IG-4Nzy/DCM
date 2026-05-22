@@ -17,5 +17,6 @@ export default {
   observations: "Observations",
   inventory: "Inventory",
   configurations: "Configurations",
-  serverDetails: "Server Details"
+  serverDetails: "Server Details",
+  clusters: "Clusters"
 };
