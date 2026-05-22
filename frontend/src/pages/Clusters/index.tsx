@@ -161,7 +161,7 @@ const Clusters = () => {
     }
 
     return (
-        <Box sx={{ width: '100%', flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box', paddingTop: 2 }}>
+        <Box sx={{ width: '100%', flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box', padding: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2, flexShrink: 0 }}>
                 <label style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Clusters</label>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
