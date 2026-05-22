@@ -221,48 +221,48 @@ const Layout: React.FC = () => {
           </IconButton>
         </DrawerHeader>
         <Divider />
-        <List>
-          {
-            SIDEBAR_OPTIONS?.map((option, index) => {
-              if (!isSuperuser && option.privileges && !hasAnyPrivilege(option.privileges)) {
-                return null;
-              }
-              const isSelected = location.pathname === option.route;
-              return (
-                <ListItem key={`sidebar-item-${index}`} disablePadding sx={{ display: 'block' }} title={option.label} >
-                  <ListItemButton
-                    onClick={() => navigate(option?.route)}
-                    sx={{
-                      minHeight: 48,
-                      justifyContent: open ? 'initial' : 'center',
-                      px: 2.5,
-                      background: isSelected ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
-                      color: isSelected ? '#1976d2' : 'inherit',
-                      borderRight: isSelected ? '3px solid #1976d2' : 'none',
-                      '&:hover': {
-                        background: isSelected ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)',
-                      }
-                    }}
-                  >
-                    <ListItemIcon
+        <Box sx={{ flexGrow: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+          <List>
+            {
+              SIDEBAR_OPTIONS?.map((option, index) => {
+                if (!isSuperuser && option.privileges && !hasAnyPrivilege(option.privileges)) {
+                  return null;
+                }
+                const isSelected = location.pathname === option.route;
+                return (
+                  <ListItem key={`sidebar-item-${index}`} disablePadding sx={{ display: 'block' }} title={option.label} >
+                    <ListItemButton
+                      onClick={() => navigate(option?.route)}
                       sx={{
-                        minWidth: 0,
-                        mr: open ? 3 : 'auto',
-                        justifyContent: 'center',
-                        color: isSelected ? '#1976d2' : 'inherit'
+                        minHeight: 48,
+                        justifyContent: open ? 'initial' : 'center',
+                        px: 2.5,
+                        background: isSelected ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+                        color: isSelected ? '#1976d2' : 'inherit',
+                        borderRight: isSelected ? '3px solid #1976d2' : 'none',
+                        '&:hover': {
+                          background: isSelected ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)',
+                        }
                       }}
                     >
-                      <option.icon />
-                    </ListItemIcon>
-                    <ListItemText primary={option.label} sx={{ opacity: open ? 1 : 0 }} />
-                  </ListItemButton>
-                </ListItem>
-              );
-            })
-          }
-        </List>
-
-        <Box sx={{ flexGrow: 1 }} />
+                      <ListItemIcon
+                        sx={{
+                          minWidth: 0,
+                          mr: open ? 3 : 'auto',
+                          justifyContent: 'center',
+                          color: isSelected ? '#1976d2' : 'inherit'
+                        }}
+                      >
+                        <option.icon />
+                      </ListItemIcon>
+                      <ListItemText primary={option.label} sx={{ opacity: open ? 1 : 0 }} />
+                    </ListItemButton>
+                  </ListItem>
+                );
+              })
+            }
+          </List>
+        </Box>
         <Divider />
 
         <List>
@@ -291,7 +291,7 @@ const Layout: React.FC = () => {
           </ListItem>
         </List>
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, minHeight: '100vh', background: '#f5f7fa', boxSizing: 'border-box' }}>
+      <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', background: '#f5f7fa', boxSizing: 'border-box' }}>
         <DrawerHeader />
         <Outlet />
       </Box>

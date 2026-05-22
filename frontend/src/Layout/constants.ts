@@ -51,5 +51,17 @@ export const SIDEBAR_OPTIONS = [
         icon: Icons.InventoryIcon,
         route: ROUTE_CONSTANTS.INVENTORY,
         privileges: [PRIVILEGES.INVENTORY_VIEW, PRIVILEGES.INVENTORY_CREATE, PRIVILEGES.INVENTORY_UPDATE, PRIVILEGES.INVENTORY_DELETE]
+    },
+    {
+        label: wordings.configurations,
+        icon: Icons.ConfigurationsIcon,
+        route: ROUTE_CONSTANTS.CONFIGURATIONS,
+        privileges: [PRIVILEGES.CONFIGURATION_VIEW, PRIVILEGES.CONFIGURATION_CREATE, PRIVILEGES.CONFIGURATION_UPDATE, PRIVILEGES.CONFIGURATION_DELETE]
+    },
+    {
+        label: wordings.serverDetails,
+        icon: Icons.ServerDetailsIcon,
+        route: ROUTE_CONSTANTS.SERVER_DETAILS,
+        privileges: [PRIVILEGES.SERVER_DETAILS_VIEW, PRIVILEGES.SERVER_DETAILS_CREATE, PRIVILEGES.SERVER_DETAILS_UPDATE, PRIVILEGES.SERVER_DETAILS_DELETE]
     }
 ]

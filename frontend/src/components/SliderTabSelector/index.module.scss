@@ -1,0 +1,51 @@
+.container {
+  position: relative;
+  display: inline-flex;
+  width: max-content;
+  align-self: flex-start;
+  background-color: #f0f2f5;
+  border-radius: 8px;
+  padding: 4px;
+  overflow: hidden;
+
+  &.singleTab {
+    background-color: transparent;
+    padding: 0;
+
+    .slider {
+      top: 0;
+      bottom: 0;
+      border: 1px solid #e0e0e0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border-radius: 8px;
+    }
+  }
+
+  .slider {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    background-color: #ffffff;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1;
+  }
+
+  .tab {
+    position: relative;
+    z-index: 2;
+    padding: 8px 24px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #64748b;
+    transition: color 0.3s ease;
+    user-select: none;
+    text-align: center;
+
+    &.active {
+      color: #0f172a;
+    }
+  }
+}

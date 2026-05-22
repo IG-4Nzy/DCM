@@ -8,6 +8,7 @@ import {
   MdOutlineWork as WorksIcon,
   MdShoppingCart as InventoryIcon,
   MdSettings as ConfigurationsIcon,
+  MdDns as ServerDetailsIcon,
 } from "react-icons/md";
 
 import { IoIosUnlock as RolesIcon } from "react-icons/io";
@@ -32,5 +33,6 @@ export const Icons = {
   RoasterIcon,
   EyeIcon,
   InventoryIcon,
-  ConfigurationsIcon
+  ConfigurationsIcon,
+  ServerDetailsIcon
 };

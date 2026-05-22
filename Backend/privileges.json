@@ -33,5 +33,21 @@
     "Create Observation Category",
     "View Observation Category",
     "Update Observation Category",
-    "Delete Observation Category"
+    "Delete Observation Category",
+    "View Inventory",
+    "Create Inventory",
+    "Update Inventory",
+    "Delete Inventory",
+    "View Configurations",
+    "Create Configuration",
+    "Update Configurations",
+    "Delete Configurations",
+    "View Server Details",
+    "Create Server Details",
+    "Update Server Details",
+    "Delete Server Details",
+    "Create Server Details",
+    "Update Server Details",
+    "Delete Server Details",
+    "View Server Details"
 ]

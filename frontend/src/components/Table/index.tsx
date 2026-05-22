@@ -58,10 +58,13 @@ function Table<T extends { id?: string | number }>(props: ReusableTableProps<T>)
         overflow: 'hidden',
         border: '1px solid #e0e0e0',
         borderRadius: '12px',
-        padding: "0px"
+        padding: "0px",
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%'
       }}
     >
-      <TableContainer sx={{ maxHeight: { xs: 400, md: 600 } }}>
+      <TableContainer className="table-container-scroll" sx={{ flexGrow: 1, overflow: 'auto' }}>
         <MuiTable stickyHeader aria-label="modern table" sx={{ minWidth: { xs: 300, sm: 650 } }}>
           <TableHead>
             <TableRow>
@@ -78,7 +81,7 @@ function Table<T extends { id?: string | number }>(props: ReusableTableProps<T>)
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
                     borderBottom: 'none',
-
+                    whiteSpace: 'nowrap'
                   }}
                 >
                   {column.sortable ? (
@@ -129,7 +132,7 @@ function Table<T extends { id?: string | number }>(props: ReusableTableProps<T>)
                             fontSize: '0.875rem'
                           }}
                         >
-                          {column.render ? column.render(row) : (value as React.ReactNode)}
+                          {column.render ? column.render(row) : (value === null || value === undefined || value === '' ? '--' : (value as React.ReactNode))}
                         </TableCell>
                       );
                     })}

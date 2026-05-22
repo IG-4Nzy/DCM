@@ -394,3 +394,216 @@ class UpdateInventoryModel(BaseModel):
 class PaginatedInventoryModel(BaseModel):
     data: List[InventoryModel]
     total: int
+
+class ClusterTypeModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    clusterType: str
+    remarks: Optional[str] = None
+    createdBy: Optional[str] = None
+    updatedAt: Optional[str] = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateClusterTypeModel(BaseModel):
+    clusterType: str
+    remarks: Optional[str] = None
+
+class UpdateClusterTypeModel(BaseModel):
+    clusterType: Optional[str] = None
+    remarks: Optional[str] = None
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedClusterTypesModel(BaseModel):
+    data: List[ClusterTypeModel]
+    total: int
+
+class HypervisorModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    hypervisor: str
+    remarks: Optional[str] = None
+    createdBy: Optional[str] = None
+    updatedAt: Optional[str] = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateHypervisorModel(BaseModel):
+    hypervisor: str
+    remarks: Optional[str] = None
+
+class UpdateHypervisorModel(BaseModel):
+    hypervisor: Optional[str] = None
+    remarks: Optional[str] = None
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedHypervisorsModel(BaseModel):
+    data: List[HypervisorModel]
+    total: int
+
+class NodeModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    node: str
+    remarks: Optional[str] = None
+    createdBy: Optional[str] = None
+    updatedAt: Optional[str] = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateNodeModel(BaseModel):
+    node: str
+    remarks: Optional[str] = None
+
+class UpdateNodeModel(BaseModel):
+    node: Optional[str] = None
+    remarks: Optional[str] = None
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedNodesModel(BaseModel):
+    data: List[NodeModel]
+    total: int
+
+class ServerRackModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    serverRack: str
+    remarks: Optional[str] = None
+    createdBy: Optional[str] = None
+    updatedAt: Optional[str] = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateServerRackModel(BaseModel):
+    serverRack: str
+    remarks: Optional[str] = None
+
+class UpdateServerRackModel(BaseModel):
+    serverRack: Optional[str] = None
+    remarks: Optional[str] = None
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedServerRacksModel(BaseModel):
+    data: List[ServerRackModel]
+    total: int
+
+class ServerModelModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    serverModel: str
+    remarks: Optional[str] = None
+    createdBy: Optional[str] = None
+    updatedAt: Optional[str] = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateServerModelModel(BaseModel):
+    serverModel: str
+    remarks: Optional[str] = None
+
+class UpdateServerModelModel(BaseModel):
+    serverModel: Optional[str] = None
+    remarks: Optional[str] = None
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedServerModelsModel(BaseModel):
+    data: List[ServerModelModel]
+    total: int
+
+class ServerDetailsModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    slNumber: str
+    rack: str
+    hostName: str
+    ipAddress: str
+    serverModel: str
+    serialNumber: str
+    admin: str
+    adminCode: str
+    hypervisor: str
+    applications: str
+    clusterType: str
+    indentor: str
+    poNum: str
+    assetNum: str
+    custodian: str
+    redundancyPower: str
+    remarks: Optional[str] = None
+    createdBy: Optional[str] = None
+    updatedAt: Optional[str] = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateServerDetailsModel(BaseModel):
+    slNumber: Optional[str] = None
+    rack: str
+    hostName: str
+    ipAddress: str
+    serverModel: str
+    serialNumber: str
+    admin: str
+    adminCode: str
+    hypervisor: str
+    applications: str
+    clusterType: str
+    indentor: str
+    poNum: str
+    assetNum: str
+    custodian: str
+    redundancyPower: str
+    remarks: Optional[str] = None
+
+class UpdateServerDetailsModel(BaseModel):
+    slNumber: Optional[str] = None
+    rack: Optional[str] = None
+    hostName: Optional[str] = None
+    ipAddress: Optional[str] = None
+    serverModel: Optional[str] = None
+    serialNumber: Optional[str] = None
+    admin: Optional[str] = None
+    adminCode: Optional[str] = None
+    hypervisor: Optional[str] = None
+    applications: Optional[str] = None
+    clusterType: Optional[str] = None
+    indentor: Optional[str] = None
+    poNum: Optional[str] = None
+    assetNum: Optional[str] = None
+    custodian: Optional[str] = None
+    redundancyPower: Optional[str] = None
+    remarks: Optional[str] = None
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedServerDetailsModel(BaseModel):
+    data: List[ServerDetailsModel]
+    total: int

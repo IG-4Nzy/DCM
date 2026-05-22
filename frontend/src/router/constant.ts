@@ -10,5 +10,7 @@ export const ROUTE_CONSTANTS = {
     USER_PROFILE: '/profile',
     ROASTER: '/roaster',
     OBSERVATIONS: '/observations',
-    INVENTORY: '/inventory'
+    INVENTORY: '/inventory',
+    CONFIGURATIONS: '/configurations',
+    SERVER_DETAILS: '/server-details'
 }

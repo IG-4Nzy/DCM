@@ -15,5 +15,7 @@ export default {
   departments: "Departments",
   roaster: "Roaster",
   observations: "Observations",
-  inventory: "Inventory"
+  inventory: "Inventory",
+  configurations: "Configurations",
+  serverDetails: "Server Details"
 };
