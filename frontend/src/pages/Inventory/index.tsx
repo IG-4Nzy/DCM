@@ -35,7 +35,7 @@ const Inventory: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<InventoryData | null>(null);
 
   const { showToast } = useToast();
-  const confirm = useConfirm();
+  const confirm:any = useConfirm();
 
   const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.INVENTORY_CREATE);
   const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.INVENTORY_UPDATE);
@@ -113,7 +113,7 @@ const Inventory: React.FC = () => {
     }
   }, [inventory, selectedItem]);
 
-  const columns: Column[] = [
+  const columns: Column<InventoryData>[] = [
     { id: 'itemName', label: 'Item Name', sortable: true },
     { id: 'quantity', label: 'Quantity', sortable: true },
     { id: 'description', label: 'Description', sortable: false },
@@ -141,7 +141,7 @@ const Inventory: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <h2 style={{ margin: 0 }}>Inventory</h2>
+        <h2 style={{ margin: 0 ,color:"#333"}}>Inventory</h2>
       </Box>
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>

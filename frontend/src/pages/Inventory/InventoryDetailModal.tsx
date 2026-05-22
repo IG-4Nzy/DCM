@@ -123,15 +123,15 @@ const InventoryDetailModal: React.FC<PropType> = ({
     <Modal open={isModalOpen} handleClose={handleCloseModal} title={`Inventory: ${item.itemName}`}>
       <Box sx={{ mb: 3, display: 'flex', flexWrap: 'wrap', gap: 3, alignItems: 'center' }}>
         <Box sx={{ flex: 1, minWidth: '150px' }}>
-          <Typography variant="caption" color="text.secondary" textTransform="uppercase" letterSpacing={1}>Quantity in Stock</Typography>
-          <Typography variant="h6" fontWeight="bold" color="primary.main">{item.quantity}</Typography>
+          <Typography variant="caption"  color="text.secondary"sx={{textTransform:"uppercase",fontSize:"0.8rem"}}>Quantity in Stock</Typography>
+          <Typography variant="h6"  sx={{fontWeight:"bold",fontSize:"1.5rem"}} color="primary.main">{item.quantity}</Typography>
         </Box>
         <Box sx={{ flex: 2, minWidth: '200px' }}>
-          <Typography variant="caption" color="text.secondary" textTransform="uppercase" letterSpacing={1}>Description</Typography>
+          <Typography variant="caption" color="text.secondary" sx={{textTransform:"uppercase",fontSize:"0.8rem"}}>Description</Typography>
           <Typography variant="body2">{item.description || 'N/A'}</Typography>
         </Box>
         <Box sx={{ flex: 1, minWidth: '200px' }}>
-          <Typography variant="caption" color="text.secondary" textTransform="uppercase" letterSpacing={1}>Last Updated</Typography>
+          <Typography variant="caption" color="text.secondary" sx={{textTransform:"uppercase",fontSize:"0.8rem"}}>Last Updated</Typography>
           <Typography variant="body2">{formatDate(item.lastUpdatedDate)}</Typography>
           <Typography variant="body2" color="text.secondary">By {getUserFullName(item.lastUpdatedBy)}</Typography>
         </Box>

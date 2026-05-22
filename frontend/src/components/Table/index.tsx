@@ -35,7 +35,7 @@ interface ReusableTableProps<T> {
   onRowClick?: (row: T) => void;
 }
 
-function Table<T extends { id: string | number }>(props: ReusableTableProps<T>) {
+function Table<T extends { id?: string | number }>(props: ReusableTableProps<T>) {
   const {
     columns,
     data,
