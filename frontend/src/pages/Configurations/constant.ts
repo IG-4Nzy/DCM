@@ -3,9 +3,11 @@ import Hypervisors from "./Hypervisors";
 import Nodes from "./Nodes";
 import Racks from "./Racks";
 import ServerModels from "./ServerModels";
+import RequestRoutings from "./RequestRoutings";
 
 export const CONFIG_TABS = [
     { id: 'serverMastersConfig', label: 'Server Masters', value: 'serverMastersConfig' },
+    { id: 'requestConfig', label: 'Request Configuration', value: 'requestConfig' },
 ];
 
 export const SERVER_MASTERS_CONFIGURATIONS = [
@@ -16,8 +18,13 @@ export const SERVER_MASTERS_CONFIGURATIONS = [
     { id: "serverRack", label: "Server Racks", value: "serverRack" },
 ]
 
+export const REQUEST_CONFIGURATIONS = [
+    { id: "requestRoutings", label: "Request Routings", value: "requestRoutings" },
+]
+
 export const CONFIG_SUBTABS = {
-    serverMastersConfig: SERVER_MASTERS_CONFIGURATIONS
+    serverMastersConfig: SERVER_MASTERS_CONFIGURATIONS,
+    requestConfig: REQUEST_CONFIGURATIONS,
 }
 
 export const CONFIG_TABS_PAGES = {
@@ -26,4 +33,5 @@ export const CONFIG_TABS_PAGES = {
     serverModel: ServerModels,
     nodes: Nodes,
     serverRack: Racks,
+    requestRoutings: RequestRoutings,
 }

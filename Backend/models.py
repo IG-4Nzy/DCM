@@ -786,3 +786,109 @@ class UpdateVMDetailsModel(BaseModel):
 class PaginatedVMDetailsModel(BaseModel):
     data: List[VMDetailsModel]
     total: int
+class CreateRequestModel(BaseModel):
+    requestType: str = Field(..., description="VM Creation, DC Entry, Hardware Issuance, Hardware Replacement")
+    description: Optional[str] = None
+    details: Optional[dict] = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class UpdateRequestModel(BaseModel):
+    requestType: Optional[str] = None
+    description: Optional[str] = None
+    details: Optional[dict] = None
+    status: Optional[str] = None
+    remarks: Optional[str] = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class RequestModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    requestType: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    details: Optional[dict] = None
+    status: str = "Pending"
+    remarks: Optional[str] = None
+    createdBy: Optional[str] = None
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
+
+    # Legacy fields from old schema
+    name: Optional[str] = None
+    division: Optional[str] = None
+    purpose: Optional[str] = None
+    ram: Optional[str] = None
+    hardDisk: Optional[str] = None
+    cpu: Optional[str] = None
+    ip: Optional[str] = None
+    vmUsername: Optional[str] = None
+    vmPassword: Optional[str] = None
+    vmType: Optional[str] = None
+    osVersion: Optional[str] = None
+    dateAndTime: Optional[str] = None
+    hardwareNeeded: Optional[str] = None
+    quantity: Optional[int] = None
+    departmentHead: Optional[str] = None
+    targetApprover: Optional[str] = None
+    currentAssignedUsers: Optional[list] = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        extra="allow",
+    )
+
+class PaginatedRequestsModel(BaseModel):
+    data: List[RequestModel]
+    total: int
+
+# --- Request Routing Configuration ---
+
+class RequestRoutingStage(BaseModel):
+    stageName: str
+    order: int = 0
+    assignmentType: Optional[str] = None
+    assignedTo: Optional[str] = None  # username of assigned user
+
+    model_config = ConfigDict(
+        extra="allow",
+    )
+
+class CreateRequestRoutingModel(BaseModel):
+    requestType: str
+    stages: List[RequestRoutingStage] = []
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class UpdateRequestRoutingModel(BaseModel):
+    requestType: Optional[str] = None
+    stages: Optional[List[RequestRoutingStage]] = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class RequestRoutingModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    requestType: str
+    stages: List[RequestRoutingStage] = []
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedRequestRoutingsModel(BaseModel):
+    data: List[RequestRoutingModel]
+    total: int
