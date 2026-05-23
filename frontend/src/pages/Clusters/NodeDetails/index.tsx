@@ -15,6 +15,7 @@ import { fetchNodeDetails, createNodeDetails, updateNodeDetails, deleteNodeDetai
 import request from '../../../services/request';
 import { type NodeDetailsData } from './model';
 import NodeDetailsModal from './NodeDetailsModal';
+import NodeDetailsViewModal from './NodeDetailsViewModal';
 
 type Order = 'asc' | 'desc';
 
@@ -30,6 +31,9 @@ const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<NodeDetailsData | null>(null);
+
+    const [isViewOpen, setIsViewOpen] = useState(false);
+    const [selectedViewItem, setSelectedViewItem] = useState<NodeDetailsData | null>(null);
 
     const { showToast } = useToast();
     const { confirm } = useConfirm();
@@ -59,12 +63,17 @@ const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
             });
             setData(result.data);
             setTotalCount(result.total);
+
+            if (isViewOpen && selectedViewItem) {
+                const updated = result.data.find(n => n.id === selectedViewItem.id);
+                if (updated) setSelectedViewItem(updated);
+            }
         } catch (e: any) {
             showToast(e?.response?.data?.detail || 'Failed to load node details', 'error');
         } finally {
             setLoading(false);
         }
-    }, [clusterId, page, rowsPerPage, orderBy, order, searchQuery, showToast]);
+    }, [clusterId, page, rowsPerPage, orderBy, order, searchQuery, showToast, isViewOpen, selectedViewItem]);
 
     useEffect(() => {
         loadData();
@@ -89,6 +98,11 @@ const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingItem(null);
+    };
+
+    const handleRowClick = (item: NodeDetailsData) => {
+        setSelectedViewItem(item);
+        setIsViewOpen(true);
     };
 
     const handleSubmit = async (payload: any) => {
@@ -144,6 +158,24 @@ const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
         { id: 'rack', label: 'Rack', sortable: true },
         { id: 'hostName', label: 'Host Name', sortable: true },
         { id: 'ipAddress', label: 'IP Address', sortable: true },
+        { 
+            id: 'totalRam', 
+            label: 'Total / Available RAM', 
+            sortable: false,
+            render: (row) => row.totalRam !== undefined && row.totalRam !== null ? `${row.totalRam} GB / ${row.availableRam ?? 0} GB` : '-'
+        },
+        { 
+            id: 'totalHardisk', 
+            label: 'Total / Available HDD', 
+            sortable: false,
+            render: (row) => row.totalHardisk !== undefined && row.totalHardisk !== null ? `${row.totalHardisk} GB / ${row.availableHardisk ?? 0} GB` : '-'
+        },
+        { 
+            id: 'totalCpu', 
+            label: 'Total / Available CPU', 
+            sortable: false,
+            render: (row) => row.totalCpu !== undefined && row.totalCpu !== null ? `${row.totalCpu} Cores / ${row.availableCpu ?? 0} Cores` : '-'
+        },
         { id: 'serverModel', label: 'Server Model', sortable: true },
         { id: 'serialNumber', label: 'Serial Number', sortable: true },
         { 
@@ -218,9 +250,10 @@ const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
                     rowsPerPage={rowsPerPage}
                     orderBy={orderBy}
                     order={order}
-                    onRequestSort={handleRequestSort}
+                    onSort={handleRequestSort}
                     onPageChange={handleChangePage}
                     onRowsPerPageChange={handleChangeRowsPerPage}
+                    onRowClick={handleRowClick}
                 />
             </Box>
 
@@ -230,6 +263,13 @@ const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
                 onSubmit={handleSubmit}
                 editingItem={editingItem}
                 clusterId={clusterId}
+            />
+
+            <NodeDetailsViewModal
+                open={isViewOpen}
+                onClose={() => setIsViewOpen(false)}
+                item={selectedViewItem}
+                adminName={selectedViewItem ? usersMap[selectedViewItem.admin] : undefined}
             />
         </Box>
     );

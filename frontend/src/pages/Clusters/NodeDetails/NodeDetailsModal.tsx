@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Box } from '@mui/material';
+import { Box, Typography, Divider } from '@mui/material';
 import Modal from '../../../components/Modal';
 import TextField from '../../../components/TextField';
 import Button from '../../../components/Button';
 import Dropdown from '../../../components/Dropdown';
-import { type NodeDetailsData, type CreateNodeDetailsPayload, type UpdateNodeDetailsPayload } from './model';
+import { type NodeDetailsData, type CreateNodeDetailsPayload } from './model';
 import request from '../../../services/request';
 
 interface NodeDetailsModalProps {
@@ -34,12 +34,14 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
         assetNum: '',
         custodian: '',
         redundancyPower: 'No',
+        totalRam: undefined,
+        totalHardisk: undefined,
+        totalCpu: undefined,
         remarks: ''
     });
 
     const [users, setUsers] = useState<any[]>([]);
     const [racks, setRacks] = useState<any[]>([]);
-    const [nodes, setNodes] = useState<any[]>([]);
     const [models, setModels] = useState<any[]>([]);
     const [hypervisors, setHypervisors] = useState<any[]>([]);
     const [clusters, setClusters] = useState<any[]>([]);
@@ -49,7 +51,6 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
             Promise.all([
                 request.get('/api/users/', { params: { pagination: false } }).then(res => setUsers(res.data.data)),
                 request.get('/api/server-racks/', { params: { pagination: false } }).then(res => setRacks(res.data.data)),
-                request.get('/api/nodes/', { params: { pagination: false } }).then(res => setNodes(res.data.data)),
                 request.get('/api/server-models/', { params: { pagination: false } }).then(res => setModels(res.data.data)),
                 request.get('/api/hypervisors/', { params: { pagination: false } }).then(res => setHypervisors(res.data.data)),
                 request.get('/api/cluster-types/', { params: { pagination: false } }).then(res => setClusters(res.data.data))
@@ -78,6 +79,9 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                     assetNum: editingItem.assetNum,
                     custodian: editingItem.custodian,
                     redundancyPower: editingItem.redundancyPower,
+                    totalRam: editingItem.totalRam,
+                    totalHardisk: editingItem.totalHardisk,
+                    totalCpu: editingItem.totalCpu,
                     remarks: editingItem.remarks || ''
                 });
             } else {
@@ -85,13 +89,13 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                     clusterId: clusterId,
                     slNumber: '', rack: '', hostName: '', ipAddress: '', serverModel: '', serialNumber: '', admin: '',
                     adminCode: '', hypervisor: '', applications: '', clusterType: '', indentor: '', poNum: '', assetNum: '',
-                    custodian: '', redundancyPower: 'No', remarks: ''
+                    custodian: '', redundancyPower: 'No', totalRam: undefined, totalHardisk: undefined, totalCpu: undefined, remarks: ''
                 });
             }
         }
-    }, [open, editingItem]);
+    }, [open, editingItem, clusterId]);
 
-    const handleChange = (field: keyof CreateNodeDetailsPayload, value: string) => {
+    const handleChange = (field: keyof CreateNodeDetailsPayload, value: any) => {
         setFormData(prev => {
             const next = { ...prev, [field]: value };
             if (field === 'admin') {
@@ -108,10 +112,17 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
+        const payload = {
+            ...formData,
+            totalRam: formData.totalRam ? Number(formData.totalRam) : undefined,
+            totalHardisk: formData.totalHardisk ? Number(formData.totalHardisk) : undefined,
+            totalCpu: formData.totalCpu ? Number(formData.totalCpu) : undefined
+        };
+
         if (editingItem) {
-            onSubmit({ id: editingItem.id, ...formData });
+            onSubmit({ id: editingItem.id, ...payload });
         } else {
-            onSubmit(formData);
+            onSubmit(payload);
         }
     };
 
@@ -136,13 +147,13 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                         />
                     </Box>
                     <Box>
-                        <Dropdown
-                            label="Host Name"
-                            value={formData.hostName}
-                            onChange={(val) => handleChange('hostName', val)}
-                            options={nodes.map(n => ({ label: n.node, value: n.node }))}
-                            required
-                            fullWidth
+                        <TextField 
+                            fullWidth 
+                            sx={{ width: '100%' }} 
+                            label="Host Name" 
+                            value={formData.hostName} 
+                            onChange={(e) => handleChange('hostName', e.target.value)} 
+                            required 
                         />
                     </Box>
                     <Box>
@@ -225,6 +236,34 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                             fullWidth
                         />
                     </Box>
+                    
+                    <Box sx={{ gridColumn: '1 / -1', mt: 1 }}>
+                        <Divider sx={{ my: 1 }} />
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 2 }}>
+                            Resource Capacity Configuration
+                        </Typography>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 2 }}>
+                            <TextField 
+                                type="number" 
+                                label="Total RAM (GB)" 
+                                value={formData.totalRam ?? ''} 
+                                onChange={(e) => handleChange('totalRam', e.target.value)} 
+                            />
+                            <TextField 
+                                type="number" 
+                                label="Total HDD (GB)" 
+                                value={formData.totalHardisk ?? ''} 
+                                onChange={(e) => handleChange('totalHardisk', e.target.value)} 
+                            />
+                            <TextField 
+                                type="number" 
+                                label="Total CPU (Cores)" 
+                                value={formData.totalCpu ?? ''} 
+                                onChange={(e) => handleChange('totalCpu', e.target.value)} 
+                            />
+                        </Box>
+                    </Box>
+
                     <Box sx={{ gridColumn: { sm: '1 / -1' } }}>
                         <TextField fullWidth sx={{ width: '100%' }} multiline rows={2} label="Remarks" value={formData.remarks} onChange={(e) => handleChange('remarks', e.target.value)} />
                     </Box>

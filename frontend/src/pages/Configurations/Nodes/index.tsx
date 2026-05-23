@@ -33,9 +33,9 @@ const Nodes = () => {
     const { confirm } = useConfirm();
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
-    const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_CREATE);
-    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_UPDATE);
-    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_DELETE);
+    const hasCreate = false;
+    const hasUpdate = false;
+    const hasDelete = false;
 
     const [searchQuery, setSearchQuery] = useTableState('Nodes_search', '');
     const [page, setPage] = useTableState('Nodes_page', 0);
