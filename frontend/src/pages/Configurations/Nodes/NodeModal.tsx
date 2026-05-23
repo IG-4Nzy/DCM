@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box } from '@mui/material';
+import { Box, Grid } from '@mui/material';
 import Modal from '../../../components/Modal';
 import TextField from '../../../components/TextField';
 import Button from '../../../components/Button';
@@ -15,15 +15,24 @@ interface NodeModalProps {
 const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingItem }) => {
     const [node, setField] = useState('');
     const [remarks, setRemarks] = useState('');
+    const [totalRam, setTotalRam] = useState<string>('');
+    const [totalHardisk, setTotalHardisk] = useState<string>('');
+    const [totalCpu, setTotalCpu] = useState<string>('');
 
     useEffect(() => {
         if (open) {
             if (editingItem) {
                 setField(editingItem.node);
                 setRemarks(editingItem.remarks || '');
+                setTotalRam(editingItem.totalRam !== undefined && editingItem.totalRam !== null ? String(editingItem.totalRam) : '');
+                setTotalHardisk(editingItem.totalHardisk !== undefined && editingItem.totalHardisk !== null ? String(editingItem.totalHardisk) : '');
+                setTotalCpu(editingItem.totalCpu !== undefined && editingItem.totalCpu !== null ? String(editingItem.totalCpu) : '');
             } else {
                 setField('');
                 setRemarks('');
+                setTotalRam('');
+                setTotalHardisk('');
+                setTotalCpu('');
             }
         }
     }, [open, editingItem]);
@@ -32,10 +41,18 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         e.preventDefault();
         if (!node.trim()) return;
         
+        const payload: any = {
+            node,
+            remarks,
+            totalRam: totalRam.trim() !== '' ? Number(totalRam) : undefined,
+            totalHardisk: totalHardisk.trim() !== '' ? Number(totalHardisk) : undefined,
+            totalCpu: totalCpu.trim() !== '' ? Number(totalCpu) : undefined
+        };
+
         if (editingItem) {
-            onSubmit({ id: editingItem.id, node, remarks });
+            onSubmit({ id: editingItem.id, ...payload });
         } else {
-            onSubmit({ node, remarks });
+            onSubmit(payload);
         }
     };
 
@@ -50,12 +67,46 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
                     <TextField
                         fullWidth
-                        label="Node"
-                        placeholder="Node-01"
+                        label="Node Name"
+                        placeholder="e.g. Node-01"
                         value={node}
                         onChange={(e) => setField(e.target.value)}
                         required
                     />
+                    
+                    <Grid container spacing={2}>
+                        <Grid item xs={12} sm={4}>
+                            <TextField
+                                fullWidth
+                                type="number"
+                                label="Total RAM (GB)"
+                                placeholder="e.g. 128"
+                                value={totalRam}
+                                onChange={(e) => setTotalRam(e.target.value)}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                            <TextField
+                                fullWidth
+                                type="number"
+                                label="Total HDD (GB)"
+                                placeholder="e.g. 1000"
+                                value={totalHardisk}
+                                onChange={(e) => setTotalHardisk(e.target.value)}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                            <TextField
+                                fullWidth
+                                type="number"
+                                label="Total CPU (Cores)"
+                                placeholder="e.g. 32"
+                                value={totalCpu}
+                                onChange={(e) => setTotalCpu(e.target.value)}
+                            />
+                        </Grid>
+                    </Grid>
+
                     <TextField
                         fullWidth
                         multiline

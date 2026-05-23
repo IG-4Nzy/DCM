@@ -455,6 +455,12 @@ class NodeModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     node: str
     remarks: Optional[str] = None
+    totalRam: Optional[int] = None
+    totalHardisk: Optional[int] = None
+    totalCpu: Optional[int] = None
+    availableRam: Optional[int] = None
+    availableHardisk: Optional[int] = None
+    availableCpu: Optional[int] = None
     createdBy: Optional[str] = None
     updatedAt: Optional[str] = None
 
@@ -466,10 +472,16 @@ class NodeModel(BaseModel):
 class CreateNodeModel(BaseModel):
     node: str
     remarks: Optional[str] = None
+    totalRam: Optional[int] = None
+    totalHardisk: Optional[int] = None
+    totalCpu: Optional[int] = None
 
 class UpdateNodeModel(BaseModel):
     node: Optional[str] = None
     remarks: Optional[str] = None
+    totalRam: Optional[int] = None
+    totalHardisk: Optional[int] = None
+    totalCpu: Optional[int] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

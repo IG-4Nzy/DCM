@@ -10,6 +10,43 @@ from datetime import datetime, timezone
 router = APIRouter()
 collection = db.get_collection("nodes")
 
+def clean_int(value) -> int:
+    if value is None:
+        return 0
+    if isinstance(value, (int, float)):
+        return int(value)
+    # extract digits
+    digits = "".join([c for c in str(value) if c.isdigit()])
+    return int(digits) if digits else 0
+
+async def compute_available_resources(node_doc: dict):
+    if not node_doc:
+        return node_doc
+    vms_collection = db.get_collection("vm_details")
+    node_name = node_doc.get("node", "")
+    # Find VMs matching the exact node name case-insensitively
+    cursor = vms_collection.find({"node": {"$regex": f"^{node_name}$", "$options": "i"}})
+    vms = await cursor.to_list(length=None)
+    
+    used_ram = 0
+    used_hdd = 0
+    used_cpu = 0
+    
+    for vm in vms:
+        used_ram += clean_int(vm.get("ram"))
+        used_hdd += clean_int(vm.get("hdd"))
+        used_cpu += clean_int(vm.get("cpu"))
+        
+    total_ram = clean_int(node_doc.get("totalRam"))
+    total_hdd = clean_int(node_doc.get("totalHardisk"))
+    total_cpu = clean_int(node_doc.get("totalCpu"))
+    
+    node_doc["availableRam"] = max(0, total_ram - used_ram) if node_doc.get("totalRam") is not None else None
+    node_doc["availableHardisk"] = max(0, total_hdd - used_hdd) if node_doc.get("totalHardisk") is not None else None
+    node_doc["availableCpu"] = max(0, total_cpu - used_cpu) if node_doc.get("totalCpu") is not None else None
+    
+    return node_doc
+
 @router.get("/", response_description="List all nodes", response_model=PaginatedNodesModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Configurations"))])
 async def list_items(
     skip: int = Query(0, ge=0),
@@ -33,6 +70,8 @@ async def list_items(
     else:
         items = await cursor.to_list(length=None)
 
+    items = [await compute_available_resources(item) for item in items]
+
     return {"data": items, "total": total}
 
 @router.post("/", response_description="Create a node", response_model=NodeModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Configuration"))])
@@ -50,7 +89,7 @@ async def create_item(
 
     new_item = await collection.insert_one(item_dict)
     created = await collection.find_one({"_id": new_item.inserted_id})
-    return created
+    return await compute_available_resources(created)
 
 @router.put("/{id}", response_description="Update a node", response_model=NodeModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Configurations"))])
 async def update_item(id: str, payload: UpdateNodeModel = Body(...)):
@@ -76,10 +115,10 @@ async def update_item(id: str, payload: UpdateNodeModel = Body(...)):
 
         if update_result.modified_count == 1:
             if (updated := await collection.find_one({"_id": ObjectId(id)})) is not None:
-                return updated
+                return await compute_available_resources(updated)
 
     if (existing := await collection.find_one({"_id": ObjectId(id)})) is not None:
-        return existing
+        return await compute_available_resources(existing)
 
     raise HTTPException(status_code=404, detail=f"Node {id} not found")
 

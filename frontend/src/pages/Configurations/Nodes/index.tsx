@@ -14,6 +14,7 @@ import { useTableState } from '../../../hooks/useTableState';
 import { fetchNodes, createNode, updateNode, deleteNode } from './action';
 import { type NodeData } from './model';
 import NodeModal from './NodeModal';
+import NodeViewModal from './NodeViewModal';
 
 type Order = 'asc' | 'desc';
 
@@ -24,6 +25,9 @@ const Nodes = () => {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<NodeData | null>(null);
+
+    const [isViewOpen, setIsViewOpen] = useState(false);
+    const [selectedViewItem, setSelectedViewItem] = useState<NodeData | null>(null);
 
     const { showToast } = useToast();
     const { confirm } = useConfirm();
@@ -52,12 +56,18 @@ const Nodes = () => {
             });
             setData(result.data);
             setTotalCount(result.total);
+
+            // Refresh detailed view data if open
+            if (isViewOpen && selectedViewItem) {
+                const updated = result.data.find(n => n.id === selectedViewItem.id);
+                if (updated) setSelectedViewItem(updated);
+            }
         } catch (e: any) {
             showToast(e?.response?.data?.detail || 'Failed to load nodes', 'error');
         } finally {
             setLoading(false);
         }
-    }, [page, rowsPerPage, orderBy, order, searchQuery, showToast]);
+    }, [page, rowsPerPage, orderBy, order, searchQuery, showToast, isViewOpen, selectedViewItem]);
 
     useEffect(() => {
         loadData();
@@ -71,6 +81,11 @@ const Nodes = () => {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingItem(null);
+    };
+
+    const handleRowClick = (item: NodeData) => {
+        setSelectedViewItem(item);
+        setIsViewOpen(true);
     };
 
     const handleSubmit = async (payload: any) => {
@@ -123,6 +138,24 @@ const Nodes = () => {
 
     const columns: Column<NodeData>[] = [
         { id: 'node', label: 'Node', sortable: true },
+        { 
+            id: 'totalRam', 
+            label: 'Total / Available RAM', 
+            sortable: false,
+            render: (row) => row.totalRam !== undefined && row.totalRam !== null ? `${row.totalRam} GB / ${row.availableRam ?? 0} GB` : '-'
+        },
+        { 
+            id: 'totalHardisk', 
+            label: 'Total / Available HDD', 
+            sortable: false,
+            render: (row) => row.totalHardisk !== undefined && row.totalHardisk !== null ? `${row.totalHardisk} GB / ${row.availableHardisk ?? 0} GB` : '-'
+        },
+        { 
+            id: 'totalCpu', 
+            label: 'Total / Available CPU', 
+            sortable: false,
+            render: (row) => row.totalCpu !== undefined && row.totalCpu !== null ? `${row.totalCpu} Cores / ${row.availableCpu ?? 0} Cores` : '-'
+        },
         { id: 'remarks', label: 'Remarks', sortable: false }
     ];
 
@@ -189,6 +222,7 @@ const Nodes = () => {
                     onPageChange={handleChangePage}
                     onRowsPerPageChange={handleChangeRowsPerPage}
                     loading={loading}
+                    onRowClick={handleRowClick}
                 />
             </Paper>
 
@@ -197,6 +231,12 @@ const Nodes = () => {
                 onClose={handleCloseModal}
                 onSubmit={handleSubmit}
                 editingItem={editingItem}
+            />
+
+            <NodeViewModal
+                open={isViewOpen}
+                onClose={() => setIsViewOpen(false)}
+                node={selectedViewItem}
             />
         </Box>
     );
