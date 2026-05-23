@@ -9,6 +9,7 @@ import {
   MdShoppingCart as InventoryIcon,
   MdSettings as ConfigurationsIcon,
   MdDns as ServerDetailsIcon,
+  MdOutlineHandshake as RequestsIcon
 } from "react-icons/md";
 
 import { IoIosUnlock as RolesIcon } from "react-icons/io";
@@ -38,5 +39,6 @@ export const Icons = {
   InventoryIcon,
   ConfigurationsIcon,
   ServerDetailsIcon,
-  ClusterIcon
+  ClusterIcon,
+  RequestsIcon
 };

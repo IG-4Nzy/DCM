@@ -45,5 +45,9 @@ export const PRIVILEGES = {
     CLUSTER_VIEW:"View Cluster",
     CLUSTER_CREATE:"Create Cluster",
     CLUSTER_UPDATE:"Update Cluster",
-    CLUSTER_DELETE:"Delete Cluster"
+    CLUSTER_DELETE:"Delete Cluster",
+    REQUEST_VIEW:"Request View",
+    REQUEST_CREATE:"Request Create",
+    REQUEST_UPDATE:"Request Update",
+    REQUEST_DELETE:"Request Delete"
 }

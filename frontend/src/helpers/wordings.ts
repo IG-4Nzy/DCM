@@ -18,5 +18,6 @@ export default {
   inventory: "Inventory",
   configurations: "Configurations",
   serverDetails: "Server Details",
-  clusters: "Clusters"
+  clusters: "Clusters",
+  requests: "Requests"
 };

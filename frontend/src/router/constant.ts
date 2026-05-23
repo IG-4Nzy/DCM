@@ -13,6 +13,7 @@ export const ROUTE_CONSTANTS = {
     INVENTORY: '/inventory',
     CONFIGURATIONS: '/configurations',
 
-    CLUSTER:'/cluster',
-    CLUSTER_DETAILS: '/cluster/:id'
+    CLUSTER: '/cluster',
+    CLUSTER_DETAILS: '/cluster/:id',
+    REQUESTS: "/requests"
 }

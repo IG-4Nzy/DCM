@@ -64,5 +64,11 @@ export const SIDEBAR_OPTIONS = [
         icon: Icons.ClusterIcon,
         route: ROUTE_CONSTANTS.CLUSTER,
         privileges: [PRIVILEGES.CLUSTER_VIEW, PRIVILEGES.CLUSTER_CREATE, PRIVILEGES.CLUSTER_UPDATE, PRIVILEGES.CLUSTER_DELETE]
+    },
+    {
+        label: wordings.requests,
+        icon: Icons.RequestsIcon,
+        route: ROUTE_CONSTANTS.REQUESTS,
+        privileges: [PRIVILEGES.REQUEST_VIEW, PRIVILEGES.REQUEST_CREATE, PRIVILEGES.REQUEST_UPDATE, PRIVILEGES.REQUEST_DELETE]
     }
 ]
