@@ -41,9 +41,8 @@ const observationsSlice = createSlice({
         state.error = action.payload as string;
       })
       // createObservation
-      .addCase(createObservation.fulfilled, (state, action) => {
-        state.observations.unshift(action.payload);
-        state.totalCount += 1;
+      .addCase(createObservation.fulfilled, (state) => {
+        state.loading = false;
       })
       // updateObservation
       .addCase(updateObservation.fulfilled, (state, action) => {
@@ -53,17 +52,16 @@ const observationsSlice = createSlice({
         }
       })
       // deleteObservation
-      .addCase(deleteObservation.fulfilled, (state, action) => {
-        state.observations = state.observations.filter((obs) => obs.id !== action.payload && obs._id !== action.payload);
-        state.totalCount -= 1;
+      .addCase(deleteObservation.fulfilled, (state) => {
+        state.loading = false;
       })
       // fetchObservationCategories
       .addCase(fetchObservationCategories.fulfilled, (state, action) => {
         state.categories = action.payload.data;
       })
       // createObservationCategory
-      .addCase(createObservationCategory.fulfilled, (state, action) => {
-        state.categories.push(action.payload);
+      .addCase(createObservationCategory.fulfilled, (state) => {
+        state.loading = false;
       })
       // updateObservationCategory
       .addCase(updateObservationCategory.fulfilled, (state, action) => {
@@ -73,8 +71,8 @@ const observationsSlice = createSlice({
         }
       })
       // deleteObservationCategory
-      .addCase(deleteObservationCategory.fulfilled, (state, action) => {
-        state.categories = state.categories.filter((cat) => cat.id !== action.payload && cat._id !== action.payload);
+      .addCase(deleteObservationCategory.fulfilled, (state) => {
+        state.loading = false;
       });
   },
 });

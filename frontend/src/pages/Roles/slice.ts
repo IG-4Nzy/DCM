@@ -49,10 +49,8 @@ const rolesSlice = createSlice({
       state.loading = true;
       state.error = null;
     });
-    builder.addCase(createRole.fulfilled, (state, action) => {
+    builder.addCase(createRole.fulfilled, (state) => {
       state.loading = false;
-      state.roles.unshift(action.payload);
-      state.totalCount += 1;
     });
     builder.addCase(createRole.rejected, (state, action) => {
       state.loading = false;
@@ -81,10 +79,8 @@ const rolesSlice = createSlice({
       state.loading = true;
       state.error = null;
     });
-    builder.addCase(deleteRole.fulfilled, (state, action) => {
+    builder.addCase(deleteRole.fulfilled, (state) => {
       state.loading = false;
-      state.roles = state.roles.filter((r) => r.id !== action.payload);
-      state.totalCount -= 1;
     });
     builder.addCase(deleteRole.rejected, (state, action) => {
       state.loading = false;

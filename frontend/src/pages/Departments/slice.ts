@@ -31,9 +31,8 @@ const departmentsSlice = createSlice({
       })
       
       // Create Department
-      .addCase(createDepartment.fulfilled, (state, action) => {
-        state.departments.unshift(action.payload);
-        state.totalCount += 1;
+      .addCase(createDepartment.fulfilled, (state) => {
+        state.loading = false;
       })
       
       // Update Department
@@ -45,9 +44,8 @@ const departmentsSlice = createSlice({
       })
       
       // Delete Department
-      .addCase(deleteDepartment.fulfilled, (state, action) => {
-        state.departments = state.departments.filter(d => d.id !== action.payload && (d as any)._id !== action.payload);
-        state.totalCount = Math.max(0, state.totalCount - 1);
+      .addCase(deleteDepartment.fulfilled, (state) => {
+        state.loading = false;
       });
   },
 });

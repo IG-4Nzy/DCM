@@ -43,9 +43,8 @@ const worksSlice = createSlice({
         state.error = action.payload as string;
       })
       // createWork
-      .addCase(createWork.fulfilled, (state, action) => {
-        state.works.unshift(action.payload);
-        state.totalCount += 1;
+      .addCase(createWork.fulfilled, (state) => {
+        state.loading = false;
       })
       // updateWork
       .addCase(updateWork.fulfilled, (state, action) => {
@@ -55,9 +54,8 @@ const worksSlice = createSlice({
         }
       })
       // deleteWork
-      .addCase(deleteWork.fulfilled, (state, action) => {
-        state.works = state.works.filter((work) => work.id !== action.payload && work._id !== action.payload);
-        state.totalCount -= 1;
+      .addCase(deleteWork.fulfilled, (state) => {
+        state.loading = false;
       });
   },
 });

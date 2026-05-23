@@ -40,7 +40,7 @@ const Roles: React.FC = () => {
     dispatch(fetchPrivileges());
   }, [dispatch]);
 
-  useEffect(() => {
+  const loadData = React.useCallback(() => {
     dispatch(fetchRoles({
       skip: page * rowsPerPage,
       limit: rowsPerPage,
@@ -50,6 +50,10 @@ const Roles: React.FC = () => {
       showToast
     }));
   }, [dispatch, showToast, page, rowsPerPage, orderBy, order, searchQuery]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleOpenModal = (role?: RoleData) => {
     if (role) {
@@ -92,6 +96,7 @@ const Roles: React.FC = () => {
         })).unwrap();
       }
       handleCloseModal();
+      loadData();
     } catch (err: any) {
       // Toast shown in thunk
     }
@@ -103,6 +108,11 @@ const Roles: React.FC = () => {
     if (await confirm("Are you sure you want to delete this role?", "Delete Role")) {
       try {
         await dispatch(deleteRole({ id, showToast })).unwrap();
+        if (roles && roles.length === 1 && page > 0) {
+          setPage(page - 1);
+        } else {
+          loadData();
+        }
       } catch (err: any) {
         // Toast shown in thunk
       }

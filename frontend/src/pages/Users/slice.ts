@@ -64,10 +64,8 @@ const usersSlice = createSlice({
       state.loading = true;
       state.error = null;
     });
-    builder.addCase(createUser.fulfilled, (state, action) => {
+    builder.addCase(createUser.fulfilled, (state) => {
       state.loading = false;
-      state.users.unshift(action.payload);
-      state.totalCount += 1;
     });
     builder.addCase(createUser.rejected, (state, action) => {
       state.loading = false;
@@ -96,10 +94,8 @@ const usersSlice = createSlice({
       state.loading = true;
       state.error = null;
     });
-    builder.addCase(deleteUser.fulfilled, (state, action) => {
+    builder.addCase(deleteUser.fulfilled, (state) => {
       state.loading = false;
-      state.users = state.users.filter((u) => u.id !== action.payload);
-      state.totalCount -= 1;
     });
     builder.addCase(deleteUser.rejected, (state, action) => {
       state.loading = false;

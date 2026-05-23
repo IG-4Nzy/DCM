@@ -45,10 +45,8 @@ const inventorySlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(createInventory.fulfilled, (state, action) => {
+      .addCase(createInventory.fulfilled, (state) => {
         state.loading = false;
-        state.inventory.unshift(action.payload);
-        state.totalCount += 1;
       })
       .addCase(createInventory.rejected, (state, action) => {
         state.loading = false;
@@ -77,10 +75,8 @@ const inventorySlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(deleteInventory.fulfilled, (state, action) => {
+      .addCase(deleteInventory.fulfilled, (state) => {
         state.loading = false;
-        state.inventory = state.inventory.filter((item) => item.id !== action.payload && (item as any)._id !== action.payload);
-        state.totalCount -= 1;
       })
       .addCase(deleteInventory.rejected, (state, action) => {
         state.loading = false;

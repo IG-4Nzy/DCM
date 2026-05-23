@@ -69,7 +69,7 @@ const Users: React.FC = () => {
     dispatch(fetchAllDepartmentsForDropdown());
   }, [dispatch]);
 
-  useEffect(() => {
+  const loadData = React.useCallback(() => {
     dispatch(
       fetchUsers({
         skip: page * rowsPerPage,
@@ -81,6 +81,10 @@ const Users: React.FC = () => {
       }),
     );
   }, [dispatch, showToast, page, rowsPerPage, orderBy, order, searchQuery]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleOpenModal = (user?: UserData, editMode: boolean = false) => {
     setIsEditMode(editMode);
@@ -165,6 +169,7 @@ const Users: React.FC = () => {
         ).unwrap();
       }
       handleCloseModal();
+      loadData();
     } catch (err: any) {
       // Toast shown in thunk
     }
@@ -176,6 +181,11 @@ const Users: React.FC = () => {
     if (await confirm("Are you sure you want to delete this user?", "Delete User")) {
       try {
         await dispatch(deleteUser({ id, showToast })).unwrap();
+        if (users.length === 1 && page > 0) {
+          setPage(page - 1);
+        } else {
+          loadData();
+        }
       } catch (err: any) {
         // Toast shown in thunk
       }

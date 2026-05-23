@@ -37,7 +37,7 @@ const Departments: React.FC = () => {
   const [formDepartmentHead, setFormDepartmentHead] = useState('');
   const [usersList, setUsersList] = useState<any[]>([]);
 
-  useEffect(() => {
+  const loadData = React.useCallback(() => {
     dispatch(fetchDepartments({
       skip: page * rowsPerPage,
       limit: rowsPerPage,
@@ -46,6 +46,10 @@ const Departments: React.FC = () => {
       search: searchQuery,
       showToast
     }));
+  }, [dispatch, showToast, page, rowsPerPage, orderBy, order, searchQuery]);
+
+  useEffect(() => {
+    loadData();
 
     const fetchAllUsers = async () => {
       try {
@@ -56,7 +60,7 @@ const Departments: React.FC = () => {
       }
     };
     fetchAllUsers();
-  }, [dispatch, showToast, page, rowsPerPage, orderBy, order, searchQuery]);
+  }, [loadData]);
 
   const handleOpenModal = (department?: DepartmentData) => {
     if (department) {
@@ -90,6 +94,7 @@ const Departments: React.FC = () => {
         })).unwrap();
       }
       handleCloseModal();
+      loadData();
     } catch (err: any) {
       // Handled in thunk
     }
@@ -101,6 +106,11 @@ const Departments: React.FC = () => {
     if (await confirm("Are you sure you want to delete this department?", "Delete Department")) {
       try {
         await dispatch(deleteDepartment({ id, showToast })).unwrap();
+        if (departments && departments.length === 1 && page > 0) {
+          setPage(page - 1);
+        } else {
+          loadData();
+        }
       } catch (err: any) {
         // Handled in thunk
       }
