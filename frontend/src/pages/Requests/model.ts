@@ -10,6 +10,8 @@ export interface RequestData {
   createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
+  currentStageIndex?: number;
+  currentAssignedUsers?: string[];
   // Legacy fields
   name?: string;
   division?: string;

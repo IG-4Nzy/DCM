@@ -5,6 +5,7 @@ import Button from '../../components/Button';
 import type { RequestData } from './model';
 import type { RootState, AppDispatch } from '../../store';
 import { fetchInventory } from '../Inventory/action';
+import { fetchStagesForType } from './action';
 
 interface RequestFormModalProps {
   isModalOpen: boolean;
@@ -33,12 +34,11 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
 
   const [requestType, setRequestType] = useState(REQUEST_TYPES[0]);
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState('Pending');
+  const [status, setStatus] = useState('');
   const [remarks, setRemarks] = useState('');
   const [submitting, setSubmitting] = useState(false);
-
-  // Dynamic fields state
   const [details, setDetails] = useState<any>({});
+  const [configuredStages, setConfiguredStages] = useState<string[]>([]);
 
   useEffect(() => {
     if (isModalOpen) {
@@ -46,9 +46,27 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
     }
   }, [isModalOpen, dispatch]);
 
+  // Fetch stages whenever request type changes
+  useEffect(() => {
+    const loadStages = async () => {
+      const type = editingRequest ? (editingRequest.requestType || editingRequest.category || '') : requestType;
+      if (type) {
+        try {
+          const stages = await fetchStagesForType(type);
+          setConfiguredStages(stages);
+        } catch {
+          setConfiguredStages([]);
+        }
+      }
+    };
+    if (isModalOpen) {
+      loadStages();
+    }
+  }, [isModalOpen, requestType, editingRequest]);
+
   useEffect(() => {
     if (editingRequest) {
-      setRequestType(editingRequest.requestType || REQUEST_TYPES[0]);
+      setRequestType(editingRequest.requestType || editingRequest.category || REQUEST_TYPES[0]);
       setDescription(editingRequest.description || '');
       setStatus(editingRequest.status || 'Pending');
       setRemarks(editingRequest.remarks || '');
@@ -56,7 +74,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
     } else {
       setRequestType(REQUEST_TYPES[0]);
       setDescription('');
-      setStatus('Pending');
+      setStatus('');
       setRemarks('');
       setDetails({});
     }
@@ -100,8 +118,9 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                 label="Request Type"
                 onChange={(e) => {
                   setRequestType(e.target.value);
-                  setDetails({}); // Reset details on type change
+                  setDetails({});
                 }}
+                disabled={!!editingRequest}
               >
                 {REQUEST_TYPES.map(type => (
                   <MenuItem key={type} value={type}>{type}</MenuItem>
@@ -163,6 +182,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
               />
             )}
 
+            {/* Status - only shown when editing, using configured stages */}
             {editingRequest && (
               <>
                 <FormControl fullWidth required>
@@ -172,23 +192,29 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                     label="Status"
                     onChange={(e) => setStatus(e.target.value)}
                   >
-                    <MenuItem value="Pending">Pending</MenuItem>
-                    <MenuItem value="In Progress">In Progress</MenuItem>
+                    {configuredStages.length > 0 ? (
+                      configuredStages.map((stage) => (
+                        <MenuItem key={stage} value={stage}>{stage}</MenuItem>
+                      ))
+                    ) : (
+                      <>
+                        <MenuItem value="Pending">Pending</MenuItem>
+                        <MenuItem value="In Progress">In Progress</MenuItem>
+                      </>
+                    )}
                     <MenuItem value="Completed">Completed</MenuItem>
                     <MenuItem value="Rejected">Rejected</MenuItem>
                   </Select>
                 </FormControl>
 
-                {requestType !== 'Hardware Replacement' && (
-                  <TextField
-                    label="Status Remarks"
-                    fullWidth
-                    multiline
-                    rows={2}
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                  />
-                )}
+                <TextField
+                  label="Remarks"
+                  fullWidth
+                  multiline
+                  rows={2}
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                />
               </>
             )}
           </Box>

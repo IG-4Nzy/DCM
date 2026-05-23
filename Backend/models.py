@@ -837,6 +837,7 @@ class RequestModel(BaseModel):
     quantity: Optional[int] = None
     departmentHead: Optional[str] = None
     targetApprover: Optional[str] = None
+    currentStageIndex: Optional[int] = None
     currentAssignedUsers: Optional[list] = None
 
     model_config = ConfigDict(

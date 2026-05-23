@@ -50,5 +50,9 @@
     "View Cluster",
     "Create Cluster",
     "Update Cluster",
-    "Delete Cluster"
+    "Delete Cluster",
+    "Create Request",
+    "View Request",
+    "Update Request",
+    "Delete Request"
 ]
