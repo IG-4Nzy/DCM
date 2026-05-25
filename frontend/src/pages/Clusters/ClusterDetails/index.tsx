@@ -7,6 +7,7 @@ import ADDetails from '../ADDetails';
 import VCenterDetails from '../VCenterDetails';
 import VMDetails from '../VMDetails';
 import NodeDetails from '../NodeDetails';
+import styles from './index.module.scss';
 
 const tabs: TabItem[] = [
   { id: 'ad-details', label: 'AD Details', value: 'ad_details' },
@@ -31,15 +32,15 @@ const ClusterDetails = () => {
   };
 
   return (
-    <Box sx={{ width: '100%', flexGrow: 1, display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
-        <IconButton onClick={handleBack} sx={{ backgroundColor: 'rgba(0,0,0,0.04)' }}>
+    <Box className={styles.container}>
+      <Box className={styles.container__header}>
+        <IconButton onClick={handleBack} className={styles.container__header__button}>
           <BackIcon />
         </IconButton>
-        <label style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Cluster Details</label>
+        <label className={styles.container__header__label}>Cluster Details</label>
       </Box>
 
-      <Paper sx={{ p: 2, mb: 3, borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+      <Paper className={styles.container__tabsWrapper}>
         <SliderTabSelector
           tabs={tabs}
           activeTab={activeTab}
@@ -47,7 +48,7 @@ const ClusterDetails = () => {
         />
       </Paper>
 
-      <Paper sx={{ flexGrow: 1, p: 3, borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', backgroundColor: '#fff' }}>
+      <Paper className={styles.container__contentWrapper}>
         {activeTab === 'ad_details' && (
           <ADDetails clusterId={id || ''} />
         )}

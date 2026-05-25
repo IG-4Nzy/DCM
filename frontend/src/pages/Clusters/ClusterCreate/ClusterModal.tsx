@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Box } from '@mui/material';
-import Modal from '../../components/Modal';
-import TextField from '../../components/TextField';
-import Button from '../../components/Button';
-import { type ClusterData, type CreateClusterPayload, type UpdateClusterPayload } from './model';
+import Modal from '../../../components/Modal';
+import TextField from '../../../components/TextField';
+import Button from '../../../components/Button';
+import { type ClusterData, type CreateClusterPayload, type UpdateClusterPayload } from '../model';
+import styles from "./index.module.scss"
 
 interface ClusterModalProps {
     open: boolean;
@@ -40,7 +41,7 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (editingItem) {
             const changedData: UpdateClusterPayload = {};
             if (formData.clusterName !== editingItem.clusterName) changedData.clusterName = formData.clusterName;
@@ -58,29 +59,29 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
             title={editingItem ? 'Edit Cluster' : 'Add Cluster'}
         >
             <form onSubmit={handleSubmit}>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 3, mt: 1 }}>
+                <Box className={styles.container}>
                     <Box>
-                        <TextField 
-                            fullWidth 
-                            sx={{ width: '100%' }} 
-                            label="Cluster Name" 
-                            value={formData.clusterName} 
-                            onChange={(e) => handleChange('clusterName', e.target.value)} 
-                            required 
+                        <TextField
+                            fullWidth
+                            className={styles.container__field}
+                            label="Cluster Name"
+                            value={formData.clusterName}
+                            onChange={(e) => handleChange('clusterName', e.target.value)}
+                            required
                         />
                     </Box>
                     <Box>
-                        <TextField 
-                            fullWidth 
-                            sx={{ width: '100%' }} 
-                            label="IP Address" 
-                            value={formData.ipAddress} 
-                            onChange={(e) => handleChange('ipAddress', e.target.value)} 
-                            required 
+                        <TextField
+                            fullWidth
+                            className={styles.container__field}
+                            label="IP Address"
+                            value={formData.ipAddress}
+                            onChange={(e) => handleChange('ipAddress', e.target.value)}
+                            required
                         />
                     </Box>
                 </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+                <Box className={styles["container__buttonContainer"]}>
                     <Button variant="outlined" onClick={onClose} sx={{ color: '#637381', borderColor: '#637381' }}>Cancel</Button>
                     <Button type="submit" variant="contained" color="primary">{editingItem ? 'Update' : 'Submit'}</Button>
                 </Box>

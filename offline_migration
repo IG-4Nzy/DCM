@@ -1,0 +1,112 @@
+# Intranet Migration & Offline Dependency Packaging Guide
+
+When moving a full-stack project (FastAPI Backend + React Frontend) to an air-gapped or restricted intranet machine, you cannot download libraries on the fly. You must bundle and pre-download all packages.
+
+This guide outlines the three best methods to bundle all packages and libraries for both **Python (Backend)** and **Node.js (Frontend)**, sorted by ease and robustness.
+
+---
+
+## Method 1: The Docker Containerization Approach (Recommended 🌟)
+*This is the most bulletproof industry-standard method because it packages the dependencies, the source code, and the environment into a single file.*
+
+### Step 1: Build the Docker Images on your Connected Machine
+Generate standard Docker images for your backend and frontend.
+
+```bash
+# Build the Backend Image
+docker build -t dcm-backend:latest ./Backend
+
+# Build the Frontend Image
+docker build -t dcm-frontend:latest ./frontend
+```
+
+### Step 2: Save the Images to Tarballs
+Save the compiled Docker images into transportable archive files.
+
+```bash
+# Save Backend Image
+docker save -o dcm-backend.tar dcm-backend:latest
+
+# Save Frontend Image
+docker save -o dcm-frontend.tar dcm-frontend:latest
+```
+
+### Step 3: Transfer and Load on the Intranet Machine
+Move `dcm-backend.tar` and `dcm-frontend.tar` using a USB drive or local network to the intranet machine, then run:
+
+```bash
+# Load Backend Image
+docker load -i dcm-backend.tar
+
+# Load Frontend Image
+docker load -i dcm-frontend.tar
+```
+
+*Now you can run the application offline using `docker-compose` or `docker run` without needing any internet connection.*
+
+---
+
+## Method 2: Offline Package Downloading (Native Installers)
+*Use this if you must run the application bare-metal (without Docker) on the intranet machine.*
+
+### 📦 1. Python Backend Dependencies (pip)
+
+On your internet-connected machine, download the actual wheel (`.whl`) files for all required packages listed in your `requirements.txt`:
+
+```bash
+# 1. Create a folder to store the packages
+mkdir offline_wheels
+
+# 2. Download all packages as wheel files (specifically for the target platform)
+# If target OS is the same as your connected machine:
+pip download -r Backend/requirements.txt -d ./offline_wheels
+
+# If target OS is different (e.g. download Linux 64-bit packages from Windows/Mac):
+pip download --only-binary=:all: --platform manylinux2014_x86_64 --python-version 310 -r Backend/requirements.txt -d ./offline_wheels
+```
+
+#### Installing on the Intranet Machine:
+Transfer the code and the `offline_wheels` directory, then install offline:
+
+```bash
+pip install --no-index --find-links=./offline_wheels -r Backend/requirements.txt
+```
+
+---
+
+### 📦 2. Node.js Frontend Dependencies (npm/Yarn)
+
+#### Option A: Direct Zipping (Simple but OS-sensitive)
+If both your internet-connected machine and the intranet machine are running the same Operating System and CPU architecture (e.g., both are Linux x64):
+
+1. Run `npm install` on the internet-connected machine.
+2. Zip the entire `frontend` folder (including the large `node_modules` folder).
+3. Transfer the zip to the intranet machine, extract it, and run `npm run dev` or `npm run build`.
+
+> [!WARNING]
+> This method will fail if there are OS-native packages (like `sass` or `esbuild`) and you transfer them from Windows to Linux.
+
+#### Option B: Offline Mirror using Yarn (Highly Reliable)
+Yarn has built-in offline caching capabilities.
+
+1. On the internet-connected machine, configure Yarn to store an offline mirror:
+   ```bash
+   yarn config set yarn-offline-mirror ./yarn-offline-mirror
+   yarn config set yarn-offline-mirror-pruning true
+   ```
+2. Move your `package.json` to a fresh directory and run `yarn install`. This will populate the `./yarn-offline-mirror` folder with `.tgz` archive files of every package.
+3. Compress and transfer the source code along with the `yarn-offline-mirror` folder to the intranet machine.
+4. Install completely offline on the intranet machine:
+   ```bash
+   yarn install --offline --pure-lockfile
+   ```
+
+---
+
+## Summary Checklist for Intranet Deployment
+
+| Component | Connected Machine | Intranet Machine |
+| :--- | :--- | :--- |
+| **Backend (pip)** | `pip download -r requirements.txt -d ./offline_wheels` | `pip install --no-index --find-links=./offline_wheels -r requirements.txt` |
+| **Frontend (yarn)** | Populate offline mirror using `yarn config set yarn-offline-mirror` | `yarn install --offline` |
+| **Docker (Ultimate)** | `docker save -o app.tar image:tag` | `docker load -i app.tar` |

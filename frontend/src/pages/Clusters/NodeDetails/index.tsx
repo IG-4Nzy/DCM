@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Box, Paper, Tooltip, IconButton, Typography } from '@mui/material';
+import { Box, Tooltip, IconButton, Typography } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import Button from '../../../components/Button';
 import SearchBar from '../../../components/SearchBar';
@@ -16,6 +16,7 @@ import request from '../../../services/request';
 import { type NodeDetailsData } from './model';
 import NodeDetailsModal from './NodeDetailsModal';
 import NodeDetailsViewModal from './NodeDetailsViewModal';
+import styles from './index.module.scss';
 
 type Order = 'asc' | 'desc';
 
@@ -198,17 +199,17 @@ const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
             align: 'right',
             sortable: false,
             render: (row) => (
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                <Box className={styles.actionCell}>
                     {hasUpdate && (
                         <Tooltip title="Edit">
-                            <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }} onClick={(e) => { e.stopPropagation(); handleOpenModal(row); }}>
+                            <IconButton size="small" color="primary" className={styles.actionCell__editBtn} onClick={(e) => { e.stopPropagation(); handleOpenModal(row); }}>
                                 <EditIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
                     )}
                     {hasDelete && (
                         <Tooltip title="Delete">
-                            <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }} onClick={(e) => { e.stopPropagation(); handleDelete(row); }}>
+                            <IconButton size="small" color="error" className={styles.actionCell__deleteBtn} onClick={(e) => { e.stopPropagation(); handleDelete(row); }}>
                                 <DeleteIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
@@ -219,10 +220,10 @@ const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
     }
 
     return (
-        <Box sx={{ width: '100%', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-                <Typography variant="h6" fontWeight="bold">Node Details</Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Box className={styles.container}>
+            <Box className={styles.container__header}>
+                <Typography variant="h6" className={styles.container__header__label}>Node Details</Typography>
+                <Box className={styles.container__header__search}>
                     <SearchBar
                         value={searchQuery}
                         onChange={setSearchQuery}
@@ -241,7 +242,7 @@ const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
                 </Box>
             </Box>
 
-            <Box sx={{ flexGrow: 1, width: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <Box className={styles.container__tableContainer}>
                 <Table
                     columns={columns}
                     data={data}

@@ -4,6 +4,7 @@ import Modal from '../../../components/Modal';
 import TextField from '../../../components/TextField';
 import Button from '../../../components/Button';
 import { type ADDetailsData, type CreateADDetailsPayload, type UpdateADDetailsPayload } from './model';
+import styles from './modal.module.scss';
 
 interface ADDetailsModalProps {
     open: boolean;
@@ -86,11 +87,11 @@ const ADDetailsModal: React.FC<ADDetailsModalProps> = ({ open, onClose, onSubmit
             title={editingItem ? 'Edit AD Details' : 'Add AD Details'}
         >
             <form onSubmit={handleSubmit}>
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2, mt: 1 }}>
+                <Box className={styles.formGrid}>
                     <TextField 
                         label="IP Address" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.ipAddress} 
                         onChange={(e) => handleChange('ipAddress', e.target.value)} 
                         required 
@@ -98,7 +99,7 @@ const ADDetailsModal: React.FC<ADDetailsModalProps> = ({ open, onClose, onSubmit
                     <TextField 
                         label="Name" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.name} 
                         onChange={(e) => handleChange('name', e.target.value)} 
                         required 
@@ -106,7 +107,7 @@ const ADDetailsModal: React.FC<ADDetailsModalProps> = ({ open, onClose, onSubmit
                     <TextField 
                         label="HDD" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.hdd} 
                         onChange={(e) => handleChange('hdd', e.target.value)} 
                         required 
@@ -114,7 +115,7 @@ const ADDetailsModal: React.FC<ADDetailsModalProps> = ({ open, onClose, onSubmit
                     <TextField 
                         label="RAM" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.ram} 
                         onChange={(e) => handleChange('ram', e.target.value)} 
                         required 
@@ -122,7 +123,7 @@ const ADDetailsModal: React.FC<ADDetailsModalProps> = ({ open, onClose, onSubmit
                     <TextField 
                         label="CPU Cores" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.cpuCores} 
                         onChange={(e) => handleChange('cpuCores', e.target.value)} 
                         required 
@@ -130,7 +131,7 @@ const ADDetailsModal: React.FC<ADDetailsModalProps> = ({ open, onClose, onSubmit
                     <TextField 
                         label="OS Version" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.osVersion} 
                         onChange={(e) => handleChange('osVersion', e.target.value)} 
                         required 
@@ -138,7 +139,7 @@ const ADDetailsModal: React.FC<ADDetailsModalProps> = ({ open, onClose, onSubmit
                     <TextField 
                         label="OS Type" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.osType} 
                         onChange={(e) => handleChange('osType', e.target.value)} 
                         required 
@@ -146,13 +147,13 @@ const ADDetailsModal: React.FC<ADDetailsModalProps> = ({ open, onClose, onSubmit
                     <TextField 
                         label="Licence Expiry" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.licenceExpiry} 
                         onChange={(e) => handleChange('licenceExpiry', e.target.value)} 
                         required 
                     />
                 </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+                <Box className={styles.buttonContainer}>
                     <Button variant="outlined" onClick={onClose} sx={{ color: '#637381', borderColor: '#637381' }}>Cancel</Button>
                     <Button type="submit" variant="contained" color="primary">{editingItem ? 'Update' : 'Submit'}</Button>
                 </Box>

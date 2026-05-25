@@ -12,6 +12,7 @@ import { PRIVILEGES } from '../../../helpers/privileges';
 import { fetchVCenterDetails, createVCenterDetails, updateVCenterDetails, deleteVCenterDetails } from './action';
 import { type VCenterDetailsData } from './model';
 import VCenterDetailsModal from './VCenterDetailsModal';
+import styles from './index.module.scss';
 
 interface VCenterDetailsProps {
     clusterId: string;
@@ -99,10 +100,10 @@ const VCenterDetails = ({ clusterId }: VCenterDetailsProps) => {
     };
 
     return (
-        <Box sx={{ width: '100%', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-                <Typography variant="h6" fontWeight="bold">vCenter Details</Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Box className={styles.container}>
+            <Box className={styles.container__header}>
+                <Typography variant="h6" className={styles.container__header__label}>vCenter Details</Typography>
+                <Box className={styles.container__header__search}>
                     <SearchBar
                         value={searchQuery}
                         onChange={setSearchQuery}
@@ -124,85 +125,76 @@ const VCenterDetails = ({ clusterId }: VCenterDetailsProps) => {
             <Grid container spacing={3}>
                 {data.map((item) => (
                     <Grid item xs={12} key={item.id}>
-                        <Card sx={{ 
-                            borderRadius: '12px', 
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                            position: 'relative',
-                            transition: 'transform 0.2s, box-shadow 0.2s',
-                            '&:hover': {
-                                transform: 'translateY(-2px)',
-                                boxShadow: '0 8px 24px rgba(0,0,0,0.1)'
-                            }
-                        }}>
-                            <CardContent sx={{ pb: '16px !important' }}>
-                                <Typography variant="h6" fontWeight="bold" color="primary" gutterBottom sx={{ wordBreak: 'break-word', mb: 2 }}>
+                        <Card className={styles.card}>
+                            <CardContent className={styles.card__content}>
+                                <Typography variant="h6" color="primary" gutterBottom className={styles.card__title}>
                                     {item.name || '--'}
                                 </Typography>
                                 
-                                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 2 }}>
+                                <Box className={styles.card__grid}>
                                     <Box>
                                         <Typography variant="caption" color="text.secondary" display="block">IP Address</Typography>
-                                        <Typography variant="body2" fontWeight="500" sx={{ wordBreak: 'break-word' }}>{item.ipAddress || '--'}</Typography>
+                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.ipAddress || '--'}</Typography>
                                     </Box>
                                     
                                     <Box>
                                         <Typography variant="caption" color="text.secondary" display="block">HDD</Typography>
-                                        <Typography variant="body2" fontWeight="500" sx={{ wordBreak: 'break-word' }}>{item.hdd || '--'}</Typography>
+                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.hdd || '--'}</Typography>
                                     </Box>
                                     
                                     <Box>
                                         <Typography variant="caption" color="text.secondary" display="block">RAM</Typography>
-                                        <Typography variant="body2" fontWeight="500" sx={{ wordBreak: 'break-word' }}>{item.ram || '--'}</Typography>
+                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.ram || '--'}</Typography>
                                     </Box>
                                     
                                     <Box>
                                         <Typography variant="caption" color="text.secondary" display="block">CPU Cores</Typography>
-                                        <Typography variant="body2" fontWeight="500" sx={{ wordBreak: 'break-word' }}>{item.cpuCores || '--'}</Typography>
+                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.cpuCores || '--'}</Typography>
                                     </Box>
                                     
                                     <Box>
                                         <Typography variant="caption" color="text.secondary" display="block">vCenter Type</Typography>
-                                        <Typography variant="body2" fontWeight="500" sx={{ wordBreak: 'break-word' }}>{item.vcenterType || '--'}</Typography>
+                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.vcenterType || '--'}</Typography>
                                     </Box>
 
                                     <Box>
                                         <Typography variant="caption" color="text.secondary" display="block">vCenter Version</Typography>
-                                        <Typography variant="body2" fontWeight="500" sx={{ wordBreak: 'break-word' }}>{item.vcenterVersion || '--'}</Typography>
+                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.vcenterVersion || '--'}</Typography>
                                     </Box>
                                     
                                     <Box>
                                         <Typography variant="caption" color="text.secondary" display="block">Licence Expiry</Typography>
-                                        <Typography variant="body2" fontWeight="500" sx={{ wordBreak: 'break-word' }}>{item.licenceExpiry || '--'}</Typography>
+                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.licenceExpiry || '--'}</Typography>
                                     </Box>
 
                                     <Box>
                                         <Typography variant="caption" color="text.secondary" display="block">HA</Typography>
-                                        <Typography variant="body2" fontWeight="500" sx={{ wordBreak: 'break-word' }}>{item.ha || '--'}</Typography>
+                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.ha || '--'}</Typography>
                                     </Box>
 
                                     <Box>
                                         <Typography variant="caption" color="text.secondary" display="block">DRS</Typography>
-                                        <Typography variant="body2" fontWeight="500" sx={{ wordBreak: 'break-word' }}>{item.drs || '--'}</Typography>
+                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.drs || '--'}</Typography>
                                     </Box>
 
                                     <Box>
                                         <Typography variant="caption" color="text.secondary" display="block">Storage</Typography>
-                                        <Typography variant="body2" fontWeight="500" sx={{ wordBreak: 'break-word' }}>{item.storage || '--'}</Typography>
+                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.storage || '--'}</Typography>
                                     </Box>
 
                                     <Box>
                                         <Typography variant="caption" color="text.secondary" display="block">Port Groups</Typography>
-                                        <Typography variant="body2" fontWeight="500" sx={{ wordBreak: 'break-word' }}>{item.portGroups || '--'}</Typography>
+                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.portGroups || '--'}</Typography>
                                     </Box>
 
                                     <Box>
                                         <Typography variant="caption" color="text.secondary" display="block">VM Image Backup Location</Typography>
-                                        <Typography variant="body2" fontWeight="500" sx={{ wordBreak: 'break-word' }}>{item.vmImageBackupLocation || '--'}</Typography>
+                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.vmImageBackupLocation || '--'}</Typography>
                                     </Box>
                                 </Box>
 
                                 {(hasUpdate || hasDelete) && (
-                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2, pt: 2, borderTop: '1px solid #eee' }}>
+                                    <Box className={styles.card__actions}>
                                         {hasUpdate && (
                                             <Tooltip title="Edit">
                                                 <IconButton size="small" color="primary" onClick={() => handleOpenModal(item)}>
@@ -226,7 +218,7 @@ const VCenterDetails = ({ clusterId }: VCenterDetailsProps) => {
             </Grid>
 
             {data.length === 0 && !loading && (
-                <Box sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
+                <Box className={styles.emptyState}>
                     No vCenter Details found. Click "Add vCenter Details" to create one.
                 </Box>
             )}

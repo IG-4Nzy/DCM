@@ -14,7 +14,8 @@ import { PRIVILEGES } from '../../helpers/privileges';
 import { useTableState } from '../../hooks/useTableState';
 import { fetchClusters, createCluster, updateCluster, deleteCluster } from './action';
 import { type ClusterData } from './model';
-import ClusterModal from './ClusterModal';
+import ClusterModal from './ClusterCreate/ClusterModal';
+import styles from './index.module.scss';
 
 type Order = 'asc' | 'desc';
 
@@ -161,10 +162,10 @@ const Clusters = () => {
     }
 
     return (
-        <Box sx={{ width: '100%', flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box', padding: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2, flexShrink: 0 }}>
-                <label style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Clusters</label>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Box className={styles.container}>
+            <Box className={styles.container__header}>
+                <label className={styles.container__header__label}>Clusters</label>
+                <Box className={styles.container__header__search}>
                     <SearchBar
                         value={searchQuery}
                         onChange={setSearchQuery}
@@ -192,10 +193,9 @@ const Clusters = () => {
                     rowsPerPage={rowsPerPage}
                     orderBy={orderBy}
                     order={order}
-                    onSort={handleRequestSort}
+                    onRequestSort={handleRequestSort}
                     onPageChange={handleChangePage}
                     onRowsPerPageChange={handleChangeRowsPerPage}
-                    loading={loading}
                     onRowClick={(row) => navigate(`/cluster/${row.id}`)}
                 />
             </Box>

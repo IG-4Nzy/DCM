@@ -12,6 +12,7 @@ import { PRIVILEGES } from '../../../helpers/privileges';
 import { fetchVMDetails, createVMDetails, updateVMDetails, deleteVMDetails } from './action';
 import { type VMDetailsData } from './model';
 import VMDetailsModal from './VMDetailsModal';
+import styles from './index.module.scss';
 
 interface VMDetailsProps {
     clusterId: string;
@@ -107,10 +108,10 @@ const VMDetails = ({ clusterId }: VMDetailsProps) => {
     };
 
     return (
-        <Box sx={{ width: '100%', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-                <Typography variant="h6" fontWeight="bold">VM Details</Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Box className={styles.container}>
+            <Box className={styles.container__header}>
+                <Typography variant="h6" className={styles.container__header__label}>VM Details</Typography>
+                <Box className={styles.container__header__search}>
                     <SearchBar
                         value={searchQuery}
                         onChange={(val) => { setSearchQuery(val); setPage(0); }}
@@ -129,24 +130,24 @@ const VMDetails = ({ clusterId }: VMDetailsProps) => {
                 </Box>
             </Box>
 
-            <Paper sx={{ width: '100%', overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: '12px', boxShadow: 'none' }}>
+            <Paper className={styles.tableWrapper}>
                 <TableContainer>
                     <Table size="medium">
                         <TableHead>
-                            <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                                <TableCell rowSpan={2} sx={{ fontWeight: 'bold', borderBottom: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0' }}>IP Address</TableCell>
-                                <TableCell rowSpan={2} sx={{ fontWeight: 'bold', borderBottom: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0' }}>Applications</TableCell>
-                                <TableCell rowSpan={2} sx={{ fontWeight: 'bold', borderBottom: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0' }}>Node</TableCell>
-                                <TableCell rowSpan={2} sx={{ fontWeight: 'bold', borderBottom: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0' }}>OS and Expiry</TableCell>
-                                <TableCell colSpan={3} align="center" sx={{ fontWeight: 'bold', borderBottom: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0' }}>Resource Allotter</TableCell>
+                            <TableRow className={styles.tableWrapper__headerRow}>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>IP Address</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Applications</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Node</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>OS and Expiry</TableCell>
+                                <TableCell colSpan={3} align="center" className={styles.tableWrapper__headerCell}>Resource Allotter</TableCell>
                                 {(hasUpdate || hasDelete) && (
-                                    <TableCell rowSpan={2} align="right" sx={{ fontWeight: 'bold', borderBottom: '1px solid #e0e0e0' }}>Actions</TableCell>
+                                    <TableCell rowSpan={2} align="right" className={styles.tableWrapper__headerCellLast}>Actions</TableCell>
                                 )}
                             </TableRow>
-                            <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                                <TableCell sx={{ fontWeight: 'bold', borderBottom: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0' }}>HDD</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', borderBottom: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0' }}>RAM</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', borderBottom: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0' }}>CPU</TableCell>
+                            <TableRow className={styles.tableWrapper__headerRow}>
+                                <TableCell className={styles.tableWrapper__headerCell}>HDD</TableCell>
+                                <TableCell className={styles.tableWrapper__headerCell}>RAM</TableCell>
+                                <TableCell className={styles.tableWrapper__headerCell}>CPU</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -161,26 +162,26 @@ const VMDetails = ({ clusterId }: VMDetailsProps) => {
                             ) : (
                                 data.map((row) => (
                                     <TableRow key={row.id} hover>
-                                        <TableCell sx={{ borderRight: '1px solid #eee' }}>{row.ipAddress || '--'}</TableCell>
-                                        <TableCell sx={{ borderRight: '1px solid #eee' }}>{row.applications || '--'}</TableCell>
-                                        <TableCell sx={{ borderRight: '1px solid #eee' }}>{row.node || '--'}</TableCell>
-                                        <TableCell sx={{ borderRight: '1px solid #eee' }}>{row.osAndExpiry || '--'}</TableCell>
-                                        <TableCell sx={{ borderRight: '1px solid #eee' }}>{row.hdd || '--'}</TableCell>
-                                        <TableCell sx={{ borderRight: '1px solid #eee' }}>{row.ram || '--'}</TableCell>
-                                        <TableCell sx={{ borderRight: '1px solid #eee' }}>{row.cpu || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.ipAddress || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.applications || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.node || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.osAndExpiry || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.hdd || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.ram || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.cpu || '--'}</TableCell>
                                         {(hasUpdate || hasDelete) && (
                                             <TableCell align="right">
-                                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                                                <Box className={styles.tableWrapper__actions}>
                                                     {hasUpdate && (
                                                         <Tooltip title="Edit">
-                                                            <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }} onClick={() => handleOpenModal(row)}>
+                                                            <IconButton size="small" color="primary" className={styles.tableWrapper__actions__editBtn} onClick={() => handleOpenModal(row)}>
                                                                 <EditIcon fontSize="small" />
                                                             </IconButton>
                                                         </Tooltip>
                                                     )}
                                                     {hasDelete && (
                                                         <Tooltip title="Delete">
-                                                            <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }} onClick={() => handleDelete(row.id, row.ipAddress)}>
+                                                            <IconButton size="small" color="error" className={styles.tableWrapper__actions__deleteBtn} onClick={() => handleDelete(row.id, row.ipAddress)}>
                                                                 <DeleteIcon fontSize="small" />
                                                             </IconButton>
                                                         </Tooltip>

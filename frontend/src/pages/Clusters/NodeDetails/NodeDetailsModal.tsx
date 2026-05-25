@@ -6,6 +6,7 @@ import Button from '../../../components/Button';
 import Dropdown from '../../../components/Dropdown';
 import { type NodeDetailsData, type CreateNodeDetailsPayload } from './model';
 import request from '../../../services/request';
+import styles from './modal.module.scss';
 
 interface NodeDetailsModalProps {
     open: boolean;
@@ -134,8 +135,7 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
             maxWidth="md"
         >
             <form onSubmit={handleSubmit}>
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 3, mt: 1 }}>
-
+                <Box className={styles.formGrid}>
                     <Box>
                         <Dropdown
                             label="Rack"
@@ -149,7 +149,6 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                     <Box>
                         <TextField 
                             fullWidth 
-                            sx={{ width: '100%' }} 
                             label="Host Name" 
                             value={formData.hostName} 
                             onChange={(e) => handleChange('hostName', e.target.value)} 
@@ -157,7 +156,7 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                         />
                     </Box>
                     <Box>
-                        <TextField fullWidth sx={{ width: '100%' }} label="IP Address" value={formData.ipAddress} onChange={(e) => handleChange('ipAddress', e.target.value)} required />
+                        <TextField fullWidth label="IP Address" value={formData.ipAddress} onChange={(e) => handleChange('ipAddress', e.target.value)} required />
                     </Box>
                     <Box>
                         <Dropdown
@@ -170,7 +169,7 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                         />
                     </Box>
                     <Box>
-                        <TextField fullWidth sx={{ width: '100%' }} label="Serial Number" value={formData.serialNumber} onChange={(e) => handleChange('serialNumber', e.target.value)} required />
+                        <TextField fullWidth label="Serial Number" value={formData.serialNumber} onChange={(e) => handleChange('serialNumber', e.target.value)} required />
                     </Box>
                     <Box>
                         <Dropdown
@@ -186,7 +185,7 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                         />
                     </Box>
                     <Box>
-                        <TextField fullWidth sx={{ width: '100%' }} label="Admin Code" value={formData.adminCode} disabled placeholder="Auto-filled" />
+                        <TextField fullWidth label="Admin Code" value={formData.adminCode} disabled placeholder="Auto-filled" />
                     </Box>
                     <Box>
                         <Dropdown
@@ -199,7 +198,7 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                         />
                     </Box>
                     <Box>
-                        <TextField fullWidth sx={{ width: '100%' }} label="Applications" value={formData.applications} onChange={(e) => handleChange('applications', e.target.value)} />
+                        <TextField fullWidth label="Applications" value={formData.applications} onChange={(e) => handleChange('applications', e.target.value)} />
                     </Box>
                     <Box>
                         <Dropdown
@@ -212,16 +211,16 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                         />
                     </Box>
                     <Box>
-                        <TextField fullWidth sx={{ width: '100%' }} label="Indentor" value={formData.indentor} onChange={(e) => handleChange('indentor', e.target.value)} />
+                        <TextField fullWidth label="Indentor" value={formData.indentor} onChange={(e) => handleChange('indentor', e.target.value)} />
                     </Box>
                     <Box>
-                        <TextField fullWidth sx={{ width: '100%' }} label="PO Num" value={formData.poNum} onChange={(e) => handleChange('poNum', e.target.value)}  />
+                        <TextField fullWidth label="PO Num" value={formData.poNum} onChange={(e) => handleChange('poNum', e.target.value)}  />
                     </Box>
                     <Box>
-                        <TextField fullWidth sx={{ width: '100%' }} label="Asset Num" value={formData.assetNum} onChange={(e) => handleChange('assetNum', e.target.value)}  />
+                        <TextField fullWidth label="Asset Num" value={formData.assetNum} onChange={(e) => handleChange('assetNum', e.target.value)}  />
                     </Box>
                     <Box>
-                        <TextField fullWidth sx={{ width: '100%' }} label="Custodian" value={formData.custodian} onChange={(e) => handleChange('custodian', e.target.value)}  />
+                        <TextField fullWidth label="Custodian" value={formData.custodian} onChange={(e) => handleChange('custodian', e.target.value)}  />
                     </Box>
                     <Box>
                         <Dropdown
@@ -237,12 +236,12 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                         />
                     </Box>
                     
-                    <Box sx={{ gridColumn: '1 / -1', mt: 1 }}>
-                        <Divider sx={{ my: 1 }} />
-                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 2 }}>
+                    <Box className={styles.formGrid__fullWidth}>
+                        <Divider className={styles.formGrid__divider} />
+                        <Typography variant="subtitle2" className={styles.formGrid__title}>
                             Resource Capacity Configuration
                         </Typography>
-                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 2 }}>
+                        <Box className={styles.formGrid__resourceGrid}>
                             <TextField 
                                 type="number" 
                                 label="Total RAM (GB)" 
@@ -264,12 +263,12 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                         </Box>
                     </Box>
 
-                    <Box sx={{ gridColumn: { sm: '1 / -1' } }}>
-                        <TextField fullWidth sx={{ width: '100%' }} multiline rows={2} label="Remarks" value={formData.remarks} onChange={(e) => handleChange('remarks', e.target.value)} />
+                    <Box className={styles.formGrid__fullWidth}>
+                        <TextField fullWidth multiline rows={2} label="Remarks" value={formData.remarks} onChange={(e) => handleChange('remarks', e.target.value)} />
                     </Box>
                 </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
-                    <Button variant="text" onClick={onClose} style={{ color: '#637381' }}>
+                <Box className={styles.buttonContainer}>
+                    <Button variant="text" onClick={onClose} className={styles.buttonContainer__cancelBtn}>
                         Cancel
                     </Button>
                     <Button type="submit" variant="contained" color="primary">

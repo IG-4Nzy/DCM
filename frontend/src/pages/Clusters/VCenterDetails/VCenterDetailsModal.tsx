@@ -5,6 +5,7 @@ import TextField from '../../../components/TextField';
 import Dropdown from '../../../components/Dropdown';
 import Button from '../../../components/Button';
 import { type VCenterDetailsData, type CreateVCenterDetailsPayload, type UpdateVCenterDetailsPayload } from './model';
+import styles from './modal.module.scss';
 
 interface VCenterDetailsModalProps {
     open: boolean;
@@ -107,11 +108,11 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
             title={editingItem ? 'Edit vCenter Details' : 'Add vCenter Details'}
         >
             <form onSubmit={handleSubmit}>
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2, mt: 1 }}>
+                <Box className={styles.formGrid}>
                     <TextField 
                         label="IP Address" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.ipAddress} 
                         onChange={(e) => handleChange('ipAddress', e.target.value)} 
                         required 
@@ -119,7 +120,7 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
                     <TextField 
                         label="Name" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.name} 
                         onChange={(e) => handleChange('name', e.target.value)} 
                         required 
@@ -127,7 +128,7 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
                     <TextField 
                         label="HDD" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.hdd} 
                         onChange={(e) => handleChange('hdd', e.target.value)} 
                         required 
@@ -135,7 +136,7 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
                     <TextField 
                         label="RAM" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.ram} 
                         onChange={(e) => handleChange('ram', e.target.value)} 
                         required 
@@ -143,7 +144,7 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
                     <TextField 
                         label="CPU Cores" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.cpuCores} 
                         onChange={(e) => handleChange('cpuCores', e.target.value)} 
                         required 
@@ -151,7 +152,7 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
                     <TextField 
                         label="vCenter Version" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.vcenterVersion} 
                         onChange={(e) => handleChange('vcenterVersion', e.target.value)} 
                         required 
@@ -159,7 +160,7 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
                     <TextField 
                         label="vCenter Type" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.vcenterType} 
                         onChange={(e) => handleChange('vcenterType', e.target.value)} 
                         required 
@@ -167,7 +168,7 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
                     <TextField 
                         label="Licence Expiry" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.licenceExpiry} 
                         onChange={(e) => handleChange('licenceExpiry', e.target.value)} 
                         required 
@@ -193,7 +194,7 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
                     <TextField 
                         label="Storage" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.storage} 
                         onChange={(e) => handleChange('storage', e.target.value)} 
                         required 
@@ -201,7 +202,7 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
                     <TextField 
                         label="Port Groups" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.portGroups} 
                         onChange={(e) => handleChange('portGroups', e.target.value)} 
                         required 
@@ -209,13 +210,13 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
                     <TextField 
                         label="VM Image Backup Location" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.vmImageBackupLocation} 
                         onChange={(e) => handleChange('vmImageBackupLocation', e.target.value)} 
                         required 
                     />
                 </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+                <Box className={styles.buttonContainer}>
                     <Button variant="outlined" onClick={onClose} sx={{ color: '#637381', borderColor: '#637381' }}>Cancel</Button>
                     <Button type="submit" variant="contained" color="primary">{editingItem ? 'Update' : 'Submit'}</Button>
                 </Box>

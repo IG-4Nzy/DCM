@@ -6,6 +6,7 @@ import Dropdown from '../../../components/Dropdown';
 import Button from '../../../components/Button';
 import { type VMDetailsData, type CreateVMDetailsPayload, type UpdateVMDetailsPayload } from './model';
 import { fetchAllNodes } from './action';
+import styles from './modal.module.scss';
 
 interface VMDetailsModalProps {
     open: boolean;
@@ -94,11 +95,11 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
             title={editingItem ? 'Edit VM Details' : 'Add VM Details'}
         >
             <form onSubmit={handleSubmit}>
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2, mt: 1 }}>
+                <Box className={styles.formGrid}>
                     <TextField 
                         label="IP Address" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.ipAddress} 
                         onChange={(e) => handleChange('ipAddress', e.target.value)} 
                         required 
@@ -106,7 +107,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     <TextField 
                         label="Applications" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.applications} 
                         onChange={(e) => handleChange('applications', e.target.value)} 
                         required 
@@ -123,20 +124,20 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     <TextField 
                         label="OS and Expiry" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.osAndExpiry} 
                         onChange={(e) => handleChange('osAndExpiry', e.target.value)} 
                         required 
                     />
                     
-                    <Typography variant="subtitle1" sx={{ gridColumn: '1 / -1', mt: 2, fontWeight: 'bold', borderBottom: '1px solid #eee', pb: 1 }}>
+                    <Typography variant="subtitle1" className={styles.formGrid__title}>
                         Resource Allotter
                     </Typography>
                     
                     <TextField 
                         label="HDD" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.hdd} 
                         onChange={(e) => handleChange('hdd', e.target.value)} 
                         required 
@@ -144,7 +145,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     <TextField 
                         label="RAM" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.ram} 
                         onChange={(e) => handleChange('ram', e.target.value)} 
                         required 
@@ -152,13 +153,13 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     <TextField 
                         label="CPU" 
                         size="small"
-                        sx={{ width: '100%' }}
+                        className={styles.formGrid__field}
                         value={formData.cpu} 
                         onChange={(e) => handleChange('cpu', e.target.value)} 
                         required 
                     />
                 </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+                <Box className={styles.buttonContainer}>
                     <Button variant="outlined" onClick={onClose} sx={{ color: '#637381', borderColor: '#637381' }}>Cancel</Button>
                     <Button type="submit" variant="contained" color="primary">{editingItem ? 'Update' : 'Submit'}</Button>
                 </Box>

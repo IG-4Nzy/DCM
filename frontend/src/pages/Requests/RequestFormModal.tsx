@@ -6,6 +6,7 @@ import type { RequestData } from './model';
 import type { RootState, AppDispatch } from '../../store';
 import { fetchInventory } from '../Inventory/action';
 import { fetchStagesForType } from './action';
+import { useToast } from '../../contexts/ToastContext';
 
 interface RequestFormModalProps {
   isModalOpen: boolean;
@@ -30,6 +31,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
   isSuperuser
 }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const { showToast } = useToast();
   const { inventory } = useSelector((state: RootState) => state.inventory);
 
   const [requestType, setRequestType] = useState(REQUEST_TYPES[0]);
@@ -84,8 +86,29 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
     setDetails((prev: any) => ({ ...prev, [field]: value }));
   };
 
+  const getMinDateTime = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!editingRequest && requestType === 'DC Entry' && details.dateTime) {
+      const selected = new Date(details.dateTime);
+      const now = new Date();
+      // Use 1 minute buffer to account for minor system delays
+      if (selected < new Date(now.getTime() - 60000)) {
+        showToast('Please select a date and time in the present or future.', 'error');
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const payload: Partial<RequestData> = {
@@ -141,7 +164,23 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
 
             {requestType === 'DC Entry' && (
               <>
-                <TextField label="Date and Time" type="datetime-local" fullWidth required InputLabelProps={{ shrink: true }} value={details.dateTime || ''} onChange={(e) => handleDetailChange('dateTime', e.target.value)} />
+                <TextField 
+                  label="Date and Time" 
+                  type="datetime-local" 
+                  fullWidth 
+                  required 
+                  InputLabelProps={{ shrink: true }}
+                  slotProps={{
+                    inputLabel: {
+                      shrink: true,
+                    }
+                  }}
+                  inputProps={{
+                    min: getMinDateTime()
+                  }}
+                  value={details.dateTime || ''} 
+                  onChange={(e) => handleDetailChange('dateTime', e.target.value)} 
+                />
                 <TextField label="Purpose" fullWidth required multiline rows={3} value={details.purpose || ''} onChange={(e) => handleDetailChange('purpose', e.target.value)} />
               </>
             )}
