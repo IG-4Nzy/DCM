@@ -127,7 +127,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
 
   return (
     <Dialog open={isOpen} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{ pb: 1, fontWeight: 'bold', fontSize: '1.25rem' }}>
+      <DialogTitle sx={{ pb: 1, fontWeight: 'bold', fontSize: '1.25rem'}}>
         Request Details
       </DialogTitle>
       <DialogContent dividers sx={{ backgroundColor: '#fafbfd' }}>

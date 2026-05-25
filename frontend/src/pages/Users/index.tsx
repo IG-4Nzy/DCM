@@ -62,6 +62,7 @@ const Users: React.FC = () => {
   const [formAddress, setFormAddress] = useState("");
   const [formDateOfJoin, setFormDateOfJoin] = useState("");
   const [formDepartment, setFormDepartment] = useState("");
+  const [formIsDepartmentHead, setFormIsDepartmentHead] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
@@ -102,6 +103,7 @@ const Users: React.FC = () => {
       setFormAddress(user.address || "");
       setFormDateOfJoin(user.dateOfJoin || "");
       setFormDepartment(user.department || "");
+      setFormIsDepartmentHead(user.isDepartmentHead || false);
     } else {
       setIsEditMode(true);
       setEditingUser(null);
@@ -117,6 +119,7 @@ const Users: React.FC = () => {
       setFormAddress("");
       setFormDateOfJoin("");
       setFormDepartment("");
+      setFormIsDepartmentHead(false);
     }
     setIsModalOpen(true);
   };
@@ -142,6 +145,7 @@ const Users: React.FC = () => {
           address: formAddress,
           dateOfJoin: formDateOfJoin,
           department: formDepartment,
+          isDepartmentHead: formIsDepartmentHead,
         };
         if (formPassword) {
           payload.password = formPassword;
@@ -163,6 +167,7 @@ const Users: React.FC = () => {
               address: formAddress,
               dateOfJoin: formDateOfJoin,
               department: formDepartment,
+              isDepartmentHead: formIsDepartmentHead,
             },
             showToast,
           }),
@@ -369,6 +374,8 @@ const Users: React.FC = () => {
         setFormDateOfJoin={setFormDateOfJoin}
         formDepartment={formDepartment}
         setFormDepartment={setFormDepartment}
+        formIsDepartmentHead={formIsDepartmentHead}
+        setFormIsDepartmentHead={setFormIsDepartmentHead}
         availableDepartments={availableDepartments}
       />
     </Box>

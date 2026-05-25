@@ -1,7 +1,7 @@
 import React from 'react';
 import Modal from '../../../components/Modal';
 import TextField from '../../../components/TextField';
-import { Button, FormControl, InputLabel, MenuItem, Select, Box, Typography, Tooltip, IconButton } from '@mui/material';
+import { Button, FormControl, InputLabel, MenuItem, Select, Box, Typography, Tooltip, IconButton, FormControlLabel, Checkbox } from '@mui/material';
 import type { UpdateUserPayload } from '../model';
 import DatePicker from '../../../components/DatePicker';
 import Dropdown from '../../../components/Dropdown';
@@ -41,6 +41,8 @@ interface PropType {
     setFormDateOfJoin: (v: string) => void;
     formDepartment: string;
     setFormDepartment: (v: string) => void;
+    formIsDepartmentHead: boolean;
+    setFormIsDepartmentHead: (v: boolean) => void;
     availableDepartments: any[];
 }
 
@@ -78,6 +80,7 @@ const UserFormModal = ({
     formAddress, setFormAddress,
     formDateOfJoin, setFormDateOfJoin,
     formDepartment, setFormDepartment,
+    formIsDepartmentHead, setFormIsDepartmentHead,
     availableDepartments
 }: PropType) => {
     
@@ -114,6 +117,9 @@ const UserFormModal = ({
                         <div className={styles.row}>
                             <ViewField label="Status" value={formStatus ? "Active" : "Inactive"} />
                             <ViewField label="Department" value={formDepartment} />
+                        </div>
+                        <div className={styles.row}>
+                            <ViewField label="Is Department Head" value={formIsDepartmentHead ? "Yes" : "No"} />
                         </div>
                         <div className={styles.row}>
                             <ViewField label="First Name" value={formFirstName} />
@@ -237,10 +243,31 @@ const UserFormModal = ({
                                 label="Department"
                                 options={(availableDepartments || []).map(d => ({ label: d.name, value: d.name }))}
                                 value={formDepartment}
-                                onChange={setFormDepartment}
+                                onChange={(val) => {
+                                    setFormDepartment(val);
+                                    if (!val) {
+                                        setFormIsDepartmentHead(false);
+                                    }
+                                }}
                                 clearable
                             />
                         </div>
+                        
+                        {formDepartment && (
+                            <div className={styles.row} style={{ marginTop: '-8px', marginBottom: '8px' }}>
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={formIsDepartmentHead}
+                                            onChange={(e) => setFormIsDepartmentHead(e.target.checked)}
+                                            color="primary"
+                                        />
+                                    }
+                                    label="Is Department Head"
+                                    sx={{ ml: 0.5 }}
+                                />
+                            </div>
+                        )}
                         
                         <div className={styles.row}>
                             <TextField

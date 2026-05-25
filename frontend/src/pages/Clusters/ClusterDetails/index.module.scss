@@ -10,6 +10,7 @@
         align-items: center;
         margin-bottom: 24px;
         gap: 16px;
+        padding: 8px;
 
         &__button {
             background-color: rgba(0, 0, 0, 0.04);
@@ -23,9 +24,10 @@
 
     &__tabsWrapper {
         padding: 16px;
-        margin-bottom: 24px;
+        margin-bottom: 12px;
         border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        box-shadow: none;
+        background-color: transparent !important;
     }
 
     &__contentWrapper {

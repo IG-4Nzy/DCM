@@ -9,6 +9,7 @@ export interface WorkData {
   attachments: { name: string; url: string }[];
   status: string;
   comments: { text: string; user: string; timestamp: string }[];
+  completedAt?: string;
 }
 
 export interface CreateWorkPayload {
@@ -20,6 +21,7 @@ export interface CreateWorkPayload {
   attachments: { name: string; url: string }[];
   status?: string;
   comments?: { text: string; user: string; timestamp: string }[];
+  completedAt?: string;
 }
 
 export interface UpdateWorkPayload extends Partial<CreateWorkPayload> {

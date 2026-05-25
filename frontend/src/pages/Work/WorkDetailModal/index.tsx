@@ -115,10 +115,16 @@ const WorkDetailModal = ({
       )
     ) {
       try {
-        await onUpdate({
+        const payload: any = {
           id: work.id || work._id,
           status: newVal,
-        });
+        };
+        if (newVal === "Completed" || newVal === "Closed") {
+          payload.completedAt = new Date().toISOString().split("T")[0];
+        } else {
+          payload.completedAt = "";
+        }
+        await onUpdate(payload);
         setCurrentStatus(newVal);
       } catch (err) {
         // Error handled in parent

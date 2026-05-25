@@ -14,9 +14,6 @@ interface PropType {
   setFormName: (value: string) => void;
   formStatus: boolean;
   setFormStatus: (value: boolean) => void;
-  formDepartmentHead: string;
-  setFormDepartmentHead: (value: string) => void;
-  usersList: any[];
   handleSubmit: (e: React.FormEvent) => void;
 }
 
@@ -28,9 +25,6 @@ const DepartmentFormModal = ({
   setFormName,
   formStatus,
   setFormStatus,
-  formDepartmentHead,
-  setFormDepartmentHead,
-  usersList,
   handleSubmit
 }: PropType) => {
   return (
@@ -58,22 +52,6 @@ const DepartmentFormModal = ({
               { label: 'Inactive', value: 'false' },
             ]}
             className={styles.field}
-          />
-        </div>
-
-        <div className={styles.row}>
-          <Dropdown
-            label="Department Head"
-            value={formDepartmentHead}
-            onChange={(val) => setFormDepartmentHead(val)}
-            options={usersList.map((user) => ({
-              label: (user.firstName || user.lastName)
-                ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
-                : user.username,
-              value: user.username,
-            }))}
-            className={styles.field}
-            clearable
           />
         </div>
 

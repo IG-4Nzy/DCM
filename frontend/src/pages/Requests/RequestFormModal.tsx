@@ -130,7 +130,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
 
   return (
     <Dialog open={isModalOpen} onClose={handleCloseModal} maxWidth="sm" fullWidth>
-      <DialogTitle>{editingRequest ? 'Edit Request' : 'Create Request'}</DialogTitle>
+      <DialogTitle sx={{ pb: 1, fontWeight: 'bold', fontSize: '1.25rem',color:"#333"}}>{editingRequest ? 'Edit Request' : 'Create Request'}</DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent dividers>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>

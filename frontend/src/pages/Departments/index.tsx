@@ -218,9 +218,6 @@ const Departments: React.FC = () => {
         setFormName={setFormName}
         formStatus={formStatus}
         setFormStatus={setFormStatus}
-        formDepartmentHead={formDepartmentHead}
-        setFormDepartmentHead={setFormDepartmentHead}
-        usersList={usersList}
         handleSubmit={handleSubmit}
       />
     </Box>

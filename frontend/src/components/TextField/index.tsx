@@ -6,7 +6,7 @@ const TextField: React.FC<MuiTextFieldProps> = (props) => {
     <MuiTextField
       {...props}
       sx={{
-        width: { xs: '100%', sm: 300, md: 400 }, // Responsive width
+        width: props.fullWidth ? '100%' : { xs: '100%', sm: 300, md: 400 }, // Responsive width
         '& .MuiOutlinedInput-root': {
           borderRadius: '8px',
           backgroundColor: '#fff',

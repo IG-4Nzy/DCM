@@ -259,14 +259,32 @@ const Works: React.FC = () => {
         let text = row.dueDate;
         let fontWeight = 'normal';
         
-        if (diffDays === 1 || diffDays === 0) { // 1 day to go or due today
-           color = '#ed6c02'; // orange/yellow
-           fontWeight = 'bold';
-        } else if (diffDays < 0) {
-           color = '#d32f2f'; // red
-           fontWeight = 'bold';
-           const pastDays = Math.abs(diffDays);
-           text = `${row.dueDate} (due ${pastDays} day${pastDays > 1 ? 's' : ''})`;
+        const isCompleted = row.status === 'Completed' || row.status === 'Closed';
+        
+        let showRed = false;
+        if (isCompleted && row.completedAt) {
+          const completedDate = new Date(row.completedAt);
+          completedDate.setHours(0, 0, 0, 0);
+          const due = new Date(row.dueDate);
+          due.setHours(0, 0, 0, 0);
+          if (completedDate.getTime() > due.getTime()) {
+            showRed = true;
+          }
+        }
+        
+        if (!isCompleted) {
+          if (diffDays === 1 || diffDays === 0) { // 1 day to go or due today
+             color = '#ed6c02'; // orange/yellow
+             fontWeight = 'bold';
+          } else if (diffDays < 0) {
+             color = '#d32f2f'; // red
+             fontWeight = 'bold';
+             const pastDays = Math.abs(diffDays);
+             text = `${row.dueDate} (due ${pastDays} day${pastDays > 1 ? 's' : ''})`;
+          }
+        } else if (showRed) {
+          color = '#d32f2f'; // red
+          fontWeight = 'bold';
         }
         
         return <span style={{ color, fontWeight }}>{text}</span>;

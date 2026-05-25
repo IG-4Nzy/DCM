@@ -13,6 +13,7 @@ export interface UserData {
   department?: string;
   is_superuser?: boolean;
   isSuperuser?: boolean;
+  isDepartmentHead?: boolean;
 }
 
 export interface CreateUserPayload {
@@ -28,6 +29,7 @@ export interface CreateUserPayload {
   address?: string;
   dateOfJoin?: string;
   department?: string;
+  isDepartmentHead?: boolean;
 }
 
 export interface UpdateUserPayload {
@@ -44,6 +46,7 @@ export interface UpdateUserPayload {
   address?: string;
   dateOfJoin?: string;
   department?: string;
+  isDepartmentHead?: boolean;
 }
 
 export interface UsersState {
