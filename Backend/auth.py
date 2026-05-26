@@ -74,6 +74,32 @@ async def login(credentials: LoginRequest):
         "department": user.get("department", "")
     })
     
+    # Record first login of the day in attendance
+    try:
+        now_local = datetime.now()
+        today_str = now_local.strftime("%Y-%m-%d")
+        
+        attendance_collection = db.get_collection("attendance")
+        existing_attendance = await attendance_collection.find_one({
+            "username": user["username"],
+            "date": today_str
+        })
+        
+        if not existing_attendance:
+            await attendance_collection.insert_one({
+                "username": user["username"],
+                "department": user.get("department") or "Unassigned",
+                "date": today_str,
+                "firstLogin": now_local.isoformat(),
+                "lastLogout": None,
+                "workedHours": 0.0,
+                "regularizeStatus": "None",
+                "regularizeReason": None,
+                "regularizeRemarks": None
+            })
+    except Exception as e:
+        print(f"Error auto-logging attendance: {e}")
+    
     return LoginResponse(
         token=access_token,
         role=role,
@@ -81,6 +107,56 @@ async def login(credentials: LoginRequest):
         privileges=privileges,
         isSuperuser=is_superuser
     )
+
+@router.post("/logout")
+async def logout(current_user: dict = Depends(get_current_user)):
+    username = current_user.get("sub")
+    if not username:
+        raise HTTPException(status_code=400, detail="Invalid session")
+        
+    try:
+        now_local = datetime.now()
+        today_str = now_local.strftime("%Y-%m-%d")
+        
+        attendance_collection = db.get_collection("attendance")
+        existing_attendance = await attendance_collection.find_one({
+            "username": username,
+            "date": today_str
+        })
+        
+        if existing_attendance:
+            first_login_str = existing_attendance.get("firstLogin")
+            worked_hours = 0.0
+            if first_login_str:
+                first_login_dt = datetime.fromisoformat(first_login_str)
+                duration = now_local - first_login_dt
+                worked_hours = round(duration.total_seconds() / 3600.0, 2)
+                
+            await attendance_collection.update_one(
+                {"_id": existing_attendance["_id"]},
+                {
+                    "$set": {
+                        "lastLogout": now_local.isoformat(),
+                        "workedHours": worked_hours
+                    }
+                }
+            )
+        else:
+            await attendance_collection.insert_one({
+                "username": username,
+                "department": current_user.get("department") or "Unassigned",
+                "date": today_str,
+                "firstLogin": now_local.isoformat(),
+                "lastLogout": now_local.isoformat(),
+                "workedHours": 0.0,
+                "regularizeStatus": "None",
+                "regularizeReason": None,
+                "regularizeRemarks": None
+            })
+    except Exception as e:
+        print(f"Error auto-logging logout: {e}")
+        
+    return {"message": "Logged out successfully"}
 
 @router.get("/me", response_description="Get current user profile")
 async def get_my_profile(current_user: dict = Depends(get_current_user)):

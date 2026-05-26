@@ -16,5 +16,6 @@ export const ROUTE_CONSTANTS = {
     CLUSTER_DETAILS: '/cluster/:id',
     REQUESTS: "/requests",
     SEARCH: "/search",
-    SERVER_MONITORING: "/server-monitoring"
+    SERVER_MONITORING: "/server-monitoring",
+    ATTENDANCE: "/attendance",
 }

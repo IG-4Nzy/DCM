@@ -26,6 +26,8 @@ import { AiOutlineCluster as ClusterIcon } from "react-icons/ai";
 
 import { FaBell as BellIcon } from "react-icons/fa";
 
+import { BsFillPersonVcardFill as AttendanceIcon} from "react-icons/bs";
+
 export const Icons = {
   MenuIcon,
   DashboardIcon,
@@ -44,5 +46,6 @@ export const Icons = {
   ClusterIcon,
   RequestsIcon,
   SearchIcon,
-  BellIcon
+  BellIcon,
+  AttendanceIcon
 };

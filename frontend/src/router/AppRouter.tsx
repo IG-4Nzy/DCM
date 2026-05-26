@@ -17,12 +17,12 @@ const Roaster = lazy(() => import("../pages/Roaster"));
 const Observations = lazy(() => import("../pages/Observations"));
 const Inventory = lazy(() => import("../pages/Inventory"));
 const Configurations = lazy(() => import("../pages/Configurations"));
-
 const Clusters = lazy(() => import("../pages/Clusters"));
 const ClusterDetails = lazy(() => import("../pages/Clusters/ClusterDetails"));
 const Requests = lazy(() => import("../pages/Requests"));
 const Search = lazy(() => import("../pages/Search"));
 const ServerMonitoring = lazy(() => import("../pages/ServerMonitoring"));
+const Attendance = lazy(() => import("../pages/Attendance"));
 
 
 const AppRouter: React.FC = () => {
@@ -55,6 +55,7 @@ const AppRouter: React.FC = () => {
             <Route path={ROUTE_CONSTANTS.REQUESTS} element={<Requests />} />
             <Route path={ROUTE_CONSTANTS.SEARCH} element={<Search />} />
             <Route path={ROUTE_CONSTANTS.SERVER_MONITORING} element={<ServerMonitoring />} />
+            <Route path={ROUTE_CONSTANTS.ATTENDANCE} element={<Attendance />} />
           </Route>
 
           <Route path="*" element={<PageNotFound />} />

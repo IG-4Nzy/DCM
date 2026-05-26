@@ -22,6 +22,7 @@ from vcenter_details import router as vcenter_details_router
 from vm_details import router as vm_details_router
 from requests_router import router as requests_router
 from request_routings import router as request_routings_router
+from attendance import router as attendance_router
 
 app = FastAPI(
     title="DCM Backend",
@@ -61,6 +62,7 @@ app.include_router(vcenter_details_router, tags=["vcenter_details"], prefix="/ap
 app.include_router(vm_details_router, tags=["vm_details"], prefix="/api/vm-details")
 app.include_router(requests_router, tags=["requests"], prefix="/api/requests")
 app.include_router(request_routings_router, tags=["request_routings"], prefix="/api/request-routings")
+app.include_router(attendance_router, tags=["attendance"], prefix="/api/attendance")
 
 import os
 os.makedirs("uploads/works", exist_ok=True)

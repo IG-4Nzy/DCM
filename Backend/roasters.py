@@ -5,7 +5,7 @@ from typing import Optional, List
 from database import db
 from models import RoasterModel, CreateRoasterModel, UpdateRoasterModel, PaginatedRoastersModel, RoasterStatusModel, CreateRoasterStatusModel
 from bson import ObjectId
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 
 router = APIRouter()
 roasters_collection = db.get_collection("roasters")
@@ -154,10 +154,12 @@ async def create_roaster(
 
     roaster_dict = roaster.model_dump()
     
-    # Enforce no past dates
-    current_date_str = date.today().isoformat()
-    if roaster_dict["date"] < current_date_str:
-        raise HTTPException(status_code=400, detail="Cannot create roster entry for past dates")
+    # Enforce no past weeks (allow past days within the current week)
+    today = date.today()
+    start_of_current_iso_week = today - timedelta(days=today.weekday())
+    start_of_current_iso_week_str = start_of_current_iso_week.isoformat()
+    if roaster_dict["date"] < start_of_current_iso_week_str:
+        raise HTTPException(status_code=400, detail="Cannot create roster entry for past weeks")
 
     roaster_dict["createdBy"] = current_user.get("sub", "")
     roaster_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
@@ -195,11 +197,13 @@ async def update_roaster(id: str, roaster: UpdateRoasterModel = Body(...), curre
     if not existing:
         raise HTTPException(status_code=404, detail=f"Roster {id} not found")
 
-    # Enforce no past dates
-    current_date_str = date.today().isoformat()
+    # Enforce no past weeks (allow past days within the current week)
+    today = date.today()
+    start_of_current_iso_week = today - timedelta(days=today.weekday())
+    start_of_current_iso_week_str = start_of_current_iso_week.isoformat()
     roster_date = roaster_dict.get("date") or existing.get("date")
-    if roster_date and roster_date < current_date_str:
-        raise HTTPException(status_code=400, detail="Cannot edit roster entry for past dates")
+    if roster_date and roster_date < start_of_current_iso_week_str:
+        raise HTTPException(status_code=400, detail="Cannot edit roster entry for past weeks")
 
     if len(roaster_dict) >= 1:
         roaster_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
@@ -239,10 +243,12 @@ async def delete_roaster(id: str):
     if not existing:
         raise HTTPException(status_code=404, detail=f"Roster {id} not found")
 
-    # Enforce no past dates
-    current_date_str = date.today().isoformat()
-    if existing.get("date") and existing["date"] < current_date_str:
-        raise HTTPException(status_code=400, detail="Cannot delete roster entry for past dates")
+    # Enforce no past weeks (allow past days within the current week)
+    today = date.today()
+    start_of_current_iso_week = today - timedelta(days=today.weekday())
+    start_of_current_iso_week_str = start_of_current_iso_week.isoformat()
+    if existing.get("date") and existing["date"] < start_of_current_iso_week_str:
+        raise HTTPException(status_code=400, detail="Cannot delete roster entry for past weeks")
 
     delete_result = await roasters_collection.delete_one({"_id": ObjectId(id)})
 

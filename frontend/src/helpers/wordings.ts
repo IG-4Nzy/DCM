@@ -22,4 +22,5 @@ export default {
   requests: "Requests",
   search: "Search",
   serverMonitoring: "Server Monitoring",
+  attendance: "Attendance",
 };

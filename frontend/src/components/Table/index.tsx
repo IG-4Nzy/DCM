@@ -24,14 +24,14 @@ export interface Column<T> {
 interface ReusableTableProps<T> {
   columns: Column<T>[];
   data: T[];
-  orderBy: string;
-  order: 'asc' | 'desc';
-  onRequestSort: (property: string) => void;
-  page: number;
-  rowsPerPage: number;
-  onPageChange: (event: unknown, newPage: number) => void;
-  onRowsPerPageChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  totalCount: number;
+  orderBy?: string;
+  order?: 'asc' | 'desc';
+  onRequestSort?: (property: string) => void;
+  page?: number;
+  rowsPerPage?: number;
+  onPageChange?: (event: unknown, newPage: number) => void;
+  onRowsPerPageChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  totalCount?: number;
   onRowClick?: (row: T) => void;
 }
 
@@ -84,7 +84,7 @@ function Table<T extends { id?: string | number }>(props: ReusableTableProps<T>)
                     whiteSpace: 'nowrap'
                   }}
                 >
-                  {column.sortable ? (
+                  {column.sortable && orderBy && order && onRequestSort ? (
                     <TableSortLabel
                       active={orderBy === column.id}
                       direction={orderBy === column.id ? order : 'asc'}
@@ -151,23 +151,25 @@ function Table<T extends { id?: string | number }>(props: ReusableTableProps<T>)
           </TableBody>
         </MuiTable>
       </TableContainer>
-      <Box sx={{ borderTop: '1px solid #e0e0e0' }}>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={totalCount}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={onPageChange}
-          onRowsPerPageChange={onRowsPerPageChange}
-          sx={{
-            color: '#637381',
-            '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
-              margin: 0,
-            }
-          }}
-        />
-      </Box>
+      {page !== undefined && rowsPerPage !== undefined && totalCount !== undefined && onPageChange && onRowsPerPageChange && (
+        <Box sx={{ borderTop: '1px solid #e0e0e0' }}>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={totalCount}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={onPageChange}
+            onRowsPerPageChange={onRowsPerPageChange}
+            sx={{
+              color: '#637381',
+              '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
+                margin: 0,
+              }
+            }}
+          />
+        </Box>
+      )}
     </Paper>
   );
 }

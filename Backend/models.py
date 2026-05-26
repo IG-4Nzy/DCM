@@ -929,3 +929,63 @@ class RequestRoutingModel(BaseModel):
 class PaginatedRequestRoutingsModel(BaseModel):
     data: List[RequestRoutingModel]
     total: int
+
+class AttendanceModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    username: str
+    fullName: Optional[str] = None
+    department: str
+    date: str  # YYYY-MM-DD
+    firstLogin: Optional[str] = None  # ISO format string
+    lastLogout: Optional[str] = None  # ISO format string
+    workedHours: float = 0.0
+    regularizeStatus: str = "None"  # "None", "Pending", "Approved", "Rejected"
+    regularizeReason: Optional[str] = None
+    regularizeRemarks: Optional[str] = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateAttendanceModel(BaseModel):
+    username: str
+    department: str
+    date: str
+    firstLogin: Optional[str] = None
+    lastLogout: Optional[str] = None
+    workedHours: float = 0.0
+    regularizeStatus: str = "None"
+    regularizeReason: Optional[str] = None
+    regularizeRemarks: Optional[str] = None
+
+class UpdateAttendanceModel(BaseModel):
+    firstLogin: Optional[str] = None
+    lastLogout: Optional[str] = None
+    workedHours: Optional[float] = None
+    regularizeStatus: Optional[str] = None
+    regularizeReason: Optional[str] = None
+    regularizeRemarks: Optional[str] = None
+
+class PaginatedAttendanceModel(BaseModel):
+    data: List[AttendanceModel]
+    total: int
+
+class ShiftInfoModel(BaseModel):
+    name: str
+    startTime: str  # "HH:MM"
+    endTime: str    # "HH:MM"
+
+class AttendanceConfigModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    startDay: int = 1
+    endDay: int = 31
+    shiftStart: str = "09:00"
+    lateGracePeriod: int = 30
+    maxAllowedDays: int = 26
+    shifts: List[ShiftInfoModel] = Field(default_factory=list)
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )

@@ -57,5 +57,11 @@ export const PRIVILEGES = {
     SERVER_MONITORING_VIEW: "View Server Monitoring",
     SERVER_MONITORING_CREATE: "Create Server Monitoring",
     SERVER_MONITORING_UPDATE: "Update Server Monitoring",
-    SERVER_MONITORING_DELETE: "Delete Server Monitoring"
+    SERVER_MONITORING_DELETE: "Delete Server Monitoring",
+    ATTENDANCE_CREATE: "Create Attendance",
+    ATTENDANCE_UPDATE: "Update Attendance",
+    ATTENDANCE_DELETE: "Delete Attendance",
+    VIEW_DEPARTMENTAL_ATTENDACE: "View Departmental Attendance",
+    VIEW_SELF_ATTENDANCE: "View Self Attendance",
+    VIEW_ALL_ATTENDACE: "View All Attendance",
 }

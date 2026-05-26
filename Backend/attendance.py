@@ -1,0 +1,399 @@
+from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
+from auth_utils import get_current_user
+from typing import Optional, List
+from database import db
+from models import (
+    AttendanceModel, CreateAttendanceModel, UpdateAttendanceModel, PaginatedAttendanceModel, AttendanceConfigModel
+)
+from bson import ObjectId
+from datetime import datetime
+
+router = APIRouter()
+attendance_collection = db.get_collection("attendance")
+config_collection = db.get_collection("attendance_config")
+
+# Helper to verify department head
+async def is_department_head(user: dict, target_department: str) -> bool:
+    if user.get("isSuperuser", False):
+        return True
+    # Find department Head configuration
+    dept_col = db.get_collection("departments")
+    dept = await dept_col.find_one({"name": target_department})
+    if dept and dept.get("departmentHead") == user.get("sub"):
+        return True
+    return False
+
+@router.get("/", response_description="List attendance records", response_model=PaginatedAttendanceModel, response_model_by_alias=False)
+async def list_attendance(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1),
+    pagination: bool = Query(True),
+    search: Optional[str] = None,
+    department: Optional[str] = None,
+    startDate: Optional[str] = None,
+    endDate: Optional[str] = None,
+    sortBy: Optional[str] = Query(None),
+    sort_by: Optional[str] = Query(None),
+    order: str = Query("desc"),
+    current_user: dict = Depends(get_current_user)
+):
+    query = {}
+    is_superuser = current_user.get("isSuperuser", False)
+    privileges = current_user.get("privileges", [])
+
+    # Access control implementation
+    if is_superuser or "View All Attendance" in privileges:
+        if department:
+            query["department"] = department
+    elif "View Departmental Attendance" in privileges:
+        query["department"] = current_user.get("department") or "None"
+    elif "View Self Attendance" in privileges:
+        query["username"] = current_user.get("sub")
+    else:
+        raise HTTPException(status_code=403, detail="Not enough permissions to view attendance")
+
+    # Search filter
+    if search:
+        query["$or"] = [
+            {"username": {"$regex": search, "$options": "i"}},
+            {"department": {"$regex": search, "$options": "i"}}
+        ]
+
+    # Date filter range
+    if startDate and endDate:
+        query["date"] = {"$gte": startDate, "$lte": endDate}
+    elif startDate:
+        query["date"] = {"$gte": startDate}
+    elif endDate:
+        query["date"] = {"$lte": endDate}
+
+    actual_sort_by = sortBy or sort_by or "date"
+    sort_order = 1 if order == "asc" else -1
+
+    total = await attendance_collection.count_documents(query)
+    cursor = attendance_collection.find(query).sort(actual_sort_by, sort_order)
+
+    if pagination:
+        cursor = cursor.skip(skip).limit(limit)
+        items = await cursor.to_list(length=limit)
+    else:
+        items = await cursor.to_list(length=None)
+
+    # Enrich each record with fullName and shift details from rosters
+    users_col = db.get_collection("users")
+    roasters_col = db.get_collection("roasters")
+    config = await config_collection.find_one({}) or {}
+    config_shifts = config.get("shifts", [])
+    default_start = config.get("shiftStart", "09:00")
+
+    enriched_items = []
+    for item in items:
+        enriched = dict(item)
+        enriched["id"] = str(item["_id"])
+        
+        user = await users_col.find_one({"username": item["username"]})
+        if user:
+            first_name = user.get("firstName") or ""
+            last_name = user.get("lastName") or ""
+            full_name = f"{first_name} {last_name}".strip()
+            enriched["fullName"] = full_name if full_name else item["username"]
+        else:
+            enriched["fullName"] = item["username"]
+
+        # Roster shift lookup
+        log_date = item.get("date")
+        username = item.get("username")
+        roaster = await roasters_col.find_one({"date": log_date, "assignees": username})
+        if roaster:
+            assigned_shift_name = roaster.get("shift")
+            enriched["shiftName"] = assigned_shift_name
+            shift_info = next((s for s in config_shifts if s.get("name") == assigned_shift_name), None)
+            if shift_info:
+                enriched["shiftStart"] = shift_info.get("startTime", default_start)
+                enriched["shiftEnd"] = shift_info.get("endTime", "17:00")
+            else:
+                enriched["shiftStart"] = default_start
+                enriched["shiftEnd"] = "17:00"
+        else:
+            enriched["shiftName"] = "Default"
+            enriched["shiftStart"] = default_start
+            enriched["shiftEnd"] = "17:00"
+
+        enriched_items.append(enriched)
+
+    return {"data": enriched_items, "total": total}
+
+@router.post("/regularize/{id}")
+async def request_regularize(
+    id: str,
+    reason: str = Body(..., embed=True),
+    remarks: Optional[str] = Body(None, embed=True),
+    current_user: dict = Depends(get_current_user)
+):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    attendance = await attendance_collection.find_one({"_id": ObjectId(id)})
+    if not attendance:
+        raise HTTPException(status_code=404, detail="Attendance record not found")
+
+    if not current_user.get("isSuperuser", False) and attendance.get("username") != current_user.get("sub"):
+        raise HTTPException(status_code=403, detail="You can only regularize your own attendance")
+
+    await attendance_collection.update_one(
+        {"_id": ObjectId(id)},
+        {
+            "$set": {
+                "regularizeStatus": "Pending",
+                "regularizeReason": reason,
+                "regularizeRemarks": remarks
+            }
+        }
+    )
+    return {"message": "Regularization request submitted successfully"}
+
+@router.post("/approve/{id}")
+async def approve_regularize(
+    id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    attendance = await attendance_collection.find_one({"_id": ObjectId(id)})
+    if not attendance:
+        raise HTTPException(status_code=404, detail="Attendance record not found")
+
+    target_dept = attendance.get("department")
+    if not await is_department_head(current_user, target_dept):
+        raise HTTPException(status_code=403, detail="Only Department Heads or Superusers can approve regularization")
+
+    await attendance_collection.update_one(
+        {"_id": ObjectId(id)},
+        {
+            "$set": {
+                "regularizeStatus": "Approved",
+                "workedHours": max(attendance.get("workedHours", 0.0), 8.0)
+            }
+        }
+    )
+    return {"message": "Regularization request approved"}
+
+@router.post("/reject/{id}")
+async def reject_regularize(
+    id: str,
+    remarks: Optional[str] = Body(None, embed=True),
+    current_user: dict = Depends(get_current_user)
+):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    attendance = await attendance_collection.find_one({"_id": ObjectId(id)})
+    if not attendance:
+        raise HTTPException(status_code=404, detail="Attendance record not found")
+
+    target_dept = attendance.get("department")
+    if not await is_department_head(current_user, target_dept):
+        raise HTTPException(status_code=403, detail="Only Department Heads or Superusers can reject regularization")
+
+    await attendance_collection.update_one(
+        {"_id": ObjectId(id)},
+        {
+            "$set": {
+                "regularizeStatus": "Rejected",
+                "regularizeRemarks": remarks or "Rejected by Department Head"
+            }
+        }
+    )
+    return {"message": "Regularization request rejected"}
+
+@router.get("/config", response_model=AttendanceConfigModel, response_model_by_alias=False)
+async def get_attendance_config():
+    config = await config_collection.find_one({})
+    if not config:
+        default_config = {"startDay": 1, "endDay": 31, "shiftStart": "09:00", "lateGracePeriod": 30, "maxAllowedDays": 26}
+        await config_collection.insert_one(default_config)
+        config = await config_collection.find_one({})
+    return config
+
+@router.post("/config", response_model=AttendanceConfigModel, response_model_by_alias=False)
+async def update_attendance_config(
+    payload: AttendanceConfigModel = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    is_superuser = current_user.get("isSuperuser", False)
+    privileges = current_user.get("privileges", [])
+    if not is_superuser and "Update Configurations" not in privileges:
+        raise HTTPException(status_code=403, detail="Not enough permissions to update configuration")
+
+    config = await config_collection.find_one({})
+    update_data = {
+        "startDay": payload.startDay,
+        "endDay": payload.endDay,
+        "shiftStart": payload.shiftStart,
+        "lateGracePeriod": payload.lateGracePeriod,
+        "maxAllowedDays": payload.maxAllowedDays,
+        "shifts": [dict(s) for s in payload.shifts]
+    }
+    if config:
+        await config_collection.update_one({"_id": config["_id"]}, {"$set": update_data})
+    else:
+        await config_collection.insert_one(update_data)
+        
+    new_config = await config_collection.find_one({})
+    return new_config
+
+@router.get("/summary")
+async def get_attendance_summary(
+    startDate: str = Query(...),
+    endDate: str = Query(...),
+    department: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user)
+):
+    is_superuser = current_user.get("isSuperuser", False)
+    privileges = current_user.get("privileges", [])
+    
+    # Determine access query filter for users
+    query = {"status": True}
+    
+    if is_superuser or "View All Attendance" in privileges:
+        if department:
+            query["department"] = department
+    elif "View Departmental Attendance" in privileges:
+        query["department"] = current_user.get("department") or "None"
+    elif "View Self Attendance" in privileges:
+        query["username"] = current_user.get("sub")
+    else:
+        raise HTTPException(status_code=403, detail="Not enough permissions to view attendance summaries")
+        
+    # Fetch users matching query
+    users_col = db.get_collection("users")
+    users = await users_col.find(query).to_list(length=None)
+    
+    # Fetch attendance config to know shiftStart and lateGracePeriod
+    config = await config_collection.find_one({})
+    if not config:
+        config = {"startDay": 1, "endDay": 31, "shiftStart": "09:00", "lateGracePeriod": 30, "maxAllowedDays": 26}
+        
+    shift_start = config.get("shiftStart", "09:00")
+    grace = config.get("lateGracePeriod", 30)
+    max_days = config.get("maxAllowedDays", 26)
+    
+    try:
+        sh, sm = map(int, shift_start.split(":"))
+        threshold_mins = sh * 60 + sm + grace
+    except Exception:
+        threshold_mins = 9 * 60 + 30
+        
+    results = []
+    for u in users:
+        username = u.get("username")
+        user_dept = u.get("department") or "None"
+        
+        # Fetch attendance records for this user in date range
+        att_query = {
+            "username": username,
+            "date": {"$gte": startDate, "$lte": endDate}
+        }
+        logs = await attendance_collection.find(att_query).to_list(length=None)
+        
+        present_days = len(logs)
+        late_days = 0
+        
+        for log in logs:
+            first_login = log.get("firstLogin")
+            if first_login:
+                try:
+                    log_date = log.get("date")
+                    curr_shift_start = shift_start
+                    roasters_col = db.get_collection("roasters")
+                    roaster = await roasters_col.find_one({"date": log_date, "assignees": username})
+                    if roaster:
+                        assigned_shift_name = roaster.get("shift")
+                        shift_info = next((s for s in config.get("shifts", []) if s.get("name") == assigned_shift_name), None)
+                        if shift_info:
+                            curr_shift_start = shift_info.get("startTime", shift_start)
+
+                    sh, sm = map(int, curr_shift_start.split(":"))
+                    threshold_mins = sh * 60 + sm + grace
+
+                    dt = datetime.fromisoformat(first_login)
+                    login_mins = dt.hour * 60 + dt.minute
+                    if login_mins > threshold_mins:
+                        late_days += 1
+                except Exception:
+                    pass
+                    
+        first_name = u.get("firstName") or ""
+        last_name = u.get("lastName") or ""
+        full_name = f"{first_name} {last_name}".strip()
+        if not full_name:
+            full_name = username
+            
+        results.append({
+            "username": username,
+            "fullName": full_name,
+            "department": user_dept,
+            "presentDays": present_days,
+            "lateDays": late_days,
+            "maxDays": max_days
+        })
+        
+    return results
+
+@router.put("/{id}", response_model=AttendanceModel, response_model_by_alias=False)
+async def edit_attendance(
+    id: str,
+    payload: UpdateAttendanceModel = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+        
+    is_superuser = current_user.get("isSuperuser", False)
+    privileges = current_user.get("privileges", [])
+    if not is_superuser and "Update Attendance" not in privileges:
+        raise HTTPException(status_code=403, detail="Not enough permissions to edit attendance")
+        
+    existing = await attendance_collection.find_one({"_id": ObjectId(id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Attendance log not found")
+        
+    update_dict = {k: v for k, v in payload.model_dump().items() if v is not None}
+    
+    # Calculate workedHours if firstLogin and lastLogout are modified or present
+    first_login = update_dict.get("firstLogin") or existing.get("firstLogin")
+    last_logout = update_dict.get("lastLogout") or existing.get("lastLogout")
+    if first_login and last_logout:
+        try:
+            start_dt = datetime.fromisoformat(first_login)
+            end_dt = datetime.fromisoformat(last_logout)
+            update_dict["workedHours"] = round((end_dt - start_dt).total_seconds() / 3600.0, 2)
+        except Exception:
+            pass
+            
+    await attendance_collection.update_one(
+        {"_id": ObjectId(id)},
+        {"$set": update_dict}
+    )
+    
+    updated = await attendance_collection.find_one({"_id": ObjectId(id)})
+    return updated
+
+@router.delete("/{id}")
+async def delete_attendance(
+    id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+        
+    is_superuser = current_user.get("isSuperuser", False)
+    privileges = current_user.get("privileges", [])
+    if not is_superuser and "Delete Attendance" not in privileges:
+        raise HTTPException(status_code=403, detail="Not enough privileges to delete attendance")
+        
+    delete_result = await attendance_collection.delete_one({"_id": ObjectId(id)})
+    if delete_result.deleted_count == 1:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    raise HTTPException(status_code=404, detail="Attendance log not found")

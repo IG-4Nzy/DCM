@@ -291,7 +291,7 @@ const Layout: React.FC = () => {
           </ListItem>
         </List>
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', background: '#f5f7fa', boxSizing: 'border-box' }}>
+      <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh', background: '#f5f7fa', boxSizing: 'border-box' }}>
         <DrawerHeader />
         <Outlet />
       </Box>
