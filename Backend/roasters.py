@@ -5,7 +5,7 @@ from typing import Optional, List
 from database import db
 from models import RoasterModel, CreateRoasterModel, UpdateRoasterModel, PaginatedRoastersModel, RoasterStatusModel, CreateRoasterStatusModel
 from bson import ObjectId
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 
 router = APIRouter()
 roasters_collection = db.get_collection("roasters")
@@ -153,6 +153,12 @@ async def create_roaster(
         raise HTTPException(status_code=403, detail="Not enough permissions to create roasters")
 
     roaster_dict = roaster.model_dump()
+    
+    # Enforce no past dates
+    current_date_str = date.today().isoformat()
+    if roaster_dict["date"] < current_date_str:
+        raise HTTPException(status_code=400, detail="Cannot create roster entry for past dates")
+
     roaster_dict["createdBy"] = current_user.get("sub", "")
     roaster_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
 
@@ -184,6 +190,16 @@ async def update_roaster(id: str, roaster: UpdateRoasterModel = Body(...), curre
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     roaster_dict = {k: v for k, v in roaster.model_dump().items() if v is not None}
+
+    existing = await roasters_collection.find_one({"_id": ObjectId(id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Roster {id} not found")
+
+    # Enforce no past dates
+    current_date_str = date.today().isoformat()
+    roster_date = roaster_dict.get("date") or existing.get("date")
+    if roster_date and roster_date < current_date_str:
+        raise HTTPException(status_code=400, detail="Cannot edit roster entry for past dates")
 
     if len(roaster_dict) >= 1:
         roaster_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
@@ -218,6 +234,15 @@ async def update_roaster(id: str, roaster: UpdateRoasterModel = Body(...), curre
 async def delete_roaster(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    existing = await roasters_collection.find_one({"_id": ObjectId(id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Roster {id} not found")
+
+    # Enforce no past dates
+    current_date_str = date.today().isoformat()
+    if existing.get("date") and existing["date"] < current_date_str:
+        raise HTTPException(status_code=400, detail="Cannot delete roster entry for past dates")
 
     delete_result = await roasters_collection.delete_one({"_id": ObjectId(id)})
 
