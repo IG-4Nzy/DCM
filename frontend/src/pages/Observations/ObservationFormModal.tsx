@@ -2,7 +2,7 @@ import React from 'react';
 import Modal from '../../components/Modal';
 import TextField from '../../components/TextField';
 import DatePicker from '../../components/DatePicker';
-import { FormControl, InputLabel, MenuItem, Select, Button, Box, IconButton, Tooltip, Typography, Chip, OutlinedInput } from '@mui/material';
+import { FormControl, InputLabel, MenuItem, Select, Button, Box, IconButton, Tooltip, Typography, Chip, OutlinedInput, FormGroup, FormControlLabel, Checkbox } from '@mui/material';
 import { MdEdit as EditIcon } from 'react-icons/md';
 import styles from './index.module.scss';
 
@@ -21,6 +21,7 @@ interface ObservationFormModalProps {
   categoryOptions: { value: string; label: string }[];
   informedToOptions: { value: string; label: string }[];
   statusOptions: { value: string; label: string }[];
+  categories: any[];
   handleSubmit: (e: React.FormEvent) => void;
 }
 
@@ -46,8 +47,14 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
   categoryOptions,
   informedToOptions,
   statusOptions,
+  categories,
   handleSubmit
 }) => {
+  // Get reportsTo options belongs to the selected category
+  const selectedCat = (categories || []).find(c => c.name === formData.category);
+  const categoryReportsToOptions = selectedCat?.reportsTo 
+    ? selectedCat.reportsTo.split(',').map((s: string) => s.trim()).filter(Boolean) 
+    : [];
   const canEdit = isEditMode;
   const showEditButton = editingObs && !isEditMode && hasUpdatePrivilege;
 
@@ -86,9 +93,38 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
               <ViewField label="Description" value={formData.description} />
             </div>
             <div className={styles.row}>
-              <ViewField label="Informed To" value={
-                (formData.informedTo || []).map((i: string) => i === 'Other' ? formData.informedToOther : (informedToOptions.find(o => o.value === i)?.label || i)).join(', ')
-              } />
+              <FormControl component="fieldset" fullWidth sx={{ p: 1.5, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 1.5, border: '1px solid rgba(0,0,0,0.05)' }}>
+                <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 'bold', mb: 1.5, letterSpacing: '0.5px' }}>
+                  Reports To / Escalation Status
+                </Typography>
+                {categoryReportsToOptions.length === 0 ? (
+                  <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic' }}>
+                    No reports to options are configured for the selected category.
+                  </Typography>
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {categoryReportsToOptions.map((opt) => {
+                      const isReported = (formData.informedTo || []).includes(opt);
+                      return (
+                        <Box key={opt} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, px: 2, bgcolor: '#ffffff', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.04)', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 500, color: 'text.primary' }}>{opt}</Typography>
+                          <Chip
+                            label={isReported ? 'Reported' : 'Not Reported'}
+                            size="small"
+                            sx={{ 
+                              fontWeight: 'bold', 
+                              fontSize: '0.75rem',
+                              bgcolor: isReported ? '#e8f5e9' : '#ffebee',
+                              color: isReported ? '#2e7d32' : '#c62828',
+                              border: isReported ? '1px solid #c8e6c9' : '1px solid #ffcdd2'
+                            }}
+                          />
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                )}
+              </FormControl>
             </div>
             <div className={styles.row}>
               <ViewField label="Status" value={formData.status} />
@@ -134,15 +170,20 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                 </Select>
               </FormControl>
               
-              <TextField
-                className={styles.field}
-                fullWidth
-                label="AMC"
-                value={formData.amc}
-                onChange={(e: any) => setFormData({ ...formData, amc: e.target.value })}
-                placeholder="Enter AMC"
-                required
-              />
+              <FormControl fullWidth className={styles.field}>
+                <InputLabel id="amc-label">AMC</InputLabel>
+                <Select
+                  labelId="amc-label"
+                  value={formData.amc || ""}
+                  label="AMC"
+                  onChange={(e) => setFormData({ ...formData, amc: e.target.value })}
+                  sx={{ borderRadius: '8px' }}
+                >
+                  <MenuItem value=""><em>None</em></MenuItem>
+                  <MenuItem value="Yes">Yes</MenuItem>
+                  <MenuItem value="No">No</MenuItem>
+                </Select>
+              </FormControl>
             </div>
             
             <div className={styles.row}>
@@ -159,44 +200,46 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
               />
             </div>
             
-            <div className={styles.row}>
-              <FormControl fullWidth className={styles.field}>
-                <InputLabel>Informed To</InputLabel>
-                <Select
-                  multiple
-                  value={formData.informedTo}
-                  onChange={(e) => {
-                    const val = e.target.value as string[];
-                    setFormData({ ...formData, informedTo: val });
-                    setShowOther(val.includes('Other'));
-                  }}
-                  input={<OutlinedInput label="Informed To" sx={{ borderRadius: '8px' }} />}
-                  renderValue={(selected) => (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {(selected as string[]).map((value) => (
-                        <Chip key={value} label={informedToOptions.find(o => o.value === value)?.label || value} size="small" />
-                      ))}
-                    </Box>
-                  )}
-                  required
-                >
-                  {informedToOptions.map(opt => (
-                    <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                  ))}
-                </Select>
+            <div className={styles.row} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+              <FormControl component="fieldset" fullWidth sx={{ mt: 1 }}>
+                <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  Reports To / Informed To
+                </Typography>
+                {!formData.category ? (
+                  <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic' }}>
+                    Please select a Category first to view its escalation list.
+                  </Typography>
+                ) : categoryReportsToOptions.length === 0 ? (
+                  <Typography variant="body2" color="error" sx={{ fontStyle: 'italic' }}>
+                    No reports to options are configured for the selected category.
+                  </Typography>
+                ) : (
+                  <FormGroup row sx={{ gap: 2 }}>
+                    {categoryReportsToOptions.map((opt) => {
+                      const isChecked = formData.informedTo.includes(opt);
+                      return (
+                        <FormControlLabel
+                          key={opt}
+                          control={
+                            <Checkbox
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                const updatedInformedTo = checked
+                                  ? [...formData.informedTo, opt]
+                                  : formData.informedTo.filter((val: string) => val !== opt);
+                                setFormData({ ...formData, informedTo: updatedInformedTo });
+                              }}
+                              color="primary"
+                            />
+                          }
+                          label={opt}
+                        />
+                      );
+                    })}
+                  </FormGroup>
+                )}
               </FormControl>
-
-              {showOther && (
-                <TextField
-                  className={styles.field}
-                  fullWidth
-                  label="Specify Other"
-                  value={formData.informedToOther}
-                  onChange={(e: any) => setFormData({ ...formData, informedToOther: e.target.value })}
-                  placeholder="Enter name"
-                  required
-                />
-              )}
             </div>
 
             {editingObs && (

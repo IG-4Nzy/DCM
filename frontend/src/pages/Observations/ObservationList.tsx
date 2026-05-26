@@ -92,7 +92,14 @@ const ObservationList: React.FC = () => {
     } else {
       setIsEditMode(true);
       setEditingObs(null);
-      setFormData(initialFormData);
+      const now = new Date();
+      const localDate = now.toLocaleDateString('sv-SE'); // YYYY-MM-DD
+      const localTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
+      setFormData({
+        ...initialFormData,
+        observedDate: localDate,
+        observedTime: localTime
+      });
       setShowOther(false);
     }
     setIsModalOpen(true);
@@ -319,6 +326,7 @@ const ObservationList: React.FC = () => {
         categoryOptions={categoryOptions}
         informedToOptions={informedToOptions}
         statusOptions={statusOptions}
+        categories={categories}
         handleSubmit={handleSubmit}
       />
     </Box>

@@ -31,7 +31,7 @@
       flex-direction: column;
       gap: 4px;
       place-items: center;
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 600;
       border-bottom: #333 solid 1px;
       text-align: center;
@@ -43,7 +43,7 @@
         width: 100%;
 
         &-cell {
-          font-size: 12px;
+          font-size: 14px;
           flex: 1;
           min-width: 0px;
           place-items: center;
@@ -87,7 +87,7 @@
             max-width: 100px;
             place-items: center;
             justify-content: center;
-            font-size: 12px;
+            font-size: 14px;
             border-right: #333 solid 1px;
             border-bottom: #333 solid 1px;
           }
@@ -98,7 +98,7 @@
             min-width: 0px !important;
             /* Ensures content doesn't break perfect equality */
             place-items: center;
-            font-size: 12px;
+            font-size: 14px;
             min-height: 48px;
             justify-content: center;
 
@@ -135,7 +135,7 @@
       flex-direction:column;
       margin-bottom:200px;
       &--kindlyLabel{
-        font-size: 12px;
+        font-size: 14px;
         text-align: center;
         margin-top: 4px;
       }
@@ -147,7 +147,7 @@
         margin:0 auto;
         margin-top:24px;
         >label{
-          font-size:12px;
+          font-size:124x;
         }
       }
 
@@ -162,7 +162,7 @@
           flex-direction:column;
           gap:4px;
           >label{
-          font-size:12px;
+          font-size:124x;
         }
         }
           &--right{
@@ -170,7 +170,7 @@
           flex-direction:column;
           gap:4px;
           >label{
-          font-size:12px;
+          font-size:124x;
         }
         }
       }
@@ -206,9 +206,9 @@
 
   .container__roasterContainer {
     position: absolute !important;
-    left: 2cm !important;
-    top: 2cm !important;
-    width: calc(100% - 4cm) !important;
+    left: 4cm !important;
+    top: 4cm !important;
+    width: calc(100% - 8cm) !important;
     margin: 0 !important;
     box-sizing: border-box !important;
     transform: none !important;

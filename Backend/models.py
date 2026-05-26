@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Union
 
 # Represents an ObjectId field in the database.
 # It will be represented as a `str` on the model so that it can be serialized to JSON.
@@ -321,8 +321,8 @@ class ObservationModel(BaseModel):
     observedTime: str
     category: str
     description: str
-    amc: str
-    informedTo: str
+    amc: Optional[str] = ""
+    informedTo: Union[str, List[str]]
     informedToOther: Optional[str] = None
     loggedBy: str
     status: str = "New"
@@ -337,8 +337,8 @@ class CreateObservationModel(BaseModel):
     observedTime: str
     category: str
     description: str
-    amc: str
-    informedTo: str
+    amc: Optional[str] = ""
+    informedTo: Union[str, List[str]]
     informedToOther: Optional[str] = None
     loggedBy: str
     status: str = "New"
@@ -349,7 +349,7 @@ class UpdateObservationModel(BaseModel):
     category: Optional[str] = None
     description: Optional[str] = None
     amc: Optional[str] = None
-    informedTo: Optional[str] = None
+    informedTo: Optional[Union[str, List[str]]] = None
     informedToOther: Optional[str] = None
     status: Optional[str] = None
 

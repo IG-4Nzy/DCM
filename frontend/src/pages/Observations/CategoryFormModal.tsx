@@ -1,7 +1,7 @@
 import React from 'react';
 import Modal from '../../components/Modal';
 import TextField from '../../components/TextField';
-import { FormControl, InputLabel, MenuItem, Select, Button } from '@mui/material';
+import { FormControl, InputLabel, MenuItem, Select, Button, Box, Chip, OutlinedInput } from '@mui/material';
 import styles from './index.module.scss';
 
 interface CategoryFormModalProps {
@@ -12,8 +12,9 @@ interface CategoryFormModalProps {
   setFormName: (val: string) => void;
   formStatus: boolean;
   setFormStatus: (val: boolean) => void;
-  formReportsTo: string;
-  setFormReportsTo: (val: string) => void;
+  formReportsTo: string[];
+  setFormReportsTo: (val: string[]) => void;
+  reportsToOptions: { value: string; label: string }[];
   formRemarks: string;
   setFormRemarks: (val: string) => void;
   handleSubmit: (e: React.FormEvent) => void;
@@ -29,6 +30,7 @@ const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
   setFormStatus,
   formReportsTo,
   setFormReportsTo,
+  reportsToOptions,
   formRemarks,
   setFormRemarks,
   handleSubmit
@@ -65,14 +67,30 @@ const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
         </div>
         
         <div className={styles.row}>
-          <TextField
-            className={styles.field}
-            fullWidth
-            label="Reports To"
-            value={formReportsTo}
-            onChange={(e: any) => setFormReportsTo(e.target.value)}
-            placeholder="Enter whom this reports to"
-          />
+          <FormControl fullWidth className={styles.field}>
+            <InputLabel id="reports-to-label">Reports To</InputLabel>
+            <Select
+              labelId="reports-to-label"
+              multiple
+              value={formReportsTo}
+              onChange={(e) => setFormReportsTo(e.target.value as string[])}
+              input={<OutlinedInput label="Reports To" sx={{ borderRadius: '8px' }} />}
+              renderValue={(selected) => (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {(selected as string[]).map((val) => (
+                    <Chip key={val} label={reportsToOptions.find(opt => opt.value === val)?.label || val} size="small" />
+                  ))}
+                </Box>
+              )}
+            >
+              {reportsToOptions.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          
           <TextField
             className={styles.field}
             fullWidth

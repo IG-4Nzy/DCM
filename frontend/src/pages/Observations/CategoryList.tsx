@@ -4,6 +4,8 @@ import { Box, Paper, Tooltip, IconButton } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import type { AppDispatch, RootState } from '../../store';
 import { fetchObservationCategories, createObservationCategory, updateObservationCategory, deleteObservationCategory } from './action';
+import { fetchDepartments } from '../Departments/action';
+import { fetchUsers } from '../Users/action';
 import Table, { type Column } from '../../components/Table';
 import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';
@@ -18,6 +20,8 @@ const CategoryList: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { categories, loading } = useSelector((state: RootState) => state.observations);
   const { isSuperuser, privileges } = useSelector((state: RootState) => state.auth);
+  const { departments } = useSelector((state: RootState) => state.departments || { departments: [] });
+  const { users } = useSelector((state: RootState) => state.users || { users: [] });
 
   const [page, setPage] = useTableState('category_page', 0);
   const [rowsPerPage, setRowsPerPage] = useTableState('category_rowsPerPage', 10);
@@ -29,7 +33,7 @@ const CategoryList: React.FC = () => {
   const [editingCategory, setEditingCategory] = useState<any>(null);
   const [formName, setFormName] = useState('');
   const [formStatus, setFormStatus] = useState(true);
-  const [formReportsTo, setFormReportsTo] = useState('');
+  const [formReportsTo, setFormReportsTo] = useState<string[]>([]);
   const [formRemarks, setFormRemarks] = useState('');
 
   const hasCreate = isSuperuser || privileges?.includes('Create Observation');
@@ -42,6 +46,8 @@ const CategoryList: React.FC = () => {
       limit: rowsPerPage, 
       search: searchQuery 
     }));
+    dispatch(fetchDepartments({ pagination: false }));
+    dispatch(fetchUsers({ pagination: false }));
   }, [dispatch, page, rowsPerPage, searchQuery]);
 
   const handleOpenModal = (category?: any) => {
@@ -49,13 +55,13 @@ const CategoryList: React.FC = () => {
       setEditingCategory(category);
       setFormName(category.name);
       setFormStatus(category.status);
-      setFormReportsTo(category.reportsTo || '');
+      setFormReportsTo(category.reportsTo ? category.reportsTo.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
       setFormRemarks(category.remarks || '');
     } else {
       setEditingCategory(null);
       setFormName('');
       setFormStatus(true);
-      setFormReportsTo('');
+      setFormReportsTo([]);
       setFormRemarks('');
     }
     setIsModalOpen(true);
@@ -68,14 +74,15 @@ const CategoryList: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const reportsToStr = formReportsTo.join(', ');
     if (editingCategory) {
       await dispatch(updateObservationCategory({ 
         id: editingCategory._id || editingCategory.id, 
-        data: { name: formName, status: formStatus, reportsTo: formReportsTo, remarks: formRemarks } 
+        data: { name: formName, status: formStatus, reportsTo: reportsToStr, remarks: formRemarks } 
       }));
     } else {
       await dispatch(createObservationCategory({ 
-        name: formName, status: formStatus, reportsTo: formReportsTo, remarks: formRemarks 
+        name: formName, status: formStatus, reportsTo: reportsToStr, remarks: formRemarks 
       }));
     }
     handleCloseModal();
@@ -162,6 +169,22 @@ const CategoryList: React.FC = () => {
   
   const paginatedCategories = displayedCategories.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
+  // Build options for multi-select reportsTo dropdown
+  const deptOptions = (departments || []).map((d: any) => ({ value: d.name, label: `${d.name} (Department)` }));
+  
+  const deptHeads = Array.from(new Set((departments || []).filter((d: any) => d.departmentHead).map((d: any) => d.departmentHead)));
+  const deptHeadOptions = deptHeads.map((dh: any) => {
+    const u = (users || []).find((user: any) => user.username === dh || user.id === dh);
+    const label = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : dh;
+    return { value: label, label: `${label} (Dept Head)` };
+  });
+
+  const reportsToOptions = [
+    { value: 'Server Admin', label: 'Server Admin' },
+    ...deptOptions,
+    ...deptHeadOptions
+  ];
+
   return (
     <Box sx={{ width: '100%' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
@@ -203,6 +226,7 @@ const CategoryList: React.FC = () => {
         setFormStatus={setFormStatus}
         formReportsTo={formReportsTo}
         setFormReportsTo={setFormReportsTo}
+        reportsToOptions={reportsToOptions}
         formRemarks={formRemarks}
         setFormRemarks={setFormRemarks}
         handleSubmit={handleSubmit}
