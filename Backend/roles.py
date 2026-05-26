@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Body, Query, Depends
+from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
 from auth_utils import require_privilege
 from fastapi.responses import JSONResponse
 from typing import List, Optional
@@ -16,7 +16,8 @@ async def list_roles(
     skip: int = Query(0, ge=0),
     pagination: bool = Query(True),
     limit: int = Query(5, ge=1),
-    sort_by: str = Query("name"),
+    sortBy: Optional[str] = Query(None),
+    sort_by: Optional[str] = Query(None),
     order: str = Query("asc"),
     search: Optional[str] = None
 ):
@@ -26,10 +27,11 @@ async def list_roles(
             "name": {"$regex": search, "$options": "i"}
         }
         
+    actual_sort_by = sortBy or sort_by or "name"
     sort_order = 1 if order == "asc" else -1
     
     total = await roles_collection.count_documents(query)
-    cursor = roles_collection.find(query).sort(sort_by, sort_order)
+    cursor = roles_collection.find(query).sort(actual_sort_by, sort_order)
     if pagination:
         cursor = cursor.skip(skip).limit(limit)
         roles = await cursor.to_list(length=limit)
@@ -118,6 +120,6 @@ async def delete_role(id: str):
     delete_result = await roles_collection.delete_one({"_id": ObjectId(id)})
 
     if delete_result.deleted_count == 1:
-        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     raise HTTPException(status_code=404, detail=f"Role {id} not found")

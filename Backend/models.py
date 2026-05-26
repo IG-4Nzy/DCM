@@ -57,6 +57,7 @@ class UserModel(BaseModel):
     dateOfJoin: Optional[str] = None
     department: Optional[str] = None
     is_superuser: Optional[bool] = None
+    isDepartmentHead: Optional[bool] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -76,6 +77,7 @@ class CreateUserModel(BaseModel):
     address: Optional[str] = None
     dateOfJoin: Optional[str] = None
     department: Optional[str] = None
+    isDepartmentHead: Optional[bool] = None
 
 class UpdateUserModel(BaseModel):
     username: Optional[str] = None
@@ -90,6 +92,7 @@ class UpdateUserModel(BaseModel):
     address: Optional[str] = None
     dateOfJoin: Optional[str] = None
     department: Optional[str] = None
+    isDepartmentHead: Optional[bool] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -138,6 +141,7 @@ class WorkModel(BaseModel):
     attachments: List[dict] = Field(default_factory=list)
     status: str = "Pending"
     comments: List[dict] = Field(default_factory=list)
+    completedAt: Optional[str] = None
 
     @field_validator('attachments', mode='before')
     @classmethod
@@ -179,6 +183,7 @@ class CreateWorkModel(BaseModel):
     attachments: List[dict] = Field(default_factory=list)
     status: str = "Pending"
     comments: List[dict] = Field(default_factory=list)
+    completedAt: Optional[str] = None
 
 class UpdateWorkModel(BaseModel):
     workName: Optional[str] = None
@@ -189,6 +194,7 @@ class UpdateWorkModel(BaseModel):
     attachments: Optional[List[dict]] = None
     status: Optional[str] = None
     comments: Optional[List[dict]] = None
+    completedAt: Optional[str] = None
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

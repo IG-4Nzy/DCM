@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Body, Query, Depends
+from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
 from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional, List
@@ -16,7 +16,10 @@ async def list_items(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),
     pagination: bool = Query(True),
-    search: Optional[str] = None
+    search: Optional[str] = None,
+    sortBy: Optional[str] = Query(None),
+    sort_by: Optional[str] = Query(None),
+    order: str = Query("desc")
 ):
     query = {"clusterId": clusterId}
     
@@ -27,8 +30,11 @@ async def list_items(
             {"node": {"$regex": search, "$options": "i"}}
         ]
 
+    actual_sort_by = sortBy or sort_by or "createdAt"
+    sort_order = 1 if order == "asc" else -1
+
     total = await collection.count_documents(query)
-    cursor = collection.find(query).sort("createdAt", -1)
+    cursor = collection.find(query).sort(actual_sort_by, sort_order)
     
     if pagination:
         cursor = cursor.skip(skip).limit(limit)
@@ -83,6 +89,6 @@ async def delete_item(id: str):
     delete_result = await collection.delete_one({"_id": ObjectId(id)})
 
     if delete_result.deleted_count == 1:
-        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     raise HTTPException(status_code=404, detail="VM Details not found")

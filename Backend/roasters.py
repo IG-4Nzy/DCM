@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Body, Query, Depends
+from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
 from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional, List
@@ -113,6 +113,9 @@ async def list_roasters(
     startDate: Optional[str] = None,
     endDate: Optional[str] = None,
     shift: Optional[str] = None,
+    sortBy: Optional[str] = Query(None),
+    sort_by: Optional[str] = Query(None),
+    order: str = Query("desc"),
     current_user: dict = Depends(get_current_user)
 ):
     is_superuser = current_user.get("isSuperuser", False)
@@ -129,8 +132,11 @@ async def list_roasters(
     if shift:
         query["shift"] = shift
 
+    actual_sort_by = sortBy or sort_by or "date"
+    sort_order = 1 if order == "asc" else -1
+
     total = await roasters_collection.count_documents(query)
-    cursor = roasters_collection.find(query).sort("date", -1).skip(skip).limit(limit)
+    cursor = roasters_collection.find(query).sort(actual_sort_by, sort_order).skip(skip).limit(limit)
     roasters = await cursor.to_list(length=limit)
 
     return {"data": roasters, "total": total}
@@ -216,6 +222,6 @@ async def delete_roaster(id: str):
     delete_result = await roasters_collection.delete_one({"_id": ObjectId(id)})
 
     if delete_result.deleted_count == 1:
-        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     raise HTTPException(status_code=404, detail=f"Roster {id} not found")

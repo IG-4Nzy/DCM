@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, UploadFile, File, Response
 from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional
@@ -21,7 +21,8 @@ async def list_inventory(
     skip: int = Query(0, ge=0),
     pagination: bool = Query(True),
     limit: int = Query(10, ge=1),
-    sort_by: str = Query("lastUpdatedDate"),
+    sortBy: Optional[str] = Query(None),
+    sort_by: Optional[str] = Query(None),
     order: str = Query("desc"),
     search: Optional[str] = None
 ):
@@ -34,10 +35,11 @@ async def list_inventory(
             {"lastUpdatedBy": {"$regex": search, "$options": "i"}},
         ]
         
+    actual_sort_by = sortBy or sort_by or "lastUpdatedDate"
     sort_order = 1 if order == "asc" else -1
     
     total = await inventory_collection.count_documents(query)
-    cursor = inventory_collection.find(query).sort(sort_by, sort_order)
+    cursor = inventory_collection.find(query).sort(actual_sort_by, sort_order)
     if pagination:
         cursor = cursor.skip(skip).limit(limit)
         items = await cursor.to_list(length=limit)
@@ -132,7 +134,7 @@ async def delete_inventory(id: str):
     delete_result = await inventory_collection.delete_one({"_id": ObjectId(id)})
 
     if delete_result.deleted_count == 1:
-        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     raise HTTPException(status_code=404, detail=f"Item {id} not found")
 

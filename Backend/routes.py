@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, status, Response
 from fastapi.responses import JSONResponse
 from typing import List
 from bson import ObjectId
@@ -61,6 +61,6 @@ async def delete_item(id: str):
     delete_result = await collection.delete_one({"_id": ObjectId(id)})
 
     if delete_result.deleted_count == 1:
-        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     raise HTTPException(status_code=404, detail=f"Item {id} not found")

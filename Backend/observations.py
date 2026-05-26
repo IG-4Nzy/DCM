@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter, HTTPException, status, Body, Query, Depends
+from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
 from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional
@@ -69,7 +69,7 @@ async def delete_category(id: str):
         raise HTTPException(status_code=400, detail="Invalid ID format")
     delete_result = await categories_collection.delete_one({"_id": ObjectId(id)})
     if delete_result.deleted_count == 1:
-        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     raise HTTPException(status_code=404, detail=f"Category {id} not found")
 
 @router.get("/", response_description="List all observations", response_model=PaginatedObservationsModel, response_model_by_alias=False)
@@ -77,7 +77,8 @@ async def list_observations(
     skip: int = Query(0, ge=0),
     pagination: bool = Query(True),
     limit: int = Query(10, ge=1),
-    sort_by: str = Query("observationId"),
+    sortBy: Optional[str] = Query(None),
+    sort_by: Optional[str] = Query(None),
     order: str = Query("desc"),
     search: Optional[str] = None,
     status_filter: Optional[str] = None,
@@ -116,10 +117,11 @@ async def list_observations(
         else:
             query["loggedBy"] = current_user["sub"]
 
+    actual_sort_by = sortBy or sort_by or "observationId"
     sort_order = 1 if order == "asc" else -1
     
     total = await obs_collection.count_documents(query)
-    cursor = obs_collection.find(query).sort(sort_by, sort_order)
+    cursor = obs_collection.find(query).sort(actual_sort_by, sort_order)
     if pagination:
         cursor = cursor.skip(skip).limit(limit)
         observations = await cursor.to_list(length=limit)
@@ -193,6 +195,6 @@ async def delete_observation(id: str):
     delete_result = await obs_collection.delete_one({"_id": ObjectId(id)})
 
     if delete_result.deleted_count == 1:
-        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     raise HTTPException(status_code=404, detail=f"Observation {id} not found")

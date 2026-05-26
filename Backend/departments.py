@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Body, Query, Depends
+from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
 from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional
@@ -14,7 +14,8 @@ async def list_departments(
     skip: int = Query(0, ge=0),
     pagination: bool = Query(True),
     limit: int = Query(10, ge=1),
-    sort_by: str = Query("name"),
+    sortBy: Optional[str] = Query(None),
+    sort_by: Optional[str] = Query(None),
     order: str = Query("asc"),
     search: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
@@ -29,10 +30,11 @@ async def list_departments(
     if search:
         query["name"] = {"$regex": search, "$options": "i"}
         
+    actual_sort_by = sortBy or sort_by or "name"
     sort_order = 1 if order == "asc" else -1
     
     total = await departments_collection.count_documents(query)
-    cursor = departments_collection.find(query).sort(sort_by, sort_order)
+    cursor = departments_collection.find(query).sort(actual_sort_by, sort_order)
     if pagination:
         cursor = cursor.skip(skip).limit(limit)
         departments = await cursor.to_list(length=limit)
@@ -102,6 +104,6 @@ async def delete_department(id: str):
     delete_result = await departments_collection.delete_one({"_id": ObjectId(id)})
 
     if delete_result.deleted_count == 1:
-        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     raise HTTPException(status_code=404, detail=f"Department {id} not found")
