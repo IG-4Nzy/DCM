@@ -70,5 +70,11 @@ export const SIDEBAR_OPTIONS = [
         icon: Icons.RequestsIcon,
         route: ROUTE_CONSTANTS.REQUESTS,
         privileges: [PRIVILEGES.REQUEST_VIEW, PRIVILEGES.REQUEST_CREATE, PRIVILEGES.REQUEST_UPDATE, PRIVILEGES.REQUEST_DELETE]
+    },
+    {
+        label: wordings.search,
+        icon: Icons.SearchIcon,
+        route: ROUTE_CONSTANTS.SEARCH,
+        privileges: [PRIVILEGES.SEARCH_VIEW, PRIVILEGES.SEARCH_CREATE, PRIVILEGES.SEARCH_UPDATE, PRIVILEGES.SEARCH_DELETE]
     }
 ]

@@ -54,5 +54,9 @@
     "Create Request",
     "View Request",
     "Update Request",
-    "Delete Request"
+    "Delete Request",
+    "Create Search",
+    "View Search",
+    "Update Search",
+    "Delete Search"
 ]

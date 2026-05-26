@@ -52,7 +52,7 @@ async def compute_node_details_available_resources(doc: dict):
 
 @router.get("/", response_description="List all node details", response_model=PaginatedNodeDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Cluster"))])
 async def list_items(
-    clusterId: str = Query(..., description="The ID of the cluster"),
+    clusterId: Optional[str] = Query(None, description="The ID of the cluster"),
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),
     pagination: bool = Query(True),
@@ -61,7 +61,9 @@ async def list_items(
     sort_by: Optional[str] = Query(None),
     order: str = Query("asc")
 ):
-    query = {"clusterId": clusterId}
+    query = {}
+    if clusterId:
+        query["clusterId"] = clusterId
     
     if search:
         query["$or"] = [

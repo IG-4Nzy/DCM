@@ -19,5 +19,6 @@ export default {
   configurations: "Configurations",
   serverDetails: "Server Details",
   clusters: "Clusters",
-  requests: "Requests"
+  requests: "Requests",
+  search: "Search"
 };

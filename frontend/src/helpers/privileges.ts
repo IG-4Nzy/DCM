@@ -49,5 +49,9 @@ export const PRIVILEGES = {
     REQUEST_VIEW: "View Request",
     REQUEST_CREATE: "Create Request",
     REQUEST_UPDATE: "Update Request",
-    REQUEST_DELETE: "Delete Request"
+    REQUEST_DELETE: "Delete Request",
+    SEARCH_VIEW: "View Search",
+    SEARCH_CREATE: "Create Search",
+    SEARCH_UPDATE: "Update Search",
+    SEARCH_DELETE: "Delete Search"
 }

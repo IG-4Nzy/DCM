@@ -10,9 +10,71 @@ from datetime import datetime, timezone
 router = APIRouter()
 collection = db.get_collection("vm_details")
 
+async def sync_node_resources(node_name: str):
+    if not node_name:
+        return
+    
+    # 1. Fetch all VMs for this host name
+    vms_collection = db.get_collection("vm_details")
+    cursor = vms_collection.find({"node": {"$regex": f"^{node_name}$", "$options": "i"}})
+    vms = await cursor.to_list(length=None)
+    
+    def clean_int(value) -> int:
+        if value is None:
+            return 0
+        if isinstance(value, (int, float)):
+            return int(value)
+        digits = "".join([c for c in str(value) if c.isdigit()])
+        return int(digits) if digits else 0
+        
+    used_ram = 0
+    used_hdd = 0
+    used_cpu = 0
+    for vm in vms:
+        used_ram += clean_int(vm.get("ram"))
+        used_hdd += clean_int(vm.get("hdd"))
+        used_cpu += clean_int(vm.get("cpu"))
+        
+    # 2. Update node_details collection
+    nd_collection = db.get_collection("node_details")
+    # Fetch all nodes matching the hostname
+    nd_cursor = nd_collection.find({"hostName": {"$regex": f"^{node_name}$", "$options": "i"}})
+    nodes_nd = await nd_cursor.to_list(length=None)
+    for node in nodes_nd:
+        total_ram = clean_int(node.get("totalRam"))
+        total_hdd = clean_int(node.get("totalHardisk"))
+        total_cpu = clean_int(node.get("totalCpu"))
+        
+        await nd_collection.update_one(
+            {"_id": node["_id"]},
+            {"$set": {
+                "availableRam": max(0, total_ram - used_ram) if node.get("totalRam") is not None else None,
+                "availableHardisk": max(0, total_hdd - used_hdd) if node.get("totalHardisk") is not None else None,
+                "availableCpu": max(0, total_cpu - used_cpu) if node.get("totalCpu") is not None else None,
+            }}
+        )
+        
+    # 3. Update global nodes collection
+    nodes_collection = db.get_collection("nodes")
+    node_cursor = nodes_collection.find({"node": {"$regex": f"^{node_name}$", "$options": "i"}})
+    global_nodes = await node_cursor.to_list(length=None)
+    for node in global_nodes:
+        total_ram = clean_int(node.get("totalRam"))
+        total_hdd = clean_int(node.get("totalHardisk"))
+        total_cpu = clean_int(node.get("totalCpu"))
+        
+        await nodes_collection.update_one(
+            {"_id": node["_id"]},
+            {"$set": {
+                "availableRam": max(0, total_ram - used_ram) if node.get("totalRam") is not None else None,
+                "availableHardisk": max(0, total_hdd - used_hdd) if node.get("totalHardisk") is not None else None,
+                "availableCpu": max(0, total_cpu - used_cpu) if node.get("totalCpu") is not None else None,
+            }}
+        )
+
 @router.get("/", response_description="List all VM details", response_model=PaginatedVMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Cluster"))])
 async def list_items(
-    clusterId: str = Query(..., description="The ID of the cluster"),
+    clusterId: Optional[str] = Query(None, description="The ID of the cluster"),
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),
     pagination: bool = Query(True),
@@ -21,7 +83,9 @@ async def list_items(
     sort_by: Optional[str] = Query(None),
     order: str = Query("desc")
 ):
-    query = {"clusterId": clusterId}
+    query = {}
+    if clusterId:
+        query["clusterId"] = clusterId
     
     if search:
         query["$or"] = [
@@ -56,12 +120,17 @@ async def create_item(
 
     new_item = await collection.insert_one(item_dict)
     created = await collection.find_one({"_id": new_item.inserted_id})
+    if created and created.get("node"):
+        await sync_node_resources(created["node"])
     return created
 
 @router.put("/{id}", response_description="Update VM details", response_model=VMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Cluster"))])
 async def update_item(id: str, payload: UpdateVMDetailsModel = Body(...)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    old_vm = await collection.find_one({"_id": ObjectId(id)})
+    old_node = old_vm.get("node") if old_vm else None
 
     item_dict = {k: v for k, v in payload.model_dump().items() if v is not None}
 
@@ -74,6 +143,11 @@ async def update_item(id: str, payload: UpdateVMDetailsModel = Body(...)):
 
         if update_result.modified_count == 1:
             if (updated := await collection.find_one({"_id": ObjectId(id)})) is not None:
+                if old_node:
+                    await sync_node_resources(old_node)
+                new_node = updated.get("node")
+                if new_node and new_node != old_node:
+                    await sync_node_resources(new_node)
                 return updated
 
     if (existing := await collection.find_one({"_id": ObjectId(id)})) is not None:
@@ -86,9 +160,14 @@ async def delete_item(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
+    vm = await collection.find_one({"_id": ObjectId(id)})
+    node_name = vm.get("node") if vm else None
+
     delete_result = await collection.delete_one({"_id": ObjectId(id)})
 
     if delete_result.deleted_count == 1:
+        if node_name:
+            await sync_node_resources(node_name)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     raise HTTPException(status_code=404, detail="VM Details not found")

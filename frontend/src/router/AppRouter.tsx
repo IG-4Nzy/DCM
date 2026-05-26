@@ -21,6 +21,7 @@ const Configurations = lazy(() => import("../pages/Configurations"));
 const Clusters = lazy(() => import("../pages/Clusters"));
 const ClusterDetails = lazy(() => import("../pages/Clusters/ClusterDetails"));
 const Requests = lazy(() => import("../pages/Requests"));
+const Search = lazy(() => import("../pages/Search"));
 
 
 const AppRouter: React.FC = () => {
@@ -52,6 +53,7 @@ const AppRouter: React.FC = () => {
             <Route path={ROUTE_CONSTANTS.CLUSTER} element={<Clusters />} />
             <Route path={ROUTE_CONSTANTS.CLUSTER_DETAILS} element={<ClusterDetails />} />
             <Route path={ROUTE_CONSTANTS.REQUESTS} element={<Requests />} />
+            <Route path={ROUTE_CONSTANTS.SEARCH} element={<Search />} />
           </Route>
 
           <Route path="*" element={<PageNotFound />} />
