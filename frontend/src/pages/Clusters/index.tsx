@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Tooltip, IconButton } from '@mui/material';
-import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
+import { Box, Tooltip, IconButton, Button as MuiButton } from '@mui/material';
+import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdUploadFile as UploadIcon } from 'react-icons/md';
 import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';
@@ -12,7 +12,7 @@ import { type RootState } from '../../store';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
 import { useTableState } from '../../hooks/useTableState';
-import { fetchClusters, createCluster, updateCluster, deleteCluster } from './action';
+import { fetchClusters, createCluster, updateCluster, deleteCluster, bulkCreateClusters } from './action';
 import { type ClusterData } from './model';
 import ClusterModal from './ClusterCreate/ClusterModal';
 import styles from './index.module.scss';
@@ -113,6 +113,27 @@ const Clusters = () => {
         }
     };
 
+    const handleBulkUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        try {
+            await bulkCreateClusters(file);
+            showToast('Bulk upload successful', 'success');
+            loadData();
+        } catch (e: any) {
+            const detail = e?.response?.data?.detail;
+            const message = typeof detail === 'string'
+                ? detail
+                : (Array.isArray(detail) && detail[0]?.msg)
+                    ? detail[0].msg
+                    : 'Bulk upload failed';
+            showToast(message, 'error');
+        }
+        // reset input
+        event.target.value = '';
+    };
+
     const handleRequestSort = (property: string) => {
         const isAsc = orderBy === property && order === 'asc';
         setOrder(isAsc ? 'desc' : 'asc');
@@ -172,14 +193,31 @@ const Clusters = () => {
                         placeholder="Search clusters..."
                     />
                     {hasCreate && (
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<AddIcon />}
-                            onClick={() => handleOpenModal()}
-                        >
-                            Add Cluster
-                        </Button>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <MuiButton
+                                component="label"
+                                variant="outlined"
+                                color="primary"
+                                startIcon={<UploadIcon />}
+                                sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 'bold' }}
+                            >
+                                Bulk Upload
+                                <input
+                                    type="file"
+                                    hidden
+                                    accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                                    onChange={handleBulkUpload}
+                                />
+                            </MuiButton>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                startIcon={<AddIcon />}
+                                onClick={() => handleOpenModal()}
+                            >
+                                Add Cluster
+                            </Button>
+                        </Box>
                     )}
                 </Box>
             </Box>

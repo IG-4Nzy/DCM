@@ -23,3 +23,15 @@ export const updateNodeDetails = async (payload: UpdateNodeDetailsPayload): Prom
 export const deleteNodeDetails = async (id: string): Promise<void> => {
     await request.delete(`${ENDPOINT}/${id}`);
 };
+
+export const bulkCreateNodeDetails = async (clusterId: string, file: File): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await request.post(`${ENDPOINT}/bulk`, formData, { 
+        params: { clusterId },
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+    return res.data;
+};

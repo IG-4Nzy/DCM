@@ -20,3 +20,14 @@ export const deleteCluster = async (id: string) => {
     const response = await request.delete(`/api/clusters/${id}`);
     return response.data;
 };
+
+export const bulkCreateClusters = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await request.post('/api/clusters/bulk', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+    return response.data;
+};
