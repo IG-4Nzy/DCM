@@ -26,7 +26,7 @@ export const SIDEBAR_OPTIONS = [
         label: wordings.works,
         icon: Icons.WorksIcon,
         route: ROUTE_CONSTANTS.WORKS,
-        privileges: [PRIVILEGES.WORK_VIEW, PRIVILEGES.WORK_CREATE, PRIVILEGES.WORK_UPDATE, PRIVILEGES.WORK_DELETE]
+        privileges: [PRIVILEGES.WORK_VIEW, PRIVILEGES.WORK_VIEW_ASSIGNED, PRIVILEGES.WORK_CREATE, PRIVILEGES.WORK_UPDATE, PRIVILEGES.WORK_DELETE]
     },
     {
         label: wordings.departments,

@@ -135,7 +135,7 @@ async def update_work(id: str, work: UpdateWorkModel = Body(...), current_user: 
             raise HTTPException(status_code=403, detail="Cannot modify a completed work without Update Work privilege")
 
         update_keys = set(work_dict.keys())
-        status_only = update_keys.issubset({"status", "comments", "id", "_id"})
+        status_only = update_keys.issubset({"status", "comments", "completedAt", "id", "_id"})
         
         if status_only:
             has_status_update = "Update Work" in privileges
