@@ -5,6 +5,7 @@ interface FetchParams {
   skip?: number;
   limit?: number;
   search?: string;
+  completed?: boolean;
   pagination?: boolean;
 }
 

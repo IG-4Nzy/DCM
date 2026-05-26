@@ -24,6 +24,7 @@ import {
 
 import { AiOutlineCluster as ClusterIcon } from "react-icons/ai";
 
+import { FaBell as BellIcon } from "react-icons/fa";
 
 export const Icons = {
   MenuIcon,
@@ -42,5 +43,6 @@ export const Icons = {
   ServerDetailsIcon,
   ClusterIcon,
   RequestsIcon,
-  SearchIcon
+  SearchIcon,
+  BellIcon
 };

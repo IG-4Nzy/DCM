@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Box, Paper, Tooltip, IconButton, Chip } from '@mui/material';
+import { Box, Paper, Tooltip, IconButton, Chip, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';
@@ -39,6 +39,7 @@ const Requests: React.FC = () => {
     const [searchQuery, setSearchQuery] = useTableState('requests_search', '');
     const [order, setOrder] = useTableState<Order>('requests_order', 'desc');
     const [orderBy, setOrderBy] = useTableState<string>('requests_orderBy', 'createdAt');
+    const [statusFilter, setStatusFilter] = useTableState<'all' | 'completed' | 'active'>('requests_statusFilter', 'all');
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRequest, setEditingRequest] = useState<RequestData | null>(null);
@@ -55,10 +56,15 @@ const Requests: React.FC = () => {
         if (!hasViewPrivilege) return;
         try {
             setLoading(true);
+            let completedParam: boolean | undefined = undefined;
+            if (statusFilter === 'completed') completedParam = true;
+            else if (statusFilter === 'active') completedParam = false;
+
             const res = await fetchRequests({
                 skip: page * rowsPerPage,
                 limit: rowsPerPage,
                 search: searchQuery,
+                completed: completedParam,
             });
             setRequests(res.data);
             setTotalCount(res.total);
@@ -76,7 +82,7 @@ const Requests: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, rowsPerPage, searchQuery, showToast, hasViewPrivilege, isViewModalOpen, selectedViewRequest]);
+    }, [page, rowsPerPage, searchQuery, statusFilter, showToast, hasViewPrivilege, isViewModalOpen, selectedViewRequest]);
 
     useEffect(() => {
         loadData();
@@ -337,7 +343,30 @@ const Requests: React.FC = () => {
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search requests..." />
+                    <SearchBar value={searchQuery} onChange={(v) => { setSearchQuery(v); setPage(0); }} placeholder="Search requests..." />
+                    <ToggleButtonGroup
+                        value={statusFilter}
+                        exclusive
+                        onChange={(e, val) => {
+                            if (val) {
+                                setStatusFilter(val);
+                                setPage(0);
+                            }
+                        }}
+                        aria-label="status filter"
+                        size="small"
+                        sx={{ bgcolor: 'rgba(0,0,0,0.02)', p: 0.5, borderRadius: '8px' }}
+                    >
+                        <ToggleButton value="all" sx={{ border: 'none', borderRadius: '6px !important', px: 2, py: 0.5, fontSize: '0.8rem' }}>
+                            All
+                        </ToggleButton>
+                        <ToggleButton value="active" sx={{ border: 'none', borderRadius: '6px !important', px: 2, py: 0.5, fontSize: '0.8rem' }}>
+                            Non Completed
+                        </ToggleButton>
+                        <ToggleButton value="completed" sx={{ border: 'none', borderRadius: '6px !important', px: 2, py: 0.5, fontSize: '0.8rem' }}>
+                            Completed
+                        </ToggleButton>
+                    </ToggleButtonGroup>
                 </Box>
 
                 {hasCreatePrivilege && (

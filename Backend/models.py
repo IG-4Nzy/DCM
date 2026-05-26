@@ -729,6 +729,8 @@ class VCenterDetailsModel(BaseModel):
     storage: str
     portGroups: str
     vmImageBackupLocation: str
+    username: Optional[str] = None
+    password: Optional[str] = None
     
     model_config = ConfigDict(
         populate_by_name=True,
@@ -739,17 +741,19 @@ class CreateVCenterDetailsModel(BaseModel):
     clusterId: str
     ipAddress: str
     name: str
-    hdd: str
-    ram: str
-    cpuCores: str
-    vcenterVersion: str
-    vcenterType: str
-    licenceExpiry: str
-    ha: str
-    drs: str
-    storage: str
-    portGroups: str
-    vmImageBackupLocation: str
+    hdd: Optional[str] = None
+    ram: Optional[str] = None
+    cpuCores: Optional[str] = None
+    vcenterVersion: Optional[str] = None
+    vcenterType: Optional[str] = None
+    licenceExpiry: Optional[str] = None
+    ha: Optional[str] = None
+    drs: Optional[str] = None
+    storage: Optional[str] = None
+    portGroups: Optional[str] = None
+    vmImageBackupLocation: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
 
 class UpdateVCenterDetailsModel(BaseModel):
     ipAddress: Optional[str] = None
@@ -765,6 +769,8 @@ class UpdateVCenterDetailsModel(BaseModel):
     storage: Optional[str] = None
     portGroups: Optional[str] = None
     vmImageBackupLocation: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

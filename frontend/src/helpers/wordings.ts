@@ -20,5 +20,6 @@ export default {
   serverDetails: "Server Details",
   clusters: "Clusters",
   requests: "Requests",
-  search: "Search"
+  search: "Search",
+  serverMonitoring: "Server Monitoring",
 };

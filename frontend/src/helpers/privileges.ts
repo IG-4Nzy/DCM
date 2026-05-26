@@ -53,5 +53,9 @@ export const PRIVILEGES = {
     SEARCH_VIEW: "View Search",
     SEARCH_CREATE: "Create Search",
     SEARCH_UPDATE: "Update Search",
-    SEARCH_DELETE: "Delete Search"
+    SEARCH_DELETE: "Delete Search",
+    SERVER_MONITORING_VIEW: "View Server Monitoring",
+    SERVER_MONITORING_CREATE: "Create Server Monitoring",
+    SERVER_MONITORING_UPDATE: "Update Server Monitoring",
+    SERVER_MONITORING_DELETE: "Delete Server Monitoring"
 }

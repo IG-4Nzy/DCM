@@ -100,27 +100,40 @@ async def list_items(
     limit: int = Query(10, ge=1),
     pagination: bool = Query(True),
     search: Optional[str] = None,
+    completed: Optional[bool] = Query(None),
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
     order: str = Query("desc"),
     current_user: dict = Depends(get_current_user)
 ):
-    query = {}
+    conditions = []
 
     is_superuser = current_user.get("isSuperuser", False)
     if not is_superuser:
         username = current_user.get("sub", "")
         # Show requests created by the user OR assigned to them
-        query["$or"] = [
-            {"createdBy": username},
-            {"currentAssignedUsers": username}
-        ]
+        conditions.append({
+            "$or": [
+                {"createdBy": username},
+                {"currentAssignedUsers": username}
+            ]
+        })
 
     if search:
-        if "$or" in query:
-            query = {"$and": [query, {"requestType": {"$regex": search, "$options": "i"}}]}
+        conditions.append({"requestType": {"$regex": search, "$options": "i"}})
+
+    if completed is not None:
+        if completed:
+            conditions.append({"status": "Completed"})
         else:
-            query["requestType"] = {"$regex": search, "$options": "i"}
+            conditions.append({"status": {"$ne": "Completed"}})
+
+    if len(conditions) > 1:
+        query = {"$and": conditions}
+    elif len(conditions) == 1:
+        query = conditions[0]
+    else:
+        query = {}
 
     actual_sort_by = sortBy or sort_by or "createdAt"
     sort_order = 1 if order == "asc" else -1
