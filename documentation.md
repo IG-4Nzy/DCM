@@ -114,3 +114,10 @@ create,update,delete
 
 Important Contacts -> Directory,Critical Contacts
 
+
+Attendance
+Cluster
+Checklist
+Salary Calculation
+Pass Details - Validity
+
