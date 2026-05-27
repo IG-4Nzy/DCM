@@ -113,6 +113,7 @@ async def list_roasters(
     startDate: Optional[str] = None,
     endDate: Optional[str] = None,
     shift: Optional[str] = None,
+    department: Optional[str] = None,
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
     order: str = Query("desc"),
@@ -131,6 +132,8 @@ async def list_roasters(
         query["date"] = {"$gte": startDate, "$lte": endDate}
     if shift:
         query["shift"] = shift
+    if department:
+        query["department"] = department
 
     actual_sort_by = sortBy or sort_by or "date"
     sort_order = 1 if order == "asc" else -1
@@ -167,20 +170,27 @@ async def create_roaster(
     # Get User Details
     users_collection = db.get_collection("users")
     user = await users_collection.find_one({"username": current_user.get("sub", "")})
+    user_dept = "General"
     if user:
+        user_dept = user.get("department", "General")
         first_name = user.get("firstName", "")
         last_name = user.get("lastName", "")
-        department = user.get("department", "Unknown")
         role = user.get("role", "Unknown")
         name_str = f"{first_name} {last_name}".strip()
         if not name_str:
             name_str = user.get("username", "Unknown")
-        roaster_dict["updatedByFullName"] = f"{name_str} ({department} - {role})"
+        roaster_dict["updatedByFullName"] = f"{name_str} ({user_dept} - {role})"
 
-    # Check for duplicate: same date + shift
-    existing = await roasters_collection.find_one({"date": roaster_dict["date"], "shift": roaster_dict["shift"]})
+    roaster_dict["department"] = roaster.department or user_dept
+
+    # Check for duplicate: same date + shift + department
+    existing = await roasters_collection.find_one({
+        "date": roaster_dict["date"],
+        "shift": roaster_dict["shift"],
+        "department": roaster_dict["department"]
+    })
     if existing:
-        raise HTTPException(status_code=400, detail=f"Roster for {roaster_dict['date']} - {roaster_dict['shift']} shift already exists")
+        raise HTTPException(status_code=400, detail=f"Roster for {roaster_dict['date']} - {roaster_dict['shift']} shift already exists for department {roaster_dict['department']}")
 
     new_roaster = await roasters_collection.insert_one(roaster_dict)
     created = await roasters_collection.find_one({"_id": new_roaster.inserted_id})

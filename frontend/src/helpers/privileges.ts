@@ -1,7 +1,8 @@
 export const PRIVILEGES = {
     DASHBOARD_VIEW: "View Dashboard",
     USER_CREATE: "Create User",
-    USER_VIEW: "View User",
+    USER_VIEW_ALL: "View All Users",
+    USER_VIEW_DEPT: "View Department Users",
     USER_UPDATE: "Update User",
     USER_DELETE: "Delete User",
     ROLE_CREATE: "Create Role",

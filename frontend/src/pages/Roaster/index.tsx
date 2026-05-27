@@ -156,12 +156,14 @@ const RoasterPage: React.FC = () => {
             date,
             shift,
             assignees: data.assignees,
+            department: userDepartment || 'General',
           })).unwrap();
         } else if (data.assignees.length > 0) {
           await dispatch(createRoster({
             date,
             shift,
             assignees: data.assignees,
+            department: userDepartment || 'General',
           })).unwrap();
         }
       });
@@ -427,7 +429,7 @@ const RoasterPage: React.FC = () => {
                                 const deptHeads = departmentsList.map((d: any) => d.departmentHead).filter(Boolean);
                                 const isSuper = u.is_superuser || u.isSuperuser;
                                 const isDeptHead = deptHeads.includes(u.username) || deptHeads.includes(u.id) || deptHeads.includes(u._id);
-                                return !isSuper && !isDeptHead && !otherShiftsAssignees.includes(u.username);
+                                return !isSuper && !isDeptHead && u.department === userDepartment && !otherShiftsAssignees.includes(u.username);
                               })
                               .map((u) => u.username)
                             }

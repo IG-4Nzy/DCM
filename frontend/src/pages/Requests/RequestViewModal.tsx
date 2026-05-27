@@ -4,6 +4,7 @@ import Button from '../../components/Button';
 import type { RequestData } from './model';
 import { fetchUsers } from '../Users/action';
 import { fetchClusters } from '../Clusters/action';
+import { fetchInventory } from '../Inventory/action';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../../store';
 
@@ -30,6 +31,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { users } = useSelector((state: RootState) => state.users);
+  const { inventory } = useSelector((state: RootState) => state.inventory);
 
   const [ipAddress, setIpAddress] = useState('');
   const [remarks, setRemarks] = useState('');
@@ -41,16 +43,19 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   const [selectedCluster, setSelectedCluster] = useState('');
   const [clusterError, setClusterError] = useState(false);
 
-  const isClusterDeciding = request?.status?.toLowerCase() === 'cluster deciding';
+  const isClusterDeciding = request?.status?.toLowerCase() === 'cluster deciding' || request?.status?.toLowerCase().includes('cluster');
+
+  const requestId = request?.id || request?._id || '';
 
   useEffect(() => {
-    if (isOpen && request) {
+    if (isOpen && requestId) {
       dispatch(fetchUsers({ pagination: false }));
+      dispatch(fetchInventory({ pagination: false }));
       setRemarks('');
       setIpAddress(request.details?.ip || '');
       setIpError(false);
 
-      if (request.status?.toLowerCase() === 'cluster deciding') {
+      if (request.status?.toLowerCase() === 'cluster deciding' || request.status?.toLowerCase().includes('cluster')) {
         fetchClusters({ pagination: false }).then(res => {
           setClusters(res.data || []);
         }).catch(() => {
@@ -60,7 +65,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
         setClusterError(false);
       }
     }
-  }, [isOpen, request, dispatch]);
+  }, [isOpen, requestId, dispatch]);
 
   if (!request) return null;
 
@@ -69,7 +74,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   const isTerminal = request.status === 'Completed' || request.status === 'Rejected';
   
   // Check if status is IP Issuance
-  const isIpIssuance = request.status?.toLowerCase() === 'ip issuance';
+  const isIpIssuance = request.status?.toLowerCase() === 'ip issuance' || request.status?.toLowerCase().includes('ip');
 
   const handleAdvance = async () => {
     if (isIpIssuance && !ipAddress.trim()) {
@@ -251,18 +256,22 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                   </>
                 )}
 
-                {request.requestType === 'Hardware Issuance' && (
-                  <>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="caption" color="textSecondary">Hardware Item ID</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.hardwareId || '-'}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="caption" color="textSecondary">Quantity</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.quantity || '-'}</Typography>
-                    </Grid>
-                  </>
-                )}
+                {request.requestType === 'Hardware Issuance' && (() => {
+                  const hItem = inventory.find((i: any) => (i.id || i._id) === request.details?.hardwareId);
+                  const hName = hItem ? hItem.itemName : request.details?.hardwareId;
+                  return (
+                    <>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="caption" color="textSecondary">Hardware Item Name</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>{hName || '-'}</Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="caption" color="textSecondary">Quantity</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.quantity || '-'}</Typography>
+                      </Grid>
+                    </>
+                  );
+                })()}
 
                 {request.requestType === 'Hardware Replacement' && (
                   <Grid item xs={12}>
@@ -290,9 +299,9 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
 
-                <Grid container spacing={2}>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: { xs: 'wrap', md: 'nowrap' }, mt: 2 }}>
                   {isIpIssuance && (
-                    <Grid item xs={12}>
+                    <Box sx={{ flex: 1, minWidth: 200 }}>
                       <TextField
                         label="IP Address Assignment"
                         variant="outlined"
@@ -308,11 +317,11 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                         placeholder="e.g. 10.41.12.34"
                         sx={{ bgcolor: '#fff' }}
                       />
-                    </Grid>
+                    </Box>
                   )}
 
                   {isClusterDeciding && (
-                    <Grid item xs={12}>
+                    <Box sx={{ flex: 1, minWidth: 200 }}>
                       <FormControl fullWidth required error={clusterError}>
                         <InputLabel>Choose Cluster</InputLabel>
                         <Select
@@ -332,10 +341,10 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                         </Select>
                         {clusterError && <Typography variant="caption" color="error">You must choose a cluster to advance.</Typography>}
                       </FormControl>
-                    </Grid>
+                    </Box>
                   )}
 
-                  <Grid item xs={12}>
+                  <Box sx={{ flex: 1, minWidth: 200 }}>
                     <TextField
                       label="Action Remarks (Optional)"
                       variant="outlined"
@@ -347,8 +356,8 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                       placeholder="Add any comments for the history log"
                       sx={{ bgcolor: '#fff' }}
                     />
-                  </Grid>
-                </Grid>
+                  </Box>
+                </Box>
               </Box>
             </Grid>
           )}

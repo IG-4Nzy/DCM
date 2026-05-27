@@ -1,7 +1,8 @@
 [
     "View Dashboard",
     "Create User",
-    "View User",
+    "View All Users",
+    "View Department Users",
     "Update User",
     "Delete User",
     "Create Role",

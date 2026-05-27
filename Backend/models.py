@@ -136,8 +136,8 @@ class WorkModel(BaseModel):
     workName: str
     assignee: str
     priority: str
-    dueDate: str
-    description: str
+    dueDate: str = ""
+    description: str = ""
     attachments: List[dict] = Field(default_factory=list)
     status: str = "Pending"
     comments: List[dict] = Field(default_factory=list)
@@ -178,8 +178,8 @@ class CreateWorkModel(BaseModel):
     workName: str
     assignee: str
     priority: str
-    dueDate: str
-    description: str
+    dueDate: str = ""
+    description: str = ""
     attachments: List[dict] = Field(default_factory=list)
     status: str = "Pending"
     comments: List[dict] = Field(default_factory=list)
@@ -238,6 +238,7 @@ class RoasterModel(BaseModel):
     date: str
     shift: str
     assignees: List[str] = Field(default_factory=list)
+    department: Optional[str] = None
     notes: Optional[str] = None
     createdBy: Optional[str] = None
     updatedAt: Optional[str] = None
@@ -252,12 +253,14 @@ class CreateRoasterModel(BaseModel):
     date: str
     shift: str
     assignees: List[str] = Field(default_factory=list)
+    department: Optional[str] = None
     notes: Optional[str] = None
 
 class UpdateRoasterModel(BaseModel):
     date: Optional[str] = None
     shift: Optional[str] = None
     assignees: Optional[List[str]] = None
+    department: Optional[str] = None
     notes: Optional[str] = None
 
     model_config = ConfigDict(
@@ -376,6 +379,7 @@ class InventoryModel(BaseModel):
     itemName: str
     quantity: int
     description: Optional[str] = None
+    department: Optional[str] = None
     lastUpdatedDate: str
     lastUpdatedBy: str
     history: List[InventoryHistoryModel] = []

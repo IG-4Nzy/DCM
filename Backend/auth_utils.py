@@ -46,3 +46,18 @@ def require_privilege(required_privilege: str):
             )
         return current_user
     return privilege_checker
+
+def require_any_privilege(allowed_privileges: list):
+    def privilege_checker(current_user: dict = Depends(get_current_user)):
+        is_superuser = current_user.get("isSuperuser", False)
+        if is_superuser:
+            return current_user
+            
+        user_privileges = current_user.get("privileges", [])
+        if not any(p in user_privileges for p in allowed_privileges):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Not enough permissions. Requires one of: {', '.join(allowed_privileges)}"
+            )
+        return current_user
+    return privilege_checker

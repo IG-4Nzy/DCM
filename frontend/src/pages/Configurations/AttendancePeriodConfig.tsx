@@ -15,11 +15,11 @@ interface ShiftInfo {
 }
 
 const AttendancePeriodConfig = () => {
-    const [startDay, setStartDay] = useState<number>(1);
-    const [endDay, setEndDay] = useState<number>(31);
+    const [startDay, setStartDay] = useState<number | string>(1);
+    const [endDay, setEndDay] = useState<number | string>(31);
     const [shiftStart, setShiftStart] = useState<string>('09:00');
     const [lateGracePeriod, setLateGracePeriod] = useState<number>(30);
-    const [maxAllowedDays, setMaxAllowedDays] = useState<number>(26);
+    const [maxAllowedDays, setMaxAllowedDays] = useState<number | string>(26);
     const [shifts, setShifts] = useState<ShiftInfo[]>([]);
     const [trackedRole, setTrackedRole] = useState<string>('All Roles');
     const [roles, setRoles] = useState<string[]>(['All Roles']);
@@ -127,7 +127,17 @@ const AttendancePeriodConfig = () => {
                                 fullWidth
                                 inputProps={{ min: 1, max: 31 }}
                                 value={startDay}
-                                onChange={(e) => setStartDay(Math.max(1, Math.min(31, parseInt(e.target.value) || 1)))}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === '') {
+                                        setStartDay('');
+                                    } else {
+                                        const parsedVal = parseInt(val);
+                                        if (!isNaN(parsedVal)) {
+                                            setStartDay(Math.max(1, Math.min(31, parsedVal)));
+                                        }
+                                    }
+                                }}
                                 disabled={!hasUpdate || saving}
                                 helperText="Day of the month to start tracking"
                             />
@@ -139,7 +149,17 @@ const AttendancePeriodConfig = () => {
                                 fullWidth
                                 inputProps={{ min: 1, max: 31 }}
                                 value={endDay}
-                                onChange={(e) => setEndDay(Math.max(1, Math.min(31, parseInt(e.target.value) || 1)))}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === '') {
+                                        setEndDay('');
+                                    } else {
+                                        const parsedVal = parseInt(val);
+                                        if (!isNaN(parsedVal)) {
+                                            setEndDay(Math.max(1, Math.min(31, parsedVal)));
+                                        }
+                                    }
+                                }}
                                 disabled={!hasUpdate || saving}
                                 helperText="Day of the month to end tracking"
                             />
@@ -179,7 +199,17 @@ const AttendancePeriodConfig = () => {
                                 fullWidth
                                 inputProps={{ min: 1, max: 31 }}
                                 value={maxAllowedDays}
-                                onChange={(e) => setMaxAllowedDays(Math.max(1, Math.min(31, parseInt(e.target.value) || 26)))}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === '') {
+                                        setMaxAllowedDays('');
+                                    } else {
+                                        const parsedVal = parseInt(val);
+                                        if (!isNaN(parsedVal)) {
+                                            setMaxAllowedDays(Math.max(1, Math.min(31, parsedVal)));
+                                        }
+                                    }
+                                }}
                                 disabled={!hasUpdate || saving}
                                 helperText="Maximum target days per cycle (e.g. 26)"
                             />

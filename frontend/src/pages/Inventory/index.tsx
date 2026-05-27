@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import dayjs from 'dayjs';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, Paper, Tooltip, IconButton, Button } from '@mui/material';
 import { MdAdd as AddIcon, MdDelete as DeleteIcon, MdUploadFile as UploadIcon } from 'react-icons/md';
@@ -117,7 +118,26 @@ const Inventory: React.FC = () => {
     { id: 'itemName', label: 'Item Name', sortable: true },
     { id: 'quantity', label: 'Quantity', sortable: true },
     { id: 'description', label: 'Description', sortable: false },
-    { id: 'lastUpdatedDate', label: 'Last Updated Date', sortable: true },
+    { 
+      id: 'lastUpdatedDate', 
+      label: 'Last Updated Date', 
+      sortable: true,
+      render: (row: any) => {
+        if (!row.lastUpdatedDate) return '-';
+        const cleaned = row.lastUpdatedDate.replace(/\+00:00Z$/, 'Z').replace(/\+00:00$/, 'Z');
+        const parsed = dayjs(cleaned);
+        if (parsed.isValid()) {
+          return parsed.format('DD-MM-YYYY h:mm A');
+        }
+        try {
+          const d = new Date(cleaned);
+          if (!isNaN(d.getTime())) {
+            return dayjs(d).format('DD-MM-YYYY h:mm A');
+          }
+        } catch {}
+        return row.lastUpdatedDate;
+      }
+    },
     { id: 'lastUpdatedBy', label: 'Last Updated By', sortable: true },
   ];
 

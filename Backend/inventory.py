@@ -16,7 +16,7 @@ import csv
 router = APIRouter()
 inventory_collection = db.get_collection("inventory")
 
-@router.get("/", response_description="List all inventory items", response_model=PaginatedInventoryModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Inventory"))])
+@router.get("/", response_description="List all inventory items", response_model=PaginatedInventoryModel, response_model_by_alias=False)
 async def list_inventory(
     skip: int = Query(0, ge=0),
     pagination: bool = Query(True),
@@ -24,9 +24,15 @@ async def list_inventory(
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
     order: str = Query("desc"),
-    search: Optional[str] = None
+    search: Optional[str] = None,
+    current_user: dict = Depends(require_privilege("View Inventory"))
 ):
     query = {}
+    is_superuser = current_user.get("isSuperuser", False)
+    user_dept = current_user.get("department", "")
+
+    if not is_superuser and user_dept:
+        query["department"] = user_dept
 
     if search:
         query["$or"] = [
@@ -48,9 +54,10 @@ async def list_inventory(
             
     return {"data": items, "total": total}
 
-@router.post("/", response_description="Create a new inventory item", response_model=InventoryModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Inventory"))])
-async def create_inventory(item: CreateInventoryModel = Body(...), current_user: dict = Depends(get_current_user)):
+@router.post("/", response_description="Create a new inventory item", response_model=InventoryModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False)
+async def create_inventory(item: CreateInventoryModel = Body(...), current_user: dict = Depends(require_privilege("Create Inventory"))):
     username = current_user.get("sub", "Unknown")
+    user_dept = current_user.get("department", "General")
     
     history_entry = {
         "date": item.date,
@@ -65,6 +72,7 @@ async def create_inventory(item: CreateInventoryModel = Body(...), current_user:
         "itemName": item.itemName,
         "quantity": item.quantity,
         "description": item.description,
+        "department": user_dept,
         "lastUpdatedDate": item.date,
         "lastUpdatedBy": username,
         "history": [history_entry]
@@ -74,8 +82,8 @@ async def create_inventory(item: CreateInventoryModel = Body(...), current_user:
     created_inv = await inventory_collection.find_one({"_id": new_inv.inserted_id})
     return created_inv
 
-@router.get("/{id}", response_description="Get a single inventory item", response_model=InventoryModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Inventory"))])
-async def show_inventory(id: str):
+@router.get("/{id}", response_description="Get a single inventory item", response_model=InventoryModel, response_model_by_alias=False)
+async def show_inventory(id: str, current_user: dict = Depends(require_privilege("View Inventory"))):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
         
@@ -83,16 +91,26 @@ async def show_inventory(id: str):
     if inv is None:
         raise HTTPException(status_code=404, detail=f"Item {id} not found")
 
+    is_superuser = current_user.get("isSuperuser", False)
+    user_dept = current_user.get("department", "")
+    if not is_superuser and user_dept and inv.get("department") != user_dept:
+        raise HTTPException(status_code=403, detail="Access denied to this department's inventory item")
+
     return inv
 
-@router.put("/{id}", response_description="Update an inventory item", response_model=InventoryModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Inventory"))])
-async def update_inventory(id: str, update_data: UpdateInventoryModel = Body(...), current_user: dict = Depends(get_current_user)):
+@router.put("/{id}", response_description="Update an inventory item", response_model=InventoryModel, response_model_by_alias=False)
+async def update_inventory(id: str, update_data: UpdateInventoryModel = Body(...), current_user: dict = Depends(require_privilege("Update Inventory"))):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     existing_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
     if existing_inv is None:
         raise HTTPException(status_code=404, detail=f"Item {id} not found")
+
+    is_superuser = current_user.get("isSuperuser", False)
+    user_dept = current_user.get("department", "")
+    if not is_superuser and user_dept and existing_inv.get("department") != user_dept:
+        raise HTTPException(status_code=403, detail="Cannot update another department's inventory item")
 
     username = current_user.get("sub", "Unknown")
     new_quantity = existing_inv["quantity"] + update_data.quantityChange
@@ -126,10 +144,19 @@ async def update_inventory(id: str, update_data: UpdateInventoryModel = Body(...
     updated_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
     return updated_inv
 
-@router.delete("/{id}", response_description="Delete an inventory item", dependencies=[Depends(require_privilege("Delete Inventory"))])
-async def delete_inventory(id: str):
+@router.delete("/{id}", response_description="Delete an inventory item")
+async def delete_inventory(id: str, current_user: dict = Depends(require_privilege("Delete Inventory"))):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    existing_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
+    if existing_inv is None:
+        raise HTTPException(status_code=404, detail=f"Item {id} not found")
+
+    is_superuser = current_user.get("isSuperuser", False)
+    user_dept = current_user.get("department", "")
+    if not is_superuser and user_dept and existing_inv.get("department") != user_dept:
+        raise HTTPException(status_code=403, detail="Cannot delete another department's inventory item")
 
     delete_result = await inventory_collection.delete_one({"_id": ObjectId(id)})
 
@@ -138,9 +165,10 @@ async def delete_inventory(id: str):
 
     raise HTTPException(status_code=404, detail=f"Item {id} not found")
 
-@router.post("/bulk", response_description="Bulk create inventory items", dependencies=[Depends(require_privilege("Create Inventory"))])
-async def bulk_create_inventory(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+@router.post("/bulk", response_description="Bulk create inventory items")
+async def bulk_create_inventory(file: UploadFile = File(...), current_user: dict = Depends(require_privilege("Create Inventory"))):
     username = current_user.get("sub", "Unknown")
+    user_dept = current_user.get("department", "General")
     
     if not file.filename.endswith((".xlsx", ".csv")):
         raise HTTPException(status_code=400, detail="Only .xlsx or .csv files are supported")
@@ -183,6 +211,7 @@ async def bulk_create_inventory(file: UploadFile = File(...), current_user: dict
                     "itemName": str(name),
                     "quantity": qty_val,
                     "description": str(desc) if desc else "",
+                    "department": user_dept,
                     "lastUpdatedDate": current_time,
                     "lastUpdatedBy": username,
                     "history": [{
@@ -230,6 +259,7 @@ async def bulk_create_inventory(file: UploadFile = File(...), current_user: dict
                     "itemName": str(name),
                     "quantity": qty_val,
                     "description": str(desc) if desc else "",
+                    "department": user_dept,
                     "lastUpdatedDate": current_time,
                     "lastUpdatedBy": username,
                     "history": [{

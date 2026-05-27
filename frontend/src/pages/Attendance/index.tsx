@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     Box, Paper, Typography, MenuItem, Select, FormControl, InputLabel, Grid,
     Tooltip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions,
-    TextField, Chip, LinearProgress, Tabs, Tab
+    TextField, Chip, LinearProgress, Tabs, Tab, Divider
 } from '@mui/material';
 import {
     MdCheck as ApproveIcon,
@@ -86,6 +86,9 @@ const Attendance: React.FC = () => {
     const [regReason, setRegReason] = useState('');
     const [regRemarks, setRegRemarks] = useState('');
     const [submittingReg, setSubmittingReg] = useState(false);
+
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [viewingRecord, setViewingRecord] = useState<AttendanceRecord | null>(null);
 
     // Edit Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -253,6 +256,10 @@ const Attendance: React.FC = () => {
         loadCycleConfig();
         loadDepartments();
     }, [loadCycleConfig, loadDepartments]);
+
+    useEffect(() => {
+        setPage(0);
+    }, [searchQuery, departmentFilter]);
 
     useEffect(() => {
         if (periods.length > 0 && selectedPeriod) {
@@ -579,7 +586,7 @@ const Attendance: React.FC = () => {
                         size="small"
                         color="secondary"
                         startIcon={<SubmitIcon />}
-                        onClick={() => handleOpenRegModal(row)}
+                        onClick={(e) => { e.stopPropagation(); handleOpenRegModal(row); }}
                         sx={{ fontSize: '11px', py: 0.5 }}
                     >
                         Regularize
@@ -605,7 +612,7 @@ const Attendance: React.FC = () => {
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
                         {hasUpdate && (
                             <Tooltip title="Edit Attendance Log">
-                                <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.06)' }} onClick={() => handleOpenEditModal(row)}>
+                                <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.06)' }} onClick={(e) => { e.stopPropagation(); handleOpenEditModal(row); }}>
                                     <EditIcon fontSize="small" />
                                 </IconButton>
                             </Tooltip>
@@ -613,12 +620,12 @@ const Attendance: React.FC = () => {
                         {isPending && canApprove && (
                             <>
                                 <Tooltip title="Approve Request">
-                                    <IconButton size="small" color="success" sx={{ backgroundColor: 'rgba(46, 125, 50, 0.06)' }} onClick={() => handleApprove(row)}>
+                                    <IconButton size="small" color="success" sx={{ backgroundColor: 'rgba(46, 125, 50, 0.06)' }} onClick={(e) => { e.stopPropagation(); handleApprove(row); }}>
                                         <ApproveIcon fontSize="small" />
                                     </IconButton>
                                 </Tooltip>
                                 <Tooltip title="Reject Request">
-                                    <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(198, 40, 40, 0.06)' }} onClick={() => handleReject(row)}>
+                                    <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(198, 40, 40, 0.06)' }} onClick={(e) => { e.stopPropagation(); handleReject(row); }}>
                                         <RejectIcon fontSize="small" />
                                     </IconButton>
                                 </Tooltip>
@@ -626,7 +633,7 @@ const Attendance: React.FC = () => {
                         )}
                         {hasDelete && (
                             <Tooltip title="Delete Attendance Log">
-                                <IconButton size="small" color="error" onClick={() => handleDelete(row)}>
+                                <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); handleDelete(row); }}>
                                     <RejectIcon fontSize="small" />
                                 </IconButton>
                             </Tooltip>
@@ -801,6 +808,7 @@ const Attendance: React.FC = () => {
                         onPageChange={(e, p) => setPage(p)}
                         onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
                         loading={loading}
+                        onRowClick={(row) => { setViewingRecord(row); setIsDetailOpen(true); }}
                     />
                 </Paper>
             ) : (
@@ -1144,6 +1152,164 @@ const Attendance: React.FC = () => {
                 <DialogActions sx={{ p: 2.5 }}>
                     <Button variant="contained" color="primary" onClick={handleCloseCalendar}>
                         Close Calendar
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Detailed Attendance Row Modal */}
+            <Dialog
+                open={isDetailOpen}
+                onClose={() => setIsDetailOpen(false)}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        borderRadius: 3,
+                        boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
+                    }
+                }}
+            >
+                <DialogTitle sx={{ fontWeight: 700, color: '#1976d2', pb: 1 }}>
+                    Attendance & Regularization Details
+                </DialogTitle>
+                <DialogContent dividers sx={{ p: 3 }}>
+                    {viewingRecord && (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                                <Box>
+                                    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>Employee Name</Typography>
+                                    <Typography variant="body1" sx={{ fontWeight: 700, color: '#333' }}>
+                                        {viewingRecord.fullName || viewingRecord.username}
+                                    </Typography>
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>Department</Typography>
+                                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#333' }}>
+                                        {viewingRecord.department || '--'}
+                                    </Typography>
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>Date</Typography>
+                                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                                        {dayjs(viewingRecord.date).format('MMMM DD, YYYY')} ({dayjs(viewingRecord.date).format('dddd')})
+                                    </Typography>
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>Rostered Shift</Typography>
+                                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#3f51b5' }}>
+                                        {(() => {
+                                            const start = viewingRecord.shiftStart ? dayjs(`2000-01-01T${viewingRecord.shiftStart}`).format('hh:mm A') : '09:00 AM';
+                                            const end = viewingRecord.shiftEnd ? dayjs(`2000-01-01T${viewingRecord.shiftEnd}`).format('hh:mm A') : '05:00 PM';
+                                            return `${viewingRecord.shiftName || 'Default'} (${start} - ${end})`;
+                                        })()}
+                                    </Typography>
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>First Login</Typography>
+                                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#2e7d32' }}>
+                                        {viewingRecord.firstLogin ? dayjs(viewingRecord.firstLogin).format('hh:mm:ss A') : 'No punch-in'}
+                                    </Typography>
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>Last Logout</Typography>
+                                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#c62828' }}>
+                                        {viewingRecord.lastLogout ? dayjs(viewingRecord.lastLogout).format('hh:mm:ss A') : 'No punch-out'}
+                                    </Typography>
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>Worked Hours</Typography>
+                                    <Typography variant="body1" sx={{ fontWeight: 700, color: viewingRecord.workedHours < 8 ? '#d32f2f' : '#2e7d32' }}>
+                                        {viewingRecord.workedHours} hrs
+                                    </Typography>
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>Lateness & Early Going Status</Typography>
+                                    <Box sx={{ mt: 0.5, display: 'flex', gap: 1 }}>
+                                        {(() => {
+                                            const loginTime = viewingRecord.firstLogin ? dayjs(viewingRecord.firstLogin) : null;
+                                            const shiftStartTime = viewingRecord.shiftStart || cycleConfig.shiftStart || '09:00';
+                                            const [sh, sm] = shiftStartTime.split(':').map(Number);
+                                            const grace = cycleConfig.lateGracePeriod || 30;
+                                            const isLate = loginTime ? loginTime.isAfter(loginTime.clone().hour(sh).minute(sm).add(grace, 'minute')) : false;
+
+                                            const logoutTime = viewingRecord.lastLogout ? dayjs(viewingRecord.lastLogout) : null;
+                                            const shiftEndTime = viewingRecord.shiftEnd || '17:00';
+                                            const [eh, em] = shiftEndTime.split(':').map(Number);
+                                            const isEarly = logoutTime ? logoutTime.isBefore(logoutTime.clone().hour(eh).minute(em).second(0).millisecond(0)) : false;
+
+                                            return (
+                                                <>
+                                                    {isLate ? (
+                                                        <Chip label="Late Entry" size="small" sx={{ backgroundColor: '#ffebee', color: '#c62828', fontWeight: 600 }} />
+                                                    ) : (
+                                                        <Chip label="On Time" size="small" sx={{ backgroundColor: '#e8f5e9', color: '#2e7d32', fontWeight: 600 }} />
+                                                    )}
+                                                    {isEarly && (
+                                                        <Chip label="Early Going" size="small" sx={{ backgroundColor: '#fff3e0', color: '#e65100', fontWeight: 600 }} />
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
+                                    </Box>
+                                </Box>
+                            </Box>
+
+                            <Divider sx={{ my: 1 }} />
+
+                            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#e65100', mb: 0.5 }}>
+                                Regularization Request Details
+                            </Typography>
+
+                            {viewingRecord.regularizeStatus ? (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, p: 2, borderRadius: 2, backgroundColor: '#fdfbf7', border: '1px solid #f5ebd3' }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>Request Status:</Typography>
+                                        <Chip
+                                            label={viewingRecord.regularizeStatus}
+                                            size="small"
+                                            sx={{
+                                                fontWeight: 700,
+                                                backgroundColor:
+                                                    viewingRecord.regularizeStatus === 'Approved' ? '#e8f5e9' :
+                                                    viewingRecord.regularizeStatus === 'Rejected' ? '#ffebee' : '#fff3e0',
+                                                color:
+                                                    viewingRecord.regularizeStatus === 'Approved' ? '#2e7d32' :
+                                                    viewingRecord.regularizeStatus === 'Rejected' ? '#c62828' : '#e65100'
+                                            }}
+                                        />
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600, display: 'block' }}>
+                                            Reason for Regularization
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: '#555', mt: 0.5, fontStyle: 'italic' }}>
+                                            "{viewingRecord.regularizeReason || 'No reason provided'}"
+                                        </Typography>
+                                    </Box>
+                                    {viewingRecord.regularizeRemarks && (
+                                        <Box>
+                                            <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600, display: 'block' }}>
+                                                Approver Remarks
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: '#555', mt: 0.5 }}>
+                                                {viewingRecord.regularizeRemarks}
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                </Box>
+                            ) : (
+                                <Box sx={{ p: 2, borderRadius: 2, backgroundColor: '#f5f5f5', border: '1px dashed #ccc', textAlign: 'center' }}>
+                                    <Typography variant="body2" color="textSecondary">
+                                        No regularization request submitted for this day.
+                                    </Typography>
+                                </Box>
+                            )}
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ p: 2.5 }}>
+                    <Button variant="contained" color="primary" onClick={() => setIsDetailOpen(false)}>
+                        Close Details
                     </Button>
                 </DialogActions>
             </Dialog>

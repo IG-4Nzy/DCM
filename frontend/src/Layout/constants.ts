@@ -14,7 +14,7 @@ export const SIDEBAR_OPTIONS = [
         label: wordings.users,
         icon: Icons.UsersIcon,
         route: ROUTE_CONSTANTS.USERS,
-        privileges: [PRIVILEGES.USER_VIEW, PRIVILEGES.USER_CREATE, PRIVILEGES.USER_UPDATE, PRIVILEGES.USER_DELETE]
+        privileges: [PRIVILEGES.USER_VIEW_ALL, PRIVILEGES.USER_VIEW_DEPT, PRIVILEGES.USER_CREATE, PRIVILEGES.USER_UPDATE, PRIVILEGES.USER_DELETE]
     },
     {
         label: wordings.roles,

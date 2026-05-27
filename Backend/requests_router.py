@@ -94,6 +94,57 @@ async def resolve_assignees(stage: dict, requester_username: str) -> List[str]:
     return []
 
 
+async def deduct_inventory_on_completion(existing_request: dict, username: str):
+    if not existing_request or existing_request.get("inventoryReflected"):
+        return
+
+    try:
+        request_type = existing_request.get("requestType") or existing_request.get("category", "")
+        if request_type == "Hardware Issuance":
+            details = existing_request.get("details") or {}
+            hardware_id = details.get("hardwareId")
+            quantity_to_deduct = details.get("quantity")
+            
+            if hardware_id and quantity_to_deduct:
+                try:
+                    qty_to_deduct = int(quantity_to_deduct)
+                except (ValueError, TypeError):
+                    qty_to_deduct = 0
+                
+                if qty_to_deduct > 0 and ObjectId.is_valid(hardware_id):
+                    inv_col = db.get_collection("inventory")
+                    inv_item = await inv_col.find_one({"_id": ObjectId(hardware_id)})
+                    if inv_item:
+                        new_qty = max(0, inv_item.get("quantity", 0) - qty_to_deduct)
+                        history = inv_item.get("history")
+                        if not isinstance(history, list):
+                            history = []
+                        history_entry = {
+                            "date": datetime.now(timezone.utc).isoformat() + "Z",
+                            "action": "issued",
+                            "quantityChange": -qty_to_deduct,
+                            "remainingQuantity": new_qty,
+                            "user": username or "system",
+                            "givenTo": existing_request.get("createdBy", "Request Completion")
+                        }
+                        history.append(history_entry)
+                        await inv_col.update_one(
+                            {"_id": ObjectId(hardware_id)},
+                            {
+                                "$set": {
+                                    "quantity": new_qty,
+                                    "lastUpdatedDate": datetime.now(timezone.utc).isoformat() + "Z",
+                                    "lastUpdatedBy": username or "system",
+                                    "history": history
+                                }
+                            }
+                        )
+                        # Mark inventoryReflected = True
+                        await collection.update_one({"_id": existing_request["_id"]}, {"$set": {"inventoryReflected": True}})
+    except Exception as e:
+        print(f"Error in deduct_inventory_on_completion: {e}")
+
+
 @router.get("/", response_description="List all requests", response_model=PaginatedRequestsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Request"))])
 async def list_items(
     skip: int = Query(0, ge=0),
@@ -246,6 +297,9 @@ async def update_item(id: str, payload: UpdateRequestModel = Body(...), current_
     )
 
     updated = await collection.find_one({"_id": ObjectId(id)})
+    if updated and updated.get("status") == "Completed":
+        await deduct_inventory_on_completion(updated, username)
+        updated = await collection.find_one({"_id": ObjectId(id)})
     return updated
 
 
@@ -290,7 +344,23 @@ async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), c
     routing = await get_routing_for_type(request_type)
 
     if not routing or not routing.get("stages"):
-        raise HTTPException(status_code=400, detail="No routing configuration found for this request type")
+        routing = {
+            "requestType": request_type,
+            "stages": [
+                {
+                    "stageName": "Pending Approval",
+                    "order": 1,
+                    "assignmentType": "Role",
+                    "assignedTo": "Admin"
+                },
+                {
+                    "stageName": "Completed",
+                    "order": 2,
+                    "assignmentType": "Role",
+                    "assignedTo": "Admin"
+                }
+            ]
+        }
 
     stages = sorted(routing["stages"], key=lambda s: s.get("order", 0))
     current_index = existing.get("currentStageIndex", 0)
@@ -317,6 +387,9 @@ async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), c
 
     await collection.update_one({"_id": ObjectId(id)}, {"$set": update_data})
     updated = await collection.find_one({"_id": ObjectId(id)})
+    if updated and updated.get("status") == "Completed":
+        await deduct_inventory_on_completion(updated, username)
+        updated = await collection.find_one({"_id": ObjectId(id)})
     return updated
 
 

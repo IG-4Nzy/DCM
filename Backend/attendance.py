@@ -92,10 +92,26 @@ async def list_attendance(
 
     # Search filter
     if search:
-        query["$or"] = [
-            {"username": {"$regex": search, "$options": "i"}},
-            {"department": {"$regex": search, "$options": "i"}}
-        ]
+        users_col = db.get_collection("users")
+        matching_users = await users_col.find({
+            "$or": [
+                {"username": {"$regex": search, "$options": "i"}},
+                {"firstName": {"$regex": search, "$options": "i"}},
+                {"lastName": {"$regex": search, "$options": "i"}}
+            ]
+        }).to_list(length=None)
+        matching_usernames = [u["username"] for u in matching_users if u.get("username")]
+        
+        search_query = {
+            "$or": [
+                {"username": {"$in": matching_usernames}},
+                {"department": {"$regex": search, "$options": "i"}}
+            ]
+        }
+        if query:
+            query = {"$and": [query, search_query]}
+        else:
+            query = search_query
 
     # Date filter range
     if startDate and endDate:

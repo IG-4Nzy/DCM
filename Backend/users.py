@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
-from auth_utils import require_privilege, get_current_user
+from auth_utils import require_privilege, require_any_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import List, Optional
 from database import db
@@ -27,7 +27,7 @@ async def sync_department_head(username: str, department: Optional[str], is_dept
 router = APIRouter()
 users_collection = db.get_collection("users")
 
-@router.get("/", response_description="List all users", response_model=PaginatedUsersModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View User"))])
+@router.get("/", response_description="List all users", response_model=PaginatedUsersModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["View All Users", "View Department Users"]))])
 async def list_users(
     skip: int = Query(0, ge=0),
     pagination: bool = Query(True),
@@ -37,14 +37,25 @@ async def list_users(
     order: str = Query("asc"),
     search: Optional[str] = None,
     department: Optional[str] = None,
+    role: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     query = {}
+    is_superuser = current_user.get("isSuperuser", False)
+    user_privileges = current_user.get("privileges", [])
     
-    if department == "me":
-        query["department"] = current_user.get("department")
-    elif department:
-        query["department"] = department
+    only_dept_scoped = not (is_superuser or "View All Users" in user_privileges)
+    
+    if only_dept_scoped:
+        query["department"] = current_user.get("department") or "None"
+    else:
+        if department == "me":
+            query["department"] = current_user.get("department")
+        elif department:
+            query["department"] = department
+
+    if role:
+        query["role"] = role
 
     if search:
         search_query = {
@@ -100,12 +111,19 @@ async def create_user(user: CreateUserModel = Body(...)):
         created_user["isDepartmentHead"] = is_dept_head or False
     return created_user
 
-@router.get("/{id}", response_description="Get a single user", response_model=UserModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View User"))])
-async def show_user(id: str):
+@router.get("/{id}", response_description="Get a single user", response_model=UserModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["View All Users", "View Department Users"]))])
+async def show_user(id: str, current_user: dict = Depends(get_current_user)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
         
     if (user := await users_collection.find_one({"_id": ObjectId(id)})) is not None:
+        is_superuser = current_user.get("isSuperuser", False)
+        user_privileges = current_user.get("privileges", [])
+        only_dept_scoped = not (is_superuser or "View All Users" in user_privileges)
+        
+        if only_dept_scoped and user.get("department") != current_user.get("department"):
+            raise HTTPException(status_code=403, detail="Not enough privileges to view users outside your department")
+
         if "status" not in user:
             user["status"] = True
         departments_collection = db.get_collection("departments")

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import dayjs from 'dayjs';
 import Modal from '../../components/Modal';
 import { 
   Box, 
@@ -88,15 +89,19 @@ const InventoryDetailModal: React.FC<PropType> = ({
   };
 
   const formatDate = (dateStr: string) => {
-    try {
-      const d = new Date(dateStr);
-      return new Intl.DateTimeFormat('en-US', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      }).format(d);
-    } catch {
-      return dateStr;
+    if (!dateStr) return '-';
+    const cleaned = dateStr.replace(/\+00:00Z$/, 'Z').replace(/\+00:00$/, 'Z');
+    const parsed = dayjs(cleaned);
+    if (parsed.isValid()) {
+      return parsed.format('DD-MM-YYYY h:mm A');
     }
+    try {
+      const d = new Date(cleaned);
+      if (!isNaN(d.getTime())) {
+        return dayjs(d).format('DD-MM-YYYY h:mm A');
+      }
+    } catch {}
+    return dateStr;
   };
 
   const getActionIcon = (action: string) => {

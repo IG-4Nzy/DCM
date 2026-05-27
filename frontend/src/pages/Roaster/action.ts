@@ -51,9 +51,9 @@ export const resetRosterStatus = createAsyncThunk(
 
 export const createRoster = createAsyncThunk(
   'roaster/createRoster',
-  async ({ date, shift, assignees }: { date: string; shift: string; assignees: string[] }, { rejectWithValue }) => {
+  async ({ date, shift, assignees, department }: { date: string; shift: string; assignees: string[]; department: string }, { rejectWithValue }) => {
     try {
-      const res = await request.post(`/api/roasters/`, { date, shift, assignees });
+      const res = await request.post(`/api/roasters/`, { date, shift, assignees, department });
       return res.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.detail || 'Failed to create roster');
@@ -63,9 +63,9 @@ export const createRoster = createAsyncThunk(
 
 export const updateRoster = createAsyncThunk(
   'roaster/updateRoster',
-  async ({ id, date, shift, assignees }: { id: string; date: string; shift: string; assignees: string[] }, { rejectWithValue }) => {
+  async ({ id, date, shift, assignees, department }: { id: string; date: string; shift: string; assignees: string[]; department: string }, { rejectWithValue }) => {
     try {
-      const res = await request.put(`/api/roasters/${id}`, { date, shift, assignees });
+      const res = await request.put(`/api/roasters/${id}`, { date, shift, assignees, department });
       return res.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.detail || 'Failed to update roster');

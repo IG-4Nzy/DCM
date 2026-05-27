@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Box, Paper, Tooltip, IconButton } from "@mui/material";
+import { Box, Paper, Tooltip, IconButton, FormControl, InputLabel, Select, MenuItem } from "@mui/material";
 import {
   MdAdd as AddIcon,
   MdEdit as EditIcon,
@@ -42,6 +42,8 @@ const Users: React.FC = () => {
   const { showToast } = useToast();
 
   const [searchQuery, setSearchQuery] = useTableState("users_search", "");
+  const [selectedDepartment, setSelectedDepartment] = useTableState("users_filter_dept", "All Departments");
+  const [selectedRole, setSelectedRole] = useTableState("users_filter_role", "All Roles");
   const [page, setPage] = useTableState("users_page", 0);
   const [rowsPerPage, setRowsPerPage] = useTableState("users_rowsPerPage", 5);
   const [order, setOrder] = useTableState<Order>("users_order", "asc");
@@ -78,10 +80,16 @@ const Users: React.FC = () => {
         sortBy: orderBy as string,
         order,
         search: searchQuery,
+        department: selectedDepartment === "All Departments" ? "" : selectedDepartment,
+        role: selectedRole === "All Roles" ? "" : selectedRole,
         showToast,
       }),
     );
-  }, [dispatch, showToast, page, rowsPerPage, orderBy, order, searchQuery]);
+  }, [dispatch, showToast, page, rowsPerPage, orderBy, order, searchQuery, selectedDepartment, selectedRole]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [selectedDepartment, selectedRole, searchQuery]);
 
   useEffect(() => {
     loadData();
@@ -304,6 +312,38 @@ const Users: React.FC = () => {
             onChange={setSearchQuery}
             placeholder="Search users..."
           />
+          {hasPrivilege(PRIVILEGES.USER_VIEW_ALL) && (
+            <FormControl size="small" sx={{ minWidth: 160, bgcolor: '#fff' }}>
+              <InputLabel>Department</InputLabel>
+              <Select
+                value={selectedDepartment}
+                label="Department"
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+              >
+                <MenuItem value="All Departments">All Departments</MenuItem>
+                {availableDepartments.map((dept: any) => (
+                  <MenuItem key={dept.id || dept._id || dept.name} value={dept.name}>
+                    {dept.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+          <FormControl size="small" sx={{ minWidth: 160, bgcolor: '#fff' }}>
+            <InputLabel>Role</InputLabel>
+            <Select
+              value={selectedRole}
+              label="Role"
+              onChange={(e) => setSelectedRole(e.target.value)}
+            >
+              <MenuItem value="All Roles">All Roles</MenuItem>
+              {availableRoles.map((role: any) => (
+                <MenuItem key={role.id || role._id || role.name} value={role.name}>
+                  {role.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           {hasPrivilege(PRIVILEGES.USER_CREATE) && (
             <Button
               variant="contained"
@@ -338,7 +378,7 @@ const Users: React.FC = () => {
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
           totalCount={totalCount || 0}
-          onRowClick={(hasPrivilege(PRIVILEGES.USER_VIEW) || hasPrivilege(PRIVILEGES.USER_UPDATE)) ? (row) => handleOpenModal(row, false) : undefined}
+          onRowClick={(hasPrivilege(PRIVILEGES.USER_VIEW_ALL) || hasPrivilege(PRIVILEGES.USER_VIEW_DEPT) || hasPrivilege(PRIVILEGES.USER_UPDATE)) ? (row) => handleOpenModal(row, false) : undefined}
         />
       </Paper>
       <UserFormModal

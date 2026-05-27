@@ -110,7 +110,6 @@ const WorkFormModal = ({
             value={dueDate}
             onChange={setDueDate}
             minDate={today}
-            required
           />
         </div>
 
@@ -123,7 +122,6 @@ const WorkFormModal = ({
             label="Description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            required
           />
         </div>
 

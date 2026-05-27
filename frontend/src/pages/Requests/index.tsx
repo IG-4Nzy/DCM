@@ -16,6 +16,7 @@ import RequestViewModal from './RequestViewModal';
 
 // Need fetchUsers to show creator name properly
 import { fetchUsers } from '../Users/action';
+import { fetchInventory } from '../Inventory/action';
 
 // Import auth privileges
 import { hasPrivilege } from '../../helpers/authUtils';
@@ -29,6 +30,7 @@ const Requests: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { isSuperuser, username } = useSelector((state: RootState) => state.auth);
     const { users } = useSelector((state: RootState) => state.users);
+    const { inventory } = useSelector((state: RootState) => state.inventory);
 
     const [requests, setRequests] = useState<RequestData[]>([]);
     const [totalCount, setTotalCount] = useState(0);
@@ -87,6 +89,7 @@ const Requests: React.FC = () => {
     useEffect(() => {
         loadData();
         dispatch(fetchUsers({ pagination: false }));
+        dispatch(fetchInventory({ pagination: false }));
     }, [loadData, dispatch]);
 
     const handleOpenModal = (req?: RequestData) => {
@@ -230,6 +233,9 @@ const Requests: React.FC = () => {
                         if (row.details.dateTime) parts.push(`Time: ${new Date(row.details.dateTime).toLocaleString()}`);
                         if (row.details.purpose) parts.push(`Purpose: ${row.details.purpose}`);
                     } else if (row.requestType === 'Hardware Issuance') {
+                        const hItem = inventory.find((i: any) => (i.id || i._id) === row.details.hardwareId);
+                        const hName = hItem ? hItem.itemName : row.details.hardwareId;
+                        if (hName) parts.push(`Item: ${hName}`);
                         if (row.details.quantity) parts.push(`Qty: ${row.details.quantity}`);
                     } else if (row.requestType === 'Hardware Replacement') {
                         if (row.details.remarks) parts.push(`Remarks: ${row.details.remarks}`);
