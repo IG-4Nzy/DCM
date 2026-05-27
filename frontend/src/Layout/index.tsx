@@ -224,7 +224,10 @@ const Layout: React.FC = () => {
         <Box sx={{ flexGrow: 1, overflowY: 'auto', overflowX: 'hidden' }}>
           <List>
             {
-              SIDEBAR_OPTIONS?.map((option, index) => {
+              SIDEBAR_OPTIONS?.map((option: any, index: number) => {
+                if (option.superuserOnly && !isSuperuser) {
+                  return null;
+                }
                 if (!isSuperuser && option.privileges && !hasAnyPrivilege(option.privileges)) {
                   return null;
                 }

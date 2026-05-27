@@ -23,4 +23,5 @@ export default {
   search: "Search",
   serverMonitoring: "Server Monitoring",
   attendance: "Attendance",
+  auditLogs: "Audit Logs",
 };

@@ -23,12 +23,208 @@ from vm_details import router as vm_details_router
 from requests_router import router as requests_router
 from request_routings import router as request_routings_router
 from attendance import router as attendance_router
+from audit_logs import router as audit_logs_router
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from database import db
+from datetime import datetime, timezone
+import jwt
+from auth_utils import SECRET_KEY, ALGORITHM
+
+def get_action_name(method: str, path: str) -> str:
+    parts = [p for p in path.split("/") if p]
+    if not parts:
+        return f"{method} Request"
+    
+    # Check auth
+    if "auth" in parts:
+        if "login" in parts: return "User Login"
+        if "register" in parts: return "User Registration"
+        if "logout" in parts: return "User Logout"
+        return "Auth Action"
+        
+    # Check users
+    if "users" in parts:
+        if method == "POST": return "Create User"
+        if method == "PUT": return "Update User"
+        if method == "DELETE": return "Delete User"
+        if method == "GET": return "View Users List" if len(parts) == 2 else "View User Details"
+        
+    # Check roles
+    if "roles" in parts:
+        if method == "POST": return "Create Role"
+        if method == "PUT": return "Update Role"
+        if method == "DELETE": return "Delete Role"
+        return "Role Action"
+        
+    # Check inventory
+    if "inventory" in parts:
+        if method == "POST": return "Create Inventory Item"
+        if method == "PUT": return "Update Inventory Stock"
+        if method == "DELETE": return "Delete Inventory Item"
+        return "Inventory Action"
+
+    # Check requests
+    if "requests" in parts:
+        if "advance" in parts: return "Advance Request Stage"
+        if "reject" in parts or "cancel" in parts: return "Reject/Cancel Request"
+        if method == "POST": return "Create Request"
+        if method == "PUT": return "Update Request"
+        if method == "DELETE": return "Delete Request"
+        return "Request Action"
+
+    # Check roasters
+    if "roasters" in parts:
+        if method == "POST": return "Create/Publish Roaster"
+        if method == "PUT": return "Update Roaster"
+        if method == "DELETE": return "Delete Roaster"
+        return "Roaster Action"
+
+    # Check works
+    if "works" in parts:
+        if method == "POST": return "Create Work Assignment"
+        if method == "PUT": return "Update Work Assignment"
+        if method == "DELETE": return "Delete Work Assignment"
+        return "Work Action"
+
+    # Default fallback
+    action_type = parts[1] if len(parts) > 1 else parts[0]
+    action_type = action_type.replace("-", " ").title()
+    return f"{method} {action_type}"
+
+def clean_document_for_logging(doc: dict) -> dict:
+    if not isinstance(doc, dict):
+        return doc
+    cleaned = {}
+    for k, v in doc.items():
+        if k == "_id":
+            cleaned[k] = str(v)
+        elif isinstance(v, datetime):
+            cleaned[k] = v.isoformat()
+        elif isinstance(v, dict):
+            cleaned[k] = clean_document_for_logging(v)
+        elif isinstance(v, list):
+            cleaned[k] = [
+                clean_document_for_logging(item) if isinstance(item, dict) 
+                else str(item) if hasattr(item, '__str__') and len(str(item)) == 24
+                else item for item in v
+            ]
+        else:
+            if hasattr(v, '__str__') and len(str(v)) == 24 and not isinstance(v, (str, int, float, bool)):
+                cleaned[k] = str(v)
+            else:
+                cleaned[k] = v
+    return cleaned
+
+class AuditLogMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        method = request.method
+        
+        if method == "GET" or path.startswith("/uploads") or path.startswith("/static") or path == "/" or path == "/favicon.ico":
+            return await call_next(request)
+            
+        parts = [p for p in path.split("/") if p]
+        doc_id = None
+        collection_name = None
+        before_state = None
+        
+        if method in ["PUT", "PATCH", "DELETE"] and parts:
+            if "users" in parts: collection_name = "users"
+            elif "roles" in parts: collection_name = "roles"
+            elif "inventory" in parts: collection_name = "inventory"
+            elif "departments" in parts: collection_name = "departments"
+            elif "works" in parts: collection_name = "works"
+            elif "roasters" in parts: collection_name = "roasters"
+            elif "requests" in parts: collection_name = "requests"
+            elif "attendance" in parts: collection_name = "attendance"
+            elif "clusters" in parts: collection_name = "clusters"
+            elif "server-racks" in parts: collection_name = "server_racks"
+            elif "server-models" in parts: collection_name = "server_models"
+            elif "node-details" in parts: collection_name = "node_details"
+            elif "vm-details" in parts: collection_name = "vm_details"
+            
+            from bson import ObjectId
+            for p in reversed(parts):
+                if len(p) == 24 and all(c in "0123456789abcdefABCDEF" for c in p):
+                    doc_id = p
+                    break
+                    
+            if collection_name and doc_id:
+                try:
+                    col = db.get_collection(collection_name)
+                    doc = await col.find_one({"$or": [{"_id": ObjectId(doc_id)}, {"_id": doc_id}]})
+                    if doc:
+                        before_state = clean_document_for_logging(doc)
+                except Exception as e:
+                    import traceback
+                    with open("middleware_error.log", "a") as f:
+                        f.write(f"Before state error: {e}\n{traceback.format_exc()}\n")
+                    print(f"Failed to fetch before state: {e}")
+                    
+        response = await call_next(request)
+        
+        after_state = None
+        if response.status_code < 400 and method in ["PUT", "PATCH"] and collection_name and doc_id:
+            try:
+                from bson import ObjectId
+                col = db.get_collection(collection_name)
+                doc = await col.find_one({"$or": [{"_id": ObjectId(doc_id)}, {"_id": doc_id}]})
+                if doc:
+                    after_state = clean_document_for_logging(doc)
+            except Exception as e:
+                import traceback
+                with open("middleware_error.log", "a") as f:
+                    f.write(f"After state error: {e}\n{traceback.format_exc()}\n")
+                print(f"Failed to fetch after state: {e}")
+                
+        ip_address = request.client.host if request.client else "unknown"
+        
+        username = "anonymous"
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                username = payload.get("sub", "anonymous")
+            except Exception:
+                pass
+                
+        action = get_action_name(method, path)
+        
+        query_params = str(request.query_params)
+        details = f"{method} {path}"
+        if query_params:
+            details += f"?{query_params}"
+        details += f" (Status: {response.status_code})"
+        
+        try:
+            logs_col = db.get_collection("audit_logs")
+            log_record = {
+                "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+                "user": username,
+                "action": action,
+                "details": details,
+                "ipAddress": ip_address
+            }
+            if before_state is not None:
+                log_record["beforeState"] = before_state
+            if after_state is not None:
+                log_record["afterState"] = after_state
+                
+            await logs_col.insert_one(log_record)
+        except Exception as e:
+            print(f"Failed to write audit log: {e}")
+            
+        return response
 
 app = FastAPI(
     title="DCM Backend",
     description="FastAPI backend with MongoDB for DCM project",
     version="1.0.0"
 )
+
+app.add_middleware(AuditLogMiddleware)
 
 import os
 
@@ -63,6 +259,7 @@ app.include_router(vm_details_router, tags=["vm_details"], prefix="/api/vm-detai
 app.include_router(requests_router, tags=["requests"], prefix="/api/requests")
 app.include_router(request_routings_router, tags=["request_routings"], prefix="/api/request-routings")
 app.include_router(attendance_router, tags=["attendance"], prefix="/api/attendance")
+app.include_router(audit_logs_router, tags=["audit_logs"], prefix="/api/logs")
 
 import os
 os.makedirs("uploads/works", exist_ok=True)

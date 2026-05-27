@@ -50,7 +50,7 @@ export const SIDEBAR_OPTIONS = [
         label: wordings.inventory,
         icon: Icons.InventoryIcon,
         route: ROUTE_CONSTANTS.INVENTORY,
-        privileges: [PRIVILEGES.INVENTORY_VIEW, PRIVILEGES.INVENTORY_CREATE, PRIVILEGES.INVENTORY_UPDATE, PRIVILEGES.INVENTORY_DELETE]
+        privileges: [PRIVILEGES.INVENTORY_VIEW_ALL, PRIVILEGES.INVENTORY_VIEW_DEPT, PRIVILEGES.INVENTORY_CREATE, PRIVILEGES.INVENTORY_UPDATE, PRIVILEGES.INVENTORY_DELETE]
     },
     {
         label: wordings.configurations,
@@ -88,5 +88,11 @@ export const SIDEBAR_OPTIONS = [
         icon: Icons.AttendanceIcon,
         route: ROUTE_CONSTANTS.ATTENDANCE,
         privileges: [PRIVILEGES.VIEW_DEPARTMENTAL_ATTENDACE,PRIVILEGES.VIEW_SELF_ATTENDANCE,PRIVILEGES.VIEW_ALL_ATTENDACE ,PRIVILEGES.ATTENDANCE_CREATE, PRIVILEGES.ATTENDANCE_UPDATE, PRIVILEGES.ATTENDANCE_DELETE]
+    },
+    {
+        label: wordings.auditLogs,
+        icon: Icons.TerminalIcon,
+        route: ROUTE_CONSTANTS.AUDIT_LOGS,
+        superuserOnly: true
     }
 ]

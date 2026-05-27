@@ -41,7 +41,7 @@ const Inventory: React.FC = () => {
   const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.INVENTORY_CREATE);
   const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.INVENTORY_UPDATE);
   const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.INVENTORY_DELETE);
-  const canClickRow = hasUpdate || hasPrivilege(PRIVILEGES.INVENTORY_VIEW);
+  const canClickRow = hasUpdate || hasPrivilege(PRIVILEGES.INVENTORY_VIEW_ALL) || hasPrivilege(PRIVILEGES.INVENTORY_VIEW_DEPT);
 
   useEffect(() => {
     dispatch(fetchUsers({ pagination: false }));

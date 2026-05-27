@@ -1,6 +1,6 @@
 import os
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, UploadFile, File, Response
-from auth_utils import require_privilege, get_current_user
+from auth_utils import require_privilege, get_current_user, require_any_privilege
 from fastapi.responses import JSONResponse
 from typing import Optional
 from database import db
@@ -16,7 +16,7 @@ import csv
 router = APIRouter()
 inventory_collection = db.get_collection("inventory")
 
-@router.get("/", response_description="List all inventory items", response_model=PaginatedInventoryModel, response_model_by_alias=False)
+@router.get("/", response_description="List all inventory items", response_model=PaginatedInventoryModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["View All Inventory", "View Department Inventory"]))])
 async def list_inventory(
     skip: int = Query(0, ge=0),
     pagination: bool = Query(True),
@@ -25,14 +25,16 @@ async def list_inventory(
     sort_by: Optional[str] = Query(None),
     order: str = Query("desc"),
     search: Optional[str] = None,
-    current_user: dict = Depends(require_privilege("View Inventory"))
+    current_user: dict = Depends(get_current_user)
 ):
     query = {}
     is_superuser = current_user.get("isSuperuser", False)
-    user_dept = current_user.get("department", "")
+    user_privileges = current_user.get("privileges", [])
 
-    if not is_superuser and user_dept:
-        query["department"] = user_dept
+    only_dept_scoped = not (is_superuser or "View All Inventory" in user_privileges)
+
+    if only_dept_scoped:
+        query["department"] = current_user.get("department") or "None"
 
     if search:
         query["$or"] = [
@@ -83,7 +85,7 @@ async def create_inventory(item: CreateInventoryModel = Body(...), current_user:
     return created_inv
 
 @router.get("/{id}", response_description="Get a single inventory item", response_model=InventoryModel, response_model_by_alias=False)
-async def show_inventory(id: str, current_user: dict = Depends(require_privilege("View Inventory"))):
+async def show_inventory(id: str, current_user: dict = Depends(require_any_privilege(["View All Inventory", "View Department Inventory"]))):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
         
@@ -92,8 +94,10 @@ async def show_inventory(id: str, current_user: dict = Depends(require_privilege
         raise HTTPException(status_code=404, detail=f"Item {id} not found")
 
     is_superuser = current_user.get("isSuperuser", False)
-    user_dept = current_user.get("department", "")
-    if not is_superuser and user_dept and inv.get("department") != user_dept:
+    user_privileges = current_user.get("privileges", [])
+    only_dept_scoped = not (is_superuser or "View All Inventory" in user_privileges)
+
+    if only_dept_scoped and inv.get("department") != current_user.get("department"):
         raise HTTPException(status_code=403, detail="Access denied to this department's inventory item")
 
     return inv
