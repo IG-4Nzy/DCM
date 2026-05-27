@@ -6,6 +6,7 @@ import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { PickerDay, type PickerDayProps } from '@mui/x-date-pickers';
 import { styled } from '@mui/material/styles';
 import dayjs, { Dayjs } from 'dayjs';
+import { getServerTime } from '../../helpers/time';
 import isBetweenPlugin from 'dayjs/plugin/isBetween';
 import isoWeekPlugin from 'dayjs/plugin/isoWeek';
 import { MdCalendarMonth, MdChevronLeft, MdChevronRight } from 'react-icons/md';
@@ -71,8 +72,8 @@ const WeekPicker: React.FC<WeekPickerProps> = ({ value, onChange }) => {
   const open = Boolean(anchorEl);
   const id = open ? 'week-picker-popover' : undefined;
 
-  const startOfWeek = value ? value.startOf('isoWeek') : dayjs().startOf('isoWeek');
-  const endOfWeek = value ? value.endOf('isoWeek') : dayjs().endOf('isoWeek');
+  const startOfWeek = value ? value.startOf('isoWeek') : getServerTime().startOf('isoWeek');
+  const endOfWeek = value ? value.endOf('isoWeek') : getServerTime().endOf('isoWeek');
 
   const renderWeekPickerDay = (props: PickerDayProps) => {
     const { day: date, outsideCurrentMonth, ...other } = props;
@@ -108,12 +109,12 @@ const WeekPicker: React.FC<WeekPickerProps> = ({ value, onChange }) => {
 
   const handlePrevWeek = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onChange((value || dayjs()).subtract(1, 'week'));
+    onChange((value || getServerTime()).subtract(1, 'week'));
   };
 
   const handleNextWeek = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onChange((value || dayjs()).add(1, 'week'));
+    onChange((value || getServerTime()).add(1, 'week'));
   };
 
   return (

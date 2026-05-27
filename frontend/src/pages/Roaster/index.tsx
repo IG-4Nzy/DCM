@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon, MdPrint as PrintIcon } from "react-icons/md";
 import dayjs, { Dayjs } from "dayjs";
+import { getServerTime } from "../../helpers/time";
 import isoWeekPlugin from "dayjs/plugin/isoWeek";
 import WeekPicker from "../../components/WeekPicker";
 import styles from "./index.module.scss";
@@ -37,7 +38,7 @@ interface RosterData {
 }
 
 const RoasterPage: React.FC = () => {
-  const [selectedWeek, setSelectedWeek] = useState<Dayjs>(dayjs());
+  const [selectedWeek, setSelectedWeek] = useState<Dayjs>(getServerTime());
   const [isEditMode, setIsEditMode] = useState(false);
   const [rosterData, setRosterData] = useState<Record<string, RosterData>>({});
   const [rosterStatus, setRosterStatus] = useState<any>(null);
@@ -146,7 +147,7 @@ const RoasterPage: React.FC = () => {
       const promises = Object.entries(rosterData).map(async ([key, data]) => {
         const [date, shift] = key.split("_");
         // Skip past weeks (allow past days within the current week) to prevent past weeks modifications
-        if (dayjs(date).isBefore(dayjs().startOf("isoWeek"), "day")) {
+        if (dayjs(date).isBefore(getServerTime().startOf("isoWeek"), "day")) {
           return;
         }
         if (data.id) {
@@ -311,11 +312,11 @@ const RoasterPage: React.FC = () => {
 
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {!dayjs().isSame(selectedWeek, 'isoWeek') && (
+          {!getServerTime().isSame(selectedWeek, 'isoWeek') && (
             <Button
               variant="outlined"
               size="small"
-              onClick={() => setSelectedWeek(dayjs())}
+              onClick={() => setSelectedWeek(getServerTime())}
               className="hide-on-print"
               sx={{ width: '100px', height: '32px', fontSize: '12px' }}
             >
@@ -417,7 +418,7 @@ const RoasterPage: React.FC = () => {
                         key={shift}
                         className={`${styles["container__roasterContainer__table--body-cell--row2"]} ${shift === "Leave" ? "hide-on-print" : ""}`}
                       >
-                        {isEditMode && !dayjs(dateStr).isBefore(dayjs().startOf("isoWeek"), "day") ? (
+                        {isEditMode && !dayjs(dateStr).isBefore(getServerTime().startOf("isoWeek"), "day") ? (
                           <Autocomplete
                             multiple
                             size="small"

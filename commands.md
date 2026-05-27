@@ -71,3 +71,8 @@ docker run -d \
   dcm-frontend
 
 
+
+
+
+/home/vssc/Desktop/DCM/Backend/env/bin/python3 -c "import bcrypt; from pymongo import MongoClient; client = MongoClient('mongodb://admin:password@localhost:27017/'); db = client['dcm_database']; col = db['users']; hashed = bcrypt.hashpw('admin'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'); res = col.update_one({'username': 'admin'}, {'\$set': {'password': hashed}}); print('Password updated successfully') if res.modified_count or res.matched_count else print('Superuser not found')"
+

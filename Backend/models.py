@@ -942,6 +942,9 @@ class AttendanceModel(BaseModel):
     regularizeStatus: str = "None"  # "None", "Pending", "Approved", "Rejected"
     regularizeReason: Optional[str] = None
     regularizeRemarks: Optional[str] = None
+    shiftName: Optional[str] = None
+    shiftStart: Optional[str] = None
+    shiftEnd: Optional[str] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -984,6 +987,7 @@ class AttendanceConfigModel(BaseModel):
     lateGracePeriod: int = 30
     maxAllowedDays: int = 26
     shifts: List[ShiftInfoModel] = Field(default_factory=list)
+    trackedRole: Optional[str] = "All Roles"
 
     model_config = ConfigDict(
         populate_by_name=True,

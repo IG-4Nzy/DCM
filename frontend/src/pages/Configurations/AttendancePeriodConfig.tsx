@@ -21,6 +21,8 @@ const AttendancePeriodConfig = () => {
     const [lateGracePeriod, setLateGracePeriod] = useState<number>(30);
     const [maxAllowedDays, setMaxAllowedDays] = useState<number>(26);
     const [shifts, setShifts] = useState<ShiftInfo[]>([]);
+    const [trackedRole, setTrackedRole] = useState<string>('All Roles');
+    const [roles, setRoles] = useState<string[]>(['All Roles']);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -39,6 +41,7 @@ const AttendancePeriodConfig = () => {
                 setLateGracePeriod(response.data.lateGracePeriod || 30);
                 setMaxAllowedDays(response.data.maxAllowedDays || 26);
                 setShifts(response.data.shifts || []);
+                setTrackedRole(response.data.trackedRole || 'All Roles');
             }
         } catch (e: any) {
             showToast('Failed to load attendance configuration', 'error');
@@ -47,8 +50,21 @@ const AttendancePeriodConfig = () => {
         }
     };
 
+    const fetchRoles = async () => {
+        try {
+            const response = await request.get('/api/roles', { params: { pagination: false } });
+            if (response.data && response.data.data) {
+                const roleNames = response.data.data.map((r: any) => r.name);
+                setRoles(['All Roles', ...roleNames]);
+            }
+        } catch (e) {
+            console.error('Failed to load roles list', e);
+        }
+    };
+
     useEffect(() => {
         fetchConfig();
+        fetchRoles();
     }, []);
 
     const handleSave = async () => {
@@ -77,7 +93,8 @@ const AttendancePeriodConfig = () => {
                 shiftStart,
                 lateGracePeriod: parseInt(lateGracePeriod.toString()),
                 maxAllowedDays: parseInt(maxAllowedDays.toString()),
-                shifts
+                shifts,
+                trackedRole
             });
             showToast('Attendance configuration saved successfully', 'success');
         } catch (e: any) {
@@ -166,6 +183,22 @@ const AttendancePeriodConfig = () => {
                                 disabled={!hasUpdate || saving}
                                 helperText="Maximum target days per cycle (e.g. 26)"
                             />
+                        </Grid>
+
+                        <Grid item xs={12} sm={6}>
+                            <FormControl fullWidth>
+                                <InputLabel>Track Attendance For Role</InputLabel>
+                                <Select
+                                    value={trackedRole}
+                                    label="Track Attendance For Role"
+                                    onChange={(e) => setTrackedRole(e.target.value as string)}
+                                    disabled={!hasUpdate || saving}
+                                >
+                                    {roles.map((r, idx) => (
+                                        <MenuItem key={idx} value={r}>{r}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
                         </Grid>
 
                         <Grid item xs={12}>

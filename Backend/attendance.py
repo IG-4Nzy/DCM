@@ -23,6 +23,44 @@ async def is_department_head(user: dict, target_department: str) -> bool:
         return True
     return False
 
+def determine_shift_for_user(username: str, roaster: dict, config_shifts: list, default_start: str) -> tuple:
+    if not roaster:
+        return "Default", default_start, "17:00"
+
+    roster_shift = roaster.get("shift") or ""
+    assignees = roaster.get("assignees") or []
+
+    try:
+        user_index = assignees.index(username)
+    except ValueError:
+        user_index = -1
+
+    assigned_shift_name = "Default"
+    if roster_shift == "Shift-1":
+        # First assignee is Shift 1, second assignee is Shift 2
+        if user_index == 0:
+            assigned_shift_name = "Shift 1"
+        elif user_index == 1:
+            assigned_shift_name = "Shift 2"
+        else:
+            assigned_shift_name = "Shift 1"
+    elif roster_shift == "Shift-2":
+        # Both are on Shift 2
+        assigned_shift_name = "Shift 2"
+    elif roster_shift == "Shift-3":
+        # Both are on Shift 3
+        assigned_shift_name = "Shift 3"
+    else:
+        # Fallback to general mapping (e.g. Shift-4 -> Shift 4)
+        assigned_shift_name = roster_shift.replace("-", " ")
+
+    # Find the shift details in config_shifts
+    shift_info = next((s for s in config_shifts if s.get("name") == assigned_shift_name), None)
+    if shift_info:
+        return assigned_shift_name, shift_info.get("startTime", default_start), shift_info.get("endTime", "17:00")
+    
+    return assigned_shift_name, default_start, "17:00"
+
 @router.get("/", response_description="List attendance records", response_model=PaginatedAttendanceModel, response_model_by_alias=False)
 async def list_attendance(
     skip: int = Query(0, ge=0),
@@ -104,20 +142,11 @@ async def list_attendance(
         log_date = item.get("date")
         username = item.get("username")
         roaster = await roasters_col.find_one({"date": log_date, "assignees": username})
-        if roaster:
-            assigned_shift_name = roaster.get("shift")
-            enriched["shiftName"] = assigned_shift_name
-            shift_info = next((s for s in config_shifts if s.get("name") == assigned_shift_name), None)
-            if shift_info:
-                enriched["shiftStart"] = shift_info.get("startTime", default_start)
-                enriched["shiftEnd"] = shift_info.get("endTime", "17:00")
-            else:
-                enriched["shiftStart"] = default_start
-                enriched["shiftEnd"] = "17:00"
-        else:
-            enriched["shiftName"] = "Default"
-            enriched["shiftStart"] = default_start
-            enriched["shiftEnd"] = "17:00"
+        
+        shift_name, start_time, end_time = determine_shift_for_user(username, roaster, config_shifts, default_start)
+        enriched["shiftName"] = shift_name
+        enriched["shiftStart"] = start_time
+        enriched["shiftEnd"] = end_time
 
         enriched_items.append(enriched)
 
@@ -207,11 +236,16 @@ async def reject_regularize(
     )
     return {"message": "Regularization request rejected"}
 
+@router.get("/server-time")
+async def get_server_time():
+    from datetime import datetime
+    return {"currentTime": datetime.now().isoformat()}
+
 @router.get("/config", response_model=AttendanceConfigModel, response_model_by_alias=False)
 async def get_attendance_config():
     config = await config_collection.find_one({})
     if not config:
-        default_config = {"startDay": 1, "endDay": 31, "shiftStart": "09:00", "lateGracePeriod": 30, "maxAllowedDays": 26}
+        default_config = {"startDay": 1, "endDay": 31, "shiftStart": "09:00", "lateGracePeriod": 30, "maxAllowedDays": 26, "trackedRole": "All Roles"}
         await config_collection.insert_one(default_config)
         config = await config_collection.find_one({})
     return config
@@ -233,7 +267,8 @@ async def update_attendance_config(
         "shiftStart": payload.shiftStart,
         "lateGracePeriod": payload.lateGracePeriod,
         "maxAllowedDays": payload.maxAllowedDays,
-        "shifts": [dict(s) for s in payload.shifts]
+        "shifts": [dict(s) for s in payload.shifts],
+        "trackedRole": payload.trackedRole or "All Roles"
     }
     if config:
         await config_collection.update_one({"_id": config["_id"]}, {"$set": update_data})
@@ -266,14 +301,19 @@ async def get_attendance_summary(
     else:
         raise HTTPException(status_code=403, detail="Not enough permissions to view attendance summaries")
         
+    # Fetch attendance config to know shiftStart, lateGracePeriod and trackedRole
+    config = await config_collection.find_one({})
+    if not config:
+        config = {"startDay": 1, "endDay": 31, "shiftStart": "09:00", "lateGracePeriod": 30, "maxAllowedDays": 26, "trackedRole": "All Roles"}
+
     # Fetch users matching query
     users_col = db.get_collection("users")
     users = await users_col.find(query).to_list(length=None)
-    
-    # Fetch attendance config to know shiftStart and lateGracePeriod
-    config = await config_collection.find_one({})
-    if not config:
-        config = {"startDay": 1, "endDay": 31, "shiftStart": "09:00", "lateGracePeriod": 30, "maxAllowedDays": 26}
+
+    # Filter users by trackedRole
+    tracked_role = config.get("trackedRole")
+    if tracked_role and tracked_role != "All Roles":
+        users = [u for u in users if u.get("role") == tracked_role]
         
     shift_start = config.get("shiftStart", "09:00")
     grace = config.get("lateGracePeriod", 30)
@@ -308,11 +348,8 @@ async def get_attendance_summary(
                     curr_shift_start = shift_start
                     roasters_col = db.get_collection("roasters")
                     roaster = await roasters_col.find_one({"date": log_date, "assignees": username})
-                    if roaster:
-                        assigned_shift_name = roaster.get("shift")
-                        shift_info = next((s for s in config.get("shifts", []) if s.get("name") == assigned_shift_name), None)
-                        if shift_info:
-                            curr_shift_start = shift_info.get("startTime", shift_start)
+                    config_shifts = config.get("shifts", [])
+                    _, curr_shift_start, _ = determine_shift_for_user(username, roaster, config_shifts, shift_start)
 
                     sh, sm = map(int, curr_shift_start.split(":"))
                     threshold_mins = sh * 60 + sm + grace

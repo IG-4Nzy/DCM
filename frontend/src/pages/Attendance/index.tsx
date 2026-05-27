@@ -21,6 +21,8 @@ import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
 import request from '../../services/request';
 import dayjs from 'dayjs';
+import { getServerTime } from '../../helpers/time';
+import styles from './index.module.scss';
 
 interface AttendanceRecord {
     id: string;
@@ -34,6 +36,9 @@ interface AttendanceRecord {
     regularizeStatus: string;
     regularizeReason: string | null;
     regularizeRemarks: string | null;
+    shiftName?: string;
+    shiftStart?: string;
+    shiftEnd?: string;
 }
 
 interface PeriodOption {
@@ -55,8 +60,8 @@ const Attendance: React.FC = () => {
     const [data, setData] = useState<AttendanceRecord[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [cycleConfig, setCycleConfig] = useState({ 
-        startDay: 1, 
+    const [cycleConfig, setCycleConfig] = useState({
+        startDay: 1,
         endDay: 31,
         shiftStart: '09:00',
         lateGracePeriod: 30,
@@ -69,12 +74,12 @@ const Attendance: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
-    
+
     // Summary tab state
     const [activeTab, setActiveTab] = useState(0);
     const [summaryData, setSummaryData] = useState<SummaryRecord[]>([]);
     const [loadingSummary, setLoadingSummary] = useState(false);
-    
+
     // Regularization Modal State
     const [isRegModalOpen, setIsRegModalOpen] = useState(false);
     const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
@@ -112,27 +117,37 @@ const Attendance: React.FC = () => {
     // 1. Fetch Cycle Configuration & Build Dynamic Periods
     const loadCycleConfig = useCallback(async () => {
         try {
+            const timeRes = await request.get('/api/attendance/server-time');
+            const serverNow = timeRes.data.currentTime ? dayjs(timeRes.data.currentTime) : getServerTime();
+
             const res = await request.get('/api/attendance/config');
             const config = res.data || { startDay: 1, endDay: 31 };
             setCycleConfig(config);
 
-            // Generate past 6 months periods based on configuration
             const options: PeriodOption[] = [];
             const startDay = config.startDay;
             const endDay = config.endDay;
 
-            // Generate monthly cycles
-            for (let i = -3; i <= 2; i++) {
-                const currentMonth = dayjs().add(i, 'months');
+            // Generate monthly cycles starting from app start date (May 2026) up to current active cycle
+            const appStart = dayjs('2026-05-01');
+            const today = serverNow;
+            let tempDate = appStart.startOf('month');
+
+            while (true) {
                 let startMoment, endMoment;
 
                 if (startDay === 1) {
-                    startMoment = currentMonth.startOf('month');
-                    endMoment = currentMonth.endOf('month');
+                    startMoment = tempDate.startOf('month');
+                    endMoment = tempDate.endOf('month');
                 } else {
-                    // E.g., if startDay = 20, cycle starts 20th of prev month to 21st of current month
-                    startMoment = currentMonth.subtract(1, 'month').date(startDay);
-                    endMoment = currentMonth.date(endDay);
+                    // E.g., if startDay = 21, cycle starts 21st of prev month to 20th of current month
+                    startMoment = tempDate.subtract(1, 'month').date(startDay);
+                    endMoment = tempDate.date(endDay);
+                }
+
+                // Stop generating if the cycle starts in the future
+                if (startMoment.isAfter(today)) {
+                    break;
                 }
 
                 options.push({
@@ -140,19 +155,25 @@ const Attendance: React.FC = () => {
                     startDate: startMoment.format('YYYY-MM-DD'),
                     endDate: endMoment.format('YYYY-MM-DD')
                 });
+
+                tempDate = tempDate.add(1, 'month');
             }
+
+            // Sort periods so the most recent periods appear first (index 0 is newest)
+            options.reverse();
 
             setPeriods(options);
 
             // Find current active period and select it by default
-            const today = dayjs().format('YYYY-MM-DD');
-            const currentPeriod = options.find(p => today >= p.startDate && today <= p.endDate);
+            const todayStr = serverNow.format('YYYY-MM-DD');
+            const currentPeriod = options.find(p => todayStr >= p.startDate && todayStr <= p.endDate);
             if (currentPeriod) {
                 setSelectedPeriod(currentPeriod.label);
             } else if (options.length > 0) {
-                setSelectedPeriod(options[2].label); // default fallback middle period
+                setSelectedPeriod(options[0].label); // default fallback to the most recent period
             }
         } catch (e: any) {
+            console.error("CYCLE CONFIG ERROR:", e);
             showToast('Failed to load cycle configuration', 'error');
         }
     }, [showToast]);
@@ -177,7 +198,7 @@ const Attendance: React.FC = () => {
         try {
             const token = localStorage.getItem('token');
             const period = periods.find(p => p.label === selectedPeriod);
-            
+
             const params: any = {
                 skip: page * rowsPerPage,
                 limit: rowsPerPage,
@@ -404,13 +425,33 @@ const Attendance: React.FC = () => {
             sortable: true,
             render: (row) => dayjs(row.date).format('MMM DD, YYYY')
         },
-        { 
-            id: 'fullName', 
-            label: 'Employee', 
+        {
+            id: 'fullName',
+            label: 'Employee',
             sortable: true,
-            render: (row) => row.fullName || row.username 
+            render: (row) => row.fullName || row.username
         },
         { id: 'department', label: 'Department', sortable: true },
+        {
+            id: 'shiftName',
+            label: 'Shift',
+            sortable: false,
+            render: (row) => {
+                const name = row.shiftName || 'Default';
+                const start = row.shiftStart ? dayjs(`2000-01-01T${row.shiftStart}`).format('hh:mm A') : '09:00 AM';
+                const end = row.shiftEnd ? dayjs(`2000-01-01T${row.shiftEnd}`).format('hh:mm A') : '05:00 PM';
+                return (
+                    <Box>
+                        <Typography sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                            {name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                            {start} - {end}
+                        </Typography>
+                    </Box>
+                );
+            }
+        },
         {
             id: 'firstLogin',
             label: 'First Login',
@@ -418,31 +459,32 @@ const Attendance: React.FC = () => {
             render: (row) => {
                 if (!row.firstLogin) return '-';
                 const timeStr = dayjs(row.firstLogin).format('hh:mm A');
-                
-                // Determine if late
+
+                // Determine if late using dynamic shift start timing
                 const loginTime = dayjs(row.firstLogin);
-                const [sh, sm] = (cycleConfig.shiftStart || '09:00').split(':').map(Number);
+                const shiftStartTime = row.shiftStart || cycleConfig.shiftStart || '09:00';
+                const [sh, sm] = shiftStartTime.split(':').map(Number);
                 const grace = cycleConfig.lateGracePeriod || 30;
-                
+
                 const threshold = loginTime.hour(sh).minute(sm).add(grace, 'minute');
                 const isLate = loginTime.isAfter(threshold);
-                
+
                 return (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography sx={{ color: isLate ? '#d32f2f' : 'inherit', fontWeight: isLate ? 600 : 'normal', fontSize: '0.875rem' }}>
                             {timeStr}
                         </Typography>
                         {isLate && (
-                            <Chip 
-                                label="Late" 
-                                size="small" 
-                                sx={{ 
-                                    height: 18, 
-                                    fontSize: '10px', 
-                                    backgroundColor: '#ffebee', 
-                                    color: '#c62828', 
-                                    fontWeight: 600 
-                                }} 
+                            <Chip
+                                label="Late"
+                                size="small"
+                                sx={{
+                                    height: 18,
+                                    fontSize: '10px',
+                                    backgroundColor: '#ffebee',
+                                    color: '#c62828',
+                                    fontWeight: 600
+                                }}
                             />
                         )}
                     </Box>
@@ -453,7 +495,37 @@ const Attendance: React.FC = () => {
             id: 'lastLogout',
             label: 'Last Logout',
             sortable: false,
-            render: (row) => row.lastLogout ? dayjs(row.lastLogout).format('hh:mm A') : '-'
+            render: (row) => {
+                if (!row.lastLogout) return '-';
+                const timeStr = dayjs(row.lastLogout).format('hh:mm A');
+
+                const logoutTime = dayjs(row.lastLogout);
+                const shiftEndTime = row.shiftEnd || '17:00';
+                const [eh, em] = shiftEndTime.split(':').map(Number);
+                const threshold = logoutTime.clone().hour(eh).minute(em).second(0).millisecond(0);
+                const isEarly = logoutTime.isBefore(threshold);
+
+                return (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography sx={{ color: isEarly ? '#e65100' : 'inherit', fontWeight: isEarly ? 600 : 'normal', fontSize: '0.875rem' }}>
+                            {timeStr}
+                        </Typography>
+                        {isEarly && (
+                            <Chip
+                                label="Early Going"
+                                size="small"
+                                sx={{
+                                    height: 18,
+                                    fontSize: '10px',
+                                    backgroundColor: '#fff3e0',
+                                    color: '#e65100',
+                                    fontWeight: 600
+                                }}
+                            />
+                        )}
+                    </Box>
+                );
+            }
         },
         {
             id: 'workedHours',
@@ -524,7 +596,7 @@ const Attendance: React.FC = () => {
             sortable: false,
             render: (row) => {
                 const isPending = row.regularizeStatus === 'Pending';
-                
+
                 // Regularization can be approved by Department Head or Superuser
                 // Department head handles requests from their department
                 const canApprove = isSuperuser || (userDept === row.department);
@@ -566,9 +638,9 @@ const Attendance: React.FC = () => {
     ];
 
     const summaryColumns: Column<SummaryRecord>[] = [
-        { 
-            id: 'fullName', 
-            label: 'Employee', 
+        {
+            id: 'fullName',
+            label: 'Employee',
             sortable: true,
             render: (row) => row.fullName || row.username
         },
@@ -582,12 +654,12 @@ const Attendance: React.FC = () => {
                 return (
                     <Box sx={{ width: '100%', minWidth: 150 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                           <Typography variant="body2" sx={{ fontWeight: 600, color: '#333' }}>
-                               {row.presentDays} / {row.maxDays} days
-                           </Typography>
-                           <Typography variant="caption" color="textSecondary">
-                               {percentage.toFixed(0)}%
-                           </Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: '#333' }}>
+                                {row.presentDays} / {row.maxDays} days
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">
+                                {percentage.toFixed(0)}%
+                            </Typography>
                         </Box>
                         <LinearProgress
                             variant="determinate"
@@ -655,46 +727,58 @@ const Attendance: React.FC = () => {
 
             {/* Filter Bar */}
             <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                <Grid container spacing={3} alignItems="center">
-                    <Grid item xs={12} sm={4}>
-                        <FormControl fullWidth>
+                <Box className={styles['attendance-filters']}>
+                    <Box className={styles['attendance-filters__item']}>
+                        <FormControl fullWidth size="small">
                             <InputLabel>Calculation Period</InputLabel>
+
                             <Select
+                                fullWidth
                                 value={selectedPeriod}
                                 label="Calculation Period"
                                 onChange={(e) => setSelectedPeriod(e.target.value)}
                             >
                                 {periods.map((p, idx) => (
-                                    <MenuItem key={idx} value={p.label}>{p.label}</MenuItem>
+                                    <MenuItem key={idx} value={p.label}>
+                                        {p.label}
+                                    </MenuItem>
                                 ))}
                             </Select>
                         </FormControl>
-                    </Grid>
+                    </Box>
+
                     {hasViewAll && (
-                        <Grid item xs={12} sm={4}>
-                            <FormControl fullWidth>
+                        <Box className={styles['attendance-filters__item']}>
+                            <FormControl fullWidth size="small">
                                 <InputLabel>Department Filter</InputLabel>
+
                                 <Select
+                                    fullWidth
                                     value={departmentFilter}
                                     label="Department Filter"
                                     onChange={(e) => setDepartmentFilter(e.target.value)}
                                 >
                                     <MenuItem value="">All Departments</MenuItem>
+
                                     {departments.map((dept, idx) => (
-                                        <MenuItem key={idx} value={dept}>{dept}</MenuItem>
+                                        <MenuItem key={idx} value={dept}>
+                                            {dept}
+                                        </MenuItem>
                                     ))}
                                 </Select>
                             </FormControl>
-                        </Grid>
+                        </Box>
                     )}
-                    <Grid item xs={12} sm={hasViewAll ? 4 : 8}>
+
+                    <Box className={styles['attendance-filters__item']}>
                         <SearchBar
                             value={searchQuery}
                             onChange={setSearchQuery}
                             placeholder="Search employee..."
+                            fullWidth
                         />
-                    </Grid>
-                </Grid>
+                    </Box>
+                </Box>
             </Paper>
 
             {/* Tabs for switching between Logs and summary counts */}
@@ -837,10 +921,10 @@ const Attendance: React.FC = () => {
             </Dialog>
 
             {/* Detailed Attendance Calendar Modal */}
-            <Dialog 
-                open={isCalModalOpen} 
-                onClose={handleCloseCalendar} 
-                maxWidth="lg" 
+            <Dialog
+                open={isCalModalOpen}
+                onClose={handleCloseCalendar}
+                maxWidth="lg"
                 fullWidth
                 PaperProps={{
                     sx: {
@@ -865,24 +949,12 @@ const Attendance: React.FC = () => {
                         </Box>
                     ) : (
                         <Box>
-                            {/* Calendar Grid Container */}
-                            <Grid container spacing={2} sx={{ mb: 2 }}>
-                                {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((dayName) => (
-                                    <Grid item xs={12/7} key={dayName} sx={{ display: { xs: 'none', md: 'block' } }}>
-                                        <Paper sx={{ py: 1.5, textAlign: 'center', backgroundColor: '#f5f5f5', borderRadius: 2, boxShadow: 'none' }}>
-                                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#555' }}>
-                                                {dayName}
-                                            </Typography>
-                                        </Paper>
-                                    </Grid>
-                                ))}
-                            </Grid>
 
-                            <Box 
-                                sx={{ 
-                                    display: 'grid', 
-                                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)', md: 'repeat(7, 1fr)' }, 
-                                    gap: 2 
+                            <Box
+                                sx={{
+                                    display: 'grid',
+                                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)', md: 'repeat(7, 1fr)' },
+                                    gap: 2
                                 }}
                             >
                                 {/* Start placeholders to align correct day-of-week */}
@@ -912,21 +984,24 @@ const Attendance: React.FC = () => {
                                     return days.map((day) => {
                                         const dateStr = day.format('YYYY-MM-DD');
                                         const log = calLogs.find(l => l.date === dateStr);
-                                        
+
                                         // Match roster for this employee and date
                                         const dayRoster = calRosters.find(r => r.date === dateStr && r.assignees?.includes(calEmployee?.username));
-                                        
+
                                         let status: 'Present' | 'Late' | 'Absent' = 'Absent';
+                                        let isEarlyGoing = false;
                                         let inTime = '-';
                                         let outTime = '-';
                                         let shiftName = 'Default';
                                         let shiftStartStr = cycleConfig.shiftStart || '09:00';
+                                        let shiftEndStr = '17:00';
 
                                         if (dayRoster) {
                                             shiftName = dayRoster.shift;
                                             const shiftInfo = (cycleConfig as any).shifts?.find((s: any) => s.name === dayRoster.shift);
                                             if (shiftInfo) {
                                                 shiftStartStr = shiftInfo.startTime || '09:00';
+                                                shiftEndStr = shiftInfo.endTime || '17:00';
                                             }
                                         }
 
@@ -946,6 +1021,15 @@ const Attendance: React.FC = () => {
                                             } else {
                                                 status = 'Present';
                                             }
+
+                                            if (log.lastLogout) {
+                                                const logoutTime = dayjs(log.lastLogout);
+                                                const [eh, em] = shiftEndStr.split(':').map(Number);
+                                                const threshold = logoutTime.clone().hour(eh).minute(em).second(0).millisecond(0);
+                                                if (logoutTime.isBefore(threshold)) {
+                                                    isEarlyGoing = true;
+                                                }
+                                            }
                                         }
 
                                         const isWeekend = day.day() === 0 || day.day() === 6;
@@ -960,13 +1044,13 @@ const Attendance: React.FC = () => {
                                             bgColor = 'rgba(46, 125, 50, 0.04)';
                                             borderColor = 'rgba(46, 125, 50, 0.2)';
                                             textColor = '#2e7d32';
-                                            statusLabel = 'Present';
-                                            labelColor = '#2e7d32';
+                                            statusLabel = isEarlyGoing ? 'Early Going' : 'Present';
+                                            labelColor = isEarlyGoing ? '#e65100' : '#2e7d32';
                                         } else if (status === 'Late') {
                                             bgColor = 'rgba(239, 83, 80, 0.04)';
                                             borderColor = 'rgba(239, 83, 80, 0.2)';
                                             textColor = '#c62828';
-                                            statusLabel = 'Late Entry';
+                                            statusLabel = isEarlyGoing ? 'Late & Early' : 'Late Entry';
                                             labelColor = '#e65100';
                                         }
 
@@ -996,8 +1080,11 @@ const Attendance: React.FC = () => {
                                                         <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1, mb: 0.5, color: '#333' }}>
                                                             {day.format('DD')}
                                                         </Typography>
-                                                        <Typography variant="caption" sx={{ color: '#888', fontWeight: 600 }}>
+                                                        <Typography variant="caption" sx={{ color: '#888', fontWeight: 600, display: 'block' }}>
                                                             {day.format('MMM')}
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ color: '#555', fontWeight: 700, display: 'block', mt: 0.2 }}>
+                                                            {day.format('dddd')}
                                                         </Typography>
                                                     </Box>
                                                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
@@ -1008,7 +1095,7 @@ const Attendance: React.FC = () => {
                                                                 height: 18,
                                                                 fontSize: '9px',
                                                                 fontWeight: 700,
-                                                                backgroundColor: 'rgba(0,0,0,0.04)',
+                                                                backgroundColor: isEarlyGoing ? '#fff3e0' : 'rgba(0,0,0,0.04)',
                                                                 color: labelColor,
                                                                 border: 'none'
                                                             }}

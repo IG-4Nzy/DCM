@@ -44,7 +44,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ value, onChange, placeholder = 'S
           </InputAdornment>
         ),
       }}
-      sx={{ 
+      sx={{
         width: { xs: '100%', sm: 250, md: 300 },
         '& .MuiOutlinedInput-root': {
           borderRadius: '8px',
