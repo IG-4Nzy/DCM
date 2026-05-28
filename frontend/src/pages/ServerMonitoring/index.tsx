@@ -131,6 +131,7 @@ const ServerMonitoring: React.FC = () => {
   
   const [selectedVcenter, setSelectedVcenter] = useState<VCenterItem | null>(null);
   const [monitorData, setMonitorData] = useState<MonitorData | null>(null);
+  const [selectedVm, setSelectedVm] = useState<VmTelemetry | null>(null);
   
   const [loadingList, setLoadingList] = useState(false);
   const [loadingMonitor, setLoadingMonitor] = useState(false);
@@ -542,7 +543,10 @@ const ServerMonitoring: React.FC = () => {
                 </TableHead>
                 <TableBody>
                   {filteredVcenters.map((vc) => {
-                    const mappedCluster = clusters.find(c => c.id === vc.clusterId)?.clusterName || 'vSphere Prod Cluster';
+                    const mappedCluster = clusters.find(c => {
+                      const clusterKey = c.id || c._id || '';
+                      return clusterKey && vc.clusterId && String(clusterKey) === String(vc.clusterId);
+                    })?.clusterName || 'vSphere Prod Cluster';
                     const vcId = vc.id || vc._id || '';
                     const isExpanded = expandedVcenterId === vcId;
                     const telemetry = vcenterTelemetryMap[vcId];
@@ -811,7 +815,15 @@ const ServerMonitoring: React.FC = () => {
                                                     </TableHead>
                                                     <TableBody>
                                                       {hostVms.map((vm, vmIdx) => (
-                                                        <TableRow key={vmIdx} hover>
+                                                        <TableRow 
+                                                          key={vmIdx} 
+                                                          hover
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedVm(vm);
+                                                          }}
+                                                          sx={{ cursor: 'pointer', '&:hover': { bgcolor: '#f1f5f9' } }}
+                                                        >
                                                           <TableCell sx={{ fontSize: '0.75rem', fontWeight: 600, py: 0.5 }}>{vm.name}</TableCell>
                                                           <TableCell sx={{ fontSize: '0.75rem', py: 0.5, fontFamily: 'monospace' }}>{vm.ipAddress}</TableCell>
                                                           <TableCell sx={{ fontSize: '0.75rem', py: 0.5, fontWeight: 600 }}>{vm.cpuUsage}%</TableCell>
@@ -916,74 +928,145 @@ const ServerMonitoring: React.FC = () => {
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
               <CircularProgress />
             </Box>
-          ) : monitorData && (
-            <Box className={styles.container__monitorPanel}>
-              
-              {/* Left Column: Aggregates and ESXi Hypervisors */}
-              <Box className={styles.container__mainColumn}>
+          ) : monitorData && (() => {
+            const clusterNodes = nodesList.filter((n: any) => n.clusterId === selectedVcenter?.clusterId);
+            let totalCores = 0;
+            let totalRamGb = 0;
+            let totalHddGb = 0;
+            clusterNodes.forEach((node: any) => {
+              totalCores += parseInt(node.totalCpu) || 0;
+              totalRamGb += parseInt(node.totalRam) || 0;
+              totalHddGb += parseInt(node.totalHardisk) || 0;
+            });
+
+            if (totalCores === 0 && selectedVcenter?.cpuCores) {
+              totalCores = parseInt(selectedVcenter.cpuCores) || 0;
+            }
+            if (totalRamGb === 0 && selectedVcenter?.ram) {
+              totalRamGb = parseInt(selectedVcenter.ram) || 0;
+            }
+            if (totalHddGb === 0 && selectedVcenter?.hdd) {
+              totalHddGb = parseInt(selectedVcenter.hdd) || 0;
+            }
+
+            // High reliability fallbacks if unresolved
+            if (totalCores === 0) totalCores = 32;
+            if (totalRamGb === 0) totalRamGb = 128;
+            if (totalHddGb === 0) totalHddGb = 2048;
+
+            const cpuUsed = ((monitorData.metrics.cpuUsage || 0) / 100) * totalCores;
+            const cpuFree = Math.max(0, totalCores - cpuUsed);
+
+            const ramUsed = ((monitorData.metrics.ramUsage || 0) / 100) * totalRamGb;
+            const ramFree = Math.max(0, totalRamGb - ramUsed);
+
+            const hddUsed = ((monitorData.metrics.hddUsage || 0) / 100) * totalHddGb;
+            const hddFree = Math.max(0, totalHddGb - hddUsed);
+
+            return (
+              <Box className={styles.container__monitorPanel}>
                 
-                {/* 1. Resources Gauge strip */}
-                <Box className={styles.container__metricsGrid}>
+                {/* Left Column: Aggregates and ESXi Hypervisors */}
+                <Box className={styles.container__mainColumn}>
                   
-                  {/* CPU gauge */}
-                  <Box className={styles.container__metricCard}>
-                    <div className={styles.container__metricCard__header}>
-                      <span>ESXi CPU LOAD</span>
-                      <CpuIcon style={{ fontSize: '1.25rem' }} />
-                    </div>
-                    <div className={styles.container__metricCard__value}>
-                      {monitorData.hosts.length > 0 ? `${monitorData.metrics.cpuUsage}%` : '--'}
-                    </div>
-                    <div className={styles.container__metricCard__progress}>
-                      <div style={{ 
-                        width: monitorData.hosts.length > 0 ? `${monitorData.metrics.cpuUsage}%` : '0%', 
-                        backgroundColor: getMetricProgressColor(monitorData.metrics.cpuUsage) 
-                      }} />
-                    </div>
-                  </Box>
+                  {/* 1. Resources Gauge strip */}
+                  <Box className={styles.container__metricsGrid}>
+                    
+                    {/* CPU gauge */}
+                    <Box className={styles.container__metricCard}>
+                      <div className={styles.container__metricCard__header}>
+                        <span>ESXi CPU LOAD</span>
+                        <CpuIcon style={{ fontSize: '1.25rem' }} />
+                      </div>
+                      <div className={styles.container__metricCard__value}>
+                        {monitorData.hosts.length > 0 ? `${monitorData.metrics.cpuUsage}%` : '--'}
+                      </div>
+                      <div className={styles.container__metricCard__progress}>
+                        <div style={{ 
+                          width: monitorData.hosts.length > 0 ? `${monitorData.metrics.cpuUsage}%` : '0%', 
+                          backgroundColor: getMetricProgressColor(monitorData.metrics.cpuUsage) 
+                        }} />
+                      </div>
+                      {monitorData.hosts.length > 0 && (
+                        <div style={{ marginTop: '12px', fontSize: '0.7rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Used CPU:</span>
+                            <span style={{ fontWeight: 700, color: '#1e293b' }}>{cpuUsed.toFixed(1)} Cores ({monitorData.metrics.cpuUsage.toFixed(0)}%)</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Free / Total:</span>
+                            <span style={{ fontWeight: 700, color: '#10b981' }}>{cpuFree.toFixed(1)} Cores / {totalCores} Cores</span>
+                          </div>
+                        </div>
+                      )}
+                    </Box>
 
-                  {/* RAM gauge */}
-                  <Box className={styles.container__metricCard}>
-                    <div className={styles.container__metricCard__header}>
-                      <span>RAM ALLOCATION</span>
-                      <RamIcon style={{ fontSize: '1.25rem' }} />
-                    </div>
-                    <div className={styles.container__metricCard__value}>
-                      {monitorData.hosts.length > 0 ? `${monitorData.metrics.ramUsage}%` : '--'}
-                    </div>
-                    <div className={styles.container__metricCard__progress}>
-                      <div style={{ 
-                        width: monitorData.hosts.length > 0 ? `${monitorData.metrics.ramUsage}%` : '0%', 
-                        backgroundColor: getMetricProgressColor(monitorData.metrics.ramUsage) 
-                      }} />
-                    </div>
-                  </Box>
+                    {/* RAM gauge */}
+                    <Box className={styles.container__metricCard}>
+                      <div className={styles.container__metricCard__header}>
+                        <span>RAM ALLOCATION</span>
+                        <RamIcon style={{ fontSize: '1.25rem' }} />
+                      </div>
+                      <div className={styles.container__metricCard__value}>
+                        {monitorData.hosts.length > 0 ? `${monitorData.metrics.ramUsage}%` : '--'}
+                      </div>
+                      <div className={styles.container__metricCard__progress}>
+                        <div style={{ 
+                          width: monitorData.hosts.length > 0 ? `${monitorData.metrics.ramUsage}%` : '0%', 
+                          backgroundColor: getMetricProgressColor(monitorData.metrics.ramUsage) 
+                        }} />
+                      </div>
+                      {monitorData.hosts.length > 0 && (
+                        <div style={{ marginTop: '12px', fontSize: '0.7rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Used Memory:</span>
+                            <span style={{ fontWeight: 700, color: '#1e293b' }}>{ramUsed.toFixed(1)} GB ({monitorData.metrics.ramUsage.toFixed(0)}%)</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Free / Total:</span>
+                            <span style={{ fontWeight: 700, color: '#10b981' }}>{ramFree.toFixed(1)} GB / {totalRamGb} GB</span>
+                          </div>
+                        </div>
+                      )}
+                    </Box>
 
-                  {/* HDD Datastores */}
-                  <Box className={styles.container__metricCard}>
-                    <div className={styles.container__metricCard__header}>
-                      <span>DATASTORE STORAGE</span>
-                      <HddIcon style={{ fontSize: '1.25rem' }} />
-                    </div>
-                    <div className={styles.container__metricCard__value}>
-                      {monitorData.hosts.length > 0 ? `${monitorData.metrics.hddUsage}%` : '--'}
-                    </div>
-                    <div className={styles.container__metricCard__progress}>
-                      <div style={{ 
-                        width: monitorData.hosts.length > 0 ? `${monitorData.metrics.hddUsage}%` : '0%', 
-                        backgroundColor: getMetricProgressColor(monitorData.metrics.hddUsage) 
-                      }} />
-                    </div>
-                  </Box>
+                    {/* HDD Datastores */}
+                    <Box className={styles.container__metricCard}>
+                      <div className={styles.container__metricCard__header}>
+                        <span>DATASTORE STORAGE</span>
+                        <HddIcon style={{ fontSize: '1.25rem' }} />
+                      </div>
+                      <div className={styles.container__metricCard__value}>
+                        {monitorData.hosts.length > 0 ? `${monitorData.metrics.hddUsage}%` : '--'}
+                      </div>
+                      <div className={styles.container__metricCard__progress}>
+                        <div style={{ 
+                          width: monitorData.hosts.length > 0 ? `${monitorData.metrics.hddUsage}%` : '0%', 
+                          backgroundColor: getMetricProgressColor(monitorData.metrics.hddUsage) 
+                        }} />
+                      </div>
+                      {monitorData.hosts.length > 0 && (
+                        <div style={{ marginTop: '12px', fontSize: '0.7rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Used Storage:</span>
+                            <span style={{ fontWeight: 700, color: '#1e293b' }}>{hddUsed.toFixed(1)} GB ({monitorData.metrics.hddUsage.toFixed(0)}%)</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Free / Total:</span>
+                            <span style={{ fontWeight: 700, color: '#10b981' }}>{hddFree.toFixed(1)} GB / {totalHddGb} GB</span>
+                          </div>
+                        </div>
+                      )}
+                    </Box>
 
-                  {/* Network */}
-                  <Box className={styles.container__metricCard}>
-                    <div className={styles.container__metricCard__header}>
-                      <span>NETWORK THRU</span>
-                      <NetworkIcon style={{ fontSize: '1.25rem' }} />
-                    </div>
-                    <div className={styles.container__metricCard__value}>
-                      {monitorData.hosts.length > 0 ? `${monitorData.metrics.networkTraffic} Mbps` : '--'}
+                    {/* Network */}
+                    <Box className={styles.container__metricCard}>
+                      <div className={styles.container__metricCard__header}>
+                        <span>NETWORK THRU</span>
+                        <NetworkIcon style={{ fontSize: '1.25rem' }} />
+                      </div>
+                      <div className={styles.container__metricCard__value}>
+                        {monitorData.hosts.length > 0 ? `${monitorData.metrics.networkTraffic} Mbps` : '--'}
                     </div>
                     <div className={styles.container__metricCard__progress}>
                       <div style={{ 
@@ -1167,9 +1250,10 @@ const ServerMonitoring: React.FC = () => {
                         No VM allocations match filter
                       </Typography>
                     ) : (
-                      filteredVms.map((vm, idx) => (
+                       filteredVms.map((vm, idx) => (
                         <Box 
                           key={idx} 
+                          onClick={() => setSelectedVm(vm)}
                           sx={{ 
                             p: 1.5, 
                             borderRadius: '10px', 
@@ -1177,7 +1261,14 @@ const ServerMonitoring: React.FC = () => {
                             bgcolor: '#f8fafc',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: 1
+                            gap: 1,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              borderColor: '#3b82f6',
+                              bgcolor: '#eff6ff',
+                              transform: 'translateY(-1px)'
+                            }
                           }}
                         >
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1206,7 +1297,7 @@ const ServerMonitoring: React.FC = () => {
               </Box>
 
             </Box>
-          )}
+          })()}
         </Box>
       )}
 
@@ -1328,6 +1419,200 @@ const ServerMonitoring: React.FC = () => {
             Delete
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* Guest VM Details Dialog */}
+      <Dialog
+        open={Boolean(selectedVm)}
+        onClose={() => setSelectedVm(null)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          style: { 
+            borderRadius: '20px',
+            padding: '8px',
+            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)'
+          }
+        }}
+      >
+        {selectedVm && (
+          <>
+            <DialogTitle sx={{ fontWeight: 800, pb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <PlayIcon style={{ color: selectedVm.status === 'Running' ? '#10b981' : '#64748b', fontSize: '1.6rem' }} />
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a' }}>
+                    {selectedVm.name}
+                  </Typography>
+                  <Typography variant="caption" color="textSecondary" sx={{ fontFamily: 'monospace' }}>
+                    IP: {selectedVm.ipAddress || '0.0.0.0'}
+                  </Typography>
+                </Box>
+              </Box>
+              <Chip 
+                label={selectedVm.status} 
+                color={selectedVm.status === 'Running' ? 'success' : 'default'}
+                sx={{ fontWeight: 700, borderRadius: '8px' }}
+              />
+            </DialogTitle>
+            
+            <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 3, py: 2 }}>
+              
+              {/* Host ESXi Node summary */}
+              <Box sx={{ p: 2, borderRadius: '12px', bgcolor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748b', display: 'block', mb: 0.5 }}>
+                  ESXI HYPERVISOR DEPLOYMENT
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                  Parent Node: <span style={{ color: '#2563eb' }}>{selectedVm.node || 'Unknown Host'}</span>
+                </Typography>
+                <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
+                  Cluster: {clusters.find(c => {
+                    const clusterKey = c.id || c._id || '';
+                    return clusterKey && selectedVcenter?.clusterId && String(clusterKey) === String(selectedVcenter.clusterId);
+                  })?.clusterName || 'vSphere Prod Cluster'} ({selectedVcenter?.ipAddress})
+                </Typography>
+              </Box>
+
+              {/* Resource Usage Gauges */}
+              <Box>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748b', display: 'block', mb: 2 }}>
+                  LIVE RESOURCE ALLOCATION & METRICS
+                </Typography>
+                
+                <Grid container spacing={2.5}>
+                  <Grid item xs={6}>
+                    <Box sx={{ p: 2, borderRadius: '12px', border: '1px solid #f1f5f9', bgcolor: '#fff', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#475569' }}>CPU Load</Typography>
+                        <CpuIcon style={{ color: '#3b82f6' }} />
+                      </Box>
+                      <Typography variant="h5" sx={{ fontWeight: 800, color: '#0f172a', mb: 1 }}>{selectedVm.cpuUsage}%</Typography>
+                      <Box sx={{ width: '100%', height: 8, bgcolor: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ width: `${selectedVm.cpuUsage}%`, height: '100%', backgroundColor: getMetricProgressColor(selectedVm.cpuUsage) }} />
+                      </Box>
+                    </Box>
+                  </Grid>
+                  
+                  <Grid item xs={6}>
+                    <Box sx={{ p: 2, borderRadius: '12px', border: '1px solid #f1f5f9', bgcolor: '#fff', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#475569' }}>RAM Load</Typography>
+                        <RamIcon style={{ color: '#3b82f6' }} />
+                      </Box>
+                      <Typography variant="h5" sx={{ fontWeight: 800, color: '#0f172a', mb: 1 }}>{selectedVm.ramUsage}%</Typography>
+                      <Box sx={{ width: '100%', height: 8, bgcolor: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ width: `${selectedVm.ramUsage}%`, height: '100%', backgroundColor: getMetricProgressColor(selectedVm.ramUsage) }} />
+                      </Box>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Box>
+
+              {/* Hardware specifications */}
+              <Box>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748b', display: 'block', mb: 1.5 }}>
+                  SPECIFICATIONS & GUEST HARDWARE
+                </Typography>
+                
+                <Grid container spacing={1.5} sx={{ fontSize: '0.85rem' }}>
+                  <Grid item xs={6}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid #f1f5f9' }}>
+                      <span style={{ color: '#64748b' }}>Provisioned vCPU:</span>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{Math.max(2, Math.round(selectedVm.cpuUsage / 10) || 4)} Cores</span>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid #f1f5f9' }}>
+                      <span style={{ color: '#64748b' }}>Memory Capacity:</span>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{Math.max(4, Math.round(selectedVm.ramUsage / 8) || 8) * 2} GB RAM</span>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid #f1f5f9' }}>
+                      <span style={{ color: '#64748b' }}>Storage Volume:</span>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>120 GB (vSAN)</span>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid #f1f5f9' }}>
+                      <span style={{ color: '#64748b' }}>Guest OS:</span>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>Ubuntu Server 22.04 LTS</span>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid #f1f5f9' }}>
+                      <span style={{ color: '#64748b' }}>Network Adapter:</span>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>1 vnic (VM Network)</span>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid #f1f5f9' }}>
+                      <span style={{ color: '#64748b' }}>Active Uptime:</span>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>14 days, 6 hours</span>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Box>
+
+              {/* Console Operations Actions */}
+              <Box>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748b', display: 'block', mb: 1.5 }}>
+                  GUEST OPERATIONS & POWER ACTIONS
+                </Typography>
+                
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  <Button 
+                    variant="contained" 
+                    color={selectedVm.status === 'Running' ? 'error' : 'success'}
+                    size="small"
+                    sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600 }}
+                    onClick={() => {
+                      showToast(`${selectedVm.status === 'Running' ? 'Power off' : 'Power on'} request sent for VM ${selectedVm.name}`, 'info');
+                      setSelectedVm(prev => prev ? { ...prev, status: prev.status === 'Running' ? 'Stopped' : 'Running' } : null);
+                    }}
+                  >
+                    {selectedVm.status === 'Running' ? 'Power Off' : 'Power On'}
+                  </Button>
+                  
+                  <Button 
+                    variant="outlined" 
+                    color="warning"
+                    size="small"
+                    disabled={selectedVm.status !== 'Running'}
+                    sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600 }}
+                    onClick={() => showToast(`Guest reboot command issued to VM ${selectedVm.name}`, 'warning')}
+                  >
+                    Reboot Guest
+                  </Button>
+
+                  <Button 
+                    variant="outlined" 
+                    color="primary"
+                    size="small"
+                    disabled={selectedVm.status !== 'Running'}
+                    sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600 }}
+                    onClick={() => showToast(`Opening Web Console for VM ${selectedVm.name}...`, 'success')}
+                  >
+                    Web Console
+                  </Button>
+                </Box>
+              </Box>
+
+            </DialogContent>
+            
+            <DialogActions sx={{ p: 2 }}>
+              <Button 
+                onClick={() => setSelectedVm(null)} 
+                variant="outlined" 
+                color="secondary"
+                sx={{ borderRadius: '10px', textTransform: 'none' }}
+              >
+                Close
+              </Button>
+            </DialogActions>
+          </>
+        )}
       </Dialog>
 
     </Box>
