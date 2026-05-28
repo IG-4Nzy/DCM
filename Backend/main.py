@@ -24,12 +24,18 @@ from requests_router import router as requests_router
 from request_routings import router as request_routings_router
 from attendance import router as attendance_router
 from audit_logs import router as audit_logs_router
+from documentations import router as documentations_router
+from routers.vcenter_monitor import router as vcenter_monitor_router
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from database import db
 from datetime import datetime, timezone
 import jwt
 from auth_utils import SECRET_KEY, ALGORITHM
+
+# Initialize structured logging
+from services.vcenter.logging_config import setup_logging
+setup_logging(log_dir="logs", log_level="INFO")
 
 def get_action_name(method: str, path: str) -> str:
     parts = [p for p in path.split("/") if p]
@@ -143,6 +149,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             elif "server-models" in parts: collection_name = "server_models"
             elif "node-details" in parts: collection_name = "node_details"
             elif "vm-details" in parts: collection_name = "vm_details"
+            elif "documentations" in parts: collection_name = "documentations"
             
             from bson import ObjectId
             for p in reversed(parts):
@@ -260,11 +267,36 @@ app.include_router(requests_router, tags=["requests"], prefix="/api/requests")
 app.include_router(request_routings_router, tags=["request_routings"], prefix="/api/request-routings")
 app.include_router(attendance_router, tags=["attendance"], prefix="/api/attendance")
 app.include_router(audit_logs_router, tags=["audit_logs"], prefix="/api/logs")
+app.include_router(documentations_router, tags=["documentations"], prefix="/api/documentations")
+
+# Mount the new split telemetry monitor endpoints under same prefix for backwards compatibility
+app.include_router(vcenter_monitor_router, tags=["vcenter_telemetry"], prefix="/api/vcenter-details")
 
 import os
 os.makedirs("uploads/works", exist_ok=True)
+os.makedirs("uploads/documentations", exist_ok=True)
+os.makedirs("logs", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 @app.get("/", tags=["root"])
 async def root():
     return {"message": "Welcome to the DCM API"}
+
+
+# ─────────────────────────────────────────────────────────
+# LIFECYCLE EVENTS — Background Scheduler & Client Cleanup
+# ─────────────────────────────────────────────────────────
+
+from tasks.telemetry_scheduler import vcenter_telemetry_scheduler
+from services.vcenter.client import vcenter_http_client
+
+@app.on_event("startup")
+async def on_startup():
+    """Start background telemetry scheduler on app boot."""
+    vcenter_telemetry_scheduler.start()
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    """Gracefully stop scheduler and close shared HTTPX client pool."""
+    await vcenter_telemetry_scheduler.stop()
+    await vcenter_http_client.close_client()

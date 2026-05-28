@@ -24,6 +24,7 @@ const Search = lazy(() => import("../pages/Search"));
 const ServerMonitoring = lazy(() => import("../pages/ServerMonitoring"));
 const Attendance = lazy(() => import("../pages/Attendance"));
 const AuditLogs = lazy(() => import("../pages/AuditLogs"));
+const Documentations = lazy(() => import("../pages/Documentations"));
 
 
 const AppRouter: React.FC = () => {
@@ -58,6 +59,7 @@ const AppRouter: React.FC = () => {
             <Route path={ROUTE_CONSTANTS.SERVER_MONITORING} element={<ServerMonitoring />} />
             <Route path={ROUTE_CONSTANTS.ATTENDANCE} element={<Attendance />} />
             <Route path={ROUTE_CONSTANTS.AUDIT_LOGS} element={<AuditLogs />} />
+            <Route path={ROUTE_CONSTANTS.DOCUMENTATIONS} element={<Documentations />} />
           </Route>
 
           <Route path="*" element={<PageNotFound />} />

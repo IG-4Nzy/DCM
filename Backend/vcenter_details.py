@@ -1,143 +1,42 @@
+"""
+vCenter Details — CRUD + Monitoring Router
+
+Refactored to enterprise-grade architecture:
+- Removed ALL subprocess curl fallbacks
+- Removed ALL blocking socket calls
+- Removed ALL random/fake metric generation
+- Removed ad-hoc file-append diagnostics_log
+- Delegates session management to VCenterSessionManager
+- Delegates inventory queries to VCenterInventoryService (with TTL cache)
+- Delegates metrics to VCenterMetricsService
+- Delegates health probes to VCenterHealthService
+- All HTTP calls use shared HTTPX AsyncClient singleton with connection pooling
+- Per-vCenter rate limiting via asyncio Semaphore
+"""
+
+import logging
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
 from auth_utils import require_privilege, get_current_user
-from fastapi.responses import JSONResponse
-from typing import Optional, List
+from typing import Optional
 from database import db
 from models import VCenterDetailsModel, CreateVCenterDetailsModel, UpdateVCenterDetailsModel, PaginatedVCenterDetailsModel
 from bson import ObjectId
 from datetime import datetime, timezone
 
+from services.vcenter.session_manager import vcenter_session_manager
+from services.vcenter.inventory_service import vcenter_inventory_service
+from services.vcenter.metrics_service import vcenter_metrics_service
+from services.vcenter.health_service import vcenter_health_service
+
+logger = logging.getLogger("vcenter.router")
+
 router = APIRouter()
 collection = db.get_collection("vcenter_details")
 
-# In-memory store for active vCenter sessions to handle auto-relogin before token expiry
-# In-memory store for active vCenter sessions to handle auto-relogin before token expiry
-# Key: vcenter_ip, Value: {"session_id": str, "expires_at": datetime}
-VCENTER_SESSIONS = {}
 
-def diagnostics_log(msg: str):
-    from datetime import datetime
-    try:
-        with open("/home/vssc/Desktop/DCM/Backend/app_diagnostics.log", "a") as f:
-            f.write(f"[{datetime.now().isoformat()}] {msg}\n")
-    except Exception as e:
-        print("Logger Error:", e)
-
-async def get_active_vcenter_session(ip_address, username, password):
-    import httpx
-    from datetime import datetime, timedelta, timezone
-
-    global VCENTER_SESSIONS
-    now = datetime.now(timezone.utc)
-    cached = VCENTER_SESSIONS.get(ip_address)
-    
-    diagnostics_log(f"get_active_vcenter_session called for IP={ip_address}, USER={username}, PASS={password}")
-
-    if cached:
-        if cached["expires_at"] > now + timedelta(minutes=2):
-            diagnostics_log(f"Returning cached session ID: {cached['session_id']}")
-            return cached["session_id"]
-
-    try:
-        diagnostics_log("Attempting session login via HTTPX AsyncClient...")
-        async with httpx.AsyncClient(
-            verify=False,
-            timeout=15,
-            follow_redirects=True,
-            http2=False
-        ) as client:
-
-            response = await client.post(
-                f"https://{ip_address}/rest/com/vmware/cis/session",
-                auth=(username, password)
-            )
-
-            diagnostics_log(f"HTTPX Response Status: {response.status_code}")
-            diagnostics_log(f"HTTPX Response Body: {response.text}")
-
-            if response.status_code == 200:
-                data = response.json()
-                session_id = data.get("value")
-
-                if session_id:
-                    VCENTER_SESSIONS[ip_address] = {
-                        "session_id": session_id,
-                        "expires_at": now + timedelta(minutes=25)
-                    }
-                    diagnostics_log(f"HTTPX Login Successful. Obtained Session ID: {session_id}")
-                    return session_id
-
-    except Exception as e:
-        diagnostics_log(f"HTTPX Login Exception: {str(e)}")
-
-    # 3. Fail-safe Subprocess Curl Fallback
-    diagnostics_log("HTTPX failed. Attempting Subprocess Curl Fallback...")
-    try:
-        import subprocess
-        import json
-        import asyncio
-        
-        curl_cmd = [
-            "curl", "-k", "-s",
-            "-u", f"{username}:{password}",
-            "-X", "POST",
-            f"https://{ip_address}/rest/com/vmware/cis/session"
-        ]
-        diagnostics_log(f"Executing Curl Command: {' '.join(curl_cmd)}")
-        
-        loop = asyncio.get_event_loop()
-        def run_curl():
-            res = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=12)
-            return res.stdout, res.stderr
-            
-        stdout, stderr = await loop.run_in_executor(None, run_curl)
-        diagnostics_log(f"Curl stdout: {stdout}")
-        diagnostics_log(f"Curl stderr: {stderr}")
-        
-        if stdout:
-            try:
-                data = json.loads(stdout)
-                session_id = data.get("value")
-                if session_id:
-                    diagnostics_log(f"CURL Login Fallback Successful. Obtained Session ID: {session_id}")
-                    VCENTER_SESSIONS[ip_address] = {
-                        "session_id": session_id,
-                        "expires_at": now + timedelta(minutes=25)
-                    }
-                    return session_id
-            except Exception as json_err:
-                diagnostics_log(f"CURL Json Parsing Exception: {str(json_err)}")
-        else:
-            diagnostics_log("CURL stdout was empty.")
-            
-    except Exception as curl_err:
-        diagnostics_log(f"CURL Fallback Exception: {str(curl_err)}")
-        
-    return None
-
-async def curl_get_json(url: str, session_id: str) -> Optional[dict]:
-    import subprocess
-    import json
-    import asyncio
-    
-    diagnostics_log(f"curl_get_json called for URL: {url} with Session ID: {session_id}")
-    curl_cmd = [
-        "curl", "-k", "-s",
-        "-H", f"vmware-api-session-id: {session_id}",
-        url
-    ]
-    try:
-        loop = asyncio.get_event_loop()
-        def run_curl():
-            res = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=12)
-            return res.stdout
-        stdout = await loop.run_in_executor(None, run_curl)
-        diagnostics_log(f"curl_get_json stdout: {stdout}")
-        if stdout:
-            return json.loads(stdout)
-    except Exception as e:
-        diagnostics_log(f"curl_get_json Exception: {str(e)}")
-    return None
+# ─────────────────────────────────────────────────────────
+# CRUD ENDPOINTS (preserved from original)
+# ─────────────────────────────────────────────────────────
 
 @router.get("/", response_description="List all vCenter details", response_model=PaginatedVCenterDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Cluster"))])
 async def list_items(
@@ -173,6 +72,7 @@ async def list_items(
         items = await cursor.to_list(length=None)
 
     return {"data": items, "total": total}
+
 
 @router.post("/", response_description="Create vCenter Details", response_model=VCenterDetailsModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Cluster"))])
 async def create_item(
@@ -217,15 +117,15 @@ async def create_item(
     created = await collection.find_one({"_id": new_item.inserted_id})
     return created
 
+
 @router.post("/fetch-clusters-preview", response_description="Fetch cluster names directly from live vCenter REST API", dependencies=[Depends(require_privilege("Create Cluster"))])
 async def fetch_clusters_preview(
     payload: dict = Body(...)
 ):
-    import httpx
-    import urllib3
-    
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    
+    """
+    Authenticates to a vCenter instance and fetches cluster names for dropdown selection.
+    Uses the shared session manager and inventory service — no subprocess curl.
+    """
     ip_address = payload.get("ipAddress")
     username = payload.get("username")
     password = payload.get("password")
@@ -237,77 +137,35 @@ async def fetch_clusters_preview(
         )
         
     try:
-        diagnostics_log(f"fetch_clusters_preview invoked for IP={ip_address}, USER={username}")
-        session_id = await get_active_vcenter_session(ip_address, username, password)
-        diagnostics_log(f"Session ID resolved: {session_id}")
+        logger.info(f"fetch_clusters_preview invoked for IP={ip_address}")
+        session_id = await vcenter_session_manager.get_session(ip_address, username, password)
+        
         if not session_id:
             raise HTTPException(
                 status_code=401,
                 detail="vCenter Authentication failed. Verify connection credentials."
             )
             
-        clusters_data = None
-        
-        # Try HTTPX first
-        try:
-            diagnostics_log("Querying clusters list via HTTPX AsyncClient...")
-            async with httpx.AsyncClient(verify=False, timeout=5.0) as client:
-                headers = {"vmware-api-session-id": session_id}
-                clusters_res = await client.get(f"https://{ip_address}/api/vcenter/cluster", headers=headers)
-                diagnostics_log(f"HTTPX Cluster modern API status: {clusters_res.status_code}")
-                if clusters_res.status_code == 200:
-                    clusters_data = clusters_res.json()
-                else:
-                    diagnostics_log(f"HTTPX Modern failed. Status: {clusters_res.status_code}, Body: {clusters_res.text}")
-                    clusters_res = await client.get(f"https://{ip_address}/rest/vcenter/cluster", headers=headers)
-                    diagnostics_log(f"HTTPX Cluster legacy API status: {clusters_res.status_code}")
-                    if clusters_res.status_code == 200:
-                        res_json = clusters_res.json()
-                        clusters_data = res_json.get("value", []) if isinstance(res_json, dict) else res_json
-                    else:
-                        diagnostics_log(f"HTTPX Legacy failed. Status: {clusters_res.status_code}, Body: {clusters_res.text}")
-        except Exception as httpx_err:
-            diagnostics_log(f"HTTPX cluster query threw exception: {str(httpx_err)}")
-            
-        # Fallback to native curl GET
-        if clusters_data is None:
-            diagnostics_log("HTTPX cluster query failed. Triggering curl subprocess fallbacks...")
-            res_json = await curl_get_json(f"https://{ip_address}/api/vcenter/cluster", session_id)
-            if isinstance(res_json, list):
-                clusters_data = res_json
-            elif isinstance(res_json, dict):
-                clusters_data = res_json.get("value")
-                
-            if clusters_data is None:
-                diagnostics_log("Curl modern query failed. Triggering curl legacy query...")
-                res_json = await curl_get_json(f"https://{ip_address}/rest/vcenter/cluster", session_id)
-                if isinstance(res_json, list):
-                    clusters_data = res_json
-                elif isinstance(res_json, dict):
-                    clusters_data = res_json.get("value")
+        clusters_data = await vcenter_inventory_service.get_clusters(ip_address, session_id)
 
-        diagnostics_log(f"Final clusters_data resolved: {clusters_data}")
         if clusters_data is None:
             raise HTTPException(
                 status_code=502,
-                detail="Failed to fetch clusters from vCenter via both HTTPX and native curl fallback."
+                detail="Failed to fetch clusters from vCenter REST API."
             )
             
-        # Format to matches dropdown
+        # Format to match dropdown
         return {"clusters": [{"id": c.get("cluster"), "name": c.get("name")} for c in clusters_data]}
             
-    except httpx.RequestError as e:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Network error trying to connect to vCenter REST API: {str(e)}"
-        )
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Unexpected error in fetch_clusters_preview for {ip_address}: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred: {str(e)}"
         )
+
 
 @router.put("/{id}", response_description="Update vCenter details", response_model=VCenterDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Cluster"))])
 async def update_item(id: str, payload: UpdateVCenterDetailsModel = Body(...)):
@@ -332,6 +190,7 @@ async def update_item(id: str, payload: UpdateVCenterDetailsModel = Body(...)):
 
     raise HTTPException(status_code=404, detail="vCenter Details not found")
 
+
 @router.delete("/{id}", response_description="Delete vCenter details", dependencies=[Depends(require_privilege("Delete Cluster"))])
 async def delete_item(id: str):
     if not ObjectId.is_valid(id):
@@ -344,17 +203,20 @@ async def delete_item(id: str):
 
     raise HTTPException(status_code=404, detail="vCenter Details not found")
 
+
+# ─────────────────────────────────────────────────────────
+# MONITOR ENDPOINT — reads pre-computed telemetry from DB
+# The background scheduler writes to vcenter_telemetry.
+# This endpoint NEVER hammers vCenter APIs directly.
+# ─────────────────────────────────────────────────────────
+
 @router.get("/{id}/monitor", response_description="Get live vCenter monitoring telemetry")
 async def monitor_vcenter(id: str, current_user: dict = Depends(get_current_user)):
-    import random
-    import socket
-    import httpx
-    import urllib3
-    from datetime import datetime, timezone
-
-    # Disable Insecure Request warnings
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
+    """
+    Returns the latest telemetry snapshot for a vCenter instance.
+    Data is pre-collected by the background VCenterTelemetryScheduler and stored in MongoDB.
+    If no pre-collected snapshot exists, performs a one-time live fetch as a warm-up.
+    """
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -363,262 +225,135 @@ async def monitor_vcenter(id: str, current_user: dict = Depends(get_current_user
         raise HTTPException(status_code=404, detail="vCenter not found")
 
     cluster_id = vcenter.get("clusterId", "")
-
-    # Live connection probe to verify vCenter appliance exists at given IP/Hostname
     ip_address = vcenter.get("ipAddress", "")
-    if ip_address:
-        reachable = False
-        for port in [443, 80]:
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.settimeout(0.8)
-                    s.connect((ip_address, port))
-                    reachable = True
-                    break
-            except Exception:
-                continue
-        
-        if not reachable:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Virtualization Controller at '{ip_address}' is unreachable. Verify network routing, firewall configurations, and management engine port states."
-            )
-
     username = vcenter.get("username")
     password = vcenter.get("password")
 
+    # 1. Try reading pre-computed telemetry snapshot from MongoDB
+    snap_col = db.get_collection("vcenter_telemetry")
+    snapshot = await snap_col.find_one({"vcenterId": id})
+
+    if snapshot:
+        snapshot.pop("_id", None)
+        # Enrich with latest vcenter metadata
+        snapshot["id"] = id
+        snapshot["name"] = vcenter.get("name")
+        snapshot["ipAddress"] = ip_address
+        snapshot["version"] = vcenter.get("vcenterVersion", "8.0.2")
+        snapshot["type"] = vcenter.get("vcenterType", "vCenter Server Appliance")
+        snapshot["licenceExpiry"] = vcenter.get("licenceExpiry", "2029-12-31")
+        return snapshot
+
+    # 2. No snapshot yet — perform a one-time warm-up fetch
+    logger.info(f"No telemetry snapshot found for vCenter {id}. Performing warm-up fetch...")
+
     live_connected = False
-    live_hosts = []
-    live_vms = []
-    live_version = None
-
-    if username and password and ip_address:
-        try:
-            session_id = await get_active_vcenter_session(ip_address, username, password)
-            if session_id:
-                # 1. Try python httpx first
-                try:
-                    async with httpx.AsyncClient(verify=False, timeout=3.0) as client:
-                        headers = {"vmware-api-session-id": session_id}
-                        
-                        # 2. Get ESXi host nodes
-                        hosts_res = await client.get(f"https://{ip_address}/api/vcenter/host", headers=headers)
-                        if hosts_res.status_code == 200:
-                            live_hosts = hosts_res.json()
-                        else:
-                            hosts_res = await client.get(f"https://{ip_address}/rest/vcenter/host", headers=headers)
-                            if hosts_res.status_code == 200:
-                                res_json = hosts_res.json()
-                                live_hosts = res_json.get("value", []) if isinstance(res_json, dict) else res_json
-                            
-                        # 3. Get guest VMs
-                        vms_res = await client.get(f"https://{ip_address}/api/vcenter/vm", headers=headers)
-                        if vms_res.status_code == 200:
-                            live_vms = vms_res.json()
-                        else:
-                            vms_res = await client.get(f"https://{ip_address}/rest/vcenter/vm", headers=headers)
-                            if vms_res.status_code == 200:
-                                res_json = vms_res.json()
-                                live_vms = res_json.get("value", []) if isinstance(res_json, dict) else res_json
-                        
-                        # 4. Get vCenter Appliance version details
-                        about_res = await client.get(f"https://{ip_address}/api/vcenter/about", headers=headers)
-                        if about_res.status_code == 200:
-                            about_info = about_res.json()
-                            live_version = about_info.get("version")
-                        else:
-                            about_res = await client.get(f"https://{ip_address}/rest/vcenter/about", headers=headers)
-                            if about_res.status_code == 200:
-                                res_json = about_res.json()
-                                about_info = res_json.get("value", {}) if isinstance(res_json, dict) else res_json
-                                live_version = about_info.get("version") if isinstance(about_info, dict) else None
-                            
-                        live_connected = True
-                except Exception as httpx_err:
-                    print(f"HTTPX monitor telemetry query failed: {httpx_err}. Retrying via native curl fallback...")
-
-                # 2. Subprocess curl Fallbacks
-                if not live_connected:
-                    try:
-                        # Fetch hosts
-                        res_json = await curl_get_json(f"https://{ip_address}/api/vcenter/host", session_id)
-                        if res_json is None:
-                            res_json = await curl_get_json(f"https://{ip_address}/rest/vcenter/host", session_id)
-                        if isinstance(res_json, list):
-                            live_hosts = res_json
-                        elif isinstance(res_json, dict):
-                            live_hosts = res_json.get("value", [])
-                            
-                        # Fetch VMs
-                        res_json = await curl_get_json(f"https://{ip_address}/api/vcenter/vm", session_id)
-                        if res_json is None:
-                            res_json = await curl_get_json(f"https://{ip_address}/rest/vcenter/vm", session_id)
-                        if isinstance(res_json, list):
-                            live_vms = res_json
-                        elif isinstance(res_json, dict):
-                            live_vms = res_json.get("value", [])
-                            
-                        # Fetch Version details
-                        res_json = await curl_get_json(f"https://{ip_address}/api/vcenter/about", session_id)
-                        if res_json is None:
-                            res_json = await curl_get_json(f"https://{ip_address}/rest/vcenter/about", session_id)
-                        if isinstance(res_json, dict):
-                            about_info = res_json.get("value", {}) if "value" in res_json else res_json
-                            live_version = about_info.get("version") if isinstance(about_info, dict) else None
-                            
-                        live_connected = True
-                    except Exception as curl_err:
-                        print(f"CURL Telemetry fallback error: {curl_err}")
-        except Exception as e:
-            print(f"Skipping live API telemetry: {e}")
-
     hosts_telemetry = []
     vms_telemetry = []
     alarms = []
     events = []
-    vcenter_version = "8.0.2"
+    metrics = {"cpuUsage": 0.0, "ramUsage": 0.0, "hddUsage": 0.0, "networkTraffic": 0.0}
 
-    if live_connected:
-        avg_cpu_usage = round(random.uniform(22.0, 52.0), 1)
-        avg_ram_usage = round(random.uniform(35.0, 68.0), 1)
-        avg_hdd_usage = round(random.uniform(28.0, 58.0), 1)
-        network_traffic = round(random.uniform(40.0, 180.0), 1)
-        vcenter_version = live_version or "8.0.2"
+    if ip_address and username and password:
+        try:
+            session_id = await vcenter_session_manager.get_session(ip_address, username, password)
+            if session_id:
+                live_connected = True
 
-        for host in live_hosts:
-            cpu_usage = round(avg_cpu_usage + random.uniform(-8.0, 8.0), 1)
-            cpu_usage = max(1.0, min(100.0, cpu_usage))
-            ram_usage = round(avg_ram_usage + random.uniform(-4.0, 4.0), 1)
-            ram_usage = max(1.0, min(100.0, ram_usage))
-            temp = random.randint(34, 46)
+                # Fetch live inventory via service layer (cached + rate-limited)
+                live_hosts = await vcenter_inventory_service.get_hosts(ip_address, session_id, cluster_id or None)
+                live_vms = await vcenter_inventory_service.get_vms(ip_address, session_id, cluster_id or None)
+                metrics = await vcenter_metrics_service.get_live_metrics(ip_address, session_id)
 
-            hosts_telemetry.append({
-                "name": host.get("name", "esxi-host"),
-                "ipAddress": host.get("name", "0.0.0.0"),
-                "status": "Connected" if host.get("connection_state") == "CONNECTED" else "Disconnected",
-                "cpuUsage": cpu_usage,
-                "ramUsage": ram_usage,
-                "cpuTemp": f"{temp}°C",
-                "ramTemp": f"{temp - random.randint(2, 5)}°C",
-                "fanSpeed": f"{random.randint(2400, 3000)} RPM",
-                "powerWatts": random.randint(110, 170)
-            })
+                for h in live_hosts:
+                    hosts_telemetry.append({
+                        "name": h.get("name", "esxi-host"),
+                        "ipAddress": h.get("name", "0.0.0.0"),
+                        "status": "Connected" if h.get("connection_state") in ("CONNECTED", "connected") else "Disconnected",
+                        "cpuUsage": metrics.get("cpuUsage", 0.0),
+                        "ramUsage": metrics.get("ramUsage", 0.0),
+                        "cpuTemp": "--",
+                        "ramTemp": "--",
+                        "fanSpeed": "--",
+                        "powerWatts": 0
+                    })
 
-        for vm in live_vms:
-            vms_telemetry.append({
-                "name": vm.get("name", "vm-instance"),
-                "ipAddress": vm.get("ipAddress", "0.0.0.0"),
-                "node": vm.get("host", "esxi-host"),
-                "cpuUsage": round(random.uniform(3.0, 35.0), 1),
-                "ramUsage": round(random.uniform(8.0, 40.0), 1),
-                "status": "Running" if vm.get("power_state") == "POWERED_ON" else "Stopped"
-            })
+                for vm in live_vms:
+                    vms_telemetry.append({
+                        "name": vm.get("name", "vm-instance"),
+                        "ipAddress": vm.get("ipAddress") or "0.0.0.0",
+                        "node": vm.get("host") or "esxi-host",
+                        "cpuUsage": 0.0,
+                        "ramUsage": 0.0,
+                        "status": "Running" if vm.get("power_state") in ("POWERED_ON", "poweredOn") else "Stopped"
+                    })
 
-        events = [
-            {"timestamp": datetime.now(timezone.utc).isoformat(), "message": f"Successfully pulled live telemetry streams directly from VMware vCenter Server API at {ip_address}"}
-        ]
-    else:
-        # Get nodes (ESXi hosts) from database fallback
+                events.append({
+                    "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                    "message": f"Live warm-up telemetry sync completed for vCenter at {ip_address}"
+                })
+        except Exception as e:
+            logger.error(f"Warm-up fetch failed for vCenter {ip_address}: {e}", exc_info=True)
+
+    # 3. Fallback to database-sourced node/VM data if live connection was not possible
+    if not live_connected:
         node_collection = db.get_collection("node_details")
-        nodes_cursor = node_collection.find({"clusterId": cluster_id})
-        nodes_list = await nodes_cursor.to_list(length=None)
+        nodes_list = await (node_collection.find({"clusterId": cluster_id}).to_list(length=None))
 
-        # Get Virtual Machines from database fallback
         vm_collection = db.get_collection("vm_details")
-        vms_cursor = vm_collection.find({"clusterId": cluster_id})
-        vms_list = await vms_cursor.to_list(length=None)
+        vms_list = await (vm_collection.find({"clusterId": cluster_id}).to_list(length=None))
 
-        if nodes_list:
-            avg_cpu_usage = round(random.uniform(22.0, 52.0), 1)
-            avg_ram_usage = round(random.uniform(35.0, 68.0), 1)
-            avg_hdd_usage = round(random.uniform(28.0, 58.0), 1)
-            network_traffic = round(random.uniform(40.0, 180.0), 1)
+        for host in nodes_list:
+            hosts_telemetry.append({
+                "name": host.get("hostName") or host.get("name") or "esxi-host",
+                "ipAddress": host.get("ipAddress", "0.0.0.0"),
+                "status": "Connected",
+                "cpuUsage": 0.0,
+                "ramUsage": 0.0,
+                "cpuTemp": "--",
+                "ramTemp": "--",
+                "fanSpeed": "--",
+                "powerWatts": 0
+            })
 
-            for host in nodes_list:
-                cpu_usage = round(avg_cpu_usage + random.uniform(-8.0, 8.0), 1)
-                cpu_usage = max(1.0, min(100.0, cpu_usage))
-                ram_usage = round(avg_ram_usage + random.uniform(-4.0, 4.0), 1)
-                ram_usage = max(1.0, min(100.0, ram_usage))
-                temp = random.randint(34, 46)
+        for vm in vms_list:
+            vms_telemetry.append({
+                "name": vm.get("applications") or vm.get("name") or "vm-instance",
+                "ipAddress": vm.get("ipAddress", "0.0.0.0"),
+                "node": vm.get("node") or "esxi-host",
+                "cpuUsage": 0.0,
+                "ramUsage": 0.0,
+                "status": "Running"
+            })
 
-                hosts_telemetry.append({
-                    "name": host.get("hostName") or host.get("name") or "esxi-host",
-                    "ipAddress": host.get("ipAddress", "0.0.0.0"),
-                    "status": "Connected",
-                    "cpuUsage": cpu_usage,
-                    "ramUsage": ram_usage,
-                    "cpuTemp": f"{temp}°C",
-                    "ramTemp": f"{temp - random.randint(2, 5)}°C",
-                    "fanSpeed": f"{random.randint(2400, 3000)} RPM",
-                    "powerWatts": random.randint(110, 170)
-                })
+        events.append({
+            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "message": "Telemetry populated from database records. Live vCenter connection was not available."
+        })
 
-            for vm in vms_list:
-                vms_telemetry.append({
-                    "name": vm.get("applications") or vm.get("name") or "vm-instance",
-                    "ipAddress": vm.get("ipAddress", "0.0.0.0"),
-                    "node": vm.get("node") or "esxi-host",
-                    "cpuUsage": round(random.uniform(3.0, 35.0), 1),
-                    "ramUsage": round(random.uniform(8.0, 40.0), 1),
-                    "status": "Running"
-                })
-
-            events = [
-                {"timestamp": datetime.now(timezone.utc).isoformat(), "message": "Live connection active. Hardware hypervisor telemetry streams synced from database fallback."}
-            ]
-        else:
-            avg_cpu_usage = 0
-            avg_ram_usage = 0
-            avg_hdd_usage = 0
-            network_traffic = 0
-            events = [
-                {"timestamp": datetime.now(timezone.utc).isoformat(), "message": "Live connection active. Mapped cluster contains no registered ESXi hosts."}
-            ]
-
+        # Derive vCenter version from registered ESXi hypervisor data
         vcenter_version = vcenter.get("vcenterVersion", "8.0.2")
         if nodes_list:
             first_node = nodes_list[0]
             node_hypervisor = first_node.get("hypervisor", "")
             if "ESXi" in node_hypervisor:
                 parts = node_hypervisor.split()
-                if len(parts) > 1:
-                    vcenter_version = parts[1]
-                else:
-                    vcenter_version = node_hypervisor
+                vcenter_version = parts[1] if len(parts) > 1 else node_hypervisor
             elif node_hypervisor:
                 vcenter_version = node_hypervisor
 
-    # Alarms are triggered purely by host resource threshold crossings (both live and DB fallback)
-    for h in hosts_telemetry:
-        if h["cpuUsage"] > 85.0:
-            alarms.append({
-                "id": f"alarm-{h['name']}-cpu",
-                "severity": "Critical",
-                "message": f"ESXi Host {h['name']} CPU utilization critically high: {h['cpuUsage']}%",
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            })
-        elif h["cpuUsage"] > 70.0:
-            alarms.append({
-                "id": f"alarm-{h['name']}-cpu",
-                "severity": "Warning",
-                "message": f"ESXi Host {h['name']} CPU utilization is high: {h['cpuUsage']}%",
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            })
+    else:
+        vcenter_version = vcenter.get("vcenterVersion", "8.0.2")
 
     return {
-        "id": str(vcenter["_id"]),
+        "id": id,
         "name": vcenter.get("name"),
-        "ipAddress": vcenter.get("ipAddress"),
-        "status": "Red" if any(a["severity"] == "Critical" for a in alarms) else "Yellow" if alarms else "Green",
+        "ipAddress": ip_address,
+        "status": "Red" if any(a.get("severity") == "Critical" for a in alarms) else "Yellow" if alarms else "Green",
         "version": vcenter_version,
         "type": vcenter.get("vcenterType", "vCenter Server Appliance"),
         "licenceExpiry": vcenter.get("licenceExpiry", "2029-12-31"),
-        "metrics": {
-            "cpuUsage": avg_cpu_usage,
-            "ramUsage": avg_ram_usage,
-            "hddUsage": avg_hdd_usage,
-            "networkTraffic": network_traffic
-        },
+        "metrics": metrics,
         "hosts": hosts_telemetry,
         "vms": vms_telemetry,
         "alarms": alarms,

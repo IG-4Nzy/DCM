@@ -24,4 +24,5 @@ export default {
   serverMonitoring: "Server Monitoring",
   attendance: "Attendance",
   auditLogs: "Audit Logs",
+  documentations: "Documentations",
 };

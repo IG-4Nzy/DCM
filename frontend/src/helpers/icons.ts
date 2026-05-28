@@ -11,7 +11,8 @@ import {
   MdDns as ServerDetailsIcon,
   MdOutlineHandshake as RequestsIcon,
   MdSearch as SearchIcon,
-  MdTerminal as TerminalIcon
+  MdTerminal as TerminalIcon,
+  MdInsertDriveFile as DocumentationsIcon
 } from "react-icons/md";
 
 import { IoIosUnlock as RolesIcon } from "react-icons/io";
@@ -49,5 +50,6 @@ export const Icons = {
   SearchIcon,
   BellIcon,
   AttendanceIcon,
-  TerminalIcon
+  TerminalIcon,
+  DocumentationsIcon
 };

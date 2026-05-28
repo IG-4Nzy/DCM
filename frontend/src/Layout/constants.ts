@@ -90,6 +90,11 @@ export const SIDEBAR_OPTIONS = [
         privileges: [PRIVILEGES.VIEW_DEPARTMENTAL_ATTENDACE,PRIVILEGES.VIEW_SELF_ATTENDANCE,PRIVILEGES.VIEW_ALL_ATTENDACE ,PRIVILEGES.ATTENDANCE_CREATE, PRIVILEGES.ATTENDANCE_UPDATE, PRIVILEGES.ATTENDANCE_DELETE]
     },
     {
+        label: wordings.documentations,
+        icon: Icons.DocumentationsIcon,
+        route: ROUTE_CONSTANTS.DOCUMENTATIONS
+    },
+    {
         label: wordings.auditLogs,
         icon: Icons.TerminalIcon,
         route: ROUTE_CONSTANTS.AUDIT_LOGS,

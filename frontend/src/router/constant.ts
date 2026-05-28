@@ -19,4 +19,5 @@ export const ROUTE_CONSTANTS = {
     SERVER_MONITORING: "/server-monitoring",
     ATTENDANCE: "/attendance",
     AUDIT_LOGS: "/audit-logs",
+    DOCUMENTATIONS: "/documentations",
 }
