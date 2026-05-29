@@ -1297,7 +1297,8 @@ const ServerMonitoring: React.FC = () => {
               </Box>
 
             </Box>
-          })()}
+          );
+        })()}
         </Box>
       )}
 

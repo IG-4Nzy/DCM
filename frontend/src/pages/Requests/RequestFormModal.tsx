@@ -36,6 +36,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
 
   const [requestType, setRequestType] = useState(REQUEST_TYPES[0]);
   const [description, setDescription] = useState('');
+  const [purpose, setPurpose] = useState('');
   const [status, setStatus] = useState('');
   const [remarks, setRemarks] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -70,12 +71,14 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
     if (editingRequest) {
       setRequestType(editingRequest.requestType || editingRequest.category || REQUEST_TYPES[0]);
       setDescription(editingRequest.description || '');
+      setPurpose(editingRequest.purpose || '');
       setStatus(editingRequest.status || 'Pending');
       setRemarks(editingRequest.remarks || '');
       setDetails(editingRequest.details || {});
     } else {
       setRequestType(REQUEST_TYPES[0]);
       setDescription('');
+      setPurpose('');
       setStatus('');
       setRemarks('');
       setDetails({});
@@ -114,6 +117,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
       const payload: Partial<RequestData> = {
         requestType,
         description,
+        purpose,
         details
       };
 
@@ -151,6 +155,17 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
               </Select>
             </FormControl>
 
+            <TextField
+              label="Purpose"
+              fullWidth
+              required
+              multiline
+              rows={2}
+              value={purpose}
+              onChange={(e) => setPurpose(e.target.value)}
+              placeholder="State the purpose of this request"
+            />
+
             {/* Dynamic Fields based on Request Type */}
             {requestType === 'VM Creation' && (
               <>
@@ -181,7 +196,6 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                   value={details.dateTime || ''} 
                   onChange={(e) => handleDetailChange('dateTime', e.target.value)} 
                 />
-                <TextField label="Purpose" fullWidth required multiline rows={3} value={details.purpose || ''} onChange={(e) => handleDetailChange('purpose', e.target.value)} />
               </>
             )}
 

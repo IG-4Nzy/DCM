@@ -36,7 +36,7 @@ const Inventory: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<InventoryData | null>(null);
 
   const { showToast } = useToast();
-  const confirm:any = useConfirm();
+  const { confirm } = useConfirm();
 
   const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.INVENTORY_CREATE);
   const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.INVENTORY_UPDATE);
@@ -71,8 +71,12 @@ const Inventory: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (await confirm('Are you sure you want to delete this item?')) {
-      await dispatch(deleteInventory(id));
-      showToast('Item deleted successfully', 'success');
+      const result = await dispatch(deleteInventory(id));
+      if (deleteInventory.fulfilled.match(result)) {
+        showToast('Item deleted successfully', 'success');
+      } else {
+        showToast((result.payload as string) || 'Failed to delete item', 'error');
+      }
       dispatch(fetchInventory({ skip: page * rowsPerPage, limit: rowsPerPage, search: searchQuery, sort_by: orderBy, order }));
     }
   };

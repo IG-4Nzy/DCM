@@ -4,6 +4,7 @@ import Button from '../../components/Button';
 import type { RequestData } from './model';
 import { fetchUsers } from '../Users/action';
 import { fetchClusters } from '../Clusters/action';
+import { fetchNodes } from '../ServerMonitoring/action';
 import { fetchInventory } from '../Inventory/action';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../../store';
@@ -43,6 +44,12 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   const [selectedCluster, setSelectedCluster] = useState('');
   const [clusterError, setClusterError] = useState(false);
 
+  // Node Selection States
+  const [nodes, setNodes] = useState<any[]>([]);
+  const [filteredNodes, setFilteredNodes] = useState<any[]>([]);
+  const [selectedNode, setSelectedNode] = useState('');
+  const [nodeError, setNodeError] = useState(false);
+
   const isClusterDeciding = request?.status?.toLowerCase() === 'cluster deciding' || request?.status?.toLowerCase().includes('cluster');
 
   const requestId = request?.id || request?._id || '';
@@ -61,11 +68,35 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
         }).catch(() => {
           setClusters([]);
         });
+        fetchNodes().then(res => {
+          setNodes(res || []);
+        }).catch(() => {
+          setNodes([]);
+        });
         setSelectedCluster(request.details?.cluster || '');
+        setSelectedNode(request.details?.node || '');
         setClusterError(false);
+        setNodeError(false);
       }
     }
   }, [isOpen, requestId, dispatch]);
+
+  // Reactive node filtering based on selected cluster
+  useEffect(() => {
+    if (selectedCluster && nodes.length > 0 && clusters.length > 0) {
+      const clusterObj = clusters.find(c => c.clusterName === selectedCluster);
+      const clusterId = clusterObj?.id || clusterObj?._id || '';
+      const matchingNodes = nodes.filter((n: any) => String(n.clusterId) === String(clusterId));
+      setFilteredNodes(matchingNodes);
+      
+      // Clear selectedNode if it does not belong to matching nodes
+      if (selectedNode && !matchingNodes.some((n: any) => n.hostName === selectedNode)) {
+        setSelectedNode('');
+      }
+    } else {
+      setFilteredNodes([]);
+    }
+  }, [selectedCluster, nodes, clusters]);
 
   if (!request) return null;
 
@@ -85,6 +116,10 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       setClusterError(true);
       return;
     }
+    if (isClusterDeciding && !selectedNode) {
+      setNodeError(true);
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -92,7 +127,10 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       if (isIpIssuance) {
         payload.details = { ip: ipAddress.trim() };
       } else if (isClusterDeciding) {
-        payload.details = { cluster: selectedCluster };
+        payload.details = { 
+          cluster: selectedCluster,
+          node: selectedNode
+        };
       }
       await onAdvance(request.id || request._id || '', payload);
       onClose();
@@ -238,6 +276,12 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                         {request.details?.cluster || 'Not Decided Yet'}
                       </Typography>
                     </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="caption" color="textSecondary">Decided Host Node</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: request.details?.node ? '#1976d2' : 'inherit' }}>
+                        {request.details?.node || 'Not Decided Yet'}
+                      </Typography>
+                    </Grid>
                   </>
                 )}
 
@@ -251,7 +295,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <Typography variant="caption" color="textSecondary">Purpose</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.purpose || '-'}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.purpose || request.purpose || '-'}</Typography>
                     </Grid>
                   </>
                 )}
@@ -321,27 +365,51 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                   )}
 
                   {isClusterDeciding && (
-                    <Box sx={{ flex: 1, minWidth: 200 }}>
-                      <FormControl fullWidth required error={clusterError}>
-                        <InputLabel>Choose Cluster</InputLabel>
-                        <Select
-                          value={selectedCluster}
-                          label="Choose Cluster"
-                          onChange={(e) => {
-                            setSelectedCluster(e.target.value as string);
-                            if (e.target.value) setClusterError(false);
-                          }}
-                          sx={{ bgcolor: '#fff' }}
-                        >
-                          {clusters.map((c: any) => (
-                            <MenuItem key={c.id || c._id} value={c.clusterName}>
-                              {c.clusterName} (IP: {c.ipAddress})
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {clusterError && <Typography variant="caption" color="error">You must choose a cluster to advance.</Typography>}
-                      </FormControl>
-                    </Box>
+                    <>
+                      <Box sx={{ flex: 1, minWidth: 200 }}>
+                        <FormControl fullWidth required error={clusterError}>
+                          <InputLabel>Choose Cluster</InputLabel>
+                          <Select
+                            value={selectedCluster}
+                            label="Choose Cluster"
+                            onChange={(e) => {
+                              setSelectedCluster(e.target.value as string);
+                              if (e.target.value) setClusterError(false);
+                            }}
+                            sx={{ bgcolor: '#fff' }}
+                          >
+                            {clusters.map((c: any) => (
+                              <MenuItem key={c.id || c._id} value={c.clusterName}>
+                                {c.clusterName} (IP: {c.ipAddress})
+                              </MenuItem>
+                            ))}
+                          </Select>
+                          {clusterError && <Typography variant="caption" color="error">You must choose a cluster to advance.</Typography>}
+                        </FormControl>
+                      </Box>
+
+                      <Box sx={{ flex: 1, minWidth: 200 }}>
+                        <FormControl fullWidth required error={nodeError} disabled={!selectedCluster}>
+                          <InputLabel>Choose Node</InputLabel>
+                          <Select
+                            value={selectedNode}
+                            label="Choose Node"
+                            onChange={(e) => {
+                              setSelectedNode(e.target.value as string);
+                              if (e.target.value) setNodeError(false);
+                            }}
+                            sx={{ bgcolor: '#fff' }}
+                          >
+                            {filteredNodes.map((n: any) => (
+                              <MenuItem key={n.id || n._id} value={n.hostName}>
+                                {n.hostName} ({n.ipAddress})
+                              </MenuItem>
+                            ))}
+                          </Select>
+                          {nodeError && <Typography variant="caption" color="error">You must choose a node to advance.</Typography>}
+                        </FormControl>
+                      </Box>
+                    </>
                   )}
 
                   <Box sx={{ flex: 1, minWidth: 200 }}>

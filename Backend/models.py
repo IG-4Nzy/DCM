@@ -829,6 +829,7 @@ class PaginatedVMDetailsModel(BaseModel):
 class CreateRequestModel(BaseModel):
     requestType: str = Field(..., description="VM Creation, DC Entry, Hardware Issuance, Hardware Replacement")
     description: Optional[str] = None
+    purpose: Optional[str] = None
     details: Optional[dict] = None
 
     model_config = ConfigDict(
@@ -839,6 +840,7 @@ class CreateRequestModel(BaseModel):
 class UpdateRequestModel(BaseModel):
     requestType: Optional[str] = None
     description: Optional[str] = None
+    purpose: Optional[str] = None
     details: Optional[dict] = None
     status: Optional[str] = None
     remarks: Optional[str] = None

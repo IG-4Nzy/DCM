@@ -145,6 +145,56 @@ async def deduct_inventory_on_completion(existing_request: dict, username: str):
         print(f"Error in deduct_inventory_on_completion: {e}")
 
 
+async def add_vm_details_on_completion(existing_request: dict, username: str):
+    if not existing_request or existing_request.get("vmReflected"):
+        return
+
+    try:
+        request_type = existing_request.get("requestType") or existing_request.get("category", "")
+        if request_type == "VM Creation":
+            details = existing_request.get("details") or {}
+            
+            cluster_name = details.get("cluster")
+            cluster_id = ""
+            if cluster_name:
+                clusters_col = db.get_collection("clusters")
+                cluster_obj = await clusters_col.find_one({"clusterName": cluster_name})
+                if cluster_obj:
+                    cluster_id = str(cluster_obj.get("_id") or "")
+
+            vm_data = {
+                "clusterId": cluster_id,
+                "ipAddress": details.get("ip") or "",
+                "applications": details.get("applications") or "Web Server",
+                "node": details.get("node") or "Unknown Host",
+                "osAndExpiry": details.get("osVersion") or "Ubuntu Server 22.04 LTS",
+                "hdd": str(details.get("hdd") or "120"),
+                "ram": str(details.get("ram") or "8"),
+                "cpu": str(details.get("cpu") or "4"),
+                "createdBy": username or "system",
+                "createdAt": datetime.now(timezone.utc).isoformat(),
+                "updatedAt": datetime.now(timezone.utc).isoformat()
+            }
+
+            vms_col = db.get_collection("vm_details")
+            # Avoid duplicate VM entries
+            existing_vm = await vms_col.find_one({
+                "ipAddress": vm_data["ipAddress"], 
+                "node": vm_data["node"],
+                "clusterId": vm_data["clusterId"]
+            })
+            if not existing_vm:
+                await vms_col.insert_one(vm_data)
+                # Sync resources on the physical host
+                from vm_details import sync_node_resources
+                await sync_node_resources(vm_data["node"])
+
+            # Mark vmReflected = True
+            await collection.update_one({"_id": existing_request["_id"]}, {"$set": {"vmReflected": True}})
+    except Exception as e:
+        print(f"Error in add_vm_details_on_completion: {e}")
+
+
 @router.get("/", response_description="List all requests", response_model=PaginatedRequestsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Request"))])
 async def list_items(
     skip: int = Query(0, ge=0),
@@ -299,6 +349,7 @@ async def update_item(id: str, payload: UpdateRequestModel = Body(...), current_
     updated = await collection.find_one({"_id": ObjectId(id)})
     if updated and updated.get("status") == "Completed":
         await deduct_inventory_on_completion(updated, username)
+        await add_vm_details_on_completion(updated, username)
         updated = await collection.find_one({"_id": ObjectId(id)})
     return updated
 
@@ -389,6 +440,7 @@ async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), c
     updated = await collection.find_one({"_id": ObjectId(id)})
     if updated and updated.get("status") == "Completed":
         await deduct_inventory_on_completion(updated, username)
+        await add_vm_details_on_completion(updated, username)
         updated = await collection.find_one({"_id": ObjectId(id)})
     return updated
 
