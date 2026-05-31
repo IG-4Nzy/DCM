@@ -6,6 +6,9 @@ services:
     container_name: dcm_mongodb
     ports:
       - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASS:-password}
     volumes:
       - mongodb_data:/data/db
     restart: unless-stopped
@@ -16,8 +19,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # Use the mongodb service name as host
-      - MONGO_URI=mongodb://mongodb:27017/dcm
+      - MONGO_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-password}@mongodb:27017/dcm_database?authSource=admin
     depends_on:
       - mongodb
     restart: unless-stopped

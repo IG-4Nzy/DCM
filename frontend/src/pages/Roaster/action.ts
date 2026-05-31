@@ -72,3 +72,16 @@ export const updateRoster = createAsyncThunk(
     }
   }
 );
+
+export const fetchDutySummary = createAsyncThunk(
+  'roaster/fetchDutySummary',
+  async ({ department }: { department: string }, { rejectWithValue }) => {
+    try {
+      const res = await request.get(`/api/roasters/duty-summary?department=${department}`);
+      return res.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to fetch duty summary');
+    }
+  }
+);
+

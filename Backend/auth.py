@@ -32,6 +32,10 @@ class UpdateProfileModel(BaseModel):
     bloodGroup: Optional[str] = None
     address: Optional[str] = None
 
+class ChangePasswordRequest(BaseModel):
+    currentPassword: str
+    newPassword: str
+
 def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -234,3 +238,30 @@ async def update_my_profile(profile: UpdateProfileModel = Body(...), current_use
         "dateOfJoin": user.get("dateOfJoin", ""),
         "department": user.get("department", ""),
     }
+
+@router.post("/change-password", response_description="Change current user password")
+async def change_password(payload: ChangePasswordRequest = Body(...), current_user: dict = Depends(get_current_user)):
+    users_collection = db.get_collection("users")
+    username = current_user.get("sub")
+    
+    user = await users_collection.find_one({"username": username})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    # Verify current password
+    is_valid = bcrypt.checkpw(payload.currentPassword.encode('utf-8'), user["password"].encode('utf-8'))
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect current password"
+        )
+        
+    # Hash new password
+    hashed_password = bcrypt.hashpw(payload.newPassword.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    
+    await users_collection.update_one(
+        {"username": username},
+        {"$set": {"password": hashed_password}}
+    )
+    
+    return {"message": "Password changed successfully"}

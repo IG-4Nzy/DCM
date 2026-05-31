@@ -266,3 +266,109 @@ async def delete_roaster(id: str):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     raise HTTPException(status_code=404, detail=f"Roster {id} not found")
+
+@router.get("/duty-summary", response_description="Get duty day counts per staff for the configured monthly cycle and current week")
+async def get_duty_summary(
+    department: str = Query(...),
+    current_user: dict = Depends(get_current_user)
+):
+    is_superuser = current_user.get("isSuperuser", False)
+    privileges = current_user.get("privileges", [])
+    if not is_superuser and "View Roaster" not in privileges:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    # Get attendance config for cycle start/end days
+    config_collection = db.get_collection("attendance_config")
+    config = await config_collection.find_one({}) or {}
+    start_day = int(config.get("startDay", 1))
+    end_day = int(config.get("endDay", 31))
+
+    today = date.today()
+
+    # Calculate cycle start and end dates for the current month
+    try:
+        cycle_start = date(today.year, today.month, start_day)
+    except ValueError:
+        # Handle months with fewer days (e.g. Feb 30 → clamp to last day)
+        import calendar
+        last_day = calendar.monthrange(today.year, today.month)[1]
+        cycle_start = date(today.year, today.month, min(start_day, last_day))
+
+    # If end_day < start_day, cycle spans into the next month
+    if end_day >= start_day:
+        try:
+            cycle_end = date(today.year, today.month, end_day)
+        except ValueError:
+            import calendar
+            last_day = calendar.monthrange(today.year, today.month)[1]
+            cycle_end = date(today.year, today.month, min(end_day, last_day))
+    else:
+        next_month = today.month + 1 if today.month < 12 else 1
+        next_year = today.year if today.month < 12 else today.year + 1
+        try:
+            cycle_end = date(next_year, next_month, end_day)
+        except ValueError:
+            import calendar
+            last_day = calendar.monthrange(next_year, next_month)[1]
+            cycle_end = date(next_year, next_month, min(end_day, last_day))
+
+    cycle_start_str = cycle_start.isoformat()
+    cycle_end_str = cycle_end.isoformat()
+
+    # Calculate current week boundaries (ISO week: Mon-Sun)
+    week_start = today - timedelta(days=today.weekday())
+    week_end = week_start + timedelta(days=6)
+    week_start_str = week_start.isoformat()
+    week_end_str = week_end.isoformat()
+
+    # Fetch all rosters in the monthly cycle for this department (exclude Leave)
+    month_query = {
+        "date": {"$gte": cycle_start_str, "$lte": cycle_end_str},
+        "department": department,
+        "shift": {"$ne": "Leave"}
+    }
+    month_rosters = await roasters_collection.find(month_query).to_list(length=None)
+
+    # Fetch all rosters in the current week for this department (exclude Leave)
+    week_query = {
+        "date": {"$gte": week_start_str, "$lte": week_end_str},
+        "department": department,
+        "shift": {"$ne": "Leave"}
+    }
+    week_rosters = await roasters_collection.find(week_query).to_list(length=None)
+
+    # Count unique duty days per staff member
+    month_days: dict = {}  # username -> set of dates
+    week_days: dict = {}   # username -> set of dates
+
+    for roster in month_rosters:
+        for assignee in roster.get("assignees", []):
+            if assignee not in month_days:
+                month_days[assignee] = set()
+            month_days[assignee].add(roster["date"])
+
+    for roster in week_rosters:
+        for assignee in roster.get("assignees", []):
+            if assignee not in week_days:
+                week_days[assignee] = set()
+            week_days[assignee].add(roster["date"])
+
+    # Merge all staff into a single result
+    all_staff = set(list(month_days.keys()) + list(week_days.keys()))
+    summary = []
+    for staff in sorted(all_staff):
+        summary.append({
+            "username": staff,
+            "monthDays": len(month_days.get(staff, set())),
+            "weekDays": len(week_days.get(staff, set()))
+        })
+
+    return {
+        "cycleStart": cycle_start_str,
+        "cycleEnd": cycle_end_str,
+        "weekStart": week_start_str,
+        "weekEnd": week_end_str,
+        "trackedRole": config.get("trackedRole", "All Roles"),
+        "summary": summary
+    }
+

@@ -26,7 +26,7 @@ import type { RootState, AppDispatch } from "../../store";
 import { jwtDecode } from "jwt-decode";
 import { validateRoster } from "./validation";
 import { fetchUsers, fetchAllDepartmentsForDropdown } from "../Users/action";
-import { fetchRostersData, fetchRosterStatusData, updateRosterStatus, resetRosterStatus, createRoster, updateRoster } from "./action";
+import { fetchRostersData, fetchRosterStatusData, updateRosterStatus, resetRosterStatus, createRoster, updateRoster, fetchDutySummary } from "./action";
 
 dayjs.extend(isoWeekPlugin);
 
@@ -43,6 +43,8 @@ const RoasterPage: React.FC = () => {
   const [rosterData, setRosterData] = useState<Record<string, RosterData>>({});
   const [rosterStatus, setRosterStatus] = useState<any>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [dutySummary, setDutySummary] = useState<any>(null);
+  const [savedRosterData, setSavedRosterData] = useState<Record<string, RosterData>>({});
 
   const dispatch = useDispatch<AppDispatch>();
   const { showToast } = useToast();
@@ -79,6 +81,7 @@ const RoasterPage: React.FC = () => {
         };
       });
       setRosterData(newRosterData);
+      setSavedRosterData(newRosterData);
     } catch (e) {
       console.error(e);
       showToast("Failed to fetch rosters", "error");
@@ -96,9 +99,98 @@ const RoasterPage: React.FC = () => {
     }
   };
 
+  const fetchSummary = async () => {
+    if (!userDepartment) return;
+    try {
+      const data = await dispatch(fetchDutySummary({ department: userDepartment })).unwrap();
+      setDutySummary(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const getRealtimeSummary = () => {
+    if (!dutySummary) return [];
+
+    const cycleStart = dutySummary.cycleStart;
+    const cycleEnd = dutySummary.cycleEnd;
+    const weekDatesInCycle = weekDates.filter(d => d >= cycleStart && d <= cycleEnd);
+
+    // Create a map of existing backend summary counts
+    const backendCounts = new Map<string, { monthDays: number, weekDays: number }>();
+    if (dutySummary.summary) {
+      dutySummary.summary.forEach((item: any) => {
+        backendCounts.set(item.username, {
+          monthDays: item.monthDays,
+          weekDays: item.weekDays
+        });
+      });
+    }
+
+    // We want to calculate the summary for all users in the current department with the configured tracked role
+    const trackedRole = dutySummary.trackedRole || "All Roles";
+    const deptUsers = users.filter((u) => {
+      const isCorrectDept = u.department === userDepartment;
+      const isNotSuper = !(u.is_superuser || u.isSuperuser);
+      const isCorrectRole = trackedRole === "All Roles" || u.role === trackedRole;
+      return isCorrectDept && isNotSuper && isCorrectRole;
+    });
+
+    const summaryList = deptUsers.map((u) => {
+      const username = u.username;
+      const initial = backendCounts.get(username) || { monthDays: 0, weekDays: 0 };
+
+      // 1. Calculate real-time week counts
+      const weekDatesAssigned = new Set<string>();
+      weekDates.forEach((dateStr) => {
+        ["Shift-1", "Shift-2", "Shift-3"].forEach((shift) => {
+          const key = `${dateStr}_${shift}`;
+          if (rosterData[key]?.assignees?.includes(username)) {
+            weekDatesAssigned.add(dateStr);
+          }
+        });
+      });
+      const realWeekDays = weekDatesAssigned.size;
+
+      // 2. Calculate real-time month counts
+      const savedCycleDates = new Set<string>();
+      weekDatesInCycle.forEach((dateStr) => {
+        ["Shift-1", "Shift-2", "Shift-3"].forEach((shift) => {
+          const key = `${dateStr}_${shift}`;
+          if (savedRosterData[key]?.assignees?.includes(username)) {
+            savedCycleDates.add(dateStr);
+          }
+        });
+      });
+      const savedCount = savedCycleDates.size;
+
+      const currentCycleDates = new Set<string>();
+      weekDatesInCycle.forEach((dateStr) => {
+        ["Shift-1", "Shift-2", "Shift-3"].forEach((shift) => {
+          const key = `${dateStr}_${shift}`;
+          if (rosterData[key]?.assignees?.includes(username)) {
+            currentCycleDates.add(dateStr);
+          }
+        });
+      });
+      const currentCount = currentCycleDates.size;
+
+      const realMonthDays = Math.max(0, initial.monthDays - savedCount + currentCount);
+
+      return {
+        username,
+        weekDays: realWeekDays,
+        monthDays: realMonthDays
+      };
+    });
+
+    return summaryList.sort((a, b) => a.username.localeCompare(b.username));
+  };
+
   useEffect(() => {
     fetchRosters();
     fetchRosterStatus();
+    fetchSummary();
   }, [selectedWeek]);
 
   useEffect(() => {
@@ -187,6 +279,7 @@ const RoasterPage: React.FC = () => {
       showToast("Roster saved successfully", "success");
       setIsEditMode(false);
       fetchRosters();
+      fetchSummary();
     } catch (e) {
       console.error(e);
       showToast("Failed to save roster", "error");
@@ -553,6 +646,46 @@ const RoasterPage: React.FC = () => {
             })}
           </article>
         </section>
+
+        {dutySummary && getRealtimeSummary().length > 0 && (
+          <section className="duty-summary-section hide-on-print" style={{ borderTop: "1px solid #333", padding: "16px 24px", pageBreakInside: "avoid" }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: "bold", mb: 2, textAlign: "center", textDecoration: "underline", textTransform: "uppercase", fontSize: "14px", color: "#333" }}>
+              Staff Duty Summary Count
+            </Typography>
+            <div style={{ display: "flex", flexDirection: "column", width: "100%", border: "1px solid #333", borderRadius: "4px", overflow: "hidden" }}>
+              {/* Header */}
+              <div style={{ display: "flex", backgroundColor: "#f5f5f5", borderBottom: "1px solid #333", fontWeight: "bold", fontSize: "13px" }}>
+                <div style={{ flex: 2, padding: "8px 12px", borderRight: "1px solid #333" }}>Staff Name</div>
+                <div style={{ flex: 1, padding: "8px 12px", borderRight: "1px solid #333", textAlign: "center" }}>
+                  Current Week Days Count<br />
+                  <span style={{ fontSize: "11px", fontWeight: "normal", color: "#555" }}>
+                    ({dayjs(dutySummary.weekStart).format("DD/MM/YY")} to {dayjs(dutySummary.weekEnd).format("DD/MM/YY")})
+                  </span>
+                </div>
+                <div style={{ flex: 1, padding: "8px 12px", textAlign: "center" }}>
+                  Monthly Cycle Days Count<br />
+                  <span style={{ fontSize: "11px", fontWeight: "normal", color: "#555" }}>
+                    ({dayjs(dutySummary.cycleStart).format("DD/MM/YY")} to {dayjs(dutySummary.cycleEnd).format("DD/MM/YY")})
+                  </span>
+                </div>
+              </div>
+              {/* Body */}
+              {getRealtimeSummary().map((item: any, idx: number, arr: any[]) => (
+                <div key={idx} style={{ display: "flex", borderBottom: idx === arr.length - 1 ? "none" : "1px solid #333", fontSize: "13px", alignItems: "center" }}>
+                  <div style={{ flex: 2, padding: "8px 12px", borderRight: "1px solid #333", fontWeight: 500 }}>
+                    {getUserDisplayName(item.username)}
+                  </div>
+                  <div style={{ flex: 1, padding: "8px 12px", borderRight: "1px solid #333", textAlign: "center", fontWeight: "bold" }}>
+                    {item.weekDays}
+                  </div>
+                  <div style={{ flex: 1, padding: "8px 12px", textAlign: "center", fontWeight: "bold" }}>
+                    {item.monthDays}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <footer className={styles["container__roasterContainer__footer"]}>
           <label

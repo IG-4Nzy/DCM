@@ -44,6 +44,14 @@ const UserProfile: React.FC = () => {
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
 
+    const [changingPassword, setChangingPassword] = useState(false);
+    const [updatingPassword, setUpdatingPassword] = useState(false);
+    const [passwordForm, setPasswordForm] = useState({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+    });
+
     const [form, setForm] = useState({
         firstName: "",
         lastName: "",
@@ -112,6 +120,39 @@ const UserProfile: React.FC = () => {
             );
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handlePasswordChange = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+            showToast("All password fields are required", "error");
+            return;
+        }
+        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+            showToast("New passwords do not match", "error");
+            return;
+        }
+        if (passwordForm.newPassword.length < 6) {
+            showToast("Password must be at least 6 characters long", "error");
+            return;
+        }
+        try {
+            setUpdatingPassword(true);
+            await request.post("/api/auth/change-password", {
+                currentPassword: passwordForm.currentPassword,
+                newPassword: passwordForm.newPassword
+            });
+            showToast("Password changed successfully", "success");
+            setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+            setChangingPassword(false);
+        } catch (err: any) {
+            showToast(
+                err.response?.data?.detail || "Failed to change password",
+                "error"
+            );
+        } finally {
+            setUpdatingPassword(false);
         }
     };
 
@@ -312,6 +353,100 @@ const UserProfile: React.FC = () => {
                             value={profile.status ? "Active" : "Inactive"}
                         />
                     </Box>
+                </Paper>
+
+                {/* Security - Change Password */}
+                <Paper className={styles.card} elevation={0}>
+                    <label className={styles.sectionTitle}>Security & Credentials</label>
+                    {!changingPassword ? (
+                        <Box sx={{ display: "flex", justifyContent: "flex-start", mt: 1 }}>
+                            <Button
+                                variant="outlined"
+                                color="primary"
+                                onClick={() => setChangingPassword(true)}
+                                sx={{
+                                    borderRadius: "8px",
+                                    textTransform: "none",
+                                    fontWeight: 600,
+                                }}
+                            >
+                                Change Password
+                            </Button>
+                        </Box>
+                    ) : (
+                        <form onSubmit={handlePasswordChange}>
+                            <Box className={styles.formGrid} sx={{ mb: 3 }}>
+                                <TextField
+                                    label="Current Password"
+                                    type="password"
+                                    required
+                                    value={passwordForm.currentPassword}
+                                    onChange={(e) =>
+                                        setPasswordForm({
+                                            ...passwordForm,
+                                            currentPassword: e.target.value,
+                                        })
+                                    }
+                                    className={styles.field}
+                                />
+                                <TextField
+                                    label="New Password"
+                                    type="password"
+                                    required
+                                    value={passwordForm.newPassword}
+                                    onChange={(e) =>
+                                        setPasswordForm({
+                                            ...passwordForm,
+                                            newPassword: e.target.value,
+                                        })
+                                    }
+                                    className={styles.field}
+                                />
+                                <TextField
+                                    label="Confirm New Password"
+                                    type="password"
+                                    required
+                                    value={passwordForm.confirmPassword}
+                                    onChange={(e) =>
+                                        setPasswordForm({
+                                            ...passwordForm,
+                                            confirmPassword: e.target.value,
+                                        })
+                                    }
+                                    className={styles.field}
+                                />
+                            </Box>
+                            <Box sx={{ display: "flex", gap: 1.5 }}>
+                                <Button
+                                    type="submit"
+                                    variant="contained"
+                                    color="primary"
+                                    disabled={updatingPassword}
+                                    sx={{
+                                        borderRadius: "8px",
+                                        textTransform: "none",
+                                        fontWeight: 600,
+                                    }}
+                                >
+                                    {updatingPassword ? "Updating..." : "Update Password"}
+                                </Button>
+                                <Button
+                                    variant="text"
+                                    color="inherit"
+                                    onClick={() => {
+                                        setChangingPassword(false);
+                                        setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                                    }}
+                                    sx={{
+                                        borderRadius: "8px",
+                                        textTransform: "none",
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                            </Box>
+                        </form>
+                    )}
                 </Paper>
             </Box>
         </Box>
