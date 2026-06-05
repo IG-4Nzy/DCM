@@ -23,3 +23,14 @@ export const updateServerModel = async (payload: UpdateServerModelPayload): Prom
 export const deleteServerModel = async (id: string): Promise<void> => {
     await request.delete(`${ENDPOINT}/${id}`);
 };
+
+export const bulkCreateServerModels = async (file: File): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await request.post(`${ENDPOINT}/bulk`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+    return res.data;
+};

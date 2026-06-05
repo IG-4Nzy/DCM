@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Box, Paper, Tooltip, IconButton } from '@mui/material';
-import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
+import { Box, Paper, Tooltip, IconButton, Button as MuiButton } from '@mui/material';
+import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdUploadFile as UploadIcon } from 'react-icons/md';
 import Button from '../../../components/Button';
 import SearchBar from '../../../components/SearchBar';
 import Table, { type Column } from '../../../components/Table';
@@ -11,7 +11,7 @@ import { type RootState } from '../../../store';
 import { hasPrivilege } from '../../../helpers/authUtils';
 import { PRIVILEGES } from '../../../helpers/privileges';
 import { useTableState } from '../../../hooks/useTableState';
-import { fetchServerModels, createServerModel, updateServerModel, deleteServerModel } from './action';
+import { fetchServerModels, createServerModel, updateServerModel, deleteServerModel, bulkCreateServerModels } from './action';
 import { type ServerModelData } from './model';
 import ServerModelModal from './ServerModelModal';
 
@@ -106,6 +106,26 @@ const ServerModels = () => {
         }
     };
 
+    const handleBulkUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        try {
+            await bulkCreateServerModels(file);
+            showToast('Bulk upload successful', 'success');
+            loadData();
+        } catch (e: any) {
+            const detail = e?.response?.data?.detail;
+            const message = typeof detail === 'string'
+                ? detail
+                : (Array.isArray(detail) && detail[0]?.msg)
+                    ? detail[0].msg
+                    : 'Bulk upload failed';
+            showToast(message, 'error');
+        }
+        event.target.value = '';
+    };
+
     const handleRequestSort = (property: string) => {
         const isAsc = orderBy === property && order === 'asc';
         setOrder(isAsc ? 'desc' : 'asc');
@@ -164,14 +184,31 @@ const ServerModels = () => {
                         placeholder="Search server models..."
                     />
                     {hasCreate && (
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<AddIcon />}
-                            onClick={() => handleOpenModal()}
-                        >
-                            Add Server Model
-                        </Button>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <MuiButton
+                                component="label"
+                                variant="outlined"
+                                color="primary"
+                                startIcon={<UploadIcon />}
+                                sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 'bold' }}
+                            >
+                                Bulk Upload
+                                <input
+                                    type="file"
+                                    hidden
+                                    accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                                    onChange={handleBulkUpload}
+                                />
+                            </MuiButton>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                startIcon={<AddIcon />}
+                                onClick={() => handleOpenModal()}
+                            >
+                                Add Server Model
+                            </Button>
+                        </Box>
                     )}
                 </Box>
             </Box>

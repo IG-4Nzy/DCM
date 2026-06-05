@@ -23,3 +23,14 @@ export const updateClusterType = async (payload: UpdateClusterTypePayload): Prom
 export const deleteClusterType = async (id: string): Promise<void> => {
     await request.delete(`${ENDPOINT}/${id}`);
 };
+
+export const bulkCreateClusterTypes = async (file: File): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await request.post(`${ENDPOINT}/bulk`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+    return res.data;
+};

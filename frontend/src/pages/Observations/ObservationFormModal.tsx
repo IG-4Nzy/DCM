@@ -128,7 +128,7 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
             </div>
             <div className={styles.row}>
               <ViewField label="Status" value={formData.status} />
-              {formData.status === 'Closed' && <ViewField label="Remarks" value={formData.remarks} />}
+              {formData.status === 'Resolved' && <ViewField label="Remarks" value={formData.remarks} />}
             </div>
           </>
         ) : (
@@ -261,7 +261,7 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
               </div>
             )}
 
-            {formData.status === 'Closed' && (
+            {formData.status === 'Resolved' && (
               <div className={styles.row}>
                 <TextField
                   className={styles.field}
@@ -269,7 +269,7 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                   label="Remarks"
                   value={formData.remarks}
                   onChange={(e: any) => setFormData({ ...formData, remarks: e.target.value })}
-                  placeholder="Enter remarks (Mandatory for closed observations)"
+                  placeholder="Enter remarks (Mandatory for resolved observations)"
                   required
                   multiline
                   rows={2}

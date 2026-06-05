@@ -32,8 +32,8 @@ const ObservationList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useTableState('obs_search', '');
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const [statusFilter, setStatusFilter] = useTableState('obs_status', 'New');
-  const [dateFilter, setDateFilter] = useTableState('obs_date', todayStr);
+  const [statusFilter, setStatusFilter] = useTableState('obs_status', 'Not Resolved');
+  const [dateFilter, setDateFilter] = useTableState('obs_date', '');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingObs, setEditingObs] = useState<any>(null);
@@ -47,7 +47,7 @@ const ObservationList: React.FC = () => {
     informedTo: [] as string[],
     informedToOther: '',
     remarks: '',
-    status: 'New'
+    status: 'Not Resolved'
   };
   const [formData, setFormData] = useState(initialFormData);
   const [showOther, setShowOther] = useState(false);
@@ -112,8 +112,8 @@ const ObservationList: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.status === 'Closed' && !formData.remarks?.trim()) {
-       alert("Remarks are mandatory when closing an observation.");
+    if (formData.status === 'Resolved' && !formData.remarks?.trim()) {
+       alert("Remarks are mandatory when resolving an observation.");
        return;
     }
 
@@ -203,7 +203,7 @@ const ObservationList: React.FC = () => {
       label: 'Status',
       sortable: true,
       render: (row) => (
-        <label style={{ color: row.status === 'Closed' ? '#2e7d32' : '#1976d2', fontWeight: 'bold' }}>
+        <label style={{ color: row.status === 'Resolved' ? '#2e7d32' : '#1976d2', fontWeight: 'bold' }}>
           {row.status}
         </label>
       )
@@ -246,7 +246,7 @@ const ObservationList: React.FC = () => {
     return { value: dh, label };
   }).concat([{ value: 'Other', label: 'Other' }]);
 
-  const statusOptions = [{ value: 'New', label: 'New' }, { value: 'Closed', label: 'Closed' }];
+  const statusOptions = [{ value: 'Not Resolved', label: 'Not Resolved' }, { value: 'Resolved', label: 'Resolved' }];
 
   const canClickRow = hasUpdatePrivilege || hasPrivilege(PRIVILEGES.OBSERVATION_VIEW);
 
@@ -260,8 +260,8 @@ const ObservationList: React.FC = () => {
               onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
               sx={{ minWidth: 150, height: 40 }}
             >
-              <MenuItem value="New">New Observations</MenuItem>
-              <MenuItem value="Closed">Closed Observations</MenuItem>
+              <MenuItem value="Not Resolved">Not Resolved</MenuItem>
+              <MenuItem value="Resolved">Resolved</MenuItem>
               <MenuItem value="">All Observations</MenuItem>
             </Select>
           </FormControl>
@@ -272,7 +272,16 @@ const ObservationList: React.FC = () => {
             onChange={(e: any) => { setDateFilter(e.target.value); setPage(0); }} 
             InputLabelProps={{ shrink: true }}
           />
-          {dateFilter !== todayStr && (
+          {dateFilter ? (
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => { setDateFilter(''); setPage(0); }}
+              sx={{ height: 40 }}
+            >
+              All Dates
+            </Button>
+          ) : (
             <Button
               variant="outlined"
               size="small"

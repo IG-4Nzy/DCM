@@ -102,7 +102,8 @@ const RoasterPage: React.FC = () => {
   const fetchSummary = async () => {
     if (!userDepartment) return;
     try {
-      const data = await dispatch(fetchDutySummary({ department: userDepartment })).unwrap();
+      const dateStr = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
+      const data = await dispatch(fetchDutySummary({ department: userDepartment, date: dateStr })).unwrap();
       setDutySummary(data);
     } catch (e) {
       console.error(e);
@@ -489,6 +490,7 @@ const RoasterPage: React.FC = () => {
                   className={
                     styles["container__roasterContainer__table--body-cell"]
                   }
+                  style={{ backgroundColor: index % 2 === 0 ? "#ffffff" : "#f5f5f5" }}
                 >
                   <div
                     className={

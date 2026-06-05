@@ -58,6 +58,7 @@ interface SummaryRecord {
 
 const Attendance: React.FC = () => {
     const [data, setData] = useState<AttendanceRecord[]>([]);
+    const [savedLogs, setSavedLogs] = useState<AttendanceRecord[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [cycleConfig, setCycleConfig] = useState({
@@ -223,6 +224,7 @@ const Attendance: React.FC = () => {
             });
 
             setData(response.data.data);
+            setSavedLogs(response.data.data);
             setTotalCount(response.data.total);
         } catch (e: any) {
             showToast(e?.response?.data?.detail || 'Failed to fetch attendance logs', 'error');
@@ -230,6 +232,66 @@ const Attendance: React.FC = () => {
             setLoading(false);
         }
     }, [page, rowsPerPage, searchQuery, selectedPeriod, departmentFilter, periods, hasViewAll, showToast]);
+
+    const isRecordLate = (row: AttendanceRecord) => {
+        if (!row.firstLogin) return false;
+        const loginTime = dayjs(row.firstLogin);
+        const shiftStartTime = row.shiftStart || '09:00';
+        const [sh, sm] = shiftStartTime.split(':').map(Number);
+        const configGrace = cycleConfig?.lateGracePeriod || 30;
+        const threshold = loginTime.clone().hour(sh).minute(sm).second(0).millisecond(0).add(configGrace, 'minute');
+        return loginTime.isAfter(threshold);
+    };
+
+    const getRealtimeSummary = () => {
+        const adjustments = new Map<string, { presentDiff: number; lateDiff: number }>();
+
+        savedLogs.forEach((orig) => {
+            const current = data.find((d) => d.id === orig.id);
+            if (!current) {
+                const username = orig.username;
+                const adj = adjustments.get(username) || { presentDiff: 0, lateDiff: 0 };
+                adj.presentDiff -= 1;
+                const wasLate = isRecordLate(orig) && orig.regularizeStatus !== 'Approved';
+                if (wasLate) {
+                    adj.lateDiff -= 1;
+                }
+                adjustments.set(username, adj);
+            }
+        });
+
+        data.forEach((current) => {
+            const orig = savedLogs.find((d) => d.id === current.id);
+            const username = current.username;
+            const adj = adjustments.get(username) || { presentDiff: 0, lateDiff: 0 };
+
+            if (!orig) {
+                adj.presentDiff += 1;
+                const isLateNow = isRecordLate(current) && current.regularizeStatus !== 'Approved';
+                if (isLateNow) {
+                    adj.lateDiff += 1;
+                }
+            } else {
+                const wasLate = isRecordLate(orig) && orig.regularizeStatus !== 'Approved';
+                const isLateNow = isRecordLate(current) && current.regularizeStatus !== 'Approved';
+                if (wasLate && !isLateNow) {
+                    adj.lateDiff -= 1;
+                } else if (!wasLate && isLateNow) {
+                    adj.lateDiff += 1;
+                }
+            }
+            adjustments.set(username, adj);
+        });
+
+        return summaryData.map((item) => {
+            const adj = adjustments.get(item.username) || { presentDiff: 0, lateDiff: 0 };
+            return {
+                ...item,
+                presentDays: Math.max(0, item.presentDays + adj.presentDiff),
+                lateDays: Math.max(0, item.lateDays + adj.lateDiff)
+            };
+        });
+    };
 
     const loadSummary = useCallback(async () => {
         setLoadingSummary(true);
@@ -293,6 +355,7 @@ const Attendance: React.FC = () => {
                 reason: regReason,
                 remarks: regRemarks
             });
+            setData(prev => prev.map(item => item.id === selectedRecord?.id ? { ...item, regularizeStatus: 'Pending', regularizeReason: regReason, regularizeRemarks: regRemarks } : item));
             showToast('Regularization request submitted successfully', 'success');
             handleCloseRegModal();
             loadAttendance();
@@ -307,12 +370,14 @@ const Attendance: React.FC = () => {
     const handleApprove = async (row: AttendanceRecord) => {
         const isConfirmed = await confirm(`Are you sure you want to approve regularization for ${row.username} on ${row.date}?`, 'Approve Regularization');
         if (isConfirmed) {
+            setData(prev => prev.map(item => item.id === row.id ? { ...item, regularizeStatus: 'Approved' } : item));
             try {
                 await request.post(`/api/attendance/approve/${row.id}`);
                 showToast('Regularization request approved', 'success');
                 loadAttendance();
                 loadSummary();
             } catch (e: any) {
+                loadAttendance();
                 showToast(e?.response?.data?.detail || 'Failed to approve regularization', 'error');
             }
         }
@@ -321,6 +386,7 @@ const Attendance: React.FC = () => {
     const handleReject = async (row: AttendanceRecord) => {
         const isConfirmed = await confirm(`Are you sure you want to reject regularization for ${row.username} on ${row.date}?`, 'Reject Regularization');
         if (isConfirmed) {
+            setData(prev => prev.map(item => item.id === row.id ? { ...item, regularizeStatus: 'Rejected' } : item));
             try {
                 await request.post(`/api/attendance/reject/${row.id}`, {
                     remarks: "Rejected by Department Head"
@@ -329,6 +395,7 @@ const Attendance: React.FC = () => {
                 loadAttendance();
                 loadSummary();
             } catch (e: any) {
+                loadAttendance();
                 showToast(e?.response?.data?.detail || 'Failed to reject regularization', 'error');
             }
         }
@@ -337,12 +404,14 @@ const Attendance: React.FC = () => {
     const handleDelete = async (row: AttendanceRecord) => {
         const isConfirmed = await confirm(`Are you sure you want to delete attendance record for ${row.username} on ${row.date}?`, 'Delete Attendance Log');
         if (isConfirmed) {
+            setData(prev => prev.filter(item => item.id !== row.id));
             try {
                 await request.delete(`/api/attendance/${row.id}`);
                 showToast('Attendance log deleted successfully', 'success');
                 loadAttendance();
                 loadSummary();
             } catch (e: any) {
+                loadAttendance();
                 showToast(e?.response?.data?.detail || 'Failed to delete attendance log', 'error');
             }
         }
@@ -369,11 +438,19 @@ const Attendance: React.FC = () => {
         try {
             const firstLoginIso = `${editDate}T${editLogin}:00`;
             const lastLogoutIso = `${editDate}T${editLogout}:00`;
+            const workedHrs = parseFloat(editHours.toString()) || 0.0;
+            setData(prev => prev.map(item => item.id === editingRecord.id ? { 
+                ...item, 
+                firstLogin: firstLoginIso, 
+                lastLogout: lastLogoutIso, 
+                workedHours: workedHrs,
+                regularizeStatus: editStatus
+            } : item));
 
             await request.put(`/api/attendance/${editingRecord.id}`, {
                 firstLogin: firstLoginIso,
                 lastLogout: lastLogoutIso,
-                workedHours: parseFloat(editHours.toString()) || 0.0,
+                workedHours: workedHrs,
                 regularizeStatus: editStatus
             });
 
@@ -382,6 +459,7 @@ const Attendance: React.FC = () => {
             loadAttendance();
             loadSummary();
         } catch (e: any) {
+            loadAttendance();
             showToast(e?.response?.data?.detail || 'Failed to update attendance record', 'error');
         } finally {
             setSubmittingEdit(false);
@@ -816,7 +894,7 @@ const Attendance: React.FC = () => {
                 <Paper sx={{ width: '100%', mb: 2, p: 0, boxShadow: 'none', background: 'transparent' }}>
                     <Table
                         columns={summaryColumns}
-                        data={summaryData}
+                        data={getRealtimeSummary()}
                         loading={loadingSummary}
                     />
                 </Paper>
