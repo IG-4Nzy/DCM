@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
+from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response, UploadFile, File
 from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional, List
@@ -6,6 +6,9 @@ from database import db
 from models import HypervisorModel, CreateHypervisorModel, UpdateHypervisorModel, PaginatedHypervisorsModel
 from bson import ObjectId
 from datetime import datetime, timezone
+import openpyxl
+import io
+import csv
 
 router = APIRouter()
 collection = db.get_collection("hypervisors")
@@ -100,3 +103,107 @@ async def delete_item(id: str):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     raise HTTPException(status_code=404, detail=f"Hypervisor {id} not found")
+
+@router.post("/bulk", response_description="Bulk create hypervisors", dependencies=[Depends(require_privilege("Create Configuration"))])
+async def bulk_create_hypervisors(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+    username = current_user.get("sub", "Unknown")
+    
+    if not file.filename.endswith((".xlsx", ".csv")):
+        raise HTTPException(status_code=400, detail="Only .xlsx or .csv files are supported")
+        
+    content = await file.read()
+    items_to_insert = []
+    current_time = datetime.now(timezone.utc).isoformat()
+    
+    try:
+        seen_names = set()
+        if file.filename.endswith(".xlsx"):
+            wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+            sheet = wb.active
+            rows = list(sheet.iter_rows(values_only=True))
+            if not rows or len(rows) < 2:
+                raise HTTPException(status_code=400, detail="Excel file is empty or missing headers")
+                
+            headers = [str(h).lower().strip() for h in rows[0]]
+            
+            name_idx = next((i for i, h in enumerate(headers) if "hypervisor" in h), -1)
+            remarks_idx = next((i for i, h in enumerate(headers) if "remark" in h), -1)
+            
+            if name_idx == -1:
+                raise HTTPException(status_code=400, detail="Could not find 'Hypervisor' column")
+                
+            for row in rows[1:]:
+                name = row[name_idx]
+                remarks = row[remarks_idx] if remarks_idx != -1 else ""
+                
+                if not name:
+                    continue
+                
+                name_str = str(name).strip()
+                name_lower = name_str.lower()
+                
+                if name_lower in seen_names:
+                    raise HTTPException(status_code=400, detail=f"Duplicate hypervisor '{name_str}' found in the file")
+                seen_names.add(name_lower)
+                
+                existing = await collection.find_one({"hypervisor": {"$regex": f"^{name_str}$", "$options": "i"}})
+                if existing:
+                    raise HTTPException(status_code=400, detail=f"Hypervisor '{name_str}' already exists")
+                    
+                items_to_insert.append({
+                    "hypervisor": name_str,
+                    "remarks": str(remarks).strip() if remarks else "",
+                    "createdBy": username,
+                    "updatedAt": current_time
+                })
+        else:
+            decoded = content.decode("utf-8")
+            reader = csv.reader(decoded.splitlines())
+            rows = list(reader)
+            if not rows or len(rows) < 2:
+                raise HTTPException(status_code=400, detail="CSV file is empty or missing headers")
+                
+            headers = [str(h).lower().strip() for h in rows[0]]
+            
+            name_idx = next((i for i, h in enumerate(headers) if "hypervisor" in h), -1)
+            remarks_idx = next((i for i, h in enumerate(headers) if "remark" in h), -1)
+            
+            if name_idx == -1:
+                raise HTTPException(status_code=400, detail="Could not find 'Hypervisor' column")
+                
+            for row in rows[1:]:
+                if len(row) <= name_idx:
+                    continue
+                name = row[name_idx]
+                remarks = row[remarks_idx] if remarks_idx != -1 and len(row) > remarks_idx else ""
+                
+                if not name:
+                    continue
+                
+                name_str = str(name).strip()
+                name_lower = name_str.lower()
+                
+                if name_lower in seen_names:
+                    raise HTTPException(status_code=400, detail=f"Duplicate hypervisor '{name_str}' found in the file")
+                seen_names.add(name_lower)
+                
+                existing = await collection.find_one({"hypervisor": {"$regex": f"^{name_str}$", "$options": "i"}})
+                if existing:
+                    raise HTTPException(status_code=400, detail=f"Hypervisor '{name_str}' already exists")
+                    
+                items_to_insert.append({
+                    "hypervisor": name_str,
+                    "remarks": str(remarks).strip() if remarks else "",
+                    "createdBy": username,
+                    "updatedAt": current_time
+                })
+                
+        if items_to_insert:
+            await collection.insert_many(items_to_insert)
+            
+        return {"message": f"Successfully created {len(items_to_insert)} hypervisors"}
+        
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error parsing file: {str(e)}")

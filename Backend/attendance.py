@@ -45,11 +45,11 @@ def determine_shift_for_user(username: str, roaster: dict, config_shifts: list, 
         else:
             assigned_shift_name = "Shift 1"
     elif roster_shift == "Shift-2":
-        # Both are on Shift 2
-        assigned_shift_name = "Shift 2"
-    elif roster_shift == "Shift-3":
-        # Both are on Shift 3
+        # First and second assignee are both Shift 3
         assigned_shift_name = "Shift 3"
+    elif roster_shift == "Shift-3":
+        # Remaining 2 in the roster shift 3 are in Shift 4
+        assigned_shift_name = "Shift 4"
     else:
         # Fallback to general mapping (e.g. Shift-4 -> Shift 4)
         assigned_shift_name = roster_shift.replace("-", " ")

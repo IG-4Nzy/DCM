@@ -270,6 +270,7 @@ async def delete_roaster(id: str):
 @router.get("/duty-summary", response_description="Get duty day counts per staff for the configured monthly cycle and current week")
 async def get_duty_summary(
     department: str = Query(...),
+    date_str: Optional[str] = Query(None, alias="date"),
     current_user: dict = Depends(get_current_user)
 ):
     is_superuser = current_user.get("isSuperuser", False)
@@ -283,34 +284,37 @@ async def get_duty_summary(
     start_day = int(config.get("startDay", 1))
     end_day = int(config.get("endDay", 31))
 
-    today = date.today()
-
-    # Calculate cycle start and end dates for the current month
-    try:
-        cycle_start = date(today.year, today.month, start_day)
-    except ValueError:
-        # Handle months with fewer days (e.g. Feb 30 → clamp to last day)
-        import calendar
-        last_day = calendar.monthrange(today.year, today.month)[1]
-        cycle_start = date(today.year, today.month, min(start_day, last_day))
-
-    # If end_day < start_day, cycle spans into the next month
-    if end_day >= start_day:
+    if date_str:
         try:
-            cycle_end = date(today.year, today.month, end_day)
-        except ValueError:
-            import calendar
-            last_day = calendar.monthrange(today.year, today.month)[1]
-            cycle_end = date(today.year, today.month, min(end_day, last_day))
+            today = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except Exception:
+            today = date.today()
     else:
-        next_month = today.month + 1 if today.month < 12 else 1
-        next_year = today.year if today.month < 12 else today.year + 1
-        try:
-            cycle_end = date(next_year, next_month, end_day)
-        except ValueError:
-            import calendar
-            last_day = calendar.monthrange(next_year, next_month)[1]
-            cycle_end = date(next_year, next_month, min(end_day, last_day))
+        today = date.today()
+
+    # Calculate cycle start and end dates based on today/selected date
+    import calendar
+    if start_day == 1:
+        cycle_start = today.replace(day=1)
+        last_day = calendar.monthrange(today.year, today.month)[1]
+        cycle_end = today.replace(day=last_day)
+    else:
+        if today.day >= start_day:
+            last_day_curr = calendar.monthrange(today.year, today.month)[1]
+            cycle_start = today.replace(day=min(start_day, last_day_curr))
+            
+            next_month = today.month + 1 if today.month < 12 else 1
+            next_year = today.year if today.month < 12 else today.year + 1
+            last_day_next = calendar.monthrange(next_year, next_month)[1]
+            cycle_end = date(next_year, next_month, min(end_day, last_day_next))
+        else:
+            prev_month = today.month - 1 if today.month > 1 else 12
+            prev_year = today.year if today.month > 1 else today.year - 1
+            last_day_prev = calendar.monthrange(prev_year, prev_month)[1]
+            cycle_start = date(prev_year, prev_month, min(start_day, last_day_prev))
+            
+            last_day_curr = calendar.monthrange(today.year, today.month)[1]
+            cycle_end = today.replace(day=min(end_day, last_day_curr))
 
     cycle_start_str = cycle_start.isoformat()
     cycle_end_str = cycle_end.isoformat()

@@ -328,7 +328,7 @@ class ObservationModel(BaseModel):
     informedTo: Union[str, List[str]]
     informedToOther: Optional[str] = None
     loggedBy: str
-    status: str = "New"
+    status: str = "Not Resolved"
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -344,7 +344,7 @@ class CreateObservationModel(BaseModel):
     informedTo: Union[str, List[str]]
     informedToOther: Optional[str] = None
     loggedBy: str
-    status: str = "New"
+    status: str = "Not Resolved"
 
 class UpdateObservationModel(BaseModel):
     observedDate: Optional[str] = None
