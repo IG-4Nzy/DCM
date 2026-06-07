@@ -25,4 +25,5 @@ export default {
   attendance: "Attendance",
   auditLogs: "Audit Logs",
   documentations: "Documentations",
+  bmsChecklist: "BMS Checklist",
 };

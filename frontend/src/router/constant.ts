@@ -20,4 +20,5 @@ export const ROUTE_CONSTANTS = {
     ATTENDANCE: "/attendance",
     AUDIT_LOGS: "/audit-logs",
     DOCUMENTATIONS: "/documentations",
+    BMS_CHECKLIST: "/bms-checklist",
 }
