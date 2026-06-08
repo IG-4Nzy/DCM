@@ -1040,7 +1040,7 @@ const BMSChecklist: React.FC = () => {
       >
         {viewingChecklist && (
           <>
-            <DialogTitle sx={{ fontWeight: 700 }}>
+            <DialogTitle sx={{ fontWeight: 700,color:"#333" }}>
               BMS Checklist — {dayjs(viewingChecklist.date).format('DD MMM YYYY')}
               <Chip
                 label={viewingChecklist.status}
