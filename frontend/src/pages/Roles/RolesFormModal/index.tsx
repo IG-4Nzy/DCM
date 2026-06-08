@@ -45,6 +45,13 @@ const PRIVILEGE_GROUPS: { [category: string]: string[] } = {
     "Delete BMS Checklist",
     "Edit BMS Checklist Field"
   ],
+  "Morning Checklist": [
+    "View Morning Checklist",
+    "Create Morning Checklist",
+    "Update Morning Checklist",
+    "Delete Morning Checklist",
+    "Edit Morning Checklist Field"
+  ],
   "Roaster & Attendance": [
     "View Roaster",
     "Create Roaster",

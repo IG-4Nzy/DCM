@@ -22,4 +22,5 @@ export const ROUTE_CONSTANTS = {
     DOCUMENTATIONS: "/documentations",
     BMS_CHECKLIST: "/bms-checklist",
     VISITOR_LOGS: "/visitor-logs",
+    DAILY_ACTIVITIES: "/daily-activities",
 }

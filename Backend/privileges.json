@@ -61,5 +61,10 @@
     "View Documentation",
     "Create Documentation",
     "Update Documentation",
-    "Delete Documentation"
+    "Delete Documentation",
+    "View Morning Checklist",
+    "Create Morning Checklist",
+    "Update Morning Checklist",
+    "Delete Morning Checklist",
+    "Edit Morning Checklist Field"
 ]

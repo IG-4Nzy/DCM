@@ -27,4 +27,6 @@ export default {
   documentations: "Documentations",
   bmsChecklist: "BMS Checklist",
   visitorLogs: "Visitor Logs",
+  dailyActivities: "Daily Activities",
+  morningChecklist: "Morning Checklist",
 };

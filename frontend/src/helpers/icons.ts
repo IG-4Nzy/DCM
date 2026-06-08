@@ -14,7 +14,8 @@ import {
   MdTerminal as TerminalIcon,
   MdInsertDriveFile as DocumentationsIcon,
   MdFactCheck as BMSChecklistIcon,
-  MdAssignmentInd as VisitorLogsIcon
+  MdAssignmentInd as VisitorLogsIcon,
+  MdPlaylistAddCheck as DailyActivitiesIcon
 } from "react-icons/md";
 
 import { IoIosUnlock as RolesIcon } from "react-icons/io";
@@ -55,5 +56,6 @@ export const Icons = {
   TerminalIcon,
   DocumentationsIcon,
   BMSChecklistIcon,
-  VisitorLogsIcon
+  VisitorLogsIcon,
+  DailyActivitiesIcon
 };

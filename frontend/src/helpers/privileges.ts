@@ -72,4 +72,9 @@ export const PRIVILEGES = {
     DOCUMENTATION_CREATE: "Create Documentation",
     DOCUMENTATION_UPDATE: "Update Documentation",
     DOCUMENTATION_DELETE: "Delete Documentation",
+    MORNING_CHECKLIST_VIEW: "View Morning Checklist",
+    MORNING_CHECKLIST_CREATE: "Create Morning Checklist",
+    MORNING_CHECKLIST_UPDATE: "Update Morning Checklist",
+    MORNING_CHECKLIST_DELETE: "Delete Morning Checklist",
+    MORNING_CHECKLIST_FIELD_EDIT: "Edit Morning Checklist Field",
 }

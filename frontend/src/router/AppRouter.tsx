@@ -27,6 +27,7 @@ const AuditLogs = lazy(() => import("../pages/AuditLogs"));
 const Documentations = lazy(() => import("../pages/Documentations"));
 const BMSChecklist = lazy(() => import("../pages/BMSChecklist"));
 const VisitorLogs = lazy(() => import("../pages/Requests/VisitorLogs"));
+const DailyActivities = lazy(() => import("../pages/DailyActivities"));
 
 
 const AppRouter: React.FC = () => {
@@ -64,6 +65,7 @@ const AppRouter: React.FC = () => {
             <Route path={ROUTE_CONSTANTS.DOCUMENTATIONS} element={<Documentations />} />
             <Route path={ROUTE_CONSTANTS.BMS_CHECKLIST} element={<BMSChecklist />} />
             <Route path={ROUTE_CONSTANTS.VISITOR_LOGS} element={<VisitorLogs />} />
+            <Route path={ROUTE_CONSTANTS.DAILY_ACTIVITIES} element={<DailyActivities />} />
           </Route>
 
           <Route path="*" element={<PageNotFound />} />
