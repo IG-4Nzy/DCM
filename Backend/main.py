@@ -25,6 +25,7 @@ from request_routings import router as request_routings_router
 from attendance import router as attendance_router
 from audit_logs import router as audit_logs_router
 from documentations import router as documentations_router
+from bms_checklists import router as bms_checklists_router
 from routers.vcenter_monitor import router as vcenter_monitor_router
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -78,6 +79,13 @@ def get_action_name(method: str, path: str) -> str:
         if method == "PUT": return "Update Request"
         if method == "DELETE": return "Delete Request"
         return "Request Action"
+
+    # Check BMS checklists
+    if "bms-checklists" in parts:
+        if method == "POST": return "Create BMS Checklist"
+        if method == "PUT": return "Update BMS Checklist"
+        if method == "DELETE": return "Delete BMS Checklist"
+        return "BMS Checklist Action"
 
     # Check roasters
     if "roasters" in parts:
@@ -150,6 +158,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             elif "node-details" in parts: collection_name = "node_details"
             elif "vm-details" in parts: collection_name = "vm_details"
             elif "documentations" in parts: collection_name = "documentations"
+            elif "bms-checklists" in parts: collection_name = "bms_checklists"
             
             from bson import ObjectId
             for p in reversed(parts):
@@ -268,6 +277,7 @@ app.include_router(request_routings_router, tags=["request_routings"], prefix="/
 app.include_router(attendance_router, tags=["attendance"], prefix="/api/attendance")
 app.include_router(audit_logs_router, tags=["audit_logs"], prefix="/api/logs")
 app.include_router(documentations_router, tags=["documentations"], prefix="/api/documentations")
+app.include_router(bms_checklists_router, tags=["bms_checklists"], prefix="/api/bms-checklists")
 
 # Mount the new split telemetry monitor endpoints under same prefix for backwards compatibility
 app.include_router(vcenter_monitor_router, tags=["vcenter_telemetry"], prefix="/api/vcenter-details")

@@ -2,6 +2,8 @@
   padding: 24px;
   background-color: #fff;
   min-height: calc(100vh - 64px);
+  color: #1e293b;
+  transition: background-color 0.2s ease, color 0.2s ease;
 
   &__header {
     display: flex;
@@ -82,6 +84,97 @@
     margin-bottom: 16px;
     flex-wrap: wrap;
     align-items: center;
+  }
+
+  &__filterControl {
+    width: 260px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 0 10px;
+    background: #fff;
+    color: #94a3b8;
+    box-sizing: border-box;
+
+    &:has(select) {
+      width: 220px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #1e293b;
+      font-size: 14px;
+    }
+  }
+
+  &__iconButton {
+    border: 1px solid #cbd5e1 !important;
+    color: #334155 !important;
+    background: #fff !important;
+    border-radius: 8px !important;
+  }
+
+  &__deviationMark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: #dc2626;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  &__fieldStack {
+    display: grid;
+    grid-template-columns: minmax(140px, 1fr) minmax(64px, 86px);
+    gap: 6px;
+    align-items: center;
+  }
+
+  &__fieldDialog {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    padding-top: 8px;
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    input {
+      min-height: 38px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 7px 10px;
+      background: #fff;
+      color: #0f172a;
+      font-size: 14px;
+      outline: 0;
+      box-sizing: border-box;
+
+      &:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+      }
+    }
   }
 
   // ─── Checklist Table ───
@@ -228,6 +321,163 @@
     }
   }
 
+  &__cards {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  &__cardGroup {
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+
+    &--header {
+      width: 100%;
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 0;
+      border-bottom: 1px solid #dbeafe;
+      padding: 10px 14px;
+      background: #e0e7ff;
+      color: #3730a3;
+      cursor: pointer;
+      text-align: left;
+      font-size: 14px;
+    }
+  }
+
+  &__deviceBlock {
+    border-bottom: 1px solid #e2e8f0;
+
+    &:last-child {
+      border-bottom: 0;
+    }
+
+    &--header {
+      width: 100%;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 0;
+      padding: 8px 18px;
+      background: #f0fdf4;
+      color: #166534;
+      cursor: pointer;
+      text-align: left;
+      font-weight: 700;
+    }
+  }
+
+  &__cardGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+    padding: 14px;
+    background: #f8fafc;
+  }
+
+  &__paramCard {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    padding: 12px;
+    min-height: 210px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    &.deviation {
+      border-color: #fca5a5;
+      background: #fff5f5;
+    }
+
+    &--top {
+      min-height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    h4 {
+      margin: 0;
+      min-height: 28px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      color: #0f172a;
+      font-size: 14px;
+      line-height: 1.35;
+
+      span {
+        flex: 0 0 auto;
+        border-radius: 4px;
+        background: #f1f5f9;
+        color: #64748b;
+        padding: 2px 6px;
+        font-size: 10px;
+      }
+
+      input {
+        min-width: 0;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 7px 9px;
+        background: #fff;
+        color: #0f172a;
+        font-size: 13px;
+        font-weight: 600;
+        box-sizing: border-box;
+
+        &:last-child {
+          width: 82px;
+          flex: 0 0 82px;
+        }
+      }
+    }
+
+    &--fields {
+      display: grid;
+      gap: 8px;
+
+      label {
+        display: grid;
+        gap: 4px;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      input,
+      strong {
+        min-height: 34px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 7px 9px;
+        background: #fff;
+        color: #0f172a;
+        font-size: 13px;
+        font-weight: 600;
+        box-sizing: border-box;
+      }
+    }
+
+    small {
+      margin-top: auto;
+      color: #64748b;
+      font-size: 11px;
+    }
+  }
+
   // ─── History Tab ───
   &__history {
     &--card {
@@ -313,6 +563,140 @@
 
     &.open {
       transform: rotate(90deg);
+    }
+  }
+}
+
+.dark {
+  background: #101820;
+  color: #dbe4ee;
+
+  .container__header--title {
+    color: #f8fafc;
+  }
+
+  .container__meta,
+  .container__cardGrid {
+    background: #17212b;
+    border-color: #2b3a49;
+  }
+
+  .container__meta--field {
+    label {
+      color: #94a3b8;
+    }
+
+    span,
+    input {
+      color: #e2e8f0;
+    }
+
+    input {
+      background: #0f172a;
+      border-color: #334155;
+    }
+  }
+
+  .container__filterControl {
+    background: #0f172a;
+    border-color: #334155;
+
+    input,
+    select {
+      color: #e2e8f0;
+    }
+  }
+
+  .container__fieldDialog {
+    label {
+      color: #94a3b8;
+    }
+
+    input {
+      background: #0f172a;
+      border-color: #334155;
+      color: #e2e8f0;
+    }
+  }
+
+  .container__iconButton,
+  .container__cardGroup,
+  .container__paramCard {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+  }
+
+  .container__paramCard {
+    h4 {
+      color: #f8fafc;
+    }
+
+    input,
+    strong {
+      background: #111827;
+      border-color: #334155;
+      color: #e2e8f0;
+    }
+  }
+
+  .container__table {
+    border-color: #334155;
+
+    tbody {
+      tr {
+        background: #101820 !important;
+
+        &:hover {
+          background: #17212b !important;
+        }
+      }
+
+      td {
+        border-bottom-color: #334155;
+      }
+
+      input {
+        background: #0f172a;
+        border-color: #334155;
+        color: #e2e8f0;
+      }
+    }
+  }
+}
+
+@media (max-width: 900px) {
+  .container {
+    padding: 16px;
+
+    &__filters {
+      align-items: stretch;
+
+      > div {
+        margin-left: 0 !important;
+      }
+    }
+
+    &__filterControl {
+      width: 100%;
+
+      &:has(select) {
+        width: 100%;
+      }
+    }
+
+    &__fieldDialog {
+      grid-template-columns: 1fr;
+    }
+
+    &__fieldStack {
+      grid-template-columns: 1fr;
+    }
+
+    &__table {
+      display: block;
+      overflow-x: auto;
+      white-space: nowrap;
     }
   }
 }

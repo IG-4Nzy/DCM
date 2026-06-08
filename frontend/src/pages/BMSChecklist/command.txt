@@ -166,3 +166,9 @@ A professional-grade BMS checklist system used for:
 - Audit compliance
 
 System must be scalable to thousands of parameters without UI rewrite.
+
+
+
+
+
+In checklist add field, for category,there can be multiple parameters, and device can be shown dropdown as like the category field.

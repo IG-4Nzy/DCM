@@ -99,5 +99,11 @@ export const SIDEBAR_OPTIONS = [
         icon: Icons.TerminalIcon,
         route: ROUTE_CONSTANTS.AUDIT_LOGS,
         superuserOnly: true
+    },
+    {
+        label: wordings.bmsChecklist,
+        icon: Icons.BMSChecklistIcon,
+        route: ROUTE_CONSTANTS.BMS_CHECKLIST,
+        privileges: [PRIVILEGES.BMS_CHECKLIST_VIEW, PRIVILEGES.BMS_CHECKLIST_CREATE, PRIVILEGES.BMS_CHECKLIST_UPDATE, PRIVILEGES.BMS_CHECKLIST_DELETE]
     }
 ]

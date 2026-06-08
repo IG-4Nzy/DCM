@@ -1,7 +1,7 @@
 // localStorage-based persistence for BMS Checklists
 // Structured to allow easy swap to backend API later.
 
-import { SavedChecklist, ChecklistConfig } from './config';
+import type { SavedChecklist, ChecklistConfig } from './config';
 
 const STORAGE_KEY = 'bms_checklists';
 
