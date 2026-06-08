@@ -169,7 +169,7 @@ System must be scalable to thousands of parameters without UI rewrite.
 
 
 
-
-
 In checklist add field, for category,there can be multiple parameters, and device can be shown dropdown as like the category field.
 for fields edit ,need checklist field edit privilege as like for the checklist add fields.
+For bulk uploads in every modules,sl number or id is not given currctly or sequentionly.,
+in their birthdays,on their first log in -> show birthday wish and a popup.
