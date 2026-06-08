@@ -2,7 +2,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Depends
 from bson import ObjectId
 from database import db
-from auth_utils import get_current_user
+from auth_utils import get_current_user, require_privilege
 from services.vcenter.health_service import vcenter_health_service
 
 router = APIRouter()
@@ -27,7 +27,7 @@ async def get_vcenter_telemetry_snapshot(vc_id: str) -> dict:
 
 # Legacy /monitor compatibility endpoint so frontend doesn't break
 @router.get("/{id}/monitor", tags=["telemetry"])
-async def monitor_legacy(id: str, current_user: dict = Depends(get_current_user)):
+async def monitor_legacy(id: str, current_user: dict = Depends(require_privilege("View Server Monitoring"))):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
     snap = await get_vcenter_telemetry_snapshot(id)
@@ -43,7 +43,7 @@ async def monitor_legacy(id: str, current_user: dict = Depends(get_current_user)
     return snap
 
 @router.get("/{id}/monitor/summary", tags=["telemetry"])
-async def monitor_summary(id: str, current_user: dict = Depends(get_current_user)):
+async def monitor_summary(id: str, current_user: dict = Depends(require_privilege("View Server Monitoring"))):
     snap = await get_vcenter_telemetry_snapshot(id)
     return {
         "vcenterId": id,
@@ -53,7 +53,7 @@ async def monitor_summary(id: str, current_user: dict = Depends(get_current_user
     }
 
 @router.get("/{id}/monitor/hosts", tags=["telemetry"])
-async def monitor_hosts(id: str, current_user: dict = Depends(get_current_user)):
+async def monitor_hosts(id: str, current_user: dict = Depends(require_privilege("View Server Monitoring"))):
     snap = await get_vcenter_telemetry_snapshot(id)
     return {
         "vcenterId": id,
@@ -61,7 +61,7 @@ async def monitor_hosts(id: str, current_user: dict = Depends(get_current_user))
     }
 
 @router.get("/{id}/monitor/vms", tags=["telemetry"])
-async def monitor_vms(id: str, current_user: dict = Depends(get_current_user)):
+async def monitor_vms(id: str, current_user: dict = Depends(require_privilege("View Server Monitoring"))):
     snap = await get_vcenter_telemetry_snapshot(id)
     return {
         "vcenterId": id,
@@ -69,7 +69,7 @@ async def monitor_vms(id: str, current_user: dict = Depends(get_current_user)):
     }
 
 @router.get("/{id}/monitor/alarms", tags=["telemetry"])
-async def monitor_alarms(id: str, current_user: dict = Depends(get_current_user)):
+async def monitor_alarms(id: str, current_user: dict = Depends(require_privilege("View Server Monitoring"))):
     snap = await get_vcenter_telemetry_snapshot(id)
     return {
         "vcenterId": id,
@@ -77,7 +77,7 @@ async def monitor_alarms(id: str, current_user: dict = Depends(get_current_user)
     }
 
 @router.get("/{id}/monitor/events", tags=["telemetry"])
-async def monitor_events(id: str, current_user: dict = Depends(get_current_user)):
+async def monitor_events(id: str, current_user: dict = Depends(require_privilege("View Server Monitoring"))):
     snap = await get_vcenter_telemetry_snapshot(id)
     return {
         "vcenterId": id,
@@ -85,7 +85,7 @@ async def monitor_events(id: str, current_user: dict = Depends(get_current_user)
     }
 
 @router.get("/health/vcenter/{id}", tags=["health"])
-async def check_health(id: str, current_user: dict = Depends(get_current_user)):
+async def check_health(id: str, current_user: dict = Depends(require_privilege("View Server Monitoring"))):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 

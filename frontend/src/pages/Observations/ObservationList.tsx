@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, Paper, Tooltip, IconButton, MenuItem, Select, FormControl, TextField } from '@mui/material';
-import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
+import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdDownload as DownloadIcon } from 'react-icons/md';
 import type { AppDispatch, RootState } from '../../store';
-import { fetchObservations, createObservation, updateObservation, deleteObservation } from './action';
+import { fetchObservations, createObservation, updateObservation, deleteObservation, downloadObservations } from './action';
 import { fetchObservationCategories } from './action';
 import { fetchDepartments } from '../Departments/action';
 import { fetchUsers } from '../Users/action';
@@ -168,6 +168,53 @@ const ObservationList: React.FC = () => {
     setPage(0);
   };
 
+  const csvEscape = (value: unknown) => {
+    const text = Array.isArray(value) ? value.join(', ') : String(value ?? '');
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+
+  const handleDownloadObservations = async () => {
+    const response = await downloadObservations({
+      search: searchQuery,
+      status_filter: statusFilter,
+      date_filter: dateFilter || undefined,
+    });
+
+    const rows = response.data.map((row) => {
+      const informed = Array.isArray(row.informedTo) ? row.informedTo : (row.informedTo ? [row.informedTo] : []);
+      const informedText = informed.map((item: string) => item === 'Other' ? row.informedToOther : item).filter(Boolean).join(', ');
+      const loggedUser = users.find((user: any) => user.username === row.loggedBy || user.id === row.loggedBy);
+      const loggedBy = loggedUser ? `${loggedUser.firstName || ''} ${loggedUser.lastName || ''}`.trim() || loggedUser.username : row.loggedBy;
+
+      return [
+        row.observationId,
+        row.observedDate,
+        row.observedTime,
+        row.category,
+        row.description,
+        row.amc,
+        informedText,
+        loggedBy,
+        row.status,
+      ].map(csvEscape).join(',');
+    });
+
+    const csv = [
+      ['ID', 'Observed Date', 'Observed Time', 'Category', 'Description', 'AMC', 'Informed To', 'Logged By', 'Status'].map(csvEscape).join(','),
+      ...rows,
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `observations-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const columns: Column<any>[] = [
     { id: 'observationId', label: 'ID', sortable: true },
     {
@@ -295,6 +342,9 @@ const ObservationList: React.FC = () => {
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
           <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search observations..." />
+          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadObservations}>
+            Download
+          </Button>
           {hasCreatePrivilege && (
             <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => handleOpenModal(undefined, true)}>
               Add Observation

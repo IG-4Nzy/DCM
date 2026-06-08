@@ -5,7 +5,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from auth_utils import get_current_user, require_privilege
+from auth_utils import get_current_user, require_any_privilege, require_privilege
 from database import db
 
 router = APIRouter()
@@ -107,7 +107,7 @@ async def get_bms_checklist(id: str):
     response_description="Update BMS checklist",
     response_model=BMSChecklistModel,
     response_model_by_alias=False,
-    dependencies=[Depends(require_privilege("Update BMS Checklist"))],
+    dependencies=[Depends(require_any_privilege(["Update BMS Checklist", "Edit BMS Checklist Field"]))],
 )
 async def update_bms_checklist(id: str, payload: BMSChecklistModel = Body(...)):
     if not ObjectId.is_valid(id):

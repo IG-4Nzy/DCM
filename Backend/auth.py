@@ -23,6 +23,8 @@ class LoginResponse(BaseModel):
     username: str
     privileges: list[str]
     isSuperuser: bool = False
+    showBirthdayWish: bool = False
+    displayName: Optional[str] = None
 
 class UpdateProfileModel(BaseModel):
     firstName: Optional[str] = None
@@ -42,6 +44,20 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+def is_birthday_today(dob: Optional[str], today: datetime) -> bool:
+    if not dob:
+        return False
+
+    formats = ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%m/%d/%Y")
+    for date_format in formats:
+        try:
+            parsed = datetime.strptime(dob[:10], date_format)
+            return parsed.month == today.month and parsed.day == today.day
+        except ValueError:
+            continue
+
+    return False
 
 @router.post("/login", response_model=LoginResponse)
 async def login(credentials: LoginRequest):
@@ -78,6 +94,8 @@ async def login(credentials: LoginRequest):
         "department": user.get("department", "")
     })
     
+    is_first_login_today = False
+
     # Record first login of the day in attendance
     try:
         config_collection = db.get_collection("attendance_config")
@@ -99,6 +117,7 @@ async def login(credentials: LoginRequest):
             })
             
             if not existing_attendance:
+                is_first_login_today = True
                 await attendance_collection.insert_one({
                     "username": user["username"],
                     "department": user.get("department") or "Unassigned",
@@ -118,7 +137,11 @@ async def login(credentials: LoginRequest):
         role=role,
         username=user["username"],
         privileges=privileges,
-        isSuperuser=is_superuser
+        isSuperuser=is_superuser,
+        showBirthdayWish=is_first_login_today and is_birthday_today(user.get("dob"), datetime.now()),
+        displayName=" ".join(
+            part for part in [user.get("firstName", ""), user.get("lastName", "")] if part
+        ) or user["username"]
     )
 
 @router.post("/logout")

@@ -34,6 +34,24 @@ router = APIRouter()
 collection = db.get_collection("vcenter_details")
 
 
+def _percent_used(capacity, free) -> float:
+    if not capacity:
+        return 0.0
+    return round(max(0.0, min(100.0, ((capacity - free) / capacity) * 100)), 1)
+
+
+def _host_name(host: dict) -> str:
+    return host.get("name") or host.get("host") or host.get("host_id") or "esxi-host"
+
+
+def _host_id(host: dict) -> str:
+    return host.get("host") or host.get("host_id") or host.get("name") or ""
+
+
+def _vm_host_ref(vm: dict) -> str:
+    return vm.get("host") or vm.get("hostName") or vm.get("host_name") or ""
+
+
 # ─────────────────────────────────────────────────────────
 # CRUD ENDPOINTS (preserved from original)
 # ─────────────────────────────────────────────────────────
@@ -211,7 +229,7 @@ async def delete_item(id: str):
 # ─────────────────────────────────────────────────────────
 
 @router.get("/{id}/monitor", response_description="Get live vCenter monitoring telemetry")
-async def monitor_vcenter(id: str, current_user: dict = Depends(get_current_user)):
+async def monitor_vcenter(id: str, current_user: dict = Depends(require_privilege("View Server Monitoring"))):
     """
     Returns the latest telemetry snapshot for a vCenter instance.
     Data is pre-collected by the background VCenterTelemetryScheduler and stored in MongoDB.
@@ -263,13 +281,21 @@ async def monitor_vcenter(id: str, current_user: dict = Depends(get_current_user
                 # Fetch live inventory via service layer (cached + rate-limited)
                 live_hosts = await vcenter_inventory_service.get_hosts(ip_address, session_id, cluster_id or None)
                 live_vms = await vcenter_inventory_service.get_vms(ip_address, session_id, cluster_id or None)
+                datastores = await vcenter_inventory_service.get_datastores(ip_address, session_id)
                 metrics = await vcenter_metrics_service.get_live_metrics(ip_address, session_id)
 
+                if datastores:
+                    total_capacity = sum(float(ds.get("capacity") or 0) for ds in datastores)
+                    total_free = sum(float(ds.get("free_space") or 0) for ds in datastores)
+                    metrics["hddUsage"] = _percent_used(total_capacity, total_free)
+
                 for h in live_hosts:
+                    connection_state = str(h.get("connection_state") or h.get("status") or "").lower()
                     hosts_telemetry.append({
-                        "name": h.get("name", "esxi-host"),
-                        "ipAddress": h.get("name", "0.0.0.0"),
-                        "status": "Connected" if h.get("connection_state") in ("CONNECTED", "connected") else "Disconnected",
+                        "id": _host_id(h),
+                        "name": _host_name(h),
+                        "ipAddress": h.get("ip_address") or h.get("ipAddress") or _host_name(h),
+                        "status": "Connected" if connection_state in ("connected", "normal", "ok") else "Disconnected",
                         "cpuUsage": metrics.get("cpuUsage", 0.0),
                         "ramUsage": metrics.get("ramUsage", 0.0),
                         "cpuTemp": "--",
@@ -279,10 +305,13 @@ async def monitor_vcenter(id: str, current_user: dict = Depends(get_current_user
                     })
 
                 for vm in live_vms:
+                    host_ref = _vm_host_ref(vm)
                     vms_telemetry.append({
+                        "id": vm.get("vm") or vm.get("vm_id") or vm.get("name", "vm-instance"),
                         "name": vm.get("name", "vm-instance"),
                         "ipAddress": vm.get("ipAddress") or "0.0.0.0",
-                        "node": vm.get("host") or "esxi-host",
+                        "node": host_ref or "Unassigned",
+                        "hostId": host_ref,
                         "cpuUsage": 0.0,
                         "ramUsage": 0.0,
                         "status": "Running" if vm.get("power_state") in ("POWERED_ON", "poweredOn") else "Stopped"

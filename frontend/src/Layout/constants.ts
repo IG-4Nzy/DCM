@@ -75,7 +75,7 @@ export const SIDEBAR_OPTIONS = [
         label: wordings.search,
         icon: Icons.SearchIcon,
         route: ROUTE_CONSTANTS.SEARCH,
-        privileges: [PRIVILEGES.SEARCH_VIEW, PRIVILEGES.SEARCH_CREATE, PRIVILEGES.SEARCH_UPDATE, PRIVILEGES.SEARCH_DELETE]
+        privileges: [PRIVILEGES.SEARCH_VIEW]
     },
     {
         label: wordings.serverMonitoring,
@@ -92,7 +92,8 @@ export const SIDEBAR_OPTIONS = [
     {
         label: wordings.documentations,
         icon: Icons.DocumentationsIcon,
-        route: ROUTE_CONSTANTS.DOCUMENTATIONS
+        route: ROUTE_CONSTANTS.DOCUMENTATIONS,
+        privileges: [PRIVILEGES.DOCUMENTATION_VIEW]
     },
     {
         label: wordings.auditLogs,
@@ -105,5 +106,11 @@ export const SIDEBAR_OPTIONS = [
         icon: Icons.BMSChecklistIcon,
         route: ROUTE_CONSTANTS.BMS_CHECKLIST,
         privileges: [PRIVILEGES.BMS_CHECKLIST_VIEW, PRIVILEGES.BMS_CHECKLIST_CREATE, PRIVILEGES.BMS_CHECKLIST_UPDATE, PRIVILEGES.BMS_CHECKLIST_DELETE]
+    },
+    {
+        label: wordings.visitorLogs,
+        icon: Icons.VisitorLogsIcon,
+        route: ROUTE_CONSTANTS.VISITOR_LOGS,
+        privileges: [PRIVILEGES.REQUEST_VIEW]
     }
 ]

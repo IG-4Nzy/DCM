@@ -14,6 +14,63 @@ departments_collection = db.get_collection("departments")
 users_collection = db.get_collection("users")
 
 
+async def log_request_action(request_id: str, action: str, details: str, username: str, remarks: Optional[str] = None):
+    try:
+        logs_col = db.get_collection("request_logs")
+        log_entry = {
+            "requestId": request_id,
+            "action": action,
+            "details": details,
+            "user": username,
+            "remarks": remarks or "",
+            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        }
+        await logs_col.insert_one(log_entry)
+    except Exception as e:
+        print(f"Failed to write request history log: {e}")
+
+
+async def add_visitor_log_on_completion(existing_request: dict, username: str):
+    if not existing_request or existing_request.get("visitorReflected"):
+        return
+
+    try:
+        request_type = existing_request.get("requestType") or existing_request.get("category", "")
+        if request_type == "DC Entry":
+            details = existing_request.get("details") or {}
+            
+            # Resolve the requester's full name and department
+            users_col = db.get_collection("users")
+            user = await users_col.find_one({"username": existing_request.get("createdBy", "")})
+            visitor_name = "Unknown"
+            division = "Unknown"
+            if user:
+                first = user.get("firstName", "")
+                last = user.get("lastName", "")
+                visitor_name = f"{first} {last}".strip() or user.get("username", "Unknown")
+                division = user.get("department", "Unknown")
+
+            visitor_log = {
+                "requestId": str(existing_request["_id"]),
+                "visitorName": visitor_name,
+                "division": division,
+                "purpose": existing_request.get("purpose") or details.get("purpose") or "Datacentre Visit",
+                "entryTime": details.get("entryTime") or details.get("dateTime") or existing_request.get("createdAt") or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "exitTime": details.get("exitTime") or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "loggedBy": username or "system",
+                "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            }
+
+            visitor_logs_col = db.get_collection("visitor_logs")
+            await visitor_logs_col.insert_one(visitor_log)
+            
+            # Mark visitorReflected = True in the request document
+            req_col = db.get_collection("requests")
+            await req_col.update_one({"_id": existing_request["_id"]}, {"$set": {"visitorReflected": True}})
+    except Exception as e:
+        print(f"Error in add_visitor_log_on_completion: {e}")
+
+
 async def get_routing_for_type(request_type: str):
     """Fetch the routing configuration for a given request type."""
     # Try exact match first
@@ -120,7 +177,7 @@ async def deduct_inventory_on_completion(existing_request: dict, username: str):
                         if not isinstance(history, list):
                             history = []
                         history_entry = {
-                            "date": datetime.now(timezone.utc).isoformat() + "Z",
+                            "date": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                             "action": "issued",
                             "quantityChange": -qty_to_deduct,
                             "remainingQuantity": new_qty,
@@ -133,7 +190,7 @@ async def deduct_inventory_on_completion(existing_request: dict, username: str):
                             {
                                 "$set": {
                                     "quantity": new_qty,
-                                    "lastUpdatedDate": datetime.now(timezone.utc).isoformat() + "Z",
+                                    "lastUpdatedDate": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                                     "lastUpdatedBy": username or "system",
                                     "history": history
                                 }
@@ -251,6 +308,41 @@ async def list_items(
     return {"data": items, "total": total}
 
 
+@router.get("/visitor-logs", response_description="List all visitor logs", dependencies=[Depends(require_privilege("View Request"))])
+async def list_visitor_logs(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1),
+    search: Optional[str] = None
+):
+    query = {}
+    if search:
+        query["$or"] = [
+            {"visitorName": {"$regex": search, "$options": "i"}},
+            {"division": {"$regex": search, "$options": "i"}},
+            {"purpose": {"$regex": search, "$options": "i"}}
+        ]
+    
+    col = db.get_collection("visitor_logs")
+    total = await col.count_documents(query)
+    cursor = col.find(query).sort("entryTime", -1).skip(skip).limit(limit)
+    items = await cursor.to_list(length=limit)
+    for item in items:
+        item["_id"] = str(item["_id"])
+    return {"data": items, "total": total}
+
+
+@router.get("/{id}/logs", response_description="Get history logs for a request", dependencies=[Depends(require_privilege("View Request"))])
+async def get_request_logs(id: str, current_user: dict = Depends(get_current_user)):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    logs_col = db.get_collection("request_logs")
+    cursor = logs_col.find({"requestId": id}).sort("timestamp", 1)
+    logs = await cursor.to_list(length=None)
+    for log in logs:
+        log["_id"] = str(log["_id"])
+    return logs
+
+
 @router.get("/stages/{request_type}", response_description="Get stages for a request type", dependencies=[Depends(require_privilege("View Request"))])
 async def get_stages(request_type: str, current_user: dict = Depends(get_current_user)):
     """Return the configured stages for a given request type."""
@@ -292,6 +384,15 @@ async def create_item(
 
     new_item = await collection.insert_one(item_dict)
     created = await collection.find_one({"_id": new_item.inserted_id})
+    if created:
+        await log_request_action(
+            request_id=str(created["_id"]),
+            action="Created",
+            details=f"Request created with status '{created.get('status')}'",
+            username=requester
+        )
+        if created.get("status") == "Completed":
+            await add_visitor_log_on_completion(created, requester)
     return created
 
 
@@ -321,7 +422,10 @@ async def update_item(id: str, payload: UpdateRequestModel = Body(...), current_
 
     # If status is being changed, handle stage progression
     new_status = item_dict.get("status")
-    if new_status and new_status != existing.get("status"):
+    old_status = existing.get("status")
+    status_changed = False
+    if new_status and new_status != old_status:
+        status_changed = True
         request_type = existing.get("requestType") or existing.get("category", "")
         routing = await get_routing_for_type(request_type)
 
@@ -347,10 +451,27 @@ async def update_item(id: str, payload: UpdateRequestModel = Body(...), current_
     )
 
     updated = await collection.find_one({"_id": ObjectId(id)})
-    if updated and updated.get("status") == "Completed":
-        await deduct_inventory_on_completion(updated, username)
-        await add_vm_details_on_completion(updated, username)
-        updated = await collection.find_one({"_id": ObjectId(id)})
+    if updated:
+        if updated.get("status") == "Completed":
+            await deduct_inventory_on_completion(updated, username)
+            await add_vm_details_on_completion(updated, username)
+            await add_visitor_log_on_completion(updated, username)
+            updated = await collection.find_one({"_id": ObjectId(id)})
+        
+        # Log update action
+        if status_changed:
+            action = f"Status Transition ({new_status})"
+            details = f"Status changed from '{old_status}' to '{new_status}'"
+        else:
+            action = "Update"
+            details = "Request details updated"
+        await log_request_action(
+            request_id=id,
+            action=action,
+            details=details,
+            username=username,
+            remarks=payload.remarks
+        )
     return updated
 
 
@@ -436,12 +557,26 @@ async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), c
             "updatedAt": datetime.now(timezone.utc).isoformat()
         }
 
+    old_status = existing.get("status")
     await collection.update_one({"_id": ObjectId(id)}, {"$set": update_data})
     updated = await collection.find_one({"_id": ObjectId(id)})
-    if updated and updated.get("status") == "Completed":
-        await deduct_inventory_on_completion(updated, username)
-        await add_vm_details_on_completion(updated, username)
-        updated = await collection.find_one({"_id": ObjectId(id)})
+    if updated:
+        if updated.get("status") == "Completed":
+            await deduct_inventory_on_completion(updated, username)
+            await add_vm_details_on_completion(updated, username)
+            await add_visitor_log_on_completion(updated, username)
+            updated = await collection.find_one({"_id": ObjectId(id)})
+        
+        # Log advance action
+        new_status = updated.get("status")
+        remarks = payload.get("remarks") if payload else None
+        await log_request_action(
+            request_id=id,
+            action=f"Advanced ({new_status})",
+            details=f"Request advanced from stage '{old_status}' to '{new_status}'",
+            username=username,
+            remarks=remarks
+        )
     return updated
 
 

@@ -218,7 +218,7 @@ const Works: React.FC = () => {
         if (!row.assignee) return "Unassigned";
         const user = users.find((u: any) => u.id === row.assignee || u._id === row.assignee || u.username === row.assignee);
         if (user) {
-           return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || user.name;
+          return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || '';
         }
         return "User Removed";
       }

@@ -28,6 +28,16 @@ export const fetchObservations = createAsyncThunk<FetchObservationsResponse, Fet
   }
 );
 
+export const downloadObservations = async (params: FetchParams = {}): Promise<FetchObservationsResponse> => {
+  const response = await request.get('/api/observations', {
+    params: {
+      ...params,
+      pagination: false,
+    },
+  });
+  return response.data;
+};
+
 export const createObservation = createAsyncThunk<ObservationData, Partial<ObservationData>, { rejectValue: string }>(
   'observations/createObservation',
   async (observationData, { rejectWithValue }) => {

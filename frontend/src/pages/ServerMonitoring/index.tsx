@@ -71,6 +71,7 @@ interface VCenterItem {
 }
 
 interface HostTelemetry {
+  id?: string;
   name: string;
   ipAddress: string;
   status: string;
@@ -83,9 +84,11 @@ interface HostTelemetry {
 }
 
 interface VmTelemetry {
+  id?: string;
   name: string;
   ipAddress: string;
   node: string;
+  hostId?: string;
   cpuUsage: number;
   ramUsage: number;
   status: string;
@@ -126,6 +129,26 @@ interface MonitorData {
 const ServerMonitoring: React.FC = () => {
   const { showToast } = useToast();
   const [vcenters, setVcenters] = useState<VCenterItem[]>([]);
+
+  const playAlarmSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 800;
+      gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.5);
+    } catch (e) {
+      console.warn('AudioContext failed to initialize or play sound:', e);
+    }
+  };
   const [clusters, setClusters] = useState<any[]>([]);
   const [nodesList, setNodesList] = useState<any[]>([]);
   
@@ -220,7 +243,7 @@ const ServerMonitoring: React.FC = () => {
             setVcenterTelemetryMap(prev => ({ ...prev, [id]: data }));
           })
           .catch(() => {
-            setOfflineVcenterIds(prev => [...prev, id]);
+            setOfflineVcenterIds(prev => prev.includes(id) ? prev : [...prev, id]);
           });
       });
     } catch (err) {
@@ -240,10 +263,20 @@ const ServerMonitoring: React.FC = () => {
     if (!silent) setLoadingMonitor(true);
     try {
       const data = await fetchVCenterTelemetry(vcId);
-      setMonitorData(data);
       
-      // Update telemetry map as well
-      setVcenterTelemetryMap(prev => ({ ...prev, [vcId]: data }));
+      // Check status change to Red
+      setVcenterTelemetryMap(prev => {
+        const prevData = prev[vcId];
+        const wasOffline = offlineVcenterIds.includes(vcId) || (prevData?.status === 'Red');
+        const isOffline = (data.status === 'Red');
+        if (isOffline && !wasOffline) {
+          playAlarmSound();
+        }
+        return { ...prev, [vcId]: data };
+      });
+
+      setMonitorData(data);
+      setOfflineVcenterIds(prev => prev.filter(item => item !== vcId));
       
       // Update terminal with fresh log line
       const timeStr = new Date().toLocaleTimeString();
@@ -262,6 +295,12 @@ const ServerMonitoring: React.FC = () => {
     } catch (err) {
       console.error(err);
       if (!silent) showToast('Failed to connect to vCenter monitor endpoint', 'error');
+      
+      const wasOffline = offlineVcenterIds.includes(vcId);
+      if (!wasOffline) {
+        playAlarmSound();
+        setOfflineVcenterIds(prev => [...prev, vcId]);
+      }
     } finally {
       if (!silent) setLoadingMonitor(false);
     }
@@ -284,6 +323,40 @@ const ServerMonitoring: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [selectedVcenter, autoRefresh]);
+
+  // Poll for all registered vCenters when none is selected
+  useEffect(() => {
+    if (selectedVcenter || !autoRefresh) return;
+
+    const interval = setInterval(() => {
+      vcenters.forEach((vc) => {
+        const id = vc.id || vc._id;
+        if (!id) return;
+        fetchVCenterTelemetry(id)
+          .then((data) => {
+            setVcenterTelemetryMap(prev => {
+              const prevData = prev[id];
+              const wasOffline = offlineVcenterIds.includes(id) || (prevData?.status === 'Red');
+              const isOffline = (data.status === 'Red');
+              if (isOffline && !wasOffline) {
+                playAlarmSound();
+              }
+              return { ...prev, [id]: data };
+            });
+            setOfflineVcenterIds(prev => prev.filter(item => item !== id));
+          })
+          .catch(() => {
+            const wasOffline = offlineVcenterIds.includes(id);
+            if (!wasOffline) {
+              playAlarmSound();
+              setOfflineVcenterIds(prev => [...prev, id]);
+            }
+          });
+      });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [selectedVcenter, autoRefresh, vcenters, offlineVcenterIds]);
 
   // Keep terminal scrolled to bottom
   useEffect(() => {
@@ -395,7 +468,7 @@ const ServerMonitoring: React.FC = () => {
             setVcenterTelemetryMap(prev => ({ ...prev, [newId]: data }));
           })
           .catch(() => {
-            setOfflineVcenterIds(prev => [...prev, newId]);
+            setOfflineVcenterIds(prev => prev.includes(newId) ? prev : [...prev, newId]);
           });
       }
     } catch (err: any) {
@@ -417,11 +490,19 @@ const ServerMonitoring: React.FC = () => {
     (vm.ipAddress || '').toLowerCase().includes((vmSearch || '').toLowerCase())
   ) || [];
 
-  // Filtered vCenter list
+  // Filtered vCenter list sorted by status (offline/Red at the top)
   const filteredVcenters = vcenters.filter(vc =>
     (vc.name || '').toLowerCase().includes((vcenterSearch || '').toLowerCase()) ||
     (vc.ipAddress || '').toLowerCase().includes((vcenterSearch || '').toLowerCase())
-  );
+  ).sort((a, b) => {
+    const aId = a.id || a._id || '';
+    const bId = b.id || b._id || '';
+    const aOffline = offlineVcenterIds.includes(aId) || (vcenterTelemetryMap[aId]?.status === 'Red');
+    const bOffline = offlineVcenterIds.includes(bId) || (vcenterTelemetryMap[bId]?.status === 'Red');
+    if (aOffline && !bOffline) return -1;
+    if (!aOffline && bOffline) return 1;
+    return 0;
+  });
 
   return (
     <Box className={styles.container}>
@@ -466,7 +547,9 @@ const ServerMonitoring: React.FC = () => {
                 </Box>
                 <Box>
                   <Typography variant="subtitle2" color="textSecondary" sx={{ fontWeight: 600 }}>Cluster Status</Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 800 }}>100% Operational</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                    {Object.values(vcenterTelemetryMap).filter((item: any) => item.status === 'Green').length}/{vcenters.length} Healthy
+                  </Typography>
                 </Box>
               </Paper>
             </Grid>
@@ -749,7 +832,11 @@ const ServerMonitoring: React.FC = () => {
                                       {telemetry.hosts.map((host, hIdx) => {
                                         // Filter VMs mapping to this host's hostName
                                         const hostVms = telemetry.vms.filter(vm => 
-                                          (vm.node || '').toLowerCase() === (host.name || '').toLowerCase()
+                                          [vm.node, vm.hostId].filter(Boolean).some(ref =>
+                                            [host.name, host.id].filter(Boolean).some(hostRef =>
+                                              String(ref).toLowerCase() === String(hostRef).toLowerCase()
+                                            )
+                                          )
                                         );
 
                                         return (
@@ -949,11 +1036,6 @@ const ServerMonitoring: React.FC = () => {
               totalHddGb = parseInt(selectedVcenter.hdd) || 0;
             }
 
-            // High reliability fallbacks if unresolved
-            if (totalCores === 0) totalCores = 32;
-            if (totalRamGb === 0) totalRamGb = 128;
-            if (totalHddGb === 0) totalHddGb = 2048;
-
             const cpuUsed = ((monitorData.metrics.cpuUsage || 0) / 100) * totalCores;
             const cpuFree = Math.max(0, totalCores - cpuUsed);
 
@@ -1121,7 +1203,7 @@ const ServerMonitoring: React.FC = () => {
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                   <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 35 }}>{host.cpuUsage}%</Typography>
                                   <Box sx={{ width: 60, height: 6, bgcolor: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
-                                    <div style={{ width: `${host.cpuUsage}%`, height: '100%', bgcolor: getMetricProgressColor(host.cpuUsage), borderRadius: 3 }} />
+                                    <div style={{ width: `${host.cpuUsage}%`, height: '100%', backgroundColor: getMetricProgressColor(host.cpuUsage), borderRadius: 3 }} />
                                   </Box>
                                 </Box>
                               </TableCell>
@@ -1129,7 +1211,7 @@ const ServerMonitoring: React.FC = () => {
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                   <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 35 }}>{host.ramUsage}%</Typography>
                                   <Box sx={{ width: 60, height: 6, bgcolor: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
-                                    <div style={{ width: `${host.ramUsage}%`, height: '100%', bgcolor: getMetricProgressColor(host.ramUsage), borderRadius: 3 }} />
+                                    <div style={{ width: `${host.ramUsage}%`, height: '100%', backgroundColor: getMetricProgressColor(host.ramUsage), borderRadius: 3 }} />
                                   </Box>
                                 </Box>
                               </TableCell>

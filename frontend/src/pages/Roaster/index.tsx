@@ -240,7 +240,7 @@ const RoasterPage: React.FC = () => {
       const promises = Object.entries(rosterData).map(async ([key, data]) => {
         const [date, shift] = key.split("_");
         // Skip past weeks (allow past days within the current week) to prevent past weeks modifications
-        if (dayjs(date).isBefore(getServerTime().startOf("isoWeek"), "day")) {
+        if (!isSuperuser && dayjs(date).isBefore(getServerTime().startOf("isoWeek"), "day")) {
           return;
         }
         if (data.id) {
@@ -515,7 +515,7 @@ const RoasterPage: React.FC = () => {
                         key={shift}
                         className={`${styles["container__roasterContainer__table--body-cell--row2"]} ${shift === "Leave" ? "hide-on-print" : ""}`}
                       >
-                        {isEditMode && !dayjs(dateStr).isBefore(getServerTime().startOf("isoWeek"), "day") ? (
+                        {isEditMode && (isSuperuser || !dayjs(dateStr).isBefore(getServerTime().startOf("isoWeek"), "day")) ? (
                           <Autocomplete
                             multiple
                             size="small"

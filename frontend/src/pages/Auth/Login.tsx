@@ -2,24 +2,43 @@ import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginApi } from './action';
-import { Box, Button, TextField, Paper } from '@mui/material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, TextField, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useToast } from '../../contexts/ToastContext';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [birthdayWish, setBirthdayWish] = useState<{ open: boolean; name: string }>({ open: false, name: '' });
   const dispatch = useDispatch<any>();
   const navigate = useNavigate();
   const { showToast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    await dispatch(loginApi({ credentials: { username, password }, navigateToDashboard, showToast }));
+    const result = await dispatch(loginApi({
+      credentials: { username, password },
+      navigateToDashboard: () => {},
+      showToast
+    }));
+
+    if (loginApi.fulfilled.match(result)) {
+      const data = result.payload;
+      if (data?.showBirthdayWish) {
+        setBirthdayWish({ open: true, name: data.displayName || data.username || username });
+      } else {
+        navigateToDashboard();
+      }
+    }
   };
 
   const navigateToDashboard = () => {
     navigate('/dashboard');
+  };
+
+  const handleBirthdayClose = () => {
+    setBirthdayWish({ open: false, name: '' });
+    navigateToDashboard();
   };
 
   return (
@@ -106,6 +125,21 @@ const Login: React.FC = () => {
           </form>
         </Paper>
       </motion.div>
+      <Dialog open={birthdayWish.open} onClose={handleBirthdayClose} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, color: '#1976d2' }}>
+          Happy Birthday, {birthdayWish.name}!
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: '#475569' }}>
+            Wishing you a wonderful day and a great year ahead.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleBirthdayClose} variant="contained" sx={{ textTransform: 'none', fontWeight: 600 }}>
+            Continue
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -45,16 +45,18 @@ export function deleteChecklist(id: string): void {
   saveAll(getAll().filter(c => c.id !== id));
 }
 
-export function createNewChecklist(preparedBy: string, config: ChecklistConfig): SavedChecklist {
+export function createNewChecklist(preparedBy: string, config: ChecklistConfig, department: string, createdBy: string, customDate?: string): SavedChecklist {
   const now = new Date();
   return {
     id: generateId(),
-    date: now.toISOString().split('T')[0],
+    date: customDate || now.toISOString().split('T')[0],
     time: now.toTimeString().split(' ')[0].substring(0, 5),
     preparedBy,
     status: 'Draft',
     data: JSON.parse(JSON.stringify(config)),
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
+    department,
+    createdBy,
   };
 }

@@ -35,6 +35,8 @@ import request, { API_BASE_URL } from '../../services/request';
 import dayjs from 'dayjs';
 import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { hasPrivilege } from '../../helpers/authUtils';
+import { PRIVILEGES } from '../../helpers/privileges';
 
 interface Documentation {
   id?: string;
@@ -46,6 +48,11 @@ interface Documentation {
 }
 
 const Documentations: React.FC = () => {
+  const canView = hasPrivilege(PRIVILEGES.DOCUMENTATION_VIEW);
+  const canCreate = hasPrivilege(PRIVILEGES.DOCUMENTATION_CREATE);
+  const canUpdate = hasPrivilege(PRIVILEGES.DOCUMENTATION_UPDATE);
+  const canDelete = hasPrivilege(PRIVILEGES.DOCUMENTATION_DELETE);
+
   const [docs, setDocs] = useState<Documentation[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -83,8 +90,23 @@ const Documentations: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchDocs();
-  }, [search]);
+    if (canView) {
+      fetchDocs();
+    }
+  }, [search, canView]);
+
+  if (!canView) {
+    return (
+      <Box sx={{ p: 4, textAlign: 'center', py: 10, color: '#64748b' }}>
+        <Typography variant="h5" sx={{ color: '#334155', mb: 1, fontWeight: 'bold' }}>
+          Access Restricted
+        </Typography>
+        <Typography variant="body2">
+          You need the View Documentation privilege to access this feature.
+        </Typography>
+      </Box>
+    );
+  }
 
   const handleRefresh = () => {
     fetchDocs();
@@ -191,19 +213,21 @@ const Documentations: React.FC = () => {
               <RefreshIcon />
             </IconButton>
           </Tooltip>
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />} 
-            onClick={handleOpenCreateModal}
-            sx={{ 
-              borderRadius: '8px', 
-              textTransform: 'none', 
-              fontWeight: '600',
-              boxShadow: '0 4px 6px -1px rgba(49, 130, 206, 0.2)'
-            }}
-          >
-            Add Documentation
-          </Button>
+          {canCreate && (
+            <Button 
+              variant="contained" 
+              startIcon={<AddIcon />} 
+              onClick={handleOpenCreateModal}
+              sx={{ 
+                borderRadius: '8px', 
+                textTransform: 'none', 
+                fontWeight: '600',
+                boxShadow: '0 4px 6px -1px rgba(49, 130, 206, 0.2)'
+              }}
+            >
+              Add Documentation
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -279,9 +303,11 @@ const Documentations: React.FC = () => {
             <Typography variant="body1" color="textSecondary" sx={{ mb: 1 }}>
               No documentations found.
             </Typography>
-            <Button variant="outlined" size="small" onClick={handleOpenCreateModal} sx={{ borderRadius: '6px' }}>
-              Upload your first document
-            </Button>
+            {canCreate && (
+              <Button variant="outlined" size="small" onClick={handleOpenCreateModal} sx={{ borderRadius: '6px' }}>
+                Upload your first document
+              </Button>
+            )}
           </Box>
         ) : viewMode === 'grid' ? (
           /* Grid Card View */
@@ -348,16 +374,20 @@ const Documentations: React.FC = () => {
                         Download
                       </Button>
                       <Box>
-                        <Tooltip title="Edit">
-                          <IconButton size="small" onClick={() => handleOpenEditModal(doc)} sx={{ color: '#4a5568', mr: 0.5 }}>
-                            <EditIcon size={18} />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                          <IconButton size="small" onClick={() => handleDelete(doc)} sx={{ color: '#e53e3e' }}>
-                            <DeleteIcon size={18} />
-                          </IconButton>
-                        </Tooltip>
+                        {canUpdate && (
+                          <Tooltip title="Edit">
+                            <IconButton size="small" onClick={() => handleOpenEditModal(doc)} sx={{ color: '#4a5568', mr: 0.5 }}>
+                              <EditIcon size={18} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {canDelete && (
+                          <Tooltip title="Delete">
+                            <IconButton size="small" onClick={() => handleDelete(doc)} sx={{ color: '#e53e3e' }}>
+                              <DeleteIcon size={18} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </Box>
                     </CardActions>
                   </Card>
@@ -426,16 +456,20 @@ const Documentations: React.FC = () => {
                         <DownloadIcon size={18} />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Edit">
-                      <IconButton size="small" onClick={() => handleOpenEditModal(doc)} sx={{ color: '#4a5568' }}>
-                        <EditIcon size={18} />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete">
-                      <IconButton size="small" onClick={() => handleDelete(doc)} sx={{ color: '#e53e3e' }}>
-                        <DeleteIcon size={18} />
-                      </IconButton>
-                    </Tooltip>
+                    {canUpdate && (
+                      <Tooltip title="Edit">
+                        <IconButton size="small" onClick={() => handleOpenEditModal(doc)} sx={{ color: '#4a5568' }}>
+                          <EditIcon size={18} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    {canDelete && (
+                      <Tooltip title="Delete">
+                        <IconButton size="small" onClick={() => handleDelete(doc)} sx={{ color: '#e53e3e' }}>
+                          <DeleteIcon size={18} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                   </Box>
                 </Box>
               );

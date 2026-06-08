@@ -48,7 +48,7 @@ class VCenterInventoryService:
         # Scoped filters to avoid massive overhead
         params = {}
         if cluster_id:
-            params["clusters"] = cluster_id
+            params["filter.clusters"] = cluster_id
 
         async def fetch():
             try:
@@ -79,7 +79,7 @@ class VCenterInventoryService:
 
         params = {}
         if cluster_id:
-            params["clusters"] = cluster_id
+            params["filter.clusters"] = cluster_id
 
         async def fetch():
             try:
@@ -130,6 +130,47 @@ class VCenterInventoryService:
             key,
             lambda: vcenter_rate_limiter.execute_request(ip_address, fetch),
             ttl=180.0,
+            revalidate_ttl=60.0
+        )
+
+    async def get_vm_guest_ip(self, ip_address: str, session_id: str, vm_id: str) -> Optional[str]:
+        client = vcenter_http_client.get_client()
+        headers = {"vmware-api-session-id": session_id}
+
+        async def fetch():
+            # Modern Endpoint
+            try:
+                res = await client.get(f"https://{ip_address}/api/vcenter/vm/{vm_id}/guest/networking", headers=headers)
+                if res.status_code == 200:
+                    data = res.json()
+                    if isinstance(data, dict):
+                        for addr in data.get("ip_addresses", []):
+                            ip = addr.get("ip_address") if isinstance(addr, dict) else addr
+                            if ip and not ip.startswith("fe80") and not ip.startswith("::") and ":" not in ip:
+                                return ip
+            except Exception as e:
+                logger.warning(f"Failed modern guest networking lookup for {vm_id}: {e}")
+
+            # Legacy Endpoint
+            try:
+                res = await client.get(f"https://{ip_address}/rest/vcenter/vm/{vm_id}/guest/networking", headers=headers)
+                if res.status_code == 200:
+                    data = res.json()
+                    val = data.get("value", {}) if isinstance(data, dict) else {}
+                    if isinstance(val, dict):
+                        for addr in val.get("ip_addresses", []):
+                            ip = addr.get("ip_address") if isinstance(addr, dict) else addr
+                            if ip and not ip.startswith("fe80") and not ip.startswith("::") and ":" not in ip:
+                                return ip
+            except Exception as e:
+                logger.warning(f"Failed legacy guest networking lookup for {vm_id}: {e}")
+            return None
+
+        key = f"vcenter:{ip_address}:vm:{vm_id}:guest_ip"
+        return await global_cache.get_or_fetch(
+            key,
+            lambda: vcenter_rate_limiter.execute_request(ip_address, fetch),
+            ttl=300.0,
             revalidate_ttl=60.0
         )
 

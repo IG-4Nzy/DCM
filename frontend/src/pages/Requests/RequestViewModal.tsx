@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, Divider, Grid, Chip, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import Button from '../../components/Button';
-import type { RequestData } from './model';
+import type { RequestData, RequestLogData } from './model';
 import { fetchUsers } from '../Users/action';
 import { fetchClusters } from '../Clusters/action';
 import { fetchNodes } from '../ServerMonitoring/action';
 import { fetchInventory } from '../Inventory/action';
+import { fetchRequestLogs } from './action';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../../store';
+import dayjs from 'dayjs';
 
 interface RequestViewModalProps {
   isOpen: boolean;
@@ -38,6 +40,8 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   const [remarks, setRemarks] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [ipError, setIpError] = useState(false);
+  const [logs, setLogs] = useState<RequestLogData[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
 
   // Cluster Selection States
   const [clusters, setClusters] = useState<any[]>([]);
@@ -52,6 +56,14 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
 
   const isClusterDeciding = request?.status?.toLowerCase() === 'cluster deciding' || request?.status?.toLowerCase().includes('cluster');
 
+  const [entryTime, setEntryTime] = useState('');
+  const [entryTimeError, setEntryTimeError] = useState(false);
+  const [exitTime, setExitTime] = useState('');
+  const [exitTimeError, setExitTimeError] = useState(false);
+
+  const isMarkEntryTime = request?.requestType === 'DC Entry' && (request?.status?.toLowerCase() === 'mark entry time' || request?.status?.toLowerCase().includes('entry'));
+  const isMarkExitTime = request?.requestType === 'DC Entry' && (request?.status?.toLowerCase() === 'mark exit time' || request?.status?.toLowerCase().includes('exit'));
+
   const requestId = request?.id || request?._id || '';
 
   useEffect(() => {
@@ -61,6 +73,33 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       setRemarks('');
       setIpAddress(request.details?.ip || '');
       setIpError(false);
+
+      setEntryTime(
+        request.details?.entryTime 
+          ? dayjs(request.details.entryTime).format('YYYY-MM-DDTHH:mm') 
+          : (request.details?.dateTime 
+              ? dayjs(request.details.dateTime).format('YYYY-MM-DDTHH:mm') 
+              : dayjs(request.createdAt || new Date()).format('YYYY-MM-DDTHH:mm'))
+      );
+      setEntryTimeError(false);
+      setExitTime(
+        request.details?.exitTime 
+          ? dayjs(request.details.exitTime).format('YYYY-MM-DDTHH:mm') 
+          : dayjs().format('YYYY-MM-DDTHH:mm')
+      );
+      setExitTimeError(false);
+
+      setLoadingLogs(true);
+      fetchRequestLogs(requestId)
+        .then(res => {
+          setLogs(res || []);
+        })
+        .catch(() => {
+          setLogs([]);
+        })
+        .finally(() => {
+          setLoadingLogs(false);
+        });
 
       if (request.status?.toLowerCase() === 'cluster deciding' || request.status?.toLowerCase().includes('cluster')) {
         fetchClusters({ pagination: false }).then(res => {
@@ -120,6 +159,14 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       setNodeError(true);
       return;
     }
+    if (isMarkEntryTime && !entryTime) {
+      setEntryTimeError(true);
+      return;
+    }
+    if (isMarkExitTime && !exitTime) {
+      setExitTimeError(true);
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -130,6 +177,14 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
         payload.details = { 
           cluster: selectedCluster,
           node: selectedNode
+        };
+      } else if (isMarkEntryTime) {
+        payload.details = { 
+          entryTime: new Date(entryTime).toISOString() 
+        };
+      } else if (isMarkExitTime) {
+        payload.details = { 
+          exitTime: new Date(exitTime).toISOString() 
         };
       }
       await onAdvance(request.id || request._id || '', payload);
@@ -150,6 +205,18 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       // toast is handled in parent
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const safeParseDate = (dateStr?: string) => {
+    if (!dateStr) return '-';
+    try {
+      const cleaned = String(dateStr).replace(/\+00:00Z$/, 'Z').replace(/\+00:00$/, 'Z');
+      const d = new Date(cleaned);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleString();
+    } catch (e) {
+      return dateStr;
     }
   };
 
@@ -193,11 +260,11 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                 </Grid>
                 <Grid item xs={6}>
                   <Typography variant="caption" color="textSecondary">Created At</Typography>
-                  <Typography variant="body2">{new Date(request.createdAt).toLocaleString()}</Typography>
+                  <Typography variant="body2">{safeParseDate(request.createdAt)}</Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Typography variant="caption" color="textSecondary">Last Updated</Typography>
-                  <Typography variant="body2">{new Date(request.updatedAt).toLocaleString()}</Typography>
+                  <Typography variant="body2">{safeParseDate(request.updatedAt)}</Typography>
                 </Grid>
               </Grid>
             </Box>
@@ -288,14 +355,26 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                 {request.requestType === 'DC Entry' && (
                   <>
                     <Grid item xs={12} sm={6}>
-                      <Typography variant="caption" color="textSecondary">Date and Time</Typography>
+                      <Typography variant="caption" color="textSecondary">Scheduled Date and Time</Typography>
                       <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {request.details?.dateTime ? new Date(request.details.dateTime).toLocaleString() : '-'}
+                        {safeParseDate(request.details?.dateTime)}
                       </Typography>
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <Typography variant="caption" color="textSecondary">Purpose</Typography>
                       <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.purpose || request.purpose || '-'}</Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="caption" color="textSecondary">Actual Entry Time</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: request.details?.entryTime ? '#2e7d32' : 'inherit' }}>
+                        {request.details?.entryTime ? safeParseDate(request.details.entryTime) : 'Not Marked Yet'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="caption" color="textSecondary">Actual Exit Time</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: request.details?.exitTime ? '#c62828' : 'inherit' }}>
+                        {request.details?.exitTime ? safeParseDate(request.details.exitTime) : 'Not Marked Yet'}
+                      </Typography>
                     </Grid>
                   </>
                 )}
@@ -334,6 +413,58 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
             </Box>
           </Grid>
 
+          {/* History Logs */}
+          <Grid item xs={12}>
+            <Box sx={{ p: 2, bgcolor: '#fff', borderRadius: '12px', border: '1px solid #eef2f6' }}>
+              <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 1, fontWeight: 600 }}>
+                REQUEST HISTORY LOGS
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              
+              {loadingLogs ? (
+                <Typography variant="body2" color="textSecondary" sx={{ py: 1 }}>Loading logs...</Typography>
+              ) : logs.length === 0 ? (
+                <Typography variant="body2" color="textSecondary" sx={{ py: 1 }}>No history logs recorded yet.</Typography>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+                  {logs.map((log, idx) => (
+                    <Box 
+                      key={log._id || idx} 
+                      sx={{ 
+                        p: 1.5, 
+                        bgcolor: '#f8fafc', 
+                        borderRadius: '8px', 
+                        borderLeft: `4px solid ${log.action && log.action.includes('Reject') ? '#ef4444' : log.action && (log.action.includes('Advance') || log.action.includes('Completed') || log.action.includes('Advanced') || log.action.includes('Created')) ? '#22c55e' : '#3b82f6'}`
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5, flexWrap: 'wrap' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                          {log.action}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {log.timestamp ? safeParseDate(log.timestamp) : ''}
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" sx={{ color: '#475569', mb: 0.5 }}>
+                        {log.details}
+                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', mt: 0.5 }}>
+                        <Typography variant="caption" sx={{ fontStyle: 'italic', color: '#64748b' }}>
+                          Performed by: {getCreatorName(log.user)}
+                        </Typography>
+                        {log.remarks && (
+                          <Typography variant="caption" sx={{ fontStyle: 'italic', fontWeight: 500, color: '#64748b' }}>
+                            Remarks: "{log.remarks}"
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          </Grid>
+
           {/* Action Zone for authorized users */}
           {canAction && !isTerminal && (
             <Grid item xs={12}>
@@ -359,6 +490,48 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                           if (e.target.value.trim()) setIpError(false);
                         }}
                         placeholder="e.g. 10.41.12.34"
+                        sx={{ bgcolor: '#fff' }}
+                      />
+                    </Box>
+                  )}
+
+                  {isMarkEntryTime && (
+                    <Box sx={{ flex: 1, minWidth: 200 }}>
+                      <TextField
+                        label="Actual Entry Time"
+                        type="datetime-local"
+                        variant="outlined"
+                        fullWidth
+                        required
+                        error={entryTimeError}
+                        helperText={entryTimeError ? "You must provide actual entry time to advance." : "Enter the actual entry time of the visitor"}
+                        value={entryTime}
+                        onChange={(e) => {
+                          setEntryTime(e.target.value);
+                          if (e.target.value) setEntryTimeError(false);
+                        }}
+                        InputLabelProps={{ shrink: true }}
+                        sx={{ bgcolor: '#fff' }}
+                      />
+                    </Box>
+                  )}
+
+                  {isMarkExitTime && (
+                    <Box sx={{ flex: 1, minWidth: 200 }}>
+                      <TextField
+                        label="Actual Exit Time"
+                        type="datetime-local"
+                        variant="outlined"
+                        fullWidth
+                        required
+                        error={exitTimeError}
+                        helperText={exitTimeError ? "You must provide actual exit time to advance." : "Enter the actual exit time of the visitor"}
+                        value={exitTime}
+                        onChange={(e) => {
+                          setExitTime(e.target.value);
+                          if (e.target.value) setExitTimeError(false);
+                        }}
+                        InputLabelProps={{ shrink: true }}
                         sx={{ bgcolor: '#fff' }}
                       />
                     </Box>
@@ -451,7 +624,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
               color="success"
               disabled={submitting}
             >
-              {submitting ? 'Processing...' : (isIpIssuance ? 'Submit IP & Approve' : isClusterDeciding ? 'Submit Cluster & Approve' : 'Approve & Advance')}
+              {submitting ? 'Processing...' : (isIpIssuance ? 'Submit IP & Approve' : isClusterDeciding ? 'Submit Cluster & Approve' : isMarkEntryTime ? 'Submit Entry Time & Advance' : isMarkExitTime ? 'Submit Exit Time & Approve' : 'Approve & Advance')}
             </Button>
           </>
         )}

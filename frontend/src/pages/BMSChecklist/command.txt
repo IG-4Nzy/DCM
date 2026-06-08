@@ -173,3 +173,19 @@ In checklist add field, for category,there can be multiple parameters, and devic
 for fields edit ,need checklist field edit privilege as like for the checklist add fields.
 For bulk uploads in every modules,sl number or id is not given currctly or sequentionly.,
 in their birthdays,on their first log in -> show birthday wish and a popup.
+
+should not alllow crete checklist for past and future dates, superuser can create for past dates.
+in create page,give date filter as like in the roaster page and create checklists per day, when past day is selected on the filter, the checklist willbe in view only mode, every days the filter will by default on curent day
+
+only value,bms readings and remarks should be edited from checklist page,
+remaning field names should be only edited from configurations page only those with privileges
+in checklist history search field,need to search by date.
+prepared by name cannot be edited,show full name of the user
+export pdf is not working,pdf is not generated
+in active checklist page,show only current date,no need for going to previous or past dates,show only current date.,no need for date picker there,just show the current date and server time.
+redesign roles page,currently its complicated,make it simple,arrange roles grouped by and make easy and understanding.,and ensure every features in the app has privileges ,because it is a highly restricted application.
+
+
+
+
+

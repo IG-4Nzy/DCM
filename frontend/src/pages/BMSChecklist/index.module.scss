@@ -159,7 +159,8 @@
       text-transform: uppercase;
     }
 
-    input {
+    input,
+    textarea {
       min-height: 38px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
@@ -174,6 +175,39 @@
         border-color: #3b82f6;
         box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
       }
+    }
+
+    textarea {
+      min-height: 82px;
+      resize: vertical;
+      font-family: inherit;
+    }
+  }
+
+  &__parameterUnits {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 8px;
+  }
+
+  &__parameterUnitsHeader,
+  &__parameterUnitRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(88px, 0.7fr) 76px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  &__parameterUnitsHeader {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  &__parameterUnitRow {
+    input {
+      width: 100%;
     }
   }
 

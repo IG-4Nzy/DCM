@@ -107,6 +107,9 @@ function Table<T extends { id?: string | number }>(props: ReusableTableProps<T>)
             {data.length > 0 ? (
               data.map((row, index) => {
                 const isLast = index === data.length - 1;
+                const serialNumber = page !== undefined && rowsPerPage !== undefined
+                  ? page * rowsPerPage + index + 1
+                  : index + 1;
                 return (
                   <TableRow
                     hover
@@ -122,7 +125,7 @@ function Table<T extends { id?: string | number }>(props: ReusableTableProps<T>)
                     }}
                   >
                     {columns.map((column) => {
-                      const value = (row as any)[column.id];
+                      const value = column.id === 'slNumber' ? serialNumber : (row as any)[column.id];
                       return (
                         <TableCell
                           key={column.id}

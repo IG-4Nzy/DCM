@@ -8,6 +8,8 @@ export interface ParamConfig {
   unit?: string;
   remarks?: string;
   timestamp?: string;
+  ruleOperator?: string;
+  ruleValue?: number;
 }
 
 export interface DeviceConfig {
@@ -31,6 +33,8 @@ export interface SavedChecklist {
   data: ChecklistConfig;
   createdAt: string;
   updatedAt: string;
+  department?: string;
+  createdBy?: string;
 }
 
 // Normalise a parameter entry: handles both object-form { value, BMS_Reading, unit }
@@ -39,11 +43,17 @@ export function normalizeParam(val: ParamConfig | string): ParamConfig {
   if (typeof val === 'string') {
     return { value: val, BMS_Reading: '', remarks: '' };
   }
-  return { ...val, remarks: val.remarks || '' };
+  return { 
+    ...val, 
+    remarks: val.remarks || '',
+    ruleOperator: val.ruleOperator || '',
+    ruleValue: val.ruleValue
+  };
 }
 
 // Flatten config into table rows
 export interface FlatRow {
+  id?: string;
   category: string;
   device: string;
   parameter: string;
@@ -52,6 +62,8 @@ export interface FlatRow {
   unit: string;
   remarks: string;
   timestamp?: string;
+  ruleOperator?: string;
+  ruleValue?: string | number;
 }
 
 export function flattenConfig(config: ChecklistConfig): FlatRow[] {
@@ -61,6 +73,7 @@ export function flattenConfig(config: ChecklistConfig): FlatRow[] {
       Object.entries(params).forEach(([param, raw]) => {
         const p = normalizeParam(raw);
         rows.push({
+          id: `${category}-${device}-${param}`,
           category,
           device,
           parameter: param,
@@ -69,6 +82,8 @@ export function flattenConfig(config: ChecklistConfig): FlatRow[] {
           unit: p.unit || '',
           remarks: p.remarks || '',
           timestamp: p.timestamp,
+          ruleOperator: p.ruleOperator || '',
+          ruleValue: p.ruleValue !== undefined ? p.ruleValue : '',
         });
       });
     });
@@ -89,6 +104,10 @@ export function unflattenRows(rows: FlatRow[]): ChecklistConfig {
       timestamp: row.timestamp,
     };
     if (row.unit) paramObj.unit = row.unit;
+    if (row.ruleOperator) paramObj.ruleOperator = row.ruleOperator;
+    if (row.ruleValue !== undefined && row.ruleValue !== '') {
+      paramObj.ruleValue = typeof row.ruleValue === 'string' ? parseFloat(row.ruleValue) : row.ruleValue;
+    }
     config[row.category][row.device][row.parameter] = paramObj;
   });
   return config;
@@ -249,3 +268,12 @@ export const DEFAULT_CONFIG: ChecklistConfig = {
     }
   }
 };
+
+export function getChecklistTemplate(): ChecklistConfig {
+  try {
+    const raw = localStorage.getItem('bms_checklist_template');
+    return raw ? JSON.parse(raw) : DEFAULT_CONFIG;
+  } catch {
+    return DEFAULT_CONFIG;
+  }
+}

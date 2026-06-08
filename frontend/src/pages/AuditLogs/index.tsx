@@ -106,7 +106,7 @@ const AuditLogs: React.FC = () => {
             Audit Logs
           </Typography>
           <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
-            Track and monitor administrative changes, creations, and deletions across the application.
+            Track and monitor application requests, visitor access, changes, creations, and deletions.
           </Typography>
         </Box>
         <Tooltip title="Refresh Logs">
@@ -197,7 +197,7 @@ const AuditLogs: React.FC = () => {
               }
             }}
           >
-            {logs.filter(log => !log.details.toUpperCase().startsWith('GET') && !log.action.toLowerCase().includes('view')).map((log) => {
+            {logs.map((log) => {
               const logId = log.id || log._id || '';
               const isExpanded = expandedLogId === logId;
               const formattedDate = dayjs(log.timestamp.replace(/\+00:00Z$/, 'Z').replace(/\+00:00$/, 'Z')).format('DD-MM-YYYY h:mm:ss A');
@@ -254,7 +254,7 @@ const AuditLogs: React.FC = () => {
                       label={log.action} 
                       size="small"
                       color={getActionColor(log.action)}
-                      variant="light"
+                      variant="filled"
                       sx={{ 
                         fontWeight: 'bold',
                         fontSize: '0.75rem',
@@ -303,11 +303,11 @@ const AuditLogs: React.FC = () => {
                             {getChangedFields(log.beforeState, log.afterState)?.map((change, i) => (
                               <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontFamily: 'monospace', fontSize: '0.85rem', flexWrap: 'wrap' }}>
                                 <Chip label={change.field} size="small" variant="outlined" sx={{ fontWeight: 'bold', height: '20px' }} />
-                                <span style={{ color: '#e53e3e', textDecoration: 'line-through', bgcolor: 'rgba(229, 62, 62, 0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                                <span style={{ color: '#e53e3e', textDecoration: 'line-through', backgroundColor: 'rgba(229, 62, 62, 0.05)', padding: '2px 6px', borderRadius: '4px' }}>
                                   {JSON.stringify(change.from)}
                                 </span>
                                 <span style={{ color: '#718096' }}>➔</span>
-                                <span style={{ color: '#38a169', fontWeight: 'bold', bgcolor: 'rgba(56, 161, 105, 0.08)', padding: '2px 6px', borderRadius: '4px' }}>
+                                <span style={{ color: '#38a169', fontWeight: 'bold', backgroundColor: 'rgba(56, 161, 105, 0.08)', padding: '2px 6px', borderRadius: '4px' }}>
                                   {JSON.stringify(change.to)}
                                 </span>
                               </Box>

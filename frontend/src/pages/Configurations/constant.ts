@@ -5,11 +5,13 @@ import Racks from "./Racks";
 import ServerModels from "./ServerModels";
 import RequestRoutings from "./RequestRoutings";
 import AttendancePeriodConfig from "./AttendancePeriodConfig";
+import BMSChecklistConfig from "./BMSChecklistConfig";
 
 export const CONFIG_TABS = [
     { id: 'serverMastersConfig', label: 'Server Masters', value: 'serverMastersConfig' },
     { id: 'requestConfig', label: 'Request Configuration', value: 'requestConfig' },
     { id: 'attendanceConfig', label: 'Attendance', value: 'attendanceConfig' },
+    { id: 'bmsChecklistConfig', label: 'BMS Checklist', value: 'bmsChecklistConfig' },
 ];
 
 export const SERVER_MASTERS_CONFIGURATIONS = [
@@ -28,10 +30,15 @@ export const ATTENDANCE_CONFIGURATIONS = [
     { id: "attendancePeriod", label: "Attendance Period", value: "attendancePeriod" },
 ]
 
+export const BMS_CHECKLIST_CONFIGURATIONS = [
+    { id: "bmsChecklistFields", label: "Checklist Fields", value: "bmsChecklistFields" },
+]
+
 export const CONFIG_SUBTABS = {
     serverMastersConfig: SERVER_MASTERS_CONFIGURATIONS,
     requestConfig: REQUEST_CONFIGURATIONS,
     attendanceConfig: ATTENDANCE_CONFIGURATIONS,
+    bmsChecklistConfig: BMS_CHECKLIST_CONFIGURATIONS,
 }
 
 export const CONFIG_TABS_PAGES = {
@@ -42,4 +49,5 @@ export const CONFIG_TABS_PAGES = {
     serverRack: Racks,
     requestRoutings: RequestRoutings,
     attendancePeriod: AttendancePeriodConfig,
+    bmsChecklistFields: BMSChecklistConfig,
 }

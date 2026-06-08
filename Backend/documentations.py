@@ -3,7 +3,7 @@ import shutil
 import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, status, Form, UploadFile, File, Depends, Query
-from auth_utils import get_current_user
+from auth_utils import get_current_user, require_privilege
 from database import db
 from bson import ObjectId
 from pydantic import BaseModel, Field, ConfigDict
@@ -28,7 +28,7 @@ class PaginatedDocumentationsModel(BaseModel):
     data: List[DocumentationModel]
     total: int
 
-@router.post("/", response_description="Create documentation", response_model=DocumentationModel, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_description="Create documentation", response_model=DocumentationModel, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_privilege("Create Documentation"))])
 async def create_documentation(
     title: str = Form(...),
     file: UploadFile = File(...),
@@ -56,7 +56,7 @@ async def create_documentation(
     created_doc["_id"] = str(created_doc["_id"])
     return created_doc
 
-@router.get("/", response_description="List documentations", response_model=PaginatedDocumentationsModel)
+@router.get("/", response_description="List documentations", response_model=PaginatedDocumentationsModel, dependencies=[Depends(require_privilege("View Documentation"))])
 async def list_documentations(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1),
@@ -77,7 +77,7 @@ async def list_documentations(
         
     return {"data": data, "total": total}
 
-@router.put("/{id}", response_description="Update documentation", response_model=DocumentationModel)
+@router.put("/{id}", response_description="Update documentation", response_model=DocumentationModel, dependencies=[Depends(require_privilege("Update Documentation"))])
 async def update_documentation(
     id: str,
     title: str = Form(...),
@@ -119,7 +119,7 @@ async def update_documentation(
     updated_doc["_id"] = str(updated_doc["_id"])
     return updated_doc
 
-@router.delete("/{id}", response_description="Delete documentation", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{id}", response_description="Delete documentation", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_privilege("Delete Documentation"))])
 async def delete_documentation(
     id: str,
     current_user: dict = Depends(get_current_user)

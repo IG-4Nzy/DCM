@@ -13,7 +13,8 @@ import {
   MdSearch as SearchIcon,
   MdTerminal as TerminalIcon,
   MdInsertDriveFile as DocumentationsIcon,
-  MdFactCheck as BMSChecklistIcon
+  MdFactCheck as BMSChecklistIcon,
+  MdAssignmentInd as VisitorLogsIcon
 } from "react-icons/md";
 
 import { IoIosUnlock as RolesIcon } from "react-icons/io";
@@ -53,5 +54,6 @@ export const Icons = {
   AttendanceIcon,
   TerminalIcon,
   DocumentationsIcon,
-  BMSChecklistIcon
+  BMSChecklistIcon,
+  VisitorLogsIcon
 };

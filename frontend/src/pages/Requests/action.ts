@@ -38,3 +38,13 @@ export const deleteRequest = async (id: string): Promise<string> => {
   await request.delete(`/api/requests/${id}`);
   return id;
 };
+
+export const fetchVisitorLogs = async (params: { skip?: number; limit?: number; search?: string }): Promise<{ data: any[]; total: number }> => {
+  const response = await request.get('/api/requests/visitor-logs', { params });
+  return response.data;
+};
+
+export const fetchRequestLogs = async (id: string): Promise<any[]> => {
+  const response = await request.get(`/api/requests/${id}/logs`);
+  return response.data;
+};

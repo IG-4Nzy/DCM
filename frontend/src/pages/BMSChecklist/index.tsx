@@ -1,19 +1,22 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../store';
+import { jwtDecode } from 'jwt-decode';
 import {
   Box, Typography, Tabs, Tab, Button, IconButton, Chip,
-  Tooltip, Dialog, DialogTitle, DialogContent, DialogActions
+  Tooltip, Dialog, DialogTitle, DialogContent, DialogActions,
+  FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
 import {
   MdAdd, MdDelete, MdDownload, MdCheckCircle, MdHistory, MdExpandMore,
   MdChevronRight, MdSearch, MdSave, MdFilterList, MdViewList, MdViewModule,
-  MdDarkMode, MdLightMode
+  MdDarkMode, MdLightMode, MdRemove
 } from 'react-icons/md';
 import dayjs from 'dayjs';
-import { jsPDF } from 'jspdf';
 import styles from './index.module.scss';
 import {
   flattenConfig, unflattenRows,
-  DEFAULT_CONFIG
+  DEFAULT_CONFIG, getChecklistTemplate
 } from './config';
 import type { FlatRow, SavedChecklist } from './config';
 import {
@@ -22,6 +25,8 @@ import {
 } from './storage';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
+import { useToast } from '../../contexts/ToastContext';
+import DatePicker from '../../components/DatePicker';
 
 // ─── Tolerance Check ───
 function hasDeviation(value: string, bmsReading: string): boolean {
@@ -29,6 +34,43 @@ function hasDeviation(value: string, bmsReading: string): boolean {
   const b = parseFloat(bmsReading);
   if (isNaN(v) || isNaN(b) || b === 0) return false;
   return Math.abs((v - b) / b) > 0.10;
+}
+
+// ─── Parameter Rule Check ───
+function checkRuleFailure(value: string, operator?: string, threshold?: number | string): { failed: boolean; message: string } {
+  if (!value || !operator || threshold === undefined || threshold === '') {
+    return { failed: false, message: '' };
+  }
+  const numVal = parseFloat(value);
+  const numThreshold = parseFloat(threshold.toString());
+  if (isNaN(numVal) || isNaN(numThreshold)) {
+    return { failed: false, message: '' };
+  }
+  
+  let failed = false;
+  if (operator === '>') {
+    failed = numVal > numThreshold;
+  } else if (operator === '<') {
+    failed = numVal < numThreshold;
+  } else if (operator === '>=') {
+    failed = numVal >= numThreshold;
+  } else if (operator === '<=') {
+    failed = numVal <= numThreshold;
+  }
+
+  if (failed) {
+    return { failed: true, message: `Value cannot be ${operator} ${threshold}` };
+  }
+  return { failed: false, message: '' };
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 type EditableRowField = keyof Pick<FlatRow, 'category' | 'device' | 'parameter' | 'value' | 'bmsReading' | 'unit' | 'remarks'>;
@@ -43,11 +85,45 @@ const EMPTY_FIELD: FlatRow = {
   remarks: '',
 };
 
+type ParameterUnitDraft = {
+  parameter: string;
+  unit: string;
+};
+
+const EMPTY_PARAMETER_UNIT: ParameterUnitDraft = {
+  parameter: '',
+  unit: '',
+};
+
 const BMSChecklist: React.FC = () => {
+  const { showToast } = useToast();
+  const token = useSelector((state: RootState) => state.auth.token);
+  const isSuperuser = useSelector((state: RootState) => state.auth.isSuperuser);
+  const username = useSelector((state: RootState) => state.auth.username) || 'system';
+  const displayName = useSelector((state: RootState) => state.auth.displayName) || username;
+  const userDepartment = useMemo(() => {
+    if (!token) return 'General';
+    try {
+      const decoded: any = jwtDecode(token);
+      return decoded.department || 'General';
+    } catch {
+      return 'General';
+    }
+  }, [token]);
+
+  const [selectedDate, setSelectedDate] = useState<string>(dayjs().format('YYYY-MM-DD'));
+
   const canView = hasPrivilege(PRIVILEGES.BMS_CHECKLIST_VIEW);
   const canCreate = hasPrivilege(PRIVILEGES.BMS_CHECKLIST_CREATE);
   const canUpdate = hasPrivilege(PRIVILEGES.BMS_CHECKLIST_UPDATE);
   const canDelete = hasPrivilege(PRIVILEGES.BMS_CHECKLIST_DELETE);
+  const canEditFields = hasPrivilege(PRIVILEGES.BMS_CHECKLIST_FIELD_EDIT);
+  const canOpenForEdit = canUpdate || canEditFields;
+  const canSaveDraft = canUpdate || canEditFields || canCreate;
+
+  const todayStr = dayjs().format('YYYY-MM-DD');
+  const isPastDaySelected = dayjs(selectedDate).isBefore(todayStr, 'day');
+  const isFutureDaySelected = dayjs(selectedDate).isAfter(todayStr, 'day');
 
   // Tab state: 0 = Active Checklist, 1 = History
   const [activeTab, setActiveTab] = useState(0);
@@ -57,6 +133,11 @@ const BMSChecklist: React.FC = () => {
   const [rows, setRows] = useState<FlatRow[]>([]);
   const [preparedBy, setPreparedBy] = useState('');
 
+  const isOwner = !checklist || !checklist.createdBy || checklist.createdBy === username;
+  const isViewOnlyMode = isPastDaySelected
+    ? !isSuperuser
+    : (isFutureDaySelected || (!isSuperuser && !isOwner));
+
   // UI state
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
@@ -64,34 +145,85 @@ const BMSChecklist: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
   const [darkMode, setDarkMode] = useState(false);
-  const [currentTime, setCurrentTime] = useState(dayjs().format('HH:mm'));
+  const [currentTime, setCurrentTime] = useState(dayjs().format('HH:mm:ss'));
   const [addFieldOpen, setAddFieldOpen] = useState(false);
   const [newField, setNewField] = useState<FlatRow>(EMPTY_FIELD);
+  const [newParameterUnits, setNewParameterUnits] = useState<ParameterUnitDraft[]>([{ ...EMPTY_PARAMETER_UNIT }]);
 
   // History
   const [history, setHistory] = useState<SavedChecklist[]>([]);
   const [viewingChecklist, setViewingChecklist] = useState<SavedChecklist | null>(null);
   const [viewRows, setViewRows] = useState<FlatRow[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [historySearchQuery, setHistorySearchQuery] = useState<string>('');
 
   // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   // ─── Load History ───
   const refreshHistory = useCallback(() => {
-    setHistory(listChecklists());
-  }, []);
+    const all = listChecklists();
+    const filtered = all.filter(c => c.department === userDepartment);
+    setHistory(filtered);
+  }, [userDepartment]);
 
   useEffect(() => {
     refreshHistory();
   }, [refreshHistory]);
 
+  const filteredHistory = useMemo(() => {
+    let result = history;
+    if (selectedMonth !== 'all') {
+      result = result.filter(cl => cl.date && cl.date.startsWith(selectedMonth));
+    }
+    if (historySearchQuery.trim()) {
+      const q = historySearchQuery.toLowerCase();
+      result = result.filter(cl => {
+        if (!cl.date) return false;
+        const formattedDate = dayjs(cl.date).format('DD MMM YYYY').toLowerCase();
+        const rawDate = cl.date.toLowerCase();
+        return rawDate.includes(q) || formattedDate.includes(q);
+      });
+    }
+    return result;
+  }, [history, selectedMonth, historySearchQuery]);
+
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>();
+    history.forEach(cl => {
+      if (cl.date) {
+        months.add(dayjs(cl.date).format('YYYY-MM'));
+      }
+    });
+    return Array.from(months).sort().reverse();
+  }, [history]);
+
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setCurrentTime(dayjs().format('HH:mm'));
+      setCurrentTime(dayjs().format('HH:mm:ss'));
     }, 1000);
 
     return () => window.clearInterval(timer);
   }, []);
+
+  // ─── Load Checklist for selected date ───
+  const loadChecklistForDate = useCallback((dateStr: string) => {
+    const all = listChecklists();
+    const existing = all.find(c => c.date === dateStr && c.department === userDepartment);
+    if (existing) {
+      setChecklist(existing);
+      setRows(flattenConfig(existing.data));
+      setPreparedBy(existing.preparedBy);
+    } else {
+      setChecklist(null);
+      setRows([]);
+      setPreparedBy('');
+    }
+  }, [userDepartment]);
+
+  useEffect(() => {
+    loadChecklistForDate(selectedDate);
+  }, [selectedDate, loadChecklistForDate]);
 
   // ─── Derived Data ───
   const categories = useMemo(() => {
@@ -99,6 +231,16 @@ const BMSChecklist: React.FC = () => {
     rows.forEach(r => cats.add(r.category));
     return Array.from(cats);
   }, [rows]);
+
+  const deviceOptions = useMemo(() => {
+    const devices = new Set<string>();
+    rows.forEach((row) => {
+      if (!newField.category || row.category === newField.category) {
+        devices.add(row.device);
+      }
+    });
+    return Array.from(devices);
+  }, [newField.category, rows]);
 
   const filteredRows = useMemo(() => {
     let result = rows;
@@ -119,7 +261,31 @@ const BMSChecklist: React.FC = () => {
   // ─── New Checklist ───
   const handleNewChecklist = () => {
     if (!canCreate) return;
-    const newCl = createNewChecklist(preparedBy || 'Admin', DEFAULT_CONFIG);
+
+    const todayStr = dayjs().format('YYYY-MM-DD');
+    const isPast = dayjs(selectedDate).isBefore(todayStr, 'day');
+    const isFuture = dayjs(selectedDate).isAfter(todayStr, 'day');
+
+    if (isFuture) {
+      showToast('Cannot create checklists for future dates.', 'error');
+      return;
+    }
+
+    if (isPast && !isSuperuser) {
+      showToast('Only superusers can create checklists for past dates.', 'error');
+      return;
+    }
+
+    // Check only one checklist per day per department
+    const existingChecklists = listChecklists();
+    const alreadyExists = existingChecklists.some(c => c.date === selectedDate && c.department === userDepartment);
+
+    if (!isSuperuser && alreadyExists) {
+      showToast(`A checklist has already been created for ${selectedDate} for department "${userDepartment}". Only one checklist is allowed per day per department.`, 'error');
+      return;
+    }
+
+    const newCl = createNewChecklist(displayName, getChecklistTemplate(), userDepartment, username, selectedDate);
     setChecklist(newCl);
     setRows(flattenConfig(newCl.data));
     setPreparedBy(newCl.preparedBy);
@@ -130,12 +296,17 @@ const BMSChecklist: React.FC = () => {
 
   // ─── Open from History ───
   const handleOpenChecklist = (id: string) => {
-    if (!canUpdate) return;
+    if (!canOpenForEdit) return;
     const cl = getChecklist(id);
     if (cl) {
+      if (cl.department && cl.department !== userDepartment) {
+        showToast('Access Denied: This checklist belongs to another department.', 'error');
+        return;
+      }
       setChecklist(cl);
       setRows(flattenConfig(cl.data));
       setPreparedBy(cl.preparedBy);
+      setSelectedDate(cl.date);
       setCollapsedCats(new Set());
       setCollapsedDevs(new Set());
       setActiveTab(0);
@@ -147,6 +318,10 @@ const BMSChecklist: React.FC = () => {
     if (!canView) return;
     const cl = getChecklist(id);
     if (cl) {
+      if (cl.department && cl.department !== userDepartment) {
+        showToast('Access Denied: This checklist belongs to another department.', 'error');
+        return;
+      }
       setViewingChecklist(cl);
       setViewRows(flattenConfig(cl.data));
     }
@@ -154,7 +329,25 @@ const BMSChecklist: React.FC = () => {
 
   // ─── Save ───
   const handleSave = (status: 'Draft' | 'Completed' = 'Draft') => {
-    if (!checklist || !canUpdate) return;
+    if (!checklist || (status === 'Completed' ? !canUpdate : !canSaveDraft)) return;
+
+    const todayStr = dayjs().format('YYYY-MM-DD');
+    const isOwner = !checklist.createdBy || checklist.createdBy === username;
+    const isToday = checklist.date === todayStr;
+    const isFuture = dayjs(checklist.date).isAfter(todayStr, 'day');
+    const canEdit = isSuperuser ? !isFuture : (isOwner && isToday);
+
+    if (!canEdit) {
+      if (isFuture) {
+        showToast('Cannot edit future day checklists.', 'error');
+      } else if (!isToday) {
+        showToast('Cannot edit previous day checklists.', 'error');
+      } else {
+        showToast('Only the staff who created this checklist can edit it.', 'error');
+      }
+      return;
+    }
+
     const updatedConfig = unflattenRows(rows);
     const updated: SavedChecklist = {
       ...checklist,
@@ -184,7 +377,29 @@ const BMSChecklist: React.FC = () => {
 
   // ─── Row Update ───
   const updateRow = (index: number, field: EditableRowField, newVal: string) => {
-    if (!canUpdate) return;
+    const fieldDefinitionKeys: EditableRowField[] = ['category', 'device', 'parameter', 'unit'];
+    const isFieldDefinitionEdit = fieldDefinitionKeys.includes(field);
+    if (isFieldDefinitionEdit ? !canEditFields : !canUpdate) return;
+
+    if (checklist) {
+      const todayStr = dayjs().format('YYYY-MM-DD');
+      const isOwner = !checklist.createdBy || checklist.createdBy === username;
+      const isToday = checklist.date === todayStr;
+      const isFuture = dayjs(checklist.date).isAfter(todayStr, 'day');
+      const canEdit = isSuperuser ? !isFuture : (isOwner && isToday);
+
+      if (!canEdit) {
+        if (isFuture) {
+          showToast('Cannot edit future day checklists.', 'error');
+        } else if (!isToday) {
+          showToast('Cannot edit previous day checklists.', 'error');
+        } else {
+          showToast('Only the staff who created this checklist can edit it.', 'error');
+        }
+        return;
+      }
+    }
+
     setRows(prev => {
       const updated = [...prev];
       const targetRow = filteredRows[index];
@@ -208,36 +423,88 @@ const BMSChecklist: React.FC = () => {
 
   const handleAddField = () => {
     if (!canCreate) return;
-    const row: FlatRow = {
+    const category = newField.category.trim();
+    const device = newField.device.trim();
+    const parameters = newParameterUnits
+      .map(item => ({
+        parameter: item.parameter.trim(),
+        unit: item.unit.trim(),
+      }))
+      .filter(item => item.parameter);
+
+    if (!category || !device || !parameters.length) return;
+
+    const paramNames = parameters.map(p => p.parameter.toLowerCase());
+    const duplicates = paramNames.filter((item, index) => paramNames.indexOf(item) !== index);
+    if (duplicates.length > 0) {
+      showToast(`Duplicate parameters are not allowed: ${Array.from(new Set(duplicates)).join(', ')}`, 'error');
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const newRows = parameters.map(({ parameter, unit }): FlatRow => ({
       ...newField,
-      category: newField.category.trim(),
-      device: newField.device.trim(),
-      parameter: newField.parameter.trim(),
-      unit: newField.unit.trim(),
-      timestamp: new Date().toISOString(),
-    };
+      category,
+      device,
+      parameter,
+      unit,
+      timestamp,
+    }));
 
-    if (!row.category || !row.device || !row.parameter) return;
-
-    setRows(prev => [...prev, row]);
+    setRows(prev => [...prev, ...newRows]);
     setCollapsedCats(prev => {
       const next = new Set(prev);
-      next.delete(row.category);
+      next.delete(category);
       return next;
     });
     setCollapsedDevs(prev => {
       const next = new Set(prev);
-      next.delete(`${row.category}::${row.device}`);
+      next.delete(`${category}::${device}`);
       return next;
     });
     setFilterCategory('');
     setSearchQuery('');
     setNewField(EMPTY_FIELD);
+    setNewParameterUnits([{ ...EMPTY_PARAMETER_UNIT }]);
     setAddFieldOpen(false);
+  };
+
+  const updateParameterUnit = (index: number, field: keyof ParameterUnitDraft, value: string) => {
+    setNewParameterUnits(prev => prev.map((item, itemIndex) => (
+      itemIndex === index ? { ...item, [field]: value } : item
+    )));
+  };
+
+  const addParameterUnit = () => {
+    setNewParameterUnits(prev => [...prev, { ...EMPTY_PARAMETER_UNIT }]);
+  };
+
+  const removeParameterUnit = (index: number) => {
+    setNewParameterUnits(prev => prev.length === 1 ? prev : prev.filter((_, itemIndex) => itemIndex !== index));
   };
 
   const removeRow = (index: number) => {
     if (!canDelete) return;
+
+    if (checklist) {
+      const todayStr = dayjs().format('YYYY-MM-DD');
+      const isOwner = !checklist.createdBy || checklist.createdBy === username;
+      const isToday = checklist.date === todayStr;
+      const isFuture = dayjs(checklist.date).isAfter(todayStr, 'day');
+      const canEdit = isSuperuser ? !isFuture : (isOwner && isToday);
+
+      if (!canEdit) {
+        if (isFuture) {
+          showToast('Cannot modify future day checklists.', 'error');
+        } else if (!isToday) {
+          showToast('Cannot modify previous day checklists.', 'error');
+        } else {
+          showToast('Only the staff who created this checklist can modify it.', 'error');
+        }
+        return;
+      }
+    }
+
     const targetRow = filteredRows[index];
     setRows(prev => {
       const byReference = prev.findIndex(r => r === targetRow);
@@ -270,105 +537,86 @@ const BMSChecklist: React.FC = () => {
   };
 
   // ─── PDF Export ───
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (!checklist || !canView) return;
 
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 10;
-    const rowHeight = 9;
-    const columns = [
-      { label: 'SL No', width: 14 },
-      { label: 'Category', width: 46 },
-      { label: 'Device', width: 48 },
-      { label: 'Parameter', width: 50 },
-      { label: 'Value', width: 32 },
-      { label: 'BMS Reading', width: 34 },
-      { label: 'Remarks', width: 59 },
-    ];
+    const reportRows = rows.map((row, index) => {
+      const deviationClass = hasDeviation(row.value, row.bmsReading) ? ' class="deviation"' : '';
+      const value = `${row.value || '-'}${row.unit ? ` ${row.unit}` : ''}`;
+      return `
+        <tr${deviationClass}>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(row.category)}</td>
+          <td>${escapeHtml(row.device)}</td>
+          <td>${escapeHtml(row.parameter)}</td>
+          <td>${escapeHtml(value)}</td>
+          <td>${escapeHtml(row.bmsReading || '-')}</td>
+          <td>${escapeHtml(row.remarks || '-')}</td>
+        </tr>
+      `;
+    }).join('');
 
-    const drawHeader = () => {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(15);
-      doc.text('Daily BMS Checklist Report', pageWidth / 2, 12, { align: 'center' });
+    const reportElement = document.createElement('div');
+    reportElement.innerHTML = `
+      <style>
+        * { box-sizing: border-box; }
+        .bms-pdf { font-family: Arial, sans-serif; color: #0f172a; padding: 0; }
+        .bms-pdf h1 { text-align: center; font-size: 18px; margin: 0 0 12px; }
+        .bms-pdf .meta { display: flex; justify-content: space-between; gap: 16px; font-size: 12px; margin-bottom: 12px; }
+        .bms-pdf table { width: 100%; border-collapse: collapse; font-size: 10px; }
+        .bms-pdf th { background: #1e293b; color: #fff; text-align: left; }
+        .bms-pdf th, .bms-pdf td { border: 1px solid #cbd5e1; padding: 6px; vertical-align: top; }
+        .bms-pdf .deviation td { background: #fee2e2; }
+      </style>
+      <div class="bms-pdf">
+          <h1>Daily BMS Checklist Report</h1>
+          <div class="meta">
+            <span>Date: ${escapeHtml(checklist.date)}</span>
+            <span>Time: ${escapeHtml(currentTime)}</span>
+            <span>Prepared By: ${escapeHtml(preparedBy || '-')}</span>
+            <span>Signature: ______________________________</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>SL No</th>
+                <th>Category</th>
+                <th>Device</th>
+                <th>Parameter</th>
+                <th>Value</th>
+                <th>BMS Reading</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody>${reportRows}</tbody>
+          </table>
+      </div>
+    `;
 
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.text(`Date: ${checklist.date}`, margin, 21);
-      doc.text(`Time: ${currentTime}`, margin + 52, 21);
-      doc.text(`Prepared By: ${preparedBy || '-'}`, margin + 100, 21);
-      doc.text('Signature: ______________________________', pageWidth - margin, 21, { align: 'right' });
-    };
+    reportElement.style.position = 'absolute';
+    reportElement.style.left = '-9999px';
+    reportElement.style.top = '-9999px';
+    document.body.appendChild(reportElement);
 
-    const drawTableHeader = (y: number) => {
-      let x = margin;
-      doc.setFillColor(30, 41, 59);
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-
-      columns.forEach((column) => {
-        doc.rect(x, y, column.width, rowHeight, 'FD');
-        doc.text(column.label, x + 2, y + 6);
-        x += column.width;
-      });
-
-      doc.setTextColor(15, 23, 42);
-    };
-
-    const writeCell = (text: string, x: number, y: number, width: number, height: number) => {
-      const value = text || '-';
-      const lines = doc.splitTextToSize(value, width - 4).slice(0, 2);
-      doc.rect(x, y, width, height);
-      doc.text(lines, x + 2, y + 4.5);
-    };
-
-    drawHeader();
-    let y = 28;
-    drawTableHeader(y);
-    y += rowHeight;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-
-    rows.forEach((row, index) => {
-      if (y + rowHeight > pageHeight - 13) {
-        doc.addPage();
-        drawHeader();
-        y = 28;
-        drawTableHeader(y);
-        y += rowHeight;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7.5);
-      }
-
-      const rowValues = [
-        String(index + 1),
-        row.category,
-        row.device,
-        row.parameter,
-        `${row.value || '-'}${row.unit ? ` ${row.unit}` : ''}`,
-        row.bmsReading || '-',
-        row.remarks || '-',
-      ];
-
-      let x = margin;
-      const deviation = hasDeviation(row.value, row.bmsReading);
-      if (deviation) {
-        doc.setFillColor(254, 226, 226);
-        doc.rect(margin, y, pageWidth - margin * 2, rowHeight, 'F');
-      }
-
-      rowValues.forEach((value, colIndex) => {
-        writeCell(value, x, y, columns[colIndex].width, rowHeight);
-        x += columns[colIndex].width;
-      });
-
-      y += rowHeight;
-    });
-
-    doc.save(`BMS_Checklist_${checklist.date}_${currentTime.replace(':', '-')}.pdf`);
+    try {
+      const html2pdfModule = await import('html2pdf.js');
+      const html2pdf = html2pdfModule.default || html2pdfModule;
+      await html2pdf()
+        .set({
+          margin: 8,
+          filename: `BMS_Checklist_${checklist.date}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        })
+        .from(reportElement)
+        .save();
+    } catch (err) {
+      console.error('Failed to generate PDF:', err);
+      showToast('Failed to generate PDF. Please try again.', 'error');
+    } finally {
+      document.body.removeChild(reportElement);
+    }
   };
 
   // ─── Build grouped structure for table rendering ───
@@ -405,7 +653,7 @@ const BMSChecklist: React.FC = () => {
   // ─── Render Checklist Table ───
   const renderChecklistTable = (
     data: typeof groupedData,
-    editable: boolean,
+    canEditValues: boolean,
     onUpdate?: (index: number, field: EditableRowField, val: string) => void,
     allowDelete = false
   ) => {
@@ -475,56 +723,28 @@ const BMSChecklist: React.FC = () => {
                             style={{ backgroundColor: slNo % 2 === 0 ? '#f8fafc' : '#fff' }}
                           >
                             <td className={styles['container__table--slCol']}>{slNo}</td>
+                            <td>{row.category}</td>
+                            <td>{row.device}</td>
                             <td>
-                              {editable ? (
-                                <input
-                                  type="text"
-                                  value={row.category}
-                                  onChange={(e) => onUpdate?.(row.filteredIdx, 'category', e.target.value)}
-                                />
-                              ) : row.category}
+                              {row.parameter}
+                              {row.unit && <span className={styles['container__table--unit']}>{row.unit}</span>}
                             </td>
-                            <td>
-                              {editable ? (
-                                <input
-                                  type="text"
-                                  value={row.device}
-                                  onChange={(e) => onUpdate?.(row.filteredIdx, 'device', e.target.value)}
-                                />
-                              ) : row.device}
-                            </td>
-                            <td>
-                              {editable ? (
-                                <div className={styles.container__fieldStack}>
-                                  <input
-                                    type="text"
-                                    value={row.parameter}
-                                    onChange={(e) => onUpdate?.(row.filteredIdx, 'parameter', e.target.value)}
-                                  />
-                                  <input
-                                    type="text"
-                                    value={row.unit}
-                                    onChange={(e) => onUpdate?.(row.filteredIdx, 'unit', e.target.value)}
-                                    placeholder="Unit"
-                                  />
-                                </div>
-                              ) : (
-                                <>
-                                  {row.parameter}
-                                  {row.unit && <span className={styles['container__table--unit']}>{row.unit}</span>}
-                                </>
-                              )}
-                            </td>
-                            <td>
-                              {editable ? (
+                            <td style={checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).failed ? { backgroundColor: '#fee2e2' } : {}}>
+                              {canEditValues ? (
                                 <input
                                   type="text"
                                   value={row.value}
                                   onChange={(e) => onUpdate?.(row.filteredIdx, 'value', e.target.value)}
                                   placeholder="—"
+                                  style={checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).failed ? { color: '#dc2626', fontWeight: 'bold', border: '1px solid #dc2626', backgroundColor: '#fee2e2' } : {}}
                                 />
                               ) : (
-                                <span>{row.value || '—'}</span>
+                                <span style={checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).failed ? { color: '#dc2626', fontWeight: 'bold' } : {}}>{row.value || '—'}</span>
+                              )}
+                              {checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).failed && (
+                                <Tooltip title={checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).message}>
+                                  <span style={{ color: '#ef4444', fontWeight: 'bold', marginLeft: '6px', cursor: 'pointer' }}>⚠</span>
+                                </Tooltip>
                               )}
                               {deviation && (
                                 <Tooltip title="Value deviates more than ±10% from BMS reading">
@@ -533,7 +753,7 @@ const BMSChecklist: React.FC = () => {
                               )}
                             </td>
                             <td className={styles['container__table--bmsVal']}>
-                              {editable ? (
+                              {canEditValues ? (
                                 <input
                                   type="text"
                                   value={row.bmsReading}
@@ -543,7 +763,7 @@ const BMSChecklist: React.FC = () => {
                               ) : row.bmsReading || '—'}
                             </td>
                             <td>
-                              {editable ? (
+                              {canEditValues ? (
                                 <input
                                   type="text"
                                   value={row.remarks}
@@ -583,7 +803,7 @@ const BMSChecklist: React.FC = () => {
 
   const renderChecklistCards = (
     data: typeof groupedData,
-    editable: boolean,
+    canEditValues: boolean,
     onUpdate?: (index: number, field: EditableRowField, val: string) => void,
     allowDelete = false
   ) => {
@@ -639,65 +859,39 @@ const BMSChecklist: React.FC = () => {
                             <article
                               key={`${row.category}-${row.device}-${row.parameter}`}
                               className={`${styles.container__paramCard} ${deviation ? styles.deviation : ''}`}
+                              style={checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).failed ? { borderColor: '#ef4444', backgroundColor: '#fef2f2' } : {}}
                             >
                               <div className={styles['container__paramCard--top']}>
                                 <span>#{slNo}</span>
+                                {checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).failed && (
+                                  <Tooltip title={checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).message}>
+                                    <span style={{ color: '#ef4444', fontWeight: 'bold', cursor: 'pointer', marginRight: '6px' }}>⚠</span>
+                                  </Tooltip>
+                                )}
                                 {deviation && <span className={styles.container__deviationMark}>!</span>}
                               </div>
                               <h4>
-                                {editable ? (
-                                  <input
-                                    type="text"
-                                    value={row.parameter}
-                                    onChange={(e) => onUpdate?.(row.filteredIdx, 'parameter', e.target.value)}
-                                  />
-                                ) : row.parameter}
-                                {editable ? (
-                                  <input
-                                    type="text"
-                                    value={row.unit}
-                                    onChange={(e) => onUpdate?.(row.filteredIdx, 'unit', e.target.value)}
-                                    placeholder="Unit"
-                                  />
-                                ) : row.unit && <span>{row.unit}</span>}
+                                {row.parameter}
+                                {row.unit && <span>{row.unit}</span>}
                               </h4>
                               <div className={styles['container__paramCard--fields']}>
-                                {editable && (
-                                  <>
-                                    <label>
-                                      Category
-                                      <input
-                                        type="text"
-                                        value={row.category}
-                                        onChange={(e) => onUpdate?.(row.filteredIdx, 'category', e.target.value)}
-                                      />
-                                    </label>
-                                    <label>
-                                      Device
-                                      <input
-                                        type="text"
-                                        value={row.device}
-                                        onChange={(e) => onUpdate?.(row.filteredIdx, 'device', e.target.value)}
-                                      />
-                                    </label>
-                                  </>
-                                )}
                                 <label>
                                   Value
-                                  {editable ? (
+                                  {canEditValues ? (
                                     <input
                                       type="text"
                                       value={row.value}
                                       onChange={(e) => onUpdate?.(row.filteredIdx, 'value', e.target.value)}
                                       placeholder="-"
+                                      style={checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).failed ? { color: '#dc2626', fontWeight: 'bold', border: '1px solid #dc2626', backgroundColor: '#fee2e2' } : {}}
                                     />
                                   ) : (
-                                    <strong>{row.value || '-'}</strong>
+                                    <strong style={checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).failed ? { color: '#dc2626' } : {}}>{row.value || '-'}</strong>
                                   )}
                                 </label>
                                 <label>
                                   BMS Reading
-                                  {editable ? (
+                                  {canEditValues ? (
                                     <input
                                       type="text"
                                       value={row.bmsReading}
@@ -710,7 +904,7 @@ const BMSChecklist: React.FC = () => {
                                 </label>
                                 <label>
                                   Remarks
-                                  {editable ? (
+                                  {canEditValues ? (
                                     <input
                                       type="text"
                                       value={row.remarks}
@@ -831,13 +1025,44 @@ const BMSChecklist: React.FC = () => {
       {/* ═══ Tab 0: Active Checklist ═══ */}
       {activeTab === 0 && (
         <>
+          {/* Current Date & Server Time Header */}
+          <Box sx={{
+            mb: 3,
+            p: 2.5,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderRadius: '12px',
+            background: darkMode ? '#1e293b' : '#f8fafc',
+            border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0',
+            width: '100%',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: darkMode ? '#94a3b8' : '#64748b' }}>
+                Date:
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 700, color: darkMode ? '#f8fafc' : '#0f172a' }}>
+                {dayjs().format('dddd, DD MMMM YYYY')}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: darkMode ? '#94a3b8' : '#64748b' }}>
+                Server Time:
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 700, fontFamily: 'monospace', color: darkMode ? '#38bdf8' : '#0284c7', fontSize: '1.1rem' }}>
+                {currentTime}
+              </Typography>
+            </Box>
+          </Box>
+
           {checklist ? (
             <>
               {/* Meta Info */}
               <Box className={styles.container__meta}>
                 <Box className={styles['container__meta--field']}>
                   <label>Date</label>
-                  <input type="date" value={checklist.date} onChange={(e) => setChecklist({ ...checklist, date: e.target.value })} />
+                  <span>{checklist.date}</span>
                 </Box>
                 <Box className={styles['container__meta--field']}>
                   <label>Time</label>
@@ -845,7 +1070,7 @@ const BMSChecklist: React.FC = () => {
                 </Box>
                 <Box className={styles['container__meta--field']}>
                   <label>Prepared By</label>
-                  <input value={preparedBy} onChange={(e) => setPreparedBy(e.target.value)} placeholder="Enter name" />
+                  <span>{preparedBy || '-'}</span>
                 </Box>
                 <Box className={styles['container__meta--field']}>
                   <label>Status</label>
@@ -894,15 +1119,7 @@ const BMSChecklist: React.FC = () => {
                 </label>
 
                 <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
-                  <Button
-                    variant="outlined"
-                    startIcon={<MdAdd />}
-                    onClick={() => setAddFieldOpen(true)}
-                    disabled={!canCreate}
-                    sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}
-                  >
-                    Add Field
-                  </Button>
+
                   <Button
                     variant={viewMode === 'table' ? 'contained' : 'outlined'}
                     startIcon={<MdViewList />}
@@ -923,7 +1140,7 @@ const BMSChecklist: React.FC = () => {
                     variant="outlined"
                     startIcon={<MdSave />}
                     onClick={() => handleSave('Draft')}
-                    disabled={!canUpdate}
+                    disabled={!canSaveDraft || isViewOnlyMode}
                     sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}
                   >
                     Save Draft
@@ -933,7 +1150,7 @@ const BMSChecklist: React.FC = () => {
                     color="success"
                     startIcon={<MdCheckCircle />}
                     onClick={() => handleSave('Completed')}
-                    disabled={!canUpdate}
+                    disabled={!canUpdate || isViewOnlyMode}
                     sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}
                   >
                     Mark Complete
@@ -950,28 +1167,36 @@ const BMSChecklist: React.FC = () => {
               </Box>
 
               {viewMode === 'table'
-                ? renderChecklistTable(groupedData, canUpdate, updateRow, canDelete)
-                : renderChecklistCards(groupedData, canUpdate, updateRow, canDelete)}
+                ? renderChecklistTable(groupedData, canUpdate && !isViewOnlyMode, updateRow, canDelete && !isViewOnlyMode)
+                : renderChecklistCards(groupedData, canUpdate && !isViewOnlyMode, updateRow, canDelete && !isViewOnlyMode)}
             </>
           ) : (
             <Box sx={{ textAlign: 'center', py: 8, color: '#94a3b8' }}>
               <MdCheckCircle style={{ fontSize: 48, marginBottom: 12 }} />
-              <Typography variant="h6" sx={{ color: '#64748b', mb: 1 }}>No Active Checklist</Typography>
-              <Typography variant="body2" sx={{ color: '#94a3b8', mb: 3 }}>
-                Create a new checklist to start recording BMS data, or open one from history.
+              <Typography variant="h6" sx={{ color: '#64748b', mb: 1 }}>
+                {isPastDaySelected ? 'No Checklist Recorded' : isFutureDaySelected ? 'Future Date' : 'No Active Checklist'}
               </Typography>
-              <Button
-                variant="contained"
-                startIcon={<MdAdd />}
-                onClick={handleNewChecklist}
-                disabled={!canCreate}
-                sx={{
-                  textTransform: 'none', fontWeight: 600, borderRadius: '8px',
-                  background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-                }}
-              >
-                Create New Checklist
-              </Button>
+              <Typography variant="body2" sx={{ color: '#94a3b8', mb: 3 }}>
+                {isPastDaySelected 
+                  ? 'No checklist was created for this date.' 
+                  : isFutureDaySelected 
+                    ? 'Checklists cannot be created for future dates.' 
+                    : 'Create a new checklist to start recording BMS data, or open one from history.'}
+              </Typography>
+              {!(isFutureDaySelected || (isPastDaySelected && !isSuperuser)) && (
+                <Button
+                  variant="contained"
+                  startIcon={<MdAdd />}
+                  onClick={handleNewChecklist}
+                  disabled={!canCreate}
+                  sx={{
+                    textTransform: 'none', fontWeight: 600, borderRadius: '8px',
+                    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                  }}
+                >
+                  Create New Checklist
+                </Button>
+              )}
             </Box>
           )}
         </>
@@ -980,11 +1205,58 @@ const BMSChecklist: React.FC = () => {
       {/* ═══ Tab 1: History ═══ */}
       {activeTab === 1 && (
         <>
-          {history.length > 0 ? (
-            history.map(cl => (
+          {/* Month wise dropdown filter & Search by Prepared By Name */}
+          {history.length > 0 && (
+            <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
+              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#475569' }}>
+                  Filter by Month:
+                </Typography>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#fff',
+                    fontSize: '0.9rem',
+                    minWidth: '150px'
+                  }}
+                >
+                  <option value="all">All Months</option>
+                  {availableMonths.map(m => (
+                    <option key={m} value={m}>
+                      {dayjs(m + '-01').format('MMMM YYYY')}
+                    </option>
+                  ))}
+                </select>
+              </Box>
+
+              <label className={styles.container__filterControl} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <MdSearch style={{ fontSize: 20, color: '#64748b' }} />
+                <input
+                  type="search"
+                  placeholder="Search by date..."
+                  value={historySearchQuery}
+                  onChange={(e) => setHistorySearchQuery(e.target.value)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.9rem',
+                    width: '240px'
+                  }}
+                />
+              </label>
+            </Box>
+          )}
+
+          {filteredHistory.length > 0 ? (
+            filteredHistory.map(cl => (
               <Box key={cl.id} className={styles['container__history--card']}>
                 <Box className={styles['container__history--card--left']}>
-                  <h4>BMS Checklist — {dayjs(cl.date).format('DD MMM YYYY')}</h4>
+                  <h4>BMS Checklist — {dayjs(cl.date).format('DD MMM YYYY')} ({cl.department || 'General'})</h4>
                   <span>Prepared by: {cl.preparedBy} &nbsp;|&nbsp; {dayjs(cl.updatedAt).format('DD/MM/YYYY HH:mm')}</span>
                 </Box>
                 <Box className={styles['container__history--card--right']}>
@@ -1004,7 +1276,7 @@ const BMSChecklist: React.FC = () => {
                     variant="outlined"
                     color="primary"
                     onClick={() => handleOpenChecklist(cl.id)}
-                    disabled={!canUpdate}
+                    disabled={!canOpenForEdit}
                     sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '6px' }}
                   >
                     Edit
@@ -1021,6 +1293,12 @@ const BMSChecklist: React.FC = () => {
                 </Box>
               </Box>
             ))
+          ) : history.length > 0 ? (
+            <Box className={styles['container__history--empty']}>
+              <MdHistory style={{ fontSize: 48, marginBottom: 12 }} />
+              <h3>No Matching Checklists Found</h3>
+              <p>Try adjusting your search query or filters.</p>
+            </Box>
           ) : (
             <Box className={styles['container__history--empty']}>
               <MdHistory style={{ fontSize: 48, marginBottom: 12 }} />
@@ -1109,27 +1387,55 @@ const BMSChecklist: React.FC = () => {
             <label>
               Device
               <input
+                list="bms-devices"
                 value={newField.device}
                 onChange={(e) => setNewField(prev => ({ ...prev, device: e.target.value }))}
                 placeholder="PAC-1"
               />
             </label>
-            <label>
-              Parameter
-              <input
-                value={newField.parameter}
-                onChange={(e) => setNewField(prev => ({ ...prev, parameter: e.target.value }))}
-                placeholder="Temperature"
-              />
-            </label>
-            <label>
-              Unit
-              <input
-                value={newField.unit}
-                onChange={(e) => setNewField(prev => ({ ...prev, unit: e.target.value }))}
-                placeholder="C, %, V, A"
-              />
-            </label>
+            <datalist id="bms-devices">
+              {deviceOptions.map(device => <option key={device} value={device} />)}
+            </datalist>
+            <Box className={styles.container__parameterUnits}>
+              <div className={styles.container__parameterUnitsHeader}>
+                <span>Parameter</span>
+                <span>Unit</span>
+                <span />
+              </div>
+              {newParameterUnits.map((item, index) => (
+                <div className={styles.container__parameterUnitRow} key={index}>
+                  <input
+                    value={item.parameter}
+                    onChange={(e) => updateParameterUnit(index, 'parameter', e.target.value)}
+                    placeholder="Temperature"
+                  />
+                  <input
+                    value={item.unit}
+                    onChange={(e) => updateParameterUnit(index, 'unit', e.target.value)}
+                    placeholder="C"
+                  />
+                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <Tooltip title="Add parameter">
+                      <IconButton size="small" color="primary" onClick={addParameterUnit}>
+                        <MdAdd />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Remove parameter">
+                      <span>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => removeParameterUnit(index)}
+                          disabled={newParameterUnits.length === 1}
+                        >
+                          <MdRemove />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </Box>
+                </div>
+              ))}
+            </Box>
             <label>
               BMS Reading
               <input
@@ -1153,7 +1459,7 @@ const BMSChecklist: React.FC = () => {
           <Button
             onClick={handleAddField}
             variant="contained"
-            disabled={!newField.category.trim() || !newField.device.trim() || !newField.parameter.trim()}
+            disabled={!newField.category.trim() || !newField.device.trim() || !newParameterUnits.some(item => item.parameter.trim())}
             sx={{ textTransform: 'none', fontWeight: 600 }}
           >
             Add Field

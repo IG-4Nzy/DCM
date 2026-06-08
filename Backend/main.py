@@ -78,6 +78,7 @@ def get_action_name(method: str, path: str) -> str:
         if method == "POST": return "Create Request"
         if method == "PUT": return "Update Request"
         if method == "DELETE": return "Delete Request"
+        if method == "GET": return "View Request" if len(parts) > 2 else "View Requests List"
         return "Request Action"
 
     # Check BMS checklists
@@ -135,7 +136,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         method = request.method
         
-        if method == "GET" or path.startswith("/uploads") or path.startswith("/static") or path == "/" or path == "/favicon.ico":
+        if path.startswith("/uploads") or path.startswith("/static") or path == "/" or path == "/favicon.ico":
             return await call_next(request)
             
         parts = [p for p in path.split("/") if p]
@@ -217,7 +218,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         try:
             logs_col = db.get_collection("audit_logs")
             log_record = {
-                "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+                "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 "user": username,
                 "action": action,
                 "details": details,

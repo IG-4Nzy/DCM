@@ -161,7 +161,7 @@ async def create_roaster(
     today = date.today()
     start_of_current_iso_week = today - timedelta(days=today.weekday())
     start_of_current_iso_week_str = start_of_current_iso_week.isoformat()
-    if roaster_dict["date"] < start_of_current_iso_week_str:
+    if not is_superuser and roaster_dict["date"] < start_of_current_iso_week_str:
         raise HTTPException(status_code=400, detail="Cannot create roster entry for past weeks")
 
     roaster_dict["createdBy"] = current_user.get("sub", "")
@@ -212,7 +212,8 @@ async def update_roaster(id: str, roaster: UpdateRoasterModel = Body(...), curre
     start_of_current_iso_week = today - timedelta(days=today.weekday())
     start_of_current_iso_week_str = start_of_current_iso_week.isoformat()
     roster_date = roaster_dict.get("date") or existing.get("date")
-    if roster_date and roster_date < start_of_current_iso_week_str:
+    is_superuser = current_user.get("isSuperuser", False)
+    if not is_superuser and roster_date and roster_date < start_of_current_iso_week_str:
         raise HTTPException(status_code=400, detail="Cannot edit roster entry for past weeks")
 
     if len(roaster_dict) >= 1:
@@ -245,7 +246,7 @@ async def update_roaster(id: str, roaster: UpdateRoasterModel = Body(...), curre
     raise HTTPException(status_code=404, detail=f"Roster {id} not found")
 
 @router.delete("/{id}", response_description="Delete a roster entry", dependencies=[Depends(require_privilege("Delete Roaster"))])
-async def delete_roaster(id: str):
+async def delete_roaster(id: str, current_user: dict = Depends(get_current_user)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -257,7 +258,8 @@ async def delete_roaster(id: str):
     today = date.today()
     start_of_current_iso_week = today - timedelta(days=today.weekday())
     start_of_current_iso_week_str = start_of_current_iso_week.isoformat()
-    if existing.get("date") and existing["date"] < start_of_current_iso_week_str:
+    is_superuser = current_user.get("isSuperuser", False)
+    if not is_superuser and existing.get("date") and existing["date"] < start_of_current_iso_week_str:
         raise HTTPException(status_code=400, detail="Cannot delete roster entry for past weeks")
 
     delete_result = await roasters_collection.delete_one({"_id": ObjectId(id)})
@@ -375,4 +377,3 @@ async def get_duty_summary(
         "trackedRole": config.get("trackedRole", "All Roles"),
         "summary": summary
     }
-

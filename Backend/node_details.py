@@ -21,6 +21,18 @@ def clean_int(value) -> int:
     digits = "".join([c for c in str(value) if c.isdigit()])
     return int(digits) if digits else 0
 
+def parse_sl_number(value) -> int:
+    if value is None:
+        return 0
+    if isinstance(value, (int, float)):
+        return int(value)
+    value_str = str(value).strip()
+    try:
+        return int(float(value_str))
+    except ValueError:
+        digits = "".join(c for c in value_str if c.isdigit())
+        return int(digits) if digits else 0
+
 async def compute_node_details_available_resources(doc: dict):
     if not doc:
         return doc
@@ -77,13 +89,35 @@ async def list_items(
     sort_order = 1 if order == "asc" else -1
 
     total = await collection.count_documents(query)
-    cursor = collection.find(query).sort(actual_sort_by, sort_order)
-    
-    if pagination:
-        cursor = cursor.skip(skip).limit(limit)
-        items = await cursor.to_list(length=limit)
+
+    if actual_sort_by == "slNumber":
+        pipeline = [
+            {"$match": query},
+            {
+                "$addFields": {
+                    "_slNumberSort": {
+                        "$convert": {
+                            "input": "$slNumber",
+                            "to": "int",
+                            "onError": 0,
+                            "onNull": 0,
+                        }
+                    }
+                }
+            },
+            {"$sort": {"_slNumberSort": sort_order}},
+        ]
+        if pagination:
+            pipeline.extend([{"$skip": skip}, {"$limit": limit}])
+        pipeline.append({"$project": {"_slNumberSort": 0}})
+        items = await collection.aggregate(pipeline).to_list(length=limit if pagination else None)
     else:
-        items = await cursor.to_list(length=None)
+        cursor = collection.find(query).sort(actual_sort_by, sort_order)
+        if pagination:
+            cursor = cursor.skip(skip).limit(limit)
+            items = await cursor.to_list(length=limit)
+        else:
+            items = await cursor.to_list(length=None)
 
     items = [await compute_node_details_available_resources(item) for item in items]
 
@@ -106,11 +140,7 @@ async def create_item(
     cursor = collection.find({"clusterId": payload.clusterId}, {"slNumber": 1})
     max_sl = 0
     async for doc in cursor:
-        sl_str = doc.get("slNumber", "0")
-        if isinstance(sl_str, str) and sl_str.isdigit():
-            max_sl = max(max_sl, int(sl_str))
-        elif isinstance(sl_str, int):
-            max_sl = max(max_sl, sl_str)
+        max_sl = max(max_sl, parse_sl_number(doc.get("slNumber", "0")))
     
     item_dict["slNumber"] = str(max_sl + 1)
 
@@ -235,11 +265,7 @@ async def bulk_create_node_details(
     cursor = collection.find({"clusterId": clusterId}, {"slNumber": 1})
     max_sl = 0
     async for doc in cursor:
-        sl_str = doc.get("slNumber", "0")
-        if isinstance(sl_str, str) and sl_str.isdigit():
-            max_sl = max(max_sl, int(sl_str))
-        elif isinstance(sl_str, int):
-            max_sl = max(max_sl, sl_str)
+        max_sl = max(max_sl, parse_sl_number(doc.get("slNumber", "0")))
             
     next_sl = max_sl + 1
     current_time = datetime.now(timezone.utc).isoformat()

@@ -34,10 +34,7 @@ async def list_audit_logs(
     if not current_user.get("isSuperuser", False):
         raise HTTPException(status_code=403, detail="Only superuser can access audit logs")
 
-    query = {
-        "details": {"$not": {"$regex": "^GET", "$options": "i"}},
-        "action": {"$not": {"$regex": "^GET|^View", "$options": "i"}}
-    }
+    query = {}
     if search:
         search_query = {
             "$or": [
@@ -47,7 +44,7 @@ async def list_audit_logs(
                 {"ipAddress": {"$regex": search, "$options": "i"}}
             ]
         }
-        query = {"$and": [query, search_query]}
+        query = search_query
 
     total = await logs_collection.count_documents(query)
     cursor = logs_collection.find(query).sort("timestamp", -1).skip(skip).limit(limit)

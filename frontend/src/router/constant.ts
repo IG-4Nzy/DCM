@@ -21,4 +21,5 @@ export const ROUTE_CONSTANTS = {
     AUDIT_LOGS: "/audit-logs",
     DOCUMENTATIONS: "/documentations",
     BMS_CHECKLIST: "/bms-checklist",
+    VISITOR_LOGS: "/visitor-logs",
 }
