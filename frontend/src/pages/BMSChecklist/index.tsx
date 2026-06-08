@@ -1091,7 +1091,7 @@ const BMSChecklist: React.FC = () => {
       </Dialog>
 
       <Dialog open={addFieldOpen} onClose={() => setAddFieldOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>Add Checklist Field</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 ,color:"#333"}}>Add Checklist Field</DialogTitle>
         <DialogContent>
           <Box className={styles.container__fieldDialog}>
             <label>
