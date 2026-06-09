@@ -211,7 +211,7 @@ const Layout: React.FC = () => {
             edge="start"
             sx={{
               marginRight: 5,
-              display: 'none',
+              ...(open && { display: 'none' }),
             }}
           >
             <MenuIcon />
@@ -259,7 +259,9 @@ const Layout: React.FC = () => {
           <label style={{ fontWeight: 'bold', color: '#1976d2', flexGrow: 1, marginLeft: '16px', fontSize: '1.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {wordings.dcm}
           </label>
-          {/* Hover out collapses drawer automatically */}
+          <IconButton onClick={handleDrawerClose} sx={{ color: '#1976d2' }}>
+            {theme.direction === 'rtl' ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+          </IconButton>
         </DrawerHeader>
         <Divider />
         <Box sx={{ flexGrow: 1, overflowY: 'auto', overflowX: 'hidden' }}>

@@ -5,85 +5,110 @@ export interface ValidationError {
   reason: string;
 }
 
+export interface RosterRow {
+  name: string;
+  mappedShift: string;
+}
+
 export const validateRoster = (
   rosterData: Record<string, { assignees: string[] }>,
-  weekDates: string[]
+  weekDates: string[],
+  rows: RosterRow[] = []
 ): ValidationError[] => {
   const errors: ValidationError[] = [];
+  const activeRows = rows.length > 0 ? rows : [
+    { name: "Shift 1 Row 1", mappedShift: "Shift-1" },
+    { name: "Shift 1 Row 2", mappedShift: "Shift-1" },
+    { name: "Shift 2 Row 1", mappedShift: "Shift-2" },
+    { name: "Shift 2 Row 2", mappedShift: "Shift-2" },
+    { name: "Shift 3 Row 1", mappedShift: "Shift-3" },
+    { name: "Shift 3 Row 2", mappedShift: "Shift-3" },
+    { name: "Leave", mappedShift: "Leave" }
+  ];
+
+  interface UserShiftMapping {
+    actualShift: string;
+    colShift: string;
+  }
+
+  // Helper to map all assignees on a date to their actual shifts and source columns
+  const getUserShiftsForDate = (date: string): Record<string, UserShiftMapping[]> => {
+    const userShifts: Record<string, UserShiftMapping[]> = {};
+    const rosterColumns = ['Shift-1', 'Shift-2', 'Shift-3'];
+
+    rosterColumns.forEach((colShift) => {
+      const assignees = rosterData[`${date}_${colShift}`]?.assignees || [];
+      const colRows = [
+        activeRows.find(r => r.name === `${colShift.replace('-', ' ')} Row 1`) || { name: `${colShift.replace('-', ' ')} Row 1`, mappedShift: colShift },
+        activeRows.find(r => r.name === `${colShift.replace('-', ' ')} Row 2`) || { name: `${colShift.replace('-', ' ')} Row 2`, mappedShift: colShift }
+      ];
+
+      colRows.forEach((row, rIdx) => {
+        const username = assignees[rIdx];
+        if (username) {
+          const actualShift = row.mappedShift?.replace(/\s+/g, '-') || colShift;
+          if (!userShifts[username]) {
+            userShifts[username] = [];
+          }
+          userShifts[username].push({ actualShift, colShift });
+        }
+      });
+    });
+
+    return userShifts;
+  };
 
   weekDates.forEach((date, index) => {
-    const shift1 = rosterData[`${date}_Shift-1`]?.assignees || [];
-    const shift2 = rosterData[`${date}_Shift-2`]?.assignees || [];
-    const shift3 = rosterData[`${date}_Shift-3`]?.assignees || [];
+    const userShiftsToday = getUserShiftsForDate(date);
 
     // Rule 1: A person cannot be in 2 shifts a day
-    const allAssignees = [...shift1, ...shift2, ...shift3];
-    const duplicates = allAssignees.filter(
-      (item, idx) => allAssignees.indexOf(item) !== idx
-    );
-    const uniqueDuplicates = Array.from(new Set(duplicates));
-
-    uniqueDuplicates.forEach((username) => {
-      if (shift1.includes(username)) {
-        errors.push({
-          date,
-          shift: "Shift-1",
-          username,
-          reason: "Cannot be in multiple shifts on the same day",
-        });
-      }
-      if (shift2.includes(username)) {
-        errors.push({
-          date,
-          shift: "Shift-2",
-          username,
-          reason: "Cannot be in multiple shifts on the same day",
-        });
-      }
-      if (shift3.includes(username)) {
-        errors.push({
-          date,
-          shift: "Shift-3",
-          username,
-          reason: "Cannot be in multiple shifts on the same day",
+    Object.entries(userShiftsToday).forEach(([username, mappings]) => {
+      if (mappings.length > 1) {
+        mappings.forEach((m) => {
+          errors.push({
+            date,
+            shift: m.colShift,
+            username,
+            reason: "Cannot be in multiple shifts on the same day",
+          });
         });
       }
     });
 
-    // Rule 2: Person in shift 3 cannot be in shift 1 or 2 the next day
+    // Rule 2: Person in shift 3 (or night shift) cannot be in shift 1 or 2 the next day
     if (index < weekDates.length - 1) {
       const nextDate = weekDates[index + 1];
-      const nextShift1 = rosterData[`${nextDate}_Shift-1`]?.assignees || [];
-      const nextShift2 = rosterData[`${nextDate}_Shift-2`]?.assignees || [];
+      const userShiftsTomorrow = getUserShiftsForDate(nextDate);
 
-      shift3.forEach((username) => {
-        if (nextShift1.includes(username)) {
-          errors.push({
-            date: nextDate,
-            shift: "Shift-1",
-            username,
-            reason: "Cannot take Shift 1 immediately after a Shift 3 (requires off-day)",
-          });
-          errors.push({
-            date,
-            shift: "Shift-3",
-            username,
-            reason: "Assigned to Shift 1 the next day without an off-day",
-          });
-        }
-        if (nextShift2.includes(username)) {
-          errors.push({
-            date: nextDate,
-            shift: "Shift-2",
-            username,
-            reason: "Cannot take Shift 2 immediately after a Shift 3 (requires off-day)",
-          });
-          errors.push({
-            date,
-            shift: "Shift-3",
-            username,
-            reason: "Assigned to Shift 2 the next day without an off-day",
-          });
+      Object.entries(userShiftsToday).forEach(([username, todayMappings]) => {
+        const todayNightShifts = todayMappings.filter(
+          m => m.actualShift.includes("3") || m.actualShift.toLowerCase().includes("night")
+        );
+
+        if (todayNightShifts.length > 0) {
+          const tomorrowMappings = userShiftsTomorrow[username] || [];
+          const tomorrowRestrictedShifts = tomorrowMappings.filter(
+            m => m.actualShift.includes("1") || m.actualShift.includes("2") || m.actualShift.toLowerCase().includes("morning") || m.actualShift.toLowerCase().includes("afternoon")
+          );
+
+          if (tomorrowRestrictedShifts.length > 0) {
+            todayNightShifts.forEach(todayS => {
+              tomorrowRestrictedShifts.forEach(tomorrowS => {
+                errors.push({
+                  date: nextDate,
+                  shift: tomorrowS.colShift,
+                  username,
+                  reason: `Cannot take ${tomorrowS.actualShift} immediately after a ${todayS.actualShift} (requires off-day)`,
+                });
+                errors.push({
+                  date,
+                  shift: todayS.colShift,
+                  username,
+                  reason: `Assigned to ${tomorrowS.actualShift} the next day without an off-day`,
+                });
+              });
+            });
+          }
         }
       });
     }

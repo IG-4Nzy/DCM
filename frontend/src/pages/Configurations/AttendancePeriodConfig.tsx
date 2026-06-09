@@ -14,6 +14,11 @@ interface ShiftInfo {
     endTime: string;
 }
 
+interface RosterRow {
+    name: string;
+    mappedShift: string;
+}
+
 const AttendancePeriodConfig = () => {
     const [startDay, setStartDay] = useState<number | string>(1);
     const [endDay, setEndDay] = useState<number | string>(31);
@@ -21,6 +26,7 @@ const AttendancePeriodConfig = () => {
     const [lateGracePeriod, setLateGracePeriod] = useState<number>(30);
     const [maxAllowedDays, setMaxAllowedDays] = useState<number | string>(26);
     const [shifts, setShifts] = useState<ShiftInfo[]>([]);
+    const [rosterRows, setRosterRows] = useState<RosterRow[]>([]);
     const [trackedRole, setTrackedRole] = useState<string>('All Roles');
     const [roles, setRoles] = useState<string[]>(['All Roles']);
     const [loading, setLoading] = useState(false);
@@ -41,6 +47,7 @@ const AttendancePeriodConfig = () => {
                 setLateGracePeriod(response.data.lateGracePeriod || 30);
                 setMaxAllowedDays(response.data.maxAllowedDays || 26);
                 setShifts(response.data.shifts || []);
+                setRosterRows(response.data.rosterRows || []);
                 setTrackedRole(response.data.trackedRole || 'All Roles');
             }
         } catch (e: any) {
@@ -79,8 +86,20 @@ const AttendancePeriodConfig = () => {
 
         // Validate shift entries
         for (const s of shifts) {
-            if (!s.name.strip ? !s.name.trim() : !s.name) {
+            if (!s.name || !s.name.trim()) {
                 showToast('Shift name cannot be empty', 'warning');
+                return;
+            }
+        }
+
+        // Validate roster row entries
+        for (const r of rosterRows) {
+            if (!r.name || !r.name.trim()) {
+                showToast('Roster row name cannot be empty', 'warning');
+                return;
+            }
+            if (!r.mappedShift) {
+                showToast('Please assign a shift to all roster rows', 'warning');
                 return;
             }
         }
@@ -94,7 +113,8 @@ const AttendancePeriodConfig = () => {
                 lateGracePeriod: parseInt(lateGracePeriod.toString()),
                 maxAllowedDays: parseInt(maxAllowedDays.toString()),
                 shifts,
-                trackedRole
+                trackedRole,
+                rosterRows
             });
             showToast('Attendance configuration saved successfully', 'success');
         } catch (e: any) {
@@ -103,6 +123,7 @@ const AttendancePeriodConfig = () => {
             setSaving(false);
         }
     };
+
 
     return (
         <Box sx={{ mt: 1, maxWidth: 850, pb: 4 }}>
@@ -322,6 +343,89 @@ const AttendancePeriodConfig = () => {
                                 </Box>
                             )}
                         </Grid>
+                        
+                        <Grid item xs={12}>
+                            <Divider sx={{ my: 3 }} />
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333' }}>
+                                    Manage Roster Rows / Slots (Assign shifts to each row/slot)
+                                </Typography>
+                                {hasUpdate && (
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        onClick={() => setRosterRows([...rosterRows, { name: '', mappedShift: 'None' }])}
+                                        disabled={saving}
+                                    >
+                                        + Add Row/Slot
+                                    </Button>
+                                )}
+                            </Box>
+                            
+                            {rosterRows.length === 0 ? (
+                                <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic', mb: 2 }}>
+                                    No custom roster rows configured yet. Standard rows (Shift-1 Row-1, Shift-1 Row-2, Shift-2 Row-1...) will apply.
+                                </Typography>
+                            ) : (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
+                                    {rosterRows.map((row, idx) => (
+                                        <Grid container spacing={2} key={idx} alignItems="center">
+                                            <Grid item xs={12} sm={5}>
+                                                <TextField
+                                                    label="Row / Slot Name"
+                                                    placeholder="e.g. Shift 1 Row 1"
+                                                    fullWidth
+                                                    value={row.name}
+                                                    onChange={(e) => {
+                                                        const newRows = [...rosterRows];
+                                                        newRows[idx].name = e.target.value;
+                                                        setRosterRows(newRows);
+                                                    }}
+                                                    disabled={!hasUpdate || saving}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} sm={5}>
+                                                <FormControl fullWidth>
+                                                    <InputLabel>Mapped Shift</InputLabel>
+                                                    <Select
+                                                        value={row.mappedShift}
+                                                        label="Mapped Shift"
+                                                        onChange={(e) => {
+                                                            const newRows = [...rosterRows];
+                                                            newRows[idx].mappedShift = e.target.value as string;
+                                                            setRosterRows(newRows);
+                                                        }}
+                                                        disabled={!hasUpdate || saving}
+                                                    >
+                                                        <MenuItem value="None">None</MenuItem>
+                                                        {shifts.map((s, sIdx) => (
+                                                            <MenuItem key={sIdx} value={s.name}>{s.name}</MenuItem>
+                                                        ))}
+                                                        <MenuItem value="Leave">Leave</MenuItem>
+                                                    </Select>
+                                                </FormControl>
+                                            </Grid>
+                                            <Grid item xs={12} sm={2}>
+                                                {hasUpdate && (
+                                                    <Button
+                                                        variant="outlined"
+                                                        color="error"
+                                                        fullWidth
+                                                        onClick={() => {
+                                                            const newRows = rosterRows.filter((_, rIdx) => rIdx !== idx);
+                                                            setRosterRows(newRows);
+                                                        }}
+                                                        disabled={saving}
+                                                    >
+                                                        Remove
+                                                    </Button>
+                                                )}
+                                            </Grid>
+                                        </Grid>
+                                    ))}
+                                </Box>
+                            )}
+                        </Grid>
 
                         <Grid item xs={12} sx={{ mt: 2 }}>
                             <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -345,3 +449,4 @@ const AttendancePeriodConfig = () => {
 };
 
 export default AttendancePeriodConfig;
+

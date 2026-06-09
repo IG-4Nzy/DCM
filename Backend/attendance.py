@@ -267,9 +267,42 @@ async def get_server_time():
 async def get_attendance_config():
     config = await config_collection.find_one({})
     if not config:
-        default_config = {"startDay": 1, "endDay": 31, "shiftStart": "09:00", "lateGracePeriod": 30, "maxAllowedDays": 26, "trackedRole": "All Roles"}
+        default_config = {
+            "startDay": 1,
+            "endDay": 31,
+            "shiftStart": "09:00",
+            "lateGracePeriod": 30,
+            "maxAllowedDays": 26,
+            "trackedRole": "All Roles",
+            "shifts": [
+                {"name": "Shift-1", "startTime": "06:30", "endTime": "14:30"},
+                {"name": "Shift-2", "startTime": "14:30", "endTime": "22:30"},
+                {"name": "Shift-3", "startTime": "22:30", "endTime": "06:30"}
+            ],
+            "rosterRows": [
+                {"name": "Shift 1 Row 1", "mappedShift": "Shift-1"},
+                {"name": "Shift 1 Row 2", "mappedShift": "Shift-1"},
+                {"name": "Shift 2 Row 1", "mappedShift": "Shift-2"},
+                {"name": "Shift 2 Row 2", "mappedShift": "Shift-2"},
+                {"name": "Shift 3 Row 1", "mappedShift": "Shift-3"},
+                {"name": "Shift 3 Row 2", "mappedShift": "Shift-3"},
+                {"name": "Leave", "mappedShift": "Leave"}
+            ]
+        }
         await config_collection.insert_one(default_config)
         config = await config_collection.find_one({})
+    # Backward compatibility for existing configs
+    if "rosterRows" not in config:
+        config["rosterRows"] = [
+            {"name": "Shift 1 Row 1", "mappedShift": "Shift-1"},
+            {"name": "Shift 1 Row 2", "mappedShift": "Shift-1"},
+            {"name": "Shift 2 Row 1", "mappedShift": "Shift-2"},
+            {"name": "Shift 2 Row 2", "mappedShift": "Shift-2"},
+            {"name": "Shift 3 Row 1", "mappedShift": "Shift-3"},
+            {"name": "Shift 3 Row 2", "mappedShift": "Shift-3"},
+            {"name": "Leave", "mappedShift": "Leave"}
+        ]
+        await config_collection.update_one({"_id": config["_id"]}, {"$set": {"rosterRows": config["rosterRows"]}})
     return config
 
 @router.post("/config", response_model=AttendanceConfigModel, response_model_by_alias=False)
@@ -290,7 +323,8 @@ async def update_attendance_config(
         "lateGracePeriod": payload.lateGracePeriod,
         "maxAllowedDays": payload.maxAllowedDays,
         "shifts": [dict(s) for s in payload.shifts],
-        "trackedRole": payload.trackedRole or "All Roles"
+        "trackedRole": payload.trackedRole or "All Roles",
+        "rosterRows": [dict(r) for r in payload.rosterRows]
     }
     if config:
         await config_collection.update_one({"_id": config["_id"]}, {"$set": update_data})
@@ -299,6 +333,7 @@ async def update_attendance_config(
         
     new_config = await config_collection.find_one({})
     return new_config
+
 
 @router.get("/summary")
 async def get_attendance_summary(

@@ -985,6 +985,10 @@ class ShiftInfoModel(BaseModel):
     startTime: str  # "HH:MM"
     endTime: str    # "HH:MM"
 
+class RosterRowModel(BaseModel):
+    name: str
+    mappedShift: str
+
 class AttendanceConfigModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     startDay: int = 1
@@ -994,8 +998,11 @@ class AttendanceConfigModel(BaseModel):
     maxAllowedDays: int = 26
     shifts: List[ShiftInfoModel] = Field(default_factory=list)
     trackedRole: Optional[str] = "All Roles"
+    rosterRows: List[RosterRowModel] = Field(default_factory=list)
 
     model_config = ConfigDict(
         populate_by_name=True,
         arbitrary_types_allowed=True,
     )
+
+

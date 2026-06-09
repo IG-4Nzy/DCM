@@ -162,6 +162,57 @@ async def get_dashboard_summary(
         dept_usernames = [u["username"] for u in dept_users]
         open_obs_query["loggedBy"] = {"$in": dept_usernames}
     open_obs_count = await obs_col.count_documents(open_obs_query)
+    
+    # 8. Fetch attendance configuration (shift timings for late/early detection)
+    att_config_col = db.get_collection("attendance_config")
+    att_config_doc = await att_config_col.find_one({})
+    shift_config = {
+        "shiftStart": "09:00",
+        "lateGracePeriod": 30,
+        "shifts": [],
+        "rosterRows": []
+    }
+    if att_config_doc:
+        shift_config["shiftStart"] = att_config_doc.get("shiftStart", "09:00")
+        shift_config["lateGracePeriod"] = att_config_doc.get("lateGracePeriod", 30)
+        shift_config["shifts"] = att_config_doc.get("shifts", [])
+        shift_config["rosterRows"] = att_config_doc.get("rosterRows", [])
+
+
+    
+    # 9. Fetch today's attendance logs for this department
+    att_logs_col = db.get_collection("attendance_logs")
+    att_query = {"date": date}
+    if not is_superuser:
+        dept_users_for_att = await users_col.find({"department": active_dept}).to_list(length=None)
+        dept_usernames_for_att = [u["username"] for u in dept_users_for_att]
+        att_query["username"] = {"$in": dept_usernames_for_att}
+    
+    att_cursor = att_logs_col.find(att_query)
+    att_list = await att_cursor.to_list(length=500)
+    
+    enriched_attendance = []
+    for a in att_list:
+        a_dict = {
+            "username": a.get("username", ""),
+            "firstLogin": a.get("firstLogin", ""),
+            "lastLogout": a.get("lastLogout", ""),
+            "shiftStart": a.get("shiftStart", ""),
+            "shiftEnd": a.get("shiftEnd", ""),
+            "shift": a.get("shift", ""),
+            "regularizeStatus": a.get("regularizeStatus", ""),
+        }
+        # Add full name
+        att_user = await users_col.find_one({"username": a_dict["username"]})
+        if att_user:
+            fname = att_user.get("firstName", "")
+            lname = att_user.get("lastName", "")
+            a_dict["fullName"] = f"{fname} {lname}".strip() or a_dict["username"]
+            a_dict["initials"] = ((fname[:1] + lname[:1]) if fname and lname else a_dict["username"][:2]).upper()
+        else:
+            a_dict["fullName"] = a_dict["username"]
+            a_dict["initials"] = a_dict["username"][:2].upper()
+        enriched_attendance.append(a_dict)
         
     return {
         "roasterShifts": enriched_roasters,
@@ -175,5 +226,7 @@ async def get_dashboard_summary(
         "observations": enriched_obs,
         "openObservationsCount": open_obs_count,
         "isDepartmentHead": is_dept_head,
-        "userDepartment": active_dept
+        "userDepartment": active_dept,
+        "shiftConfig": shift_config,
+        "todayAttendance": enriched_attendance
     }

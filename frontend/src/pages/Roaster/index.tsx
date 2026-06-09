@@ -60,11 +60,37 @@ const RoasterPage: React.FC = () => {
   const canApprove = isSuperuser || hasPrivilege(PRIVILEGES.ROASTER_APPROVE);
   const userDepartment = token ? (jwtDecode(token) as any).department || "General" : "General";
 
+  const formatTime = (timeStr: string) => {
+    if (!timeStr) return '';
+    const parts = timeStr.split(':');
+    if (parts.length < 2) return timeStr;
+    const hr = parseInt(parts[0]);
+    const ampm = hr >= 12 ? 'PM' : 'AM';
+    const displayHr = hr % 12 || 12;
+    return `${displayHr.toString().padStart(2, '0')}:${parts[1]} ${ampm}`;
+  };
+
   const weekDates = Array.from({ length: 7 }).map((_, index) =>
     selectedWeek.startOf("isoWeek").add(index, "day").format("YYYY-MM-DD")
   );
 
-  const validationErrors = validateRoster(rosterData, weekDates);
+  const rows = dutySummary?.rosterRows && dutySummary.rosterRows.length > 0
+    ? dutySummary.rosterRows
+    : [
+        { name: "Shift 1 Row 1", mappedShift: "Shift-1" },
+        { name: "Shift 1 Row 2", mappedShift: "Shift-1" },
+        { name: "Shift 2 Row 1", mappedShift: "Shift-2" },
+        { name: "Shift 2 Row 2", mappedShift: "Shift-2" },
+        { name: "Shift 3 Row 1", mappedShift: "Shift-3" },
+        { name: "Shift 3 Row 2", mappedShift: "Shift-3" },
+        { name: "Leave", mappedShift: "Leave" }
+      ];
+
+  const uniqueShifts = ["Shift-1", "Shift-2", "Shift-3", "Leave"];
+
+  const validationErrors = validateRoster(rosterData, weekDates, rows);
+
+
 
   const fetchRosters = async () => {
     const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
@@ -137,6 +163,8 @@ const RoasterPage: React.FC = () => {
       return isCorrectDept && isNotSuper && isCorrectRole;
     });
 
+    const shiftNames = uniqueShifts.filter(s => s !== "Leave");
+
     const summaryList = deptUsers.map((u) => {
       const username = u.username;
       const initial = backendCounts.get(username) || { monthDays: 0, weekDays: 0 };
@@ -144,7 +172,7 @@ const RoasterPage: React.FC = () => {
       // 1. Calculate real-time week counts
       const weekDatesAssigned = new Set<string>();
       weekDates.forEach((dateStr) => {
-        ["Shift-1", "Shift-2", "Shift-3"].forEach((shift) => {
+        shiftNames.forEach((shift) => {
           const key = `${dateStr}_${shift}`;
           if (rosterData[key]?.assignees?.includes(username)) {
             weekDatesAssigned.add(dateStr);
@@ -156,7 +184,7 @@ const RoasterPage: React.FC = () => {
       // 2. Calculate real-time month counts
       const savedCycleDates = new Set<string>();
       weekDatesInCycle.forEach((dateStr) => {
-        ["Shift-1", "Shift-2", "Shift-3"].forEach((shift) => {
+        shiftNames.forEach((shift) => {
           const key = `${dateStr}_${shift}`;
           if (savedRosterData[key]?.assignees?.includes(username)) {
             savedCycleDates.add(dateStr);
@@ -167,7 +195,7 @@ const RoasterPage: React.FC = () => {
 
       const currentCycleDates = new Set<string>();
       weekDatesInCycle.forEach((dateStr) => {
-        ["Shift-1", "Shift-2", "Shift-3"].forEach((shift) => {
+        shiftNames.forEach((shift) => {
           const key = `${dateStr}_${shift}`;
           if (rosterData[key]?.assignees?.includes(username)) {
             currentCycleDates.add(dateStr);
@@ -466,14 +494,19 @@ const RoasterPage: React.FC = () => {
           <article
             className={styles["container__roasterContainer__table--header"]}
           >
-            {tableHeader?.map((header) => (
-              <div
-                key={header}
-                className={`${styles["container__roasterContainer__table--header-cell"]} ${header === "Leave" ? "hide-on-print" : ""}`}
-              >
-                <label>{header}</label>
-              </div>
-            ))}
+            {["Day", ...uniqueShifts].map((shiftName) => {
+              const isLeave = shiftName === "Leave";
+              const cfgShift = dutySummary?.shifts?.find((s: any) => s.name === shiftName);
+              const headerLabel = cfgShift ? `${shiftName} (${formatTime(cfgShift.startTime)} to ${formatTime(cfgShift.endTime)})` : shiftName;
+              return (
+                <div
+                  key={shiftName}
+                  className={`${styles["container__roasterContainer__table--header-cell"]} ${isLeave ? "hide-on-print" : ""}`}
+                >
+                  <label>{headerLabel}</label>
+                </div>
+              );
+            })}
           </article>
 
           <article
@@ -503,143 +536,159 @@ const RoasterPage: React.FC = () => {
                     <label>{currentDay.format("dddd")}</label>
                   </div>
 
-                  {["Shift-1", "Shift-2", "Shift-3", "Leave"].map((shift) => {
-                    const key = `${dateStr}_${shift}`;
+                  {uniqueShifts.map((shiftName) => {
+                    const key = `${dateStr}_${shiftName}`;
                     const assignees = rosterData[key]?.assignees || [];
-                    const otherShiftsAssignees = ["Shift-1", "Shift-2", "Shift-3", "Leave"]
-                      .filter((s) => s !== shift)
+                    const otherShiftsAssignees = uniqueShifts
+                      .filter((s) => s !== shiftName)
                       .flatMap((s) => rosterData[`${dateStr}_${s}`]?.assignees || []);
 
-                    return (
-                      <div
-                        key={shift}
-                        className={`${styles["container__roasterContainer__table--body-cell--row2"]} ${shift === "Leave" ? "hide-on-print" : ""}`}
-                      >
-                        {isEditMode && (isSuperuser || !dayjs(dateStr).isBefore(getServerTime().startOf("isoWeek"), "day")) ? (
-                          <Autocomplete
-                            multiple
-                            size="small"
-                            options={users
-                              .filter((u) => {
-                                const deptHeads = departmentsList.map((d: any) => d.departmentHead).filter(Boolean);
-                                const isSuper = u.is_superuser || u.isSuperuser;
-                                const isDeptHead = deptHeads.includes(u.username) || deptHeads.includes(u.id) || deptHeads.includes(u._id);
-                                return !isSuper && !isDeptHead && u.department === userDepartment && !otherShiftsAssignees.includes(u.username);
-                              })
-                              .map((u) => u.username)
-                            }
-                            getOptionLabel={(option) => getUserDisplayName(option)}
-                            value={assignees}
-                            onChange={(e, val) => {
-                              if (shift === "Leave" || val.length <= 2) {
+                    const isLeave = shiftName === "Leave";
+
+                    if (isLeave) {
+                      return (
+                        <div
+                          key={shiftName}
+                          className={`${styles["container__roasterContainer__table--body-cell--row2"]} hide-on-print`}
+                        >
+                          {isEditMode && (isSuperuser || !dayjs(dateStr).isBefore(getServerTime().startOf("isoWeek"), "day")) ? (
+                            <Autocomplete
+                              multiple
+                              size="small"
+                              options={users
+                                .filter((u) => {
+                                  const deptHeads = departmentsList.map((d: any) => d.departmentHead).filter(Boolean);
+                                  const isSuper = u.is_superuser || u.isSuperuser;
+                                  const isDeptHead = deptHeads.includes(u.username) || deptHeads.includes(u.id) || deptHeads.includes(u._id);
+                                  return !isSuper && !isDeptHead && u.department === userDepartment && !otherShiftsAssignees.includes(u.username);
+                                })
+                                .map((u) => u.username)
+                              }
+                              getOptionLabel={(option) => getUserDisplayName(option)}
+                              value={assignees}
+                              onChange={(e, val) => {
                                 setRosterData((prev) => ({
                                   ...prev,
                                   [key]: { ...(prev[key] || {}), assignees: val },
                                 }));
-                              } else {
-                                showToast("Maximum 2 persons per shift allowed", "warning");
+                              }}
+                              renderInput={(params) => (
+                                <TextField {...params} variant="standard" />
+                              )}
+                              // @ts-ignore
+                              renderTags={(value, getTagProps) =>
+                                value.map((option, index) => {
+                                  const error = validationErrors.find(
+                                    (e) =>
+                                      e.date === dateStr &&
+                                      e.shift === shiftName &&
+                                      e.username === option
+                                  );
+                                  return (
+                                    <Tooltip title={error ? error.reason : ""} key={option}>
+                                      <Chip
+                                        {...getTagProps({ index })}
+                                        label={option}
+                                        color={error ? "error" : "default"}
+                                      />
+                                    </Tooltip>
+                                  );
+                                })
                               }
-                            }}
-                            renderInput={(params) => (
-                              <TextField {...params} variant="standard" />
-                            )}
-                            // @ts-ignore
-                            renderTags={(value, getTagProps) =>
-                              value.map((option, index) => {
-                                const error = validationErrors.find(
-                                  (e) =>
-                                    e.date === dateStr &&
-                                    e.shift === shift &&
-                                    e.username === option
-                                );
-                                return (
-                                  <Tooltip title={error ? error.reason : ""} key={option}>
-                                    <Chip
-                                      {...getTagProps({ index })}
-                                      label={option}
-                                      color={error ? "error" : "default"}
-                                    />
-                                  </Tooltip>
-                                );
-                              })
-                            }
-                            getOptionDisabled={(option) => shift !== "Leave" && assignees.length >= 2 && !assignees.includes(option)}
-                            sx={{ width: "90%" }}
-                            disableCloseOnSelect
-                          />
-                        ) : shift === "Leave" ? (
-                          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, p: 1, justifyContent: "center", width: "100%", height: "100%", alignItems: "center" }}>
-                            {assignees.length > 0 ? (
-                              assignees.map((a) => (
-                                <Chip key={a} label={getUserDisplayName(a)} color="error" variant="outlined" size="small" />
-                              ))
-                            ) : (
-                              <label style={{ display: "flex", flex: "1", border: "none", alignItems: "center", justifyContent: "center" }}>-</label>
-                            )}
-                          </Box>
-                        ) : (
-                          <>
-                            {assignees.length > 0 ? (
-                              <Tooltip
-                                title={
-                                  validationErrors.find(
-                                    (e) =>
-                                      e.date === dateStr &&
-                                      e.shift === shift &&
-                                      e.username === assignees[0]
-                                  )?.reason || ""
-                                }
-                              >
-                                <label
-                                  style={{
-                                    color: validationErrors.some(
-                                      (e) =>
-                                        e.date === dateStr &&
-                                        e.shift === shift &&
-                                        e.username === assignees[0]
-                                    )
-                                      ? "red"
-                                      : "inherit",
-                                  }}
-                                >
-                                  {getUserDisplayName(assignees[0])}
-                                </label>
-                              </Tooltip>
-                            ) : (
-                              <label>-</label>
-                            )}
+                              sx={{ width: "90%" }}
+                              disableCloseOnSelect
+                            />
+                          ) : (
+                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, p: 1, justifyContent: "center", width: "100%", height: "100%", alignItems: "center" }}>
+                              {assignees.length > 0 ? (
+                                assignees.map((a) => (
+                                  <Chip key={a} label={getUserDisplayName(a)} color="error" variant="outlined" size="small" />
+                                ))
+                              ) : (
+                                <label style={{ display: "flex", flex: "1", border: "none", alignItems: "center", justifyContent: "center" }}>-</label>
+                              )}
+                            </Box>
+                          )}
+                        </div>
+                      );
+                    }
 
-                            {assignees.length > 1 ? (
-                              <Tooltip
-                                title={
-                                  validationErrors.find(
-                                    (e) =>
-                                      e.date === dateStr &&
-                                      e.shift === shift &&
-                                      e.username === assignees[1]
-                                  )?.reason || ""
-                                }
-                              >
-                                <label
-                                  style={{
-                                    color: validationErrors.some(
-                                      (e) =>
-                                        e.date === dateStr &&
-                                        e.shift === shift &&
-                                        e.username === assignees[1]
-                                    )
-                                      ? "red"
-                                      : "inherit",
+                    const shiftRows = [
+                      rows.find(r => r.name === `${shiftName.replace('-', ' ')} Row 1`) || { name: `${shiftName.replace('-', ' ')} Row 1`, mappedShift: shiftName },
+                      rows.find(r => r.name === `${shiftName.replace('-', ' ')} Row 2`) || { name: `${shiftName.replace('-', ' ')} Row 2`, mappedShift: shiftName }
+                    ];
+
+                    return (
+                      <div
+                        key={shiftName}
+                        className={styles["container__roasterContainer__table--body-cell--row2"]}
+                      >
+                        {shiftRows.map((row, slotIdx) => {
+                          const username = assignees[slotIdx];
+                          const error = validationErrors.find(
+                            (e) =>
+                              e.date === dateStr &&
+                              e.shift === shiftName &&
+                              e.username === username
+                          );
+
+                          if (isEditMode && (isSuperuser || !dayjs(dateStr).isBefore(getServerTime().startOf("isoWeek"), "day"))) {
+                            const sameShiftOtherSlots = assignees.filter((_, idx) => idx !== slotIdx);
+                            const excludedUsernames = [...otherShiftsAssignees, ...sameShiftOtherSlots];
+                            return (
+                              <label key={slotIdx}>
+                                <Autocomplete
+                                  size="small"
+                                  options={users
+                                    .filter((u) => {
+                                      const deptHeads = departmentsList.map((d: any) => d.departmentHead).filter(Boolean);
+                                      const isSuper = u.is_superuser || u.isSuperuser;
+                                      const isDeptHead = deptHeads.includes(u.username) || deptHeads.includes(u.id) || deptHeads.includes(u._id);
+                                      return !isSuper && !isDeptHead && u.department === userDepartment && !excludedUsernames.includes(u.username);
+                                    })
+                                    .map((u) => u.username)
+                                  }
+                                  getOptionLabel={(option) => getUserDisplayName(option)}
+                                  value={username || null}
+                                  onChange={(e, val) => {
+                                    const newAssignees = [...assignees];
+                                    newAssignees[slotIdx] = val || "";
+                                    setRosterData((prev) => ({
+                                      ...prev,
+                                      [key]: { ...(prev[key] || {}), assignees: newAssignees },
+                                    }));
                                   }}
-                                >
-                                  {getUserDisplayName(assignees[1])}
-                                </label>
-                              </Tooltip>
-                            ) : (
-                              <label>-</label>
-                            )}
-                          </>
-                        )}
+                                  renderInput={(params) => (
+                                    <TextField {...params} variant="standard" placeholder={row.name} sx={{ '& input': { fontSize: '12px', textAlign: 'center' } }} />
+                                  )}
+                                  // @ts-ignore
+                                  renderTags={() => null}
+                                  sx={{ width: '90%' }}
+                                  disableCloseOnSelect
+                                />
+                              </label>
+                            );
+                          } else {
+                            // View mode
+                            return (
+                              <label
+                                key={slotIdx}
+                                style={{
+                                  color: error ? "red" : "inherit",
+                                  fontWeight: error ? 700 : 500,
+                                }}
+                              >
+                                {username ? (
+                                  <Tooltip title={error ? error.reason : ""}>
+                                    <span>{getUserDisplayName(username)}</span>
+                                  </Tooltip>
+                                ) : (
+                                  "-"
+                                )}
+                              </label>
+                            );
+                          }
+                        })}
                       </div>
                     );
                   })}

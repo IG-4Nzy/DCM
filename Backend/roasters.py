@@ -385,5 +385,7 @@ async def get_duty_summary(
         "weekStart": week_start_str,
         "weekEnd": week_end_str,
         "trackedRole": config.get("trackedRole", "All Roles"),
+        "rosterRows": config.get("rosterRows", []),
         "summary": summary
     }
+
