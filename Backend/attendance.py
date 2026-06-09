@@ -195,6 +195,8 @@ async def request_regularize(
             }
         }
     )
+    from notification_helper import log_page_update
+    await log_page_update("attendance", department=attendance.get("department"), username=current_user.get("sub"))
     return {"message": "Regularization request submitted successfully"}
 
 @router.post("/approve/{id}")
@@ -222,6 +224,8 @@ async def approve_regularize(
             }
         }
     )
+    from notification_helper import log_page_update
+    await log_page_update("attendance", department=target_dept, username=current_user.get("sub"))
     return {"message": "Regularization request approved"}
 
 @router.post("/reject/{id}")
@@ -250,6 +254,8 @@ async def reject_regularize(
             }
         }
     )
+    from notification_helper import log_page_update
+    await log_page_update("attendance", department=target_dept, username=current_user.get("sub"))
     return {"message": "Regularization request rejected"}
 
 @router.get("/server-time")
@@ -431,6 +437,8 @@ async def edit_attendance(
     )
     
     updated = await attendance_collection.find_one({"_id": ObjectId(id)})
+    from notification_helper import log_page_update
+    await log_page_update("attendance", department=updated.get("department"), username=current_user.get("sub"))
     return updated
 
 @router.delete("/{id}")

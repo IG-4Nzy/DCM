@@ -54,6 +54,10 @@ async def create_documentation(
     result = await collection.insert_one(doc_dict)
     created_doc = await collection.find_one({"_id": result.inserted_id})
     created_doc["_id"] = str(created_doc["_id"])
+
+    from notification_helper import log_page_update
+    await log_page_update("documentations", username=current_user.get("sub"))
+
     return created_doc
 
 @router.get("/", response_description="List documentations", response_model=PaginatedDocumentationsModel, dependencies=[Depends(require_privilege("View Documentation"))])
@@ -117,6 +121,10 @@ async def update_documentation(
     await collection.update_one({"_id": ObjectId(id)}, {"$set": update_data})
     updated_doc = await collection.find_one({"_id": ObjectId(id)})
     updated_doc["_id"] = str(updated_doc["_id"])
+
+    from notification_helper import log_page_update
+    await log_page_update("documentations", username=current_user.get("sub"))
+
     return updated_doc
 
 @router.delete("/{id}", response_description="Delete documentation", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_privilege("Delete Documentation"))])

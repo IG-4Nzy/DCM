@@ -84,10 +84,14 @@ async def upload_attachments(files: list[UploadFile] = File(...)):
     return uploaded_files
 
 @router.post("/", response_description="Create a new work", response_model=WorkModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Work"))])
-async def create_work(work: CreateWorkModel = Body(...)):
+async def create_work(work: CreateWorkModel = Body(...), current_user: dict = Depends(get_current_user)):
     work_dict = work.model_dump()
     new_work = await works_collection.insert_one(work_dict)
     created_work = await works_collection.find_one({"_id": new_work.inserted_id})
+    
+    from notification_helper import log_page_update
+    await log_page_update("works", assignee=work.assignee, username=current_user.get("sub"))
+    
     return created_work
 
 @router.get("/{id}", response_description="Get a single work", response_model=WorkModel, response_model_by_alias=False)
@@ -160,6 +164,8 @@ async def update_work(id: str, work: UpdateWorkModel = Body(...), current_user: 
 
         if update_result.modified_count == 1:
             if (updated_work := await works_collection.find_one({"_id": ObjectId(id)})) is not None:
+                from notification_helper import log_page_update
+                await log_page_update("works", assignee=updated_work.get("assignee"), username=current_user.get("sub"))
                 return updated_work
 
     if (existing_work := await works_collection.find_one({"_id": ObjectId(id)})) is not None:

@@ -393,6 +393,10 @@ async def create_item(
         )
         if created.get("status") == "Completed":
             await add_visitor_log_on_completion(created, requester)
+        from notification_helper import log_page_update
+        await log_page_update("requests", username=requester)
+        if created.get("requestType") == "DC Entry":
+            await log_page_update("visitor-logs", username=requester)
     return created
 
 
@@ -472,6 +476,10 @@ async def update_item(id: str, payload: UpdateRequestModel = Body(...), current_
             username=username,
             remarks=payload.remarks
         )
+        from notification_helper import log_page_update
+        await log_page_update("requests", username=username)
+        if updated.get("requestType") == "DC Entry":
+            await log_page_update("visitor-logs", username=username)
     return updated
 
 
@@ -577,6 +585,10 @@ async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), c
             username=username,
             remarks=remarks
         )
+        from notification_helper import log_page_update
+        await log_page_update("requests", username=username)
+        if updated.get("requestType") == "DC Entry":
+            await log_page_update("visitor-logs", username=username)
     return updated
 
 

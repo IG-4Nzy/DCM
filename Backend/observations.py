@@ -131,7 +131,10 @@ async def list_observations(
     return {"data": observations, "total": total}
 
 @router.post("/", response_description="Create a new observation", response_model=ObservationModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Observation"))])
-async def create_observation(observation: CreateObservationModel = Body(...)):
+async def create_observation(
+    observation: CreateObservationModel = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
     obs_dict = observation.model_dump()
     
     # Auto-generate observationId
@@ -153,6 +156,14 @@ async def create_observation(observation: CreateObservationModel = Body(...)):
     
     new_obs = await obs_collection.insert_one(obs_dict)
     created_obs = await obs_collection.find_one({"_id": new_obs.inserted_id})
+    
+    users_collection = db.get_collection("users")
+    user_record = await users_collection.find_one({"username": current_user["sub"]})
+    user_dept = user_record.get("department") if user_record else None
+
+    from notification_helper import log_page_update
+    await log_page_update("observations", department=user_dept, username=current_user.get("sub"))
+
     return created_obs
 
 @router.get("/{id}", response_description="Get a single observation", response_model=ObservationModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Observations"))])
@@ -167,7 +178,11 @@ async def show_observation(id: str):
     return obs
 
 @router.put("/{id}", response_description="Update an observation", response_model=ObservationModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Observation"))])
-async def update_observation(id: str, observation: UpdateObservationModel = Body(...)):
+async def update_observation(
+    id: str,
+    observation: UpdateObservationModel = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -180,6 +195,12 @@ async def update_observation(id: str, observation: UpdateObservationModel = Body
 
         if update_result.modified_count == 1:
             if (updated_obs := await obs_collection.find_one({"_id": ObjectId(id)})) is not None:
+                users_collection = db.get_collection("users")
+                user_record = await users_collection.find_one({"username": current_user["sub"]})
+                user_dept = user_record.get("department") if user_record else None
+
+                from notification_helper import log_page_update
+                await log_page_update("observations", department=user_dept, username=current_user.get("sub"))
                 return updated_obs
 
     if (existing_obs := await obs_collection.find_one({"_id": ObjectId(id)})) is not None:

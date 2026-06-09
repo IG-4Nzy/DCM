@@ -62,6 +62,10 @@ async def update_roaster_status(
     )
 
     updated_doc = await roaster_status_collection.find_one({"weekStartDate": status_data.weekStartDate, "department": status_data.department})
+    
+    from notification_helper import log_page_update
+    await log_page_update("roasters", department=status_data.department, username=current_user.get("sub"))
+    
     return updated_doc
 
 @router.post("/status/reset", response_description="Reset roster status to Pending", response_model=RoasterStatusModel, response_model_by_alias=False)
@@ -194,6 +198,10 @@ async def create_roaster(
 
     new_roaster = await roasters_collection.insert_one(roaster_dict)
     created = await roasters_collection.find_one({"_id": new_roaster.inserted_id})
+    
+    from notification_helper import log_page_update
+    await log_page_update("roasters", department=created.get("department"), username=current_user.get("sub"))
+    
     return created
 
 @router.put("/{id}", response_description="Update a roster entry", response_model=RoasterModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Roaster"))])
@@ -238,6 +246,8 @@ async def update_roaster(id: str, roaster: UpdateRoasterModel = Body(...), curre
 
         if update_result.modified_count == 1:
             if (updated := await roasters_collection.find_one({"_id": ObjectId(id)})) is not None:
+                from notification_helper import log_page_update
+                await log_page_update("roasters", department=updated.get("department"), username=current_user.get("sub"))
                 return updated
 
     if (existing := await roasters_collection.find_one({"_id": ObjectId(id)})) is not None:

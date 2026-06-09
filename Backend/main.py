@@ -29,6 +29,8 @@ from bms_checklists import router as bms_checklists_router
 from morning_checklists import router as morning_checklists_router
 from morning_checklist_config import router as morning_checklist_config_router
 from routers.vcenter_monitor import router as vcenter_monitor_router
+from dashboard import router as dashboard_router
+from notifications import router as notifications_router
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from database import db
@@ -297,6 +299,8 @@ app.include_router(documentations_router, tags=["documentations"], prefix="/api/
 app.include_router(bms_checklists_router, tags=["bms_checklists"], prefix="/api/bms-checklists")
 app.include_router(morning_checklists_router, tags=["morning_checklists"], prefix="/api/morning-checklists")
 app.include_router(morning_checklist_config_router, tags=["morning_checklist_config"], prefix="/api/morning-checklist-config")
+app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")
+app.include_router(notifications_router, tags=["notifications"], prefix="/api/notifications")
 
 # Mount the new split telemetry monitor endpoints under same prefix for backwards compatibility
 app.include_router(vcenter_monitor_router, tags=["vcenter_telemetry"], prefix="/api/vcenter-details")

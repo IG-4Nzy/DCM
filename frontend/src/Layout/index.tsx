@@ -13,7 +13,8 @@ import {
   Divider,
   CssBaseline,
   Avatar,
-  Tooltip
+  Tooltip,
+  Badge
 } from '@mui/material';
 import MuiDrawer from '@mui/material/Drawer';
 import MuiAppBar, { type AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
@@ -116,6 +117,41 @@ const Layout: React.FC = () => {
   const { username, role, isSuperuser } = useSelector((state: RootState) => state.auth);
   const [userInitials, setUserInitials] = useState('');
   const [userFullName, setUserFullName] = useState(username);
+  const [unreadRoutes, setUnreadRoutes] = useState<Record<string, boolean>>({});
+
+  const fetchUnreadNotifications = async () => {
+    try {
+      const res = await request.get('/api/notifications/unread');
+      setUnreadRoutes(res.data || {});
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (username) {
+      fetchUnreadNotifications();
+      const interval = setInterval(fetchUnreadNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [username]);
+
+  useEffect(() => {
+    if (username) {
+      const notifyVisit = async () => {
+        const currentOption = SIDEBAR_OPTIONS.find(opt => location.pathname.startsWith(opt.route));
+        if (currentOption) {
+          try {
+            await request.post('/api/notifications/visit', { route: currentOption.route });
+            setUnreadRoutes(prev => ({ ...prev, [currentOption.route]: false }));
+          } catch (err) {
+            console.error('Error recording page visit:', err);
+          }
+        }
+      };
+      notifyVisit();
+    }
+  }, [location.pathname, username]);
 
   useEffect(() => {
     const fetchInitials = async () => {
@@ -164,7 +200,7 @@ const Layout: React.FC = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', textAlign: 'left' }}>
+    <Box sx={{ display: 'flex', textAlign: 'left', width: '100%', minHeight: '100vh' }}>
       <CssBaseline />
       <AppBar position="fixed" open={open}>
         <Toolbar>
@@ -175,7 +211,7 @@ const Layout: React.FC = () => {
             edge="start"
             sx={{
               marginRight: 5,
-              ...(open && { display: 'none' }),
+              display: 'none',
             }}
           >
             <MenuIcon />
@@ -211,14 +247,19 @@ const Layout: React.FC = () => {
           </Box>
         </Toolbar>
       </AppBar>
-      <Drawer variant="permanent" open={open}>
+      <Drawer
+        variant="permanent"
+        open={open}
+        PaperProps={{
+          onMouseEnter: handleDrawerOpen,
+          onMouseLeave: handleDrawerClose,
+        }}
+      >
         <DrawerHeader>
           <label style={{ fontWeight: 'bold', color: '#1976d2', flexGrow: 1, marginLeft: '16px', fontSize: '1.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {wordings.dcm}
           </label>
-          <IconButton onClick={handleDrawerClose}>
-            {theme.direction === 'rtl' ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-          </IconButton>
+          {/* Hover out collapses drawer automatically */}
         </DrawerHeader>
         <Divider />
         <Box sx={{ flexGrow: 1, overflowY: 'auto', overflowX: 'hidden' }}>
@@ -256,7 +297,21 @@ const Layout: React.FC = () => {
                           color: isSelected ? '#1976d2' : 'inherit'
                         }}
                       >
-                        <option.icon />
+                        <Badge
+                          variant="dot"
+                          color="error"
+                          invisible={!unreadRoutes[option.route]}
+                          sx={{
+                            '& .MuiBadge-badge': {
+                              right: -2,
+                              top: -2,
+                              border: '1.5px solid #fff',
+                              boxShadow: '0 0 6px rgba(239, 83, 80, 0.4)'
+                            }
+                          }}
+                        >
+                          <option.icon />
+                        </Badge>
                       </ListItemIcon>
                       <ListItemText primary={option.label} sx={{ opacity: open ? 1 : 0 }} />
                     </ListItemButton>

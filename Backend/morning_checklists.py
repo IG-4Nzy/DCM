@@ -112,6 +112,10 @@ async def create_morning_checklist(
 
     result = await collection.insert_one(doc)
     created = await collection.find_one({"_id": result.inserted_id})
+
+    from notification_helper import log_page_update
+    await log_page_update("daily-activities", department=doc.get("department"), username=current_user.get("sub"))
+
     return serialize_checklist(created)
 
 
@@ -140,7 +144,11 @@ async def get_morning_checklist(id: str):
     response_model_by_alias=False,
     dependencies=[Depends(require_any_privilege(["Update Morning Checklist", "Edit Morning Checklist Field"]))],
 )
-async def update_morning_checklist(id: str, payload: MorningChecklistModel = Body(...)):
+async def update_morning_checklist(
+    id: str,
+    payload: MorningChecklistModel = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -152,6 +160,10 @@ async def update_morning_checklist(id: str, payload: MorningChecklistModel = Bod
         raise HTTPException(status_code=404, detail="Morning checklist not found")
 
     updated = await collection.find_one({"_id": ObjectId(id)})
+
+    from notification_helper import log_page_update
+    await log_page_update("daily-activities", department=updated.get("department"), username=current_user.get("sub"))
+
     return serialize_checklist(updated)
 
 

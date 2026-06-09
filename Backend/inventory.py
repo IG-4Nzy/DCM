@@ -82,6 +82,10 @@ async def create_inventory(item: CreateInventoryModel = Body(...), current_user:
     
     new_inv = await inventory_collection.insert_one(inv_dict)
     created_inv = await inventory_collection.find_one({"_id": new_inv.inserted_id})
+    
+    from notification_helper import log_page_update
+    await log_page_update("inventory", department=user_dept, username=current_user.get("sub"))
+
     return created_inv
 
 @router.get("/{id}", response_description="Get a single inventory item", response_model=InventoryModel, response_model_by_alias=False)
@@ -146,6 +150,10 @@ async def update_inventory(id: str, update_data: UpdateInventoryModel = Body(...
     )
 
     updated_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
+    
+    from notification_helper import log_page_update
+    await log_page_update("inventory", department=updated_inv.get("department"), username=current_user.get("sub"))
+
     return updated_inv
 
 @router.delete("/{id}", response_description="Delete an inventory item")

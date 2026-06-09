@@ -17,6 +17,7 @@ class BMSChecklistModel(BaseModel):
     date: str
     time: str
     preparedBy: str
+    department: Optional[str] = None
     status: str = "Draft"
     data: Dict[str, Any] = Field(default_factory=dict)
     createdAt: Optional[str] = None
@@ -81,6 +82,10 @@ async def create_bms_checklist(
 
     result = await collection.insert_one(doc)
     created = await collection.find_one({"_id": result.inserted_id})
+    
+    from notification_helper import log_page_update
+    await log_page_update("daily-activities", department=doc.get("department"), username=current_user.get("sub"))
+
     return serialize_checklist(created)
 
 
@@ -109,7 +114,11 @@ async def get_bms_checklist(id: str):
     response_model_by_alias=False,
     dependencies=[Depends(require_any_privilege(["Update BMS Checklist", "Edit BMS Checklist Field"]))],
 )
-async def update_bms_checklist(id: str, payload: BMSChecklistModel = Body(...)):
+async def update_bms_checklist(
+    id: str,
+    payload: BMSChecklistModel = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -121,6 +130,10 @@ async def update_bms_checklist(id: str, payload: BMSChecklistModel = Body(...)):
         raise HTTPException(status_code=404, detail="BMS checklist not found")
 
     updated = await collection.find_one({"_id": ObjectId(id)})
+    
+    from notification_helper import log_page_update
+    await log_page_update("daily-activities", department=updated.get("department"), username=current_user.get("sub"))
+
     return serialize_checklist(updated)
 
 
