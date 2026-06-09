@@ -49,6 +49,7 @@ interface MorningChecklistData {
   items: ChecklistItem[];
   createdAt: string;
   updatedAt: string;
+  completedBy?: string;
 }
 
 const MorningChecklist: React.FC = () => {
@@ -92,9 +93,6 @@ const MorningChecklist: React.FC = () => {
   const [historyRowsPerPage, setHistoryRowsPerPage] = useState(10);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [viewingChecklist, setViewingChecklist] = useState<MorningChecklistData | null>(null);
-
-  const isOwner = !checklist || !checklist.createdBy || checklist.createdBy === username;
-  const isViewOnly = !isSuperuser && !isOwner;
 
   // Load config fields
   const loadConfig = useCallback(async () => {
@@ -205,6 +203,18 @@ const MorningChecklist: React.FC = () => {
 
   // Save / Create
   const handleSave = async (markComplete = false) => {
+    const isCompleted = checklist?.status === 'Completed';
+    const completer = checklist?.completedBy || checklist?.createdBy;
+    const isReadOnly = isSuperuser ? false : (isCompleted ? completer !== username : false);
+    if (isReadOnly) {
+      showToast('You do not have permission to edit this checklist.', 'error');
+      return;
+    }
+
+    const actionText = markComplete ? 'mark this checklist as completed' : 'save this checklist as draft';
+    const confirmed = window.confirm(`Are you sure you want to ${actionText}?`);
+    if (!confirmed) return;
+
     setSaving(true);
     try {
       const payload: any = {
@@ -216,9 +226,19 @@ const MorningChecklist: React.FC = () => {
       };
 
       if (checklist?._id) {
+        if (markComplete) {
+          payload.completedBy = username;
+        } else if (checklist.status === 'Completed') {
+          payload.completedBy = checklist.completedBy || username;
+        } else {
+          payload.completedBy = checklist.completedBy;
+        }
         await updateMorningChecklist(checklist._id, payload);
         showToast(markComplete ? 'Checklist completed!' : 'Checklist saved!', 'success');
       } else {
+        if (markComplete) {
+          payload.completedBy = username;
+        }
         await createMorningChecklist(payload);
         showToast('Checklist created!', 'success');
       }
@@ -296,7 +316,9 @@ const MorningChecklist: React.FC = () => {
 
   // ─── ACTIVE CHECKLIST TAB ───
   const renderActiveChecklist = () => {
-    const readOnly = isViewOnly || (checklist?.status === 'Completed' && !isSuperuser);
+    const isCompleted = checklist?.status === 'Completed';
+    const completer = checklist?.completedBy || checklist?.createdBy;
+    const readOnly = isSuperuser ? false : (isCompleted ? completer !== username : false);
 
     return (
       <Box>
@@ -398,7 +420,7 @@ const MorningChecklist: React.FC = () => {
                   color="success"
                   startIcon={<MdCheckCircle />}
                   onClick={() => handleSave(true)}
-                  disabled={saving}
+                  disabled={saving || checklist?.status === 'Completed'}
                   sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
                 >
                   {saving ? 'Saving...' : 'Mark Complete'}

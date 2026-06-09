@@ -13,6 +13,7 @@ export interface DashboardData {
   };
   showRoasterReminder: boolean;
   pendingWorks: any[];
+  pendingRequests: any[];
   observations: any[];
   openObservationsCount: number;
   isDepartmentHead: boolean;

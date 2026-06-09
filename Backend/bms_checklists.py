@@ -23,6 +23,7 @@ class BMSChecklistModel(BaseModel):
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
     createdBy: Optional[str] = None
+    completedBy: Optional[str] = None
 
     model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 

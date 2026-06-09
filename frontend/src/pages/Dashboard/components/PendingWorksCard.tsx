@@ -33,7 +33,7 @@ export const PendingWorksCard: React.FC<PendingWorksCardProps> = ({ data, onView
           }
         />
         {data.pendingWorks.length === 0 ? (
-          <Box py={4} textAlign="center">
+          <Box sx={{ py: 4, textAlign: 'center' }}>
             <Typography variant="body2" color="textSecondary">No pending works.</Typography>
           </Box>
         ) : (

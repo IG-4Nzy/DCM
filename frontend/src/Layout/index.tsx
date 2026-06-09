@@ -250,10 +250,8 @@ const Layout: React.FC = () => {
       <Drawer
         variant="permanent"
         open={open}
-        PaperProps={{
-          onMouseEnter: handleDrawerOpen,
-          onMouseLeave: handleDrawerClose,
-        }}
+        onMouseEnter={handleDrawerOpen}
+        onMouseLeave={handleDrawerClose}
       >
         <DrawerHeader>
           <label style={{ fontWeight: 'bold', color: '#1976d2', flexGrow: 1, marginLeft: '16px', fontSize: '1.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

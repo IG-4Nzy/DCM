@@ -133,10 +133,37 @@ const BMSChecklist: React.FC = () => {
   const [rows, setRows] = useState<FlatRow[]>([]);
   const [preparedBy, setPreparedBy] = useState('');
 
-  const isOwner = !checklist || !checklist.createdBy || checklist.createdBy === username;
-  const isViewOnlyMode = isPastDaySelected
-    ? !isSuperuser
-    : (isFutureDaySelected || (!isSuperuser && !isOwner));
+  const checkCanEdit = useCallback((chk: SavedChecklist): boolean => {
+    const todayStr = dayjs().format('YYYY-MM-DD');
+    const isToday = chk.date === todayStr;
+    const isFuture = dayjs(chk.date).isAfter(todayStr, 'day');
+    const isCompleted = chk.status === 'Completed';
+
+    if (isSuperuser) {
+      return !isFuture;
+    }
+    if (isToday) {
+      if (isCompleted) {
+        const completer = chk.completedBy || chk.createdBy;
+        return completer === username;
+      }
+      return true;
+    }
+    return false;
+  }, [isSuperuser, username]);
+
+  const isViewOnlyMode = useMemo(() => {
+    if (!checklist) return false;
+    if (isFutureDaySelected) return true;
+    if (isPastDaySelected) return !isSuperuser;
+
+    // It's today!
+    if (checklist.status === 'Completed') {
+      const completer = checklist.completedBy || checklist.createdBy;
+      return !isSuperuser && (completer !== username);
+    }
+    return false;
+  }, [checklist, isFutureDaySelected, isPastDaySelected, isSuperuser, username]);
 
   // UI state
   const [searchQuery, setSearchQuery] = useState('');
@@ -331,22 +358,27 @@ const BMSChecklist: React.FC = () => {
   const handleSave = (status: 'Draft' | 'Completed' = 'Draft') => {
     if (!checklist || (status === 'Completed' ? !canUpdate : !canSaveDraft)) return;
 
-    const todayStr = dayjs().format('YYYY-MM-DD');
-    const isOwner = !checklist.createdBy || checklist.createdBy === username;
-    const isToday = checklist.date === todayStr;
-    const isFuture = dayjs(checklist.date).isAfter(todayStr, 'day');
-    const canEdit = isSuperuser ? !isFuture : (isOwner && isToday);
+    if (!checkCanEdit(checklist)) {
+      const todayStr = dayjs().format('YYYY-MM-DD');
+      const isToday = checklist.date === todayStr;
+      const isFuture = dayjs(checklist.date).isAfter(todayStr, 'day');
+      const isCompleted = checklist.status === 'Completed';
 
-    if (!canEdit) {
       if (isFuture) {
         showToast('Cannot edit future day checklists.', 'error');
       } else if (!isToday) {
         showToast('Cannot edit previous day checklists.', 'error');
+      } else if (isCompleted) {
+        showToast('Only the staff who completed this checklist can edit it today.', 'error');
       } else {
-        showToast('Only the staff who created this checklist can edit it.', 'error');
+        showToast('You do not have permission to edit this checklist.', 'error');
       }
       return;
     }
+
+    const actionText = status === 'Completed' ? 'mark this checklist as completed' : 'save this checklist as draft';
+    const confirmed = window.confirm(`Are you sure you want to ${actionText}?`);
+    if (!confirmed) return;
 
     const updatedConfig = unflattenRows(rows);
     const updated: SavedChecklist = {
@@ -357,6 +389,11 @@ const BMSChecklist: React.FC = () => {
       data: updatedConfig,
       updatedAt: new Date().toISOString(),
     };
+    if (status === 'Completed') {
+      updated.completedBy = username;
+    } else if (checklist.status === 'Completed') {
+      updated.completedBy = checklist.completedBy || username;
+    }
     saveChecklist(updated);
     setChecklist(updated);
     refreshHistory();
@@ -382,19 +419,20 @@ const BMSChecklist: React.FC = () => {
     if (isFieldDefinitionEdit ? !canEditFields : !canUpdate) return;
 
     if (checklist) {
-      const todayStr = dayjs().format('YYYY-MM-DD');
-      const isOwner = !checklist.createdBy || checklist.createdBy === username;
-      const isToday = checklist.date === todayStr;
-      const isFuture = dayjs(checklist.date).isAfter(todayStr, 'day');
-      const canEdit = isSuperuser ? !isFuture : (isOwner && isToday);
+      if (!checkCanEdit(checklist)) {
+        const todayStr = dayjs().format('YYYY-MM-DD');
+        const isToday = checklist.date === todayStr;
+        const isFuture = dayjs(checklist.date).isAfter(todayStr, 'day');
+        const isCompleted = checklist.status === 'Completed';
 
-      if (!canEdit) {
         if (isFuture) {
           showToast('Cannot edit future day checklists.', 'error');
         } else if (!isToday) {
           showToast('Cannot edit previous day checklists.', 'error');
+        } else if (isCompleted) {
+          showToast('Only the staff who completed this checklist can edit it today.', 'error');
         } else {
-          showToast('Only the staff who created this checklist can edit it.', 'error');
+          showToast('You do not have permission to edit this checklist.', 'error');
         }
         return;
       }
@@ -487,19 +525,20 @@ const BMSChecklist: React.FC = () => {
     if (!canDelete) return;
 
     if (checklist) {
-      const todayStr = dayjs().format('YYYY-MM-DD');
-      const isOwner = !checklist.createdBy || checklist.createdBy === username;
-      const isToday = checklist.date === todayStr;
-      const isFuture = dayjs(checklist.date).isAfter(todayStr, 'day');
-      const canEdit = isSuperuser ? !isFuture : (isOwner && isToday);
+      if (!checkCanEdit(checklist)) {
+        const todayStr = dayjs().format('YYYY-MM-DD');
+        const isToday = checklist.date === todayStr;
+        const isFuture = dayjs(checklist.date).isAfter(todayStr, 'day');
+        const isCompleted = checklist.status === 'Completed';
 
-      if (!canEdit) {
         if (isFuture) {
           showToast('Cannot modify future day checklists.', 'error');
         } else if (!isToday) {
           showToast('Cannot modify previous day checklists.', 'error');
+        } else if (isCompleted) {
+          showToast('Only the staff who completed this checklist can modify it today.', 'error');
         } else {
-          showToast('Only the staff who created this checklist can modify it.', 'error');
+          showToast('You do not have permission to modify this checklist.', 'error');
         }
         return;
       }
@@ -599,9 +638,15 @@ const BMSChecklist: React.FC = () => {
     document.body.appendChild(reportElement);
 
     try {
-      const html2pdfModule = await import('html2pdf.js');
-      const html2pdf = html2pdfModule.default || html2pdfModule;
-      await html2pdf()
+      const html2pdfModule = await import('html2pdf.js/dist/html2pdf.bundle.min.js');
+      let html2pdf = html2pdfModule.default || html2pdfModule;
+      if (typeof html2pdf !== 'function' && (html2pdf as any).default) {
+        html2pdf = (html2pdf as any).default;
+      }
+      if (typeof html2pdf !== 'function') {
+        throw new Error('html2pdf is not loaded as a function');
+      }
+      await (html2pdf as any)()
         .set({
           margin: 8,
           filename: `BMS_Checklist_${checklist.date}.pdf`,
@@ -611,9 +656,9 @@ const BMSChecklist: React.FC = () => {
         })
         .from(reportElement)
         .save();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to generate PDF:', err);
-      showToast('Failed to generate PDF. Please try again.', 'error');
+      showToast(`Failed to generate PDF: ${err?.message || String(err)}`, 'error');
     } finally {
       document.body.removeChild(reportElement);
     }
@@ -1150,7 +1195,7 @@ const BMSChecklist: React.FC = () => {
                     color="success"
                     startIcon={<MdCheckCircle />}
                     onClick={() => handleSave('Completed')}
-                    disabled={!canUpdate || isViewOnlyMode}
+                    disabled={!canUpdate || isViewOnlyMode || checklist?.status === 'Completed'}
                     sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}
                   >
                     Mark Complete
@@ -1167,8 +1212,8 @@ const BMSChecklist: React.FC = () => {
               </Box>
 
               {viewMode === 'table'
-                ? renderChecklistTable(groupedData, canUpdate && !isViewOnlyMode, updateRow, canDelete && !isViewOnlyMode)
-                : renderChecklistCards(groupedData, canUpdate && !isViewOnlyMode, updateRow, canDelete && !isViewOnlyMode)}
+                ? renderChecklistTable(groupedData, canUpdate && !isViewOnlyMode, updateRow, false)
+                : renderChecklistCards(groupedData, canUpdate && !isViewOnlyMode, updateRow, false)}
             </>
           ) : (
             <Box sx={{ textAlign: 'center', py: 8, color: '#94a3b8' }}>

@@ -22,7 +22,8 @@ import {
   RosterCard,
   PendingWorksCard,
   ChecklistStatusCard,
-  RecentObservationsCard
+  RecentObservationsCard,
+  OpenRequestsCard
 } from './components';
 
 const Dashboard: React.FC = () => {
@@ -42,7 +43,7 @@ const Dashboard: React.FC = () => {
 
   if (loading && !data) {
     return (
-      <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="80vh" gap={2}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', gap: 2 }}>
         <CircularProgress size={44} thickness={4} sx={{ color: colors.blue }} />
         <Typography variant="body2" sx={{ color: colors.textMuted, fontWeight: 500 }}>
           Loading dashboard...
@@ -53,7 +54,7 @@ const Dashboard: React.FC = () => {
 
   if (error || !data) {
     return (
-      <Box p={4}>
+      <Box sx={{ p: 4 }}>
         <Alert severity="error" action={
           <Button color="inherit" size="small" onClick={fetchDashboardData}>Retry</Button>
         }>
@@ -75,7 +76,7 @@ const Dashboard: React.FC = () => {
       />
 
       {/* Page Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={3} flexWrap="wrap" gap={2}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <Box>
           <Typography sx={{ fontSize: { xs: '24px', md: '30px' }, fontWeight: 800, color: colors.textPrimary, letterSpacing: '-0.5px' }}>
             Dashboard
@@ -154,6 +155,7 @@ const Dashboard: React.FC = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <RosterCard data={data} />
           <PendingWorksCard data={data} onViewAllClick={() => navigate(ROUTE_CONSTANTS.WORKS)} />
+          <OpenRequestsCard data={data} onViewAllClick={() => navigate(ROUTE_CONSTANTS.REQUESTS)} />
         </Box>
 
         {/* Right Column */}

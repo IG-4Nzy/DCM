@@ -35,6 +35,7 @@ export interface SavedChecklist {
   updatedAt: string;
   department?: string;
   createdBy?: string;
+  completedBy?: string;
 }
 
 // Normalise a parameter entry: handles both object-form { value, BMS_Reading, unit }
