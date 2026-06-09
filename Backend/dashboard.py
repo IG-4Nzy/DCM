@@ -214,6 +214,38 @@ async def get_dashboard_summary(
             a_dict["initials"] = a_dict["username"][:2].upper()
         enriched_attendance.append(a_dict)
         
+    # 10. Fetch pending (non-completed) requests
+    requests_col = db.get_collection("requests")
+    req_query = {"status": {"$ne": "Completed"}}
+    if not is_superuser:
+        req_query["$or"] = [
+            {"createdBy": username},
+            {"currentAssignedUsers": username}
+        ]
+    requests_cursor = requests_col.find(req_query).sort("createdAt", -1)
+    requests_list = await requests_cursor.to_list(length=100)
+    
+    enriched_requests = []
+    for r in requests_list:
+        r_dict = dict(r)
+        r_dict["_id"] = str(r["_id"])
+        created_by_username = r.get("createdBy", "")
+        if created_by_username:
+            created_user = await users_col.find_one({"username": created_by_username})
+            if created_user:
+                fname = created_user.get("firstName", "")
+                lname = created_user.get("lastName", "")
+                fullname = f"{fname} {lname}".strip() or created_by_username
+                r_dict["createdByFullName"] = fullname
+                r_dict["createdByInitials"] = ((fname[:1] + lname[:1]) if fname and lname else created_by_username[:2]).upper()
+            else:
+                r_dict["createdByFullName"] = created_by_username
+                r_dict["createdByInitials"] = created_by_username[:2].upper()
+        else:
+            r_dict["createdByFullName"] = "System"
+            r_dict["createdByInitials"] = "SY"
+        enriched_requests.append(r_dict)
+        
     return {
         "roasterShifts": enriched_roasters,
         "roasterStatus": roaster_status,
@@ -223,6 +255,7 @@ async def get_dashboard_summary(
         },
         "showRoasterReminder": show_roaster_reminder,
         "pendingWorks": enriched_works,
+        "pendingRequests": enriched_requests,
         "observations": enriched_obs,
         "openObservationsCount": open_obs_count,
         "isDepartmentHead": is_dept_head,
@@ -230,3 +263,4 @@ async def get_dashboard_summary(
         "shiftConfig": shift_config,
         "todayAttendance": enriched_attendance
     }
+

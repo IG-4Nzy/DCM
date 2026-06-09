@@ -1,0 +1,7 @@
+periodic activities module -> label and date ,alerts showsn on dashboard for renewal and checkup
+restrict only after complete is marked -> checklist
+requests should be shown in dashboard -> open requestsno delete button needed in checklist page
+checklist pdf download not working
+
+block screenshots in QR App,
+test QR App in mobile
