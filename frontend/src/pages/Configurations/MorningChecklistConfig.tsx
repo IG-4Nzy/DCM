@@ -22,7 +22,7 @@ import {
 } from '../DailyActivities/MorningChecklist/action';
 
 interface ConfigField {
-  _id: string;
+  id: string;
   label: string;
   inputType: string;
   options: string[];
@@ -134,7 +134,7 @@ const MorningChecklistConfig: React.FC = () => {
     try {
       if (editingField) {
         payload.slNumber = editingField.slNumber;
-        await updateMorningChecklistConfigField(editingField._id, payload);
+        await updateMorningChecklistConfigField(editingField.id, payload);
         showToast('Field updated successfully', 'success');
       } else {
         await createMorningChecklistConfigField(payload);
@@ -208,7 +208,7 @@ const MorningChecklistConfig: React.FC = () => {
             </IconButton>
           </Tooltip>
           <Tooltip title="Delete">
-            <IconButton size="small" color="error" onClick={() => handleDelete(row._id)}>
+            <IconButton size="small" color="error" onClick={() => handleDelete(row.id)}>
               <DeleteIcon />
             </IconButton>
           </Tooltip>
@@ -241,7 +241,7 @@ const MorningChecklistConfig: React.FC = () => {
         data={filteredFields}
         loading={loading}
         emptyMessage="No fields configured yet. Add your first Morning Checklist field."
-        idKey="_id"
+        idKey="id"
       />
 
       {/* Create/Edit Modal */}
