@@ -112,5 +112,11 @@ export const SIDEBAR_OPTIONS = [
         icon: Icons.VisitorLogsIcon,
         route: ROUTE_CONSTANTS.VISITOR_LOGS,
         privileges: [PRIVILEGES.REQUEST_VIEW]
+    },
+    {
+        label: wordings.periodicActivities,
+        icon: Icons.PeriodicActivitiesIcon,
+        route: ROUTE_CONSTANTS.PERIODIC_ACTIVITIES,
+        privileges: [PRIVILEGES.PERIODIC_ACTIVITY_VIEW, PRIVILEGES.PERIODIC_ACTIVITY_CREATE, PRIVILEGES.PERIODIC_ACTIVITY_UPDATE, PRIVILEGES.PERIODIC_ACTIVITY_DELETE]
     }
 ]

@@ -32,6 +32,7 @@ from morning_checklist_config import router as morning_checklist_config_router
 from routers.vcenter_monitor import router as vcenter_monitor_router
 from dashboard import router as dashboard_router
 from notifications import router as notifications_router
+from periodic_activities import router as periodic_activities_router
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from database import db
@@ -111,6 +112,13 @@ def get_action_name(method: str, path: str) -> str:
         if method == "PUT": return "Update Morning Checklist Field"
         if method == "DELETE": return "Delete Morning Checklist Field"
         return "Morning Checklist Config Action"
+
+    # Check periodic activities
+    if "periodic-activities" in parts:
+        if method == "POST": return "Create Periodic Activity"
+        if method == "PUT": return "Update Periodic Activity"
+        if method == "DELETE": return "Delete Periodic Activity"
+        return "Periodic Activity Action"
 
     # Check roasters
     if "roasters" in parts:
@@ -307,6 +315,7 @@ app.include_router(bms_checklists_router, tags=["bms_checklists"], prefix="/api/
 app.include_router(bms_checklist_config_router, tags=["bms_checklist_config"], prefix="/api/bms-checklist-config")
 app.include_router(morning_checklists_router, tags=["morning_checklists"], prefix="/api/morning-checklists")
 app.include_router(morning_checklist_config_router, tags=["morning_checklist_config"], prefix="/api/morning-checklist-config")
+app.include_router(periodic_activities_router, tags=["periodic_activities"], prefix="/api/periodic-activities")
 app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")
 app.include_router(notifications_router, tags=["notifications"], prefix="/api/notifications")
 

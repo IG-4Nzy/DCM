@@ -66,5 +66,9 @@
     "Create Morning Checklist",
     "Update Morning Checklist",
     "Delete Morning Checklist",
-    "Edit Morning Checklist Field"
+    "Edit Morning Checklist Field",
+    "View Periodic Activity",
+    "Create Periodic Activity",
+    "Update Periodic Activity",
+    "Delete Periodic Activity"
 ]

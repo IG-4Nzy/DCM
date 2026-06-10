@@ -77,4 +77,8 @@ export const PRIVILEGES = {
     MORNING_CHECKLIST_UPDATE: "Update Morning Checklist",
     MORNING_CHECKLIST_DELETE: "Delete Morning Checklist",
     MORNING_CHECKLIST_FIELD_EDIT: "Edit Morning Checklist Field",
+    PERIODIC_ACTIVITY_VIEW: "View Periodic Activity",
+    PERIODIC_ACTIVITY_CREATE: "Create Periodic Activity",
+    PERIODIC_ACTIVITY_UPDATE: "Update Periodic Activity",
+    PERIODIC_ACTIVITY_DELETE: "Delete Periodic Activity",
 }

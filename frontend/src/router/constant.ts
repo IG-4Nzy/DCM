@@ -23,4 +23,5 @@ export const ROUTE_CONSTANTS = {
     BMS_CHECKLIST: "/bms-checklist",
     VISITOR_LOGS: "/visitor-logs",
     DAILY_ACTIVITIES: "/daily-activities",
+    PERIODIC_ACTIVITIES: "/periodic-activities",
 }

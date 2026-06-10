@@ -24,4 +24,5 @@ export interface DashboardData {
     shifts: ShiftInfo[];
   };
   todayAttendance: any[];
+  periodicActivities?: any[];
 }

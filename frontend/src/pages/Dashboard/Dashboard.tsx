@@ -4,13 +4,16 @@ import {
   Typography,
   Button,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Card,
+  CardContent,
+  Chip
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { ROUTE_CONSTANTS } from '../../router/constant';
-import { MdRefresh } from 'react-icons/md';
-import { colors } from './constants';
+import { MdRefresh, MdArrowForward } from 'react-icons/md';
+import { colors, cardSx } from './constants';
 import { getStatusColor } from './utils';
 import { Icons } from '../../helpers/icons';
 import { useSelector, useDispatch } from 'react-redux';
@@ -74,6 +77,8 @@ const Dashboard: React.FC = () => {
         show={data.showRoasterReminder}
         onConfigureClick={() => navigate(ROUTE_CONSTANTS.ROASTER)}
       />
+
+
 
       {/* Page Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, flexWrap: 'wrap', gap: 2 }}>
@@ -160,6 +165,74 @@ const Dashboard: React.FC = () => {
 
         {/* Right Column */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {data.periodicActivities && data.periodicActivities.length > 0 && (
+            <Card sx={cardSx}>
+              <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography sx={{ fontSize: '15px', fontWeight: 700, color: colors.textPrimary }}>
+                    Periodic Activity Alerts
+                  </Typography>
+                  <Button
+                    size="small"
+                    endIcon={<MdArrowForward />}
+                    onClick={() => navigate(ROUTE_CONSTANTS.PERIODIC_ACTIVITIES)}
+                    sx={{ textTransform: 'none', fontWeight: 600, color: colors.blue, fontSize: '13px' }}
+                  >
+                    View All
+                  </Button>
+                </Box>
+                <Box 
+                  sx={{ 
+                    maxHeight: '180px', 
+                    overflowY: 'auto', 
+                    pr: 0.5, 
+                    display: 'flex',
+                    flexDirection: 'column',
+                    '&::-webkit-scrollbar': { width: '4px' }, 
+                    '&::-webkit-scrollbar-thumb': { bgcolor: '#cbd5e1', borderRadius: '2px' } 
+                  }}
+                >
+                  {data.periodicActivities.map((activity: any, idx: number) => {
+                    const isOverdue = activity.daysRemaining < 0;
+                    const remainingText = isOverdue
+                      ? `Expired ${Math.abs(activity.daysRemaining)}d ago`
+                      : activity.daysRemaining === 0
+                      ? 'Today!'
+                      : `${activity.daysRemaining}d left`;
+                      
+                    return (
+                      <Box
+                        key={activity._id || activity.id}
+                        sx={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          py: 1.5, borderBottom: idx < (data.periodicActivities || []).length - 1 ? `1px solid ${colors.borderLight}` : 'none',
+                        }}
+                      >
+                        <Box sx={{ pr: 1.5 }}>
+                          <Typography sx={{ fontSize: '13px', fontWeight: 600, color: colors.textPrimary }}>
+                            {activity.name}
+                          </Typography>
+                          <Typography sx={{ fontSize: '11px', color: colors.textMuted }}>
+                            Due: {dayjs(activity.dueDate).format('DD-MM-YYYY')} {activity.remarks ? `· ${activity.remarks}` : ''}
+                          </Typography>
+                        </Box>
+                        <Chip
+                          label={remainingText}
+                          size="small"
+                          sx={{
+                            bgcolor: isOverdue ? colors.redLight : activity.daysRemaining === 0 ? colors.amberLight : colors.blueLight,
+                            color: isOverdue ? colors.red : activity.daysRemaining === 0 ? colors.amber : colors.blue,
+                            fontWeight: 700, border: 'none', height: 22, fontSize: '0.7rem',
+                            flexShrink: 0
+                          }}
+                        />
+                      </Box>
+                    );
+                  })}
+                </Box>
+              </CardContent>
+            </Card>
+          )}
           <ChecklistStatusCard
             data={data}
             onMorningClick={() => navigate(ROUTE_CONSTANTS.DAILY_ACTIVITIES)}

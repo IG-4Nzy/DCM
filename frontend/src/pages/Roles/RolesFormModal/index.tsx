@@ -119,6 +119,12 @@ const PRIVILEGE_GROUPS: { [category: string]: string[] } = {
     "Create Documentation",
     "Update Documentation",
     "Delete Documentation"
+  ],
+  "Periodic Activities": [
+    "View Periodic Activity",
+    "Create Periodic Activity",
+    "Update Periodic Activity",
+    "Delete Periodic Activity"
   ]
 };
 

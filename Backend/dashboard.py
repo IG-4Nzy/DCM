@@ -245,6 +245,31 @@ async def get_dashboard_summary(
             r_dict["createdByFullName"] = "System"
             r_dict["createdByInitials"] = "SY"
         enriched_requests.append(r_dict)
+
+    # 11. Fetch periodic activities due in <= 7 days (or overdue)
+    periodic_col = db.get_collection("periodic_activities")
+    periodic_query: dict = {"department": active_dept}
+    
+    periodic_cursor = periodic_col.find(periodic_query)
+    periodic_list = await periodic_cursor.to_list(length=1000)
+    
+    alert_activities = []
+    try:
+        current_date_obj = datetime.strptime(date, "%Y-%m-%d")
+        for pa in periodic_list:
+            due_date_str = pa.get("dueDate", "")
+            try:
+                due_date_obj = datetime.strptime(due_date_str, "%Y-%m-%d")
+                delta_days = (due_date_obj - current_date_obj).days
+                if delta_days <= 7:
+                    pa_dict = dict(pa)
+                    pa_dict["_id"] = str(pa["_id"])
+                    pa_dict["daysRemaining"] = delta_days
+                    alert_activities.append(pa_dict)
+            except Exception:
+                pass
+    except Exception:
+        pass
         
     return {
         "roasterShifts": enriched_roasters,
@@ -261,6 +286,7 @@ async def get_dashboard_summary(
         "isDepartmentHead": is_dept_head,
         "userDepartment": active_dept,
         "shiftConfig": shift_config,
-        "todayAttendance": enriched_attendance
+        "todayAttendance": enriched_attendance,
+        "periodicActivities": alert_activities
     }
 
