@@ -44,6 +44,10 @@ const Dashboard: React.FC = () => {
     fetchDashboardData();
   }, [todayStr]);
 
+  const activeAnnouncements = useMemo(() => {
+    return (data?.announcements || []).filter((ann: any) => ann.daysRemaining === null || ann.daysRemaining >= 0);
+  }, [data?.announcements]);
+
   if (loading && !data) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', gap: 2 }}>
@@ -68,10 +72,6 @@ const Dashboard: React.FC = () => {
   }
 
   const latestObservations = data.observations.slice(0, 5);
-
-  const activeAnnouncements = useMemo(() => {
-    return (data.announcements || []).filter((ann: any) => ann.daysRemaining === null || ann.daysRemaining >= 0);
-  }, [data.announcements]);
 
   return (
     <Box sx={{ width: '100%', flexGrow: 1, bgcolor: colors.bg, p: { xs: 2, sm: 3, md: 4 }, pb: { xs: 8, md: 9 }, boxSizing: 'border-box' }}>

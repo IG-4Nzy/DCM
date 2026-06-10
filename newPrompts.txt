@@ -1,0 +1,5 @@
+AMC will have multiple services,once services are done,we will mark the date and time with report pdf also
+in periodic activities,mark amc with a flag
+display roles in configuration assignee dropdown -> in request configuration, no need for users list.
+
+in mobile app,for more that 1 QR,there is a issue,not properly handling multiple QR when scanning.

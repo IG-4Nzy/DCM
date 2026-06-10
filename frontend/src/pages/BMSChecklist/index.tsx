@@ -634,93 +634,44 @@ const BMSChecklist: React.FC = () => {
     });
   };
 
-  // ─── PDF Export ───
-  const handleExportPDF = async () => {
+  // ─── CSV Export ───
+  const handleExportCSV = () => {
     if (!checklist || !canView) return;
 
-    const reportRows = rows.map((row, index) => {
-      const deviationClass = hasDeviation(row.value, row.bmsReading) ? ' class="deviation"' : '';
-      const value = `${row.value || '-'}${row.unit ? ` ${row.unit}` : ''}`;
-      return `
-        <tr${deviationClass}>
-          <td>${index + 1}</td>
-          <td>${escapeHtml(row.category)}</td>
-          <td>${escapeHtml(row.device)}</td>
-          <td>${escapeHtml(row.parameter)}</td>
-          <td>${escapeHtml(value)}</td>
-          <td>${escapeHtml(row.bmsReading || '-')}</td>
-          <td>${escapeHtml(row.remarks || '-')}</td>
-        </tr>
-      `;
-    }).join('');
+    const escapeCSV = (val: string) => {
+      if (val === null || val === undefined) return '""';
+      const escaped = val.toString().replace(/"/g, '""');
+      return `"${escaped}"`;
+    };
 
-    const reportElement = document.createElement('div');
-    reportElement.innerHTML = `
-      <style>
-        * { box-sizing: border-box; }
-        .bms-pdf { font-family: Arial, sans-serif; color: #0f172a; padding: 0; }
-        .bms-pdf h1 { text-align: center; font-size: 18px; margin: 0 0 12px; }
-        .bms-pdf .meta { display: flex; justify-content: space-between; gap: 16px; font-size: 12px; margin-bottom: 12px; }
-        .bms-pdf table { width: 100%; border-collapse: collapse; font-size: 10px; }
-        .bms-pdf th { background: #1e293b; color: #fff; text-align: left; }
-        .bms-pdf th, .bms-pdf td { border: 1px solid #cbd5e1; padding: 6px; vertical-align: top; }
-        .bms-pdf .deviation td { background: #fee2e2; }
-      </style>
-      <div class="bms-pdf">
-          <h1>Daily BMS Checklist Report</h1>
-          <div class="meta">
-            <span>Date: ${escapeHtml(checklist.date)}</span>
-            <span>Time: ${escapeHtml(currentTime)}</span>
-            <span>Prepared By: ${escapeHtml(preparedBy || '-')}</span>
-            <span>Signature: ______________________________</span>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>SL No</th>
-                <th>Category</th>
-                <th>Device</th>
-                <th>Parameter</th>
-                <th>Value</th>
-                <th>BMS Reading</th>
-                <th>Remarks</th>
-              </tr>
-            </thead>
-            <tbody>${reportRows}</tbody>
-          </table>
-      </div>
-    `;
+    const headers = ['SL No', 'Category', 'Device', 'Parameter', 'Value', 'BMS Reading', 'Remarks'];
+    const csvRows = [headers.map(escapeCSV).join(',')];
 
-    reportElement.style.position = 'absolute';
-    reportElement.style.left = '-9999px';
-    reportElement.style.top = '-9999px';
-    document.body.appendChild(reportElement);
+    rows.forEach((row, index) => {
+      const valueStr = `${row.value || ''}${row.unit ? ` ${row.unit}` : ''}`.trim();
+      const csvRow = [
+        (index + 1).toString(),
+        row.category || '',
+        row.device || '',
+        row.parameter || '',
+        valueStr,
+        row.bmsReading || '',
+        row.remarks || ''
+      ];
+      csvRows.push(csvRow.map(escapeCSV).join(','));
+    });
 
-    try {
-      const html2pdfModule = await import('html2pdf.js/dist/html2pdf.bundle.min.js');
-      let html2pdf = html2pdfModule.default || html2pdfModule;
-      if (typeof html2pdf !== 'function' && (html2pdf as any).default) {
-        html2pdf = (html2pdf as any).default;
-      }
-      if (typeof html2pdf !== 'function') {
-        throw new Error('html2pdf is not loaded as a function');
-      }
-      await (html2pdf as any)()
-        .set({
-          margin: 8,
-          filename: `BMS_Checklist_${checklist.date}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-        })
-        .from(reportElement)
-        .save();
-    } catch (err: any) {
-      console.error('Failed to generate PDF:', err);
-      showToast(`Failed to generate PDF: ${err?.message || String(err)}`, 'error');
-    } finally {
-      document.body.removeChild(reportElement);
-    }
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `BMS_Checklist_${checklist.date}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('CSV exported successfully!', 'success');
   };
 
   // ─── Build grouped structure for table rendering ───
@@ -1262,10 +1213,10 @@ const BMSChecklist: React.FC = () => {
                   <Button
                     variant="outlined"
                     startIcon={<MdDownload />}
-                    onClick={handleExportPDF}
+                    onClick={handleExportCSV}
                     sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}
                   >
-                    Export PDF
+                    Export CSV
                   </Button>
                 </Box>
               </Box>
