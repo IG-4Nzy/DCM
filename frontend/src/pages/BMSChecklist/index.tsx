@@ -16,13 +16,14 @@ import dayjs from 'dayjs';
 import styles from './index.module.scss';
 import {
   flattenConfig, unflattenRows,
-  DEFAULT_CONFIG, getChecklistTemplate
+  DEFAULT_CONFIG
 } from './config';
 import type { FlatRow, SavedChecklist } from './config';
+import { createNewChecklist } from './storage';
 import {
-  listChecklists, getChecklist, saveChecklist, deleteChecklist,
-  createNewChecklist
-} from './storage';
+  fetchBMSChecklists, createBMSChecklist, updateBMSChecklist, deleteBMSChecklist,
+  fetchBMSChecklistConfig
+} from './action';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
 import { useToast } from '../../contexts/ToastContext';
@@ -125,6 +126,25 @@ const BMSChecklist: React.FC = () => {
   const isPastDaySelected = dayjs(selectedDate).isBefore(todayStr, 'day');
   const isFutureDaySelected = dayjs(selectedDate).isAfter(todayStr, 'day');
 
+  const [templateConfig, setTemplateConfig] = useState<any>(DEFAULT_CONFIG);
+
+  const loadTemplate = useCallback(async () => {
+    try {
+      const res = await fetchBMSChecklistConfig({ department: userDepartment });
+      if (res && res.template && Object.keys(res.template).length > 0) {
+        setTemplateConfig(res.template);
+      } else {
+        setTemplateConfig(DEFAULT_CONFIG);
+      }
+    } catch {
+      setTemplateConfig(DEFAULT_CONFIG);
+    }
+  }, [userDepartment]);
+
+  useEffect(() => {
+    loadTemplate();
+  }, [loadTemplate]);
+
   // Tab state: 0 = Active Checklist, 1 = History
   const [activeTab, setActiveTab] = useState(0);
 
@@ -188,10 +208,13 @@ const BMSChecklist: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   // ─── Load History ───
-  const refreshHistory = useCallback(() => {
-    const all = listChecklists();
-    const filtered = all.filter(c => c.department === userDepartment);
-    setHistory(filtered);
+  const refreshHistory = useCallback(async () => {
+    try {
+      const res = await fetchBMSChecklists({ department: userDepartment });
+      setHistory(res.data || []);
+    } catch {
+      setHistory([]);
+    }
   }, [userDepartment]);
 
   useEffect(() => {
@@ -234,14 +257,24 @@ const BMSChecklist: React.FC = () => {
   }, []);
 
   // ─── Load Checklist for selected date ───
-  const loadChecklistForDate = useCallback((dateStr: string) => {
-    const all = listChecklists();
-    const existing = all.find(c => c.date === dateStr && c.department === userDepartment);
-    if (existing) {
-      setChecklist(existing);
-      setRows(flattenConfig(existing.data));
-      setPreparedBy(existing.preparedBy);
-    } else {
+  const loadChecklistForDate = useCallback(async (dateStr: string) => {
+    try {
+      const res = await fetchBMSChecklists({
+        department: userDepartment,
+        date: dateStr,
+        limit: 1,
+      });
+      if (res && res.data && res.data.length > 0) {
+        const existing = res.data[0];
+        setChecklist(existing);
+        setRows(flattenConfig(existing.data));
+        setPreparedBy(existing.preparedBy);
+      } else {
+        setChecklist(null);
+        setRows([]);
+        setPreparedBy('');
+      }
+    } catch {
       setChecklist(null);
       setRows([]);
       setPreparedBy('');
@@ -286,7 +319,7 @@ const BMSChecklist: React.FC = () => {
   }, [rows, filterCategory, searchQuery]);
 
   // ─── New Checklist ───
-  const handleNewChecklist = () => {
+  const handleNewChecklist = async () => {
     if (!canCreate) return;
 
     const todayStr = dayjs().format('YYYY-MM-DD');
@@ -304,15 +337,24 @@ const BMSChecklist: React.FC = () => {
     }
 
     // Check only one checklist per day per department
-    const existingChecklists = listChecklists();
-    const alreadyExists = existingChecklists.some(c => c.date === selectedDate && c.department === userDepartment);
+    try {
+      const res = await fetchBMSChecklists({
+        department: userDepartment,
+        date: selectedDate,
+        limit: 1,
+      });
+      const alreadyExists = res && res.data && res.data.length > 0;
 
-    if (!isSuperuser && alreadyExists) {
-      showToast(`A checklist has already been created for ${selectedDate} for department "${userDepartment}". Only one checklist is allowed per day per department.`, 'error');
+      if (!isSuperuser && alreadyExists) {
+        showToast(`A checklist has already been created for ${selectedDate} for department "${userDepartment}". Only one checklist is allowed per day per department.`, 'error');
+        return;
+      }
+    } catch {
+      showToast('Failed to check existing checklists.', 'error');
       return;
     }
 
-    const newCl = createNewChecklist(displayName, getChecklistTemplate(), userDepartment, username, selectedDate);
+    const newCl = createNewChecklist(displayName, templateConfig, userDepartment, username, selectedDate);
     setChecklist(newCl);
     setRows(flattenConfig(newCl.data));
     setPreparedBy(newCl.preparedBy);
@@ -324,7 +366,7 @@ const BMSChecklist: React.FC = () => {
   // ─── Open from History ───
   const handleOpenChecklist = (id: string) => {
     if (!canOpenForEdit) return;
-    const cl = getChecklist(id);
+    const cl = history.find(c => c.id === id || (c as any)._id === id);
     if (cl) {
       if (cl.department && cl.department !== userDepartment) {
         showToast('Access Denied: This checklist belongs to another department.', 'error');
@@ -343,7 +385,7 @@ const BMSChecklist: React.FC = () => {
   // ─── View Checklist (read-only from history) ───
   const handleViewChecklist = (id: string) => {
     if (!canView) return;
-    const cl = getChecklist(id);
+    const cl = history.find(c => c.id === id || (c as any)._id === id);
     if (cl) {
       if (cl.department && cl.department !== userDepartment) {
         showToast('Access Denied: This checklist belongs to another department.', 'error');
@@ -355,21 +397,18 @@ const BMSChecklist: React.FC = () => {
   };
 
   // ─── Save ───
-  const handleSave = (status: 'Draft' | 'Completed' = 'Draft') => {
+  const handleSave = async (status: 'Draft' | 'Completed' = 'Draft') => {
     if (!checklist || (status === 'Completed' ? !canUpdate : !canSaveDraft)) return;
 
     if (!checkCanEdit(checklist)) {
       const todayStr = dayjs().format('YYYY-MM-DD');
       const isToday = checklist.date === todayStr;
-      const isFuture = dayjs(checklist.date).isAfter(todayStr, 'day');
       const isCompleted = checklist.status === 'Completed';
 
-      if (isFuture) {
-        showToast('Cannot edit future day checklists.', 'error');
+      if (isToday && isCompleted) {
+        showToast('Only the staff who completed this checklist can edit it today.', 'error');
       } else if (!isToday) {
         showToast('Cannot edit previous day checklists.', 'error');
-      } else if (isCompleted) {
-        showToast('Only the staff who completed this checklist can edit it today.', 'error');
       } else {
         showToast('You do not have permission to edit this checklist.', 'error');
       }
@@ -394,21 +433,41 @@ const BMSChecklist: React.FC = () => {
     } else if (checklist.status === 'Completed') {
       updated.completedBy = checklist.completedBy || username;
     }
-    saveChecklist(updated);
-    setChecklist(updated);
-    refreshHistory();
+
+    try {
+      let savedCl: SavedChecklist;
+      const clId = checklist.id || (checklist as any)._id;
+      const exists = history.some(c => c.id === clId || (c as any)._id === clId);
+      if (exists) {
+        savedCl = await updateBMSChecklist(clId, updated);
+      } else {
+        savedCl = await createBMSChecklist(updated);
+      }
+      setChecklist(savedCl);
+      showToast(status === 'Completed' ? 'Checklist marked as completed!' : 'Draft saved successfully!', 'success');
+      refreshHistory();
+    } catch (e: any) {
+      const errMsg = e?.response?.data?.detail || 'Failed to save checklist';
+      showToast(errMsg, 'error');
+    }
   };
 
   // ─── Delete ───
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (deleteTarget && canDelete) {
-      deleteChecklist(deleteTarget);
-      if (checklist?.id === deleteTarget) {
-        setChecklist(null);
-        setRows([]);
+      try {
+        await deleteBMSChecklist(deleteTarget);
+        if (checklist?.id === deleteTarget || (checklist as any)?._id === deleteTarget) {
+          setChecklist(null);
+          setRows([]);
+        }
+        showToast('Checklist deleted successfully', 'success');
+        refreshHistory();
+      } catch {
+        showToast('Failed to delete checklist', 'error');
+      } finally {
+        setDeleteTarget(null);
       }
-      refreshHistory();
-      setDeleteTarget(null);
     }
   };
 

@@ -19,6 +19,7 @@ class MorningChecklistFieldModel(BaseModel):
     options: List[str] = Field(default_factory=list)  # for checkbox/dropdown
     showRemarks: bool = False
     slNumber: int = 0
+    department: str = ""
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
 
@@ -36,18 +37,24 @@ def serialize_doc(doc: dict) -> dict:
 
 
 @router.get(
-    "/",
+    "",
     response_description="List morning checklist config fields",
     response_model=PaginatedFieldsModel,
     response_model_by_alias=False,
-    dependencies=[Depends(require_any_privilege(["View Configurations", "Edit Morning Checklist Field"]))],
+    dependencies=[Depends(require_any_privilege(["View Configurations", "Edit Morning Checklist Field", "View Morning Checklist", "Create Morning Checklist", "Update Morning Checklist"]))],
 )
 async def list_fields(
     skip: int = Query(0, ge=0),
     limit: int = Query(200, ge=1),
     pagination: Optional[bool] = Query(True),
+    department: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user),
 ):
     query: Dict[str, Any] = {}
+    target_dept = department or current_user.get("department", "")
+    if not current_user.get("isSuperuser", False) or target_dept:
+        query["department"] = target_dept
+
     total = await collection.count_documents(query)
 
     if pagination is False:
@@ -61,7 +68,7 @@ async def list_fields(
 
 
 @router.post(
-    "/",
+    "",
     response_description="Create morning checklist config field",
     response_model=MorningChecklistFieldModel,
     status_code=status.HTTP_201_CREATED,
@@ -77,8 +84,11 @@ async def create_field(
     doc["createdAt"] = now
     doc["updatedAt"] = now
 
-    # Auto-assign slNumber
-    max_sl_doc = await collection.find_one(sort=[("slNumber", -1)])
+    if "department" not in doc or not doc["department"]:
+        doc["department"] = current_user.get("department", "")
+
+    # Auto-assign slNumber per department
+    max_sl_doc = await collection.find_one({"department": doc["department"]}, sort=[("slNumber", -1)])
     doc["slNumber"] = (max_sl_doc["slNumber"] + 1) if max_sl_doc and "slNumber" in max_sl_doc else 1
 
     result = await collection.insert_one(doc)
@@ -93,9 +103,18 @@ async def create_field(
     response_model_by_alias=False,
     dependencies=[Depends(require_privilege("Edit Morning Checklist Field"))],
 )
-async def update_field(id: str, payload: MorningChecklistFieldModel = Body(...)):
+async def update_field(
+    id: str,
+    payload: MorningChecklistFieldModel = Body(...),
+    current_user: dict = Depends(get_current_user),
+):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    if not current_user.get("isSuperuser", False):
+        existing = await collection.find_one({"_id": ObjectId(id)})
+        if not existing or existing.get("department") != current_user.get("department"):
+            raise HTTPException(status_code=403, detail="Forbidden: You can only edit fields in your department")
 
     update_data = payload.model_dump(by_alias=True, exclude={"id", "_id"}, exclude_none=True)
     update_data["updatedAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -113,9 +132,17 @@ async def update_field(id: str, payload: MorningChecklistFieldModel = Body(...))
     response_description="Delete morning checklist config field",
     dependencies=[Depends(require_privilege("Edit Morning Checklist Field"))],
 )
-async def delete_field(id: str):
+async def delete_field(
+    id: str,
+    current_user: dict = Depends(get_current_user),
+):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    if not current_user.get("isSuperuser", False):
+        existing = await collection.find_one({"_id": ObjectId(id)})
+        if not existing or existing.get("department") != current_user.get("department"):
+            raise HTTPException(status_code=403, detail="Forbidden: You can only delete fields in your department")
 
     result = await collection.delete_one({"_id": ObjectId(id)})
     if result.deleted_count != 1:

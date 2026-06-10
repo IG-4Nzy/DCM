@@ -46,7 +46,11 @@ const observationsSlice = createSlice({
       })
       // updateObservation
       .addCase(updateObservation.fulfilled, (state, action) => {
-        const index = state.observations.findIndex((obs) => obs.id === action.payload.id || obs._id === action.payload._id);
+        const index = state.observations.findIndex((obs) => {
+          const obsId = obs.id || obs._id;
+          const payloadId = action.payload.id || action.payload._id;
+          return obsId && payloadId && obsId === payloadId;
+        });
         if (index !== -1) {
           state.observations[index] = action.payload;
         }
@@ -65,7 +69,11 @@ const observationsSlice = createSlice({
       })
       // updateObservationCategory
       .addCase(updateObservationCategory.fulfilled, (state, action) => {
-        const index = state.categories.findIndex((cat) => cat.id === action.payload.id || cat._id === action.payload._id);
+        const index = state.categories.findIndex((cat) => {
+          const catId = cat.id || cat._id;
+          const payloadId = action.payload.id || action.payload._id;
+          return catId && payloadId && catId === payloadId;
+        });
         if (index !== -1) {
           state.categories[index] = action.payload;
         }

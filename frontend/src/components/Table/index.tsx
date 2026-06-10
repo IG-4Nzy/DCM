@@ -115,7 +115,7 @@ function Table<T extends { id?: string | number }>(props: ReusableTableProps<T>)
                     hover
                     role="checkbox"
                     tabIndex={-1}
-                    key={row.id}
+                    key={row.id || (row as any)._id || index}
                     onClick={() => onRowClick && onRowClick(row)}
                     sx={{
                       cursor: onRowClick ? 'pointer' : 'default',

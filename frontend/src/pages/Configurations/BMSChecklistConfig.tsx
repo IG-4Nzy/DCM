@@ -14,8 +14,10 @@ import { type RootState } from '../../store';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
 import { useTableState } from '../../hooks/useTableState';
-import { flattenConfig, unflattenRows, getChecklistTemplate } from '../BMSChecklist/config';
+import { jwtDecode } from 'jwt-decode';
+import { flattenConfig, unflattenRows, DEFAULT_CONFIG } from '../BMSChecklist/config';
 import type { FlatRow } from '../BMSChecklist/config';
+import { fetchBMSChecklistConfig, saveBMSChecklistConfig } from '../BMSChecklist/action';
 
 type Order = 'asc' | 'desc';
 
@@ -46,7 +48,17 @@ const EMPTY_PARAMETER_UNIT: ParameterUnitDraft = {
 const BMSChecklistConfig = () => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
-  const { isSuperuser } = useSelector((state: RootState) => state.auth);
+  const { isSuperuser, token } = useSelector((state: RootState) => state.auth);
+
+  const userDepartment = useMemo(() => {
+    if (!token) return 'General';
+    try {
+      const decoded: any = jwtDecode(token);
+      return decoded.department || 'General';
+    } catch {
+      return 'General';
+    }
+  }, [token]);
 
   const canView = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_VIEW) || hasPrivilege(PRIVILEGES.BMS_CHECKLIST_FIELD_EDIT);
   const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.BMS_CHECKLIST_FIELD_EDIT);
@@ -86,12 +98,17 @@ const BMSChecklistConfig = () => {
   const [orderBy, setOrderBy] = useTableState<string>('bmsChecklistConfig_orderBy', 'category');
 
   // Load existing template configuration
-  const loadTemplateData = () => {
+  const loadTemplateData = async () => {
     setLoading(true);
     try {
-      const template = getChecklistTemplate();
-      const flatRows = flattenConfig(template);
-      setRows(flatRows);
+      const res = await fetchBMSChecklistConfig({ department: userDepartment });
+      if (res && res.template && Object.keys(res.template).length > 0) {
+        const flatRows = flattenConfig(res.template);
+        setRows(flatRows);
+      } else {
+        const flatRows = flattenConfig(DEFAULT_CONFIG);
+        setRows(flatRows);
+      }
     } catch (e) {
       showToast('Failed to load checklist template', 'error');
     } finally {
@@ -101,7 +118,7 @@ const BMSChecklistConfig = () => {
 
   useEffect(() => {
     loadTemplateData();
-  }, []);
+  }, [userDepartment]);
 
   const handleOpenModal = () => {
     setNewField(EMPTY_FIELD);
@@ -220,10 +237,10 @@ const BMSChecklistConfig = () => {
     }
   };
 
-  const handleSaveConfig = () => {
+  const handleSaveConfig = async () => {
     try {
       const nestedConfig = unflattenRows(rows);
-      localStorage.setItem('bms_checklist_template', JSON.stringify(nestedConfig));
+      await saveBMSChecklistConfig({ department: userDepartment, template: nestedConfig });
       showToast('BMS Checklist Template saved successfully!', 'success');
     } catch (e) {
       showToast('Failed to save configuration template', 'error');

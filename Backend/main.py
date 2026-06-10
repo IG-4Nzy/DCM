@@ -26,6 +26,7 @@ from attendance import router as attendance_router
 from audit_logs import router as audit_logs_router
 from documentations import router as documentations_router
 from bms_checklists import router as bms_checklists_router
+from bms_checklist_config import router as bms_checklist_config_router
 from morning_checklists import router as morning_checklists_router
 from morning_checklist_config import router as morning_checklist_config_router
 from routers.vcenter_monitor import router as vcenter_monitor_router
@@ -91,6 +92,11 @@ def get_action_name(method: str, path: str) -> str:
         if method == "PUT": return "Update BMS Checklist"
         if method == "DELETE": return "Delete BMS Checklist"
         return "BMS Checklist Action"
+
+    # Check BMS checklist config
+    if "bms-checklist-config" in parts:
+        if method == "POST": return "Save BMS Checklist Config"
+        return "BMS Checklist Config Action"
 
     # Check Morning checklists
     if "morning-checklists" in parts:
@@ -178,6 +184,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             elif "vm-details" in parts: collection_name = "vm_details"
             elif "documentations" in parts: collection_name = "documentations"
             elif "bms-checklists" in parts: collection_name = "bms_checklists"
+            elif "bms-checklist-config" in parts: collection_name = "bms_checklist_config"
             
             from bson import ObjectId
             for p in reversed(parts):
@@ -297,6 +304,7 @@ app.include_router(attendance_router, tags=["attendance"], prefix="/api/attendan
 app.include_router(audit_logs_router, tags=["audit_logs"], prefix="/api/logs")
 app.include_router(documentations_router, tags=["documentations"], prefix="/api/documentations")
 app.include_router(bms_checklists_router, tags=["bms_checklists"], prefix="/api/bms-checklists")
+app.include_router(bms_checklist_config_router, tags=["bms_checklist_config"], prefix="/api/bms-checklist-config")
 app.include_router(morning_checklists_router, tags=["morning_checklists"], prefix="/api/morning-checklists")
 app.include_router(morning_checklist_config_router, tags=["morning_checklist_config"], prefix="/api/morning-checklist-config")
 app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")

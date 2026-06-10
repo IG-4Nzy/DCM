@@ -62,12 +62,11 @@ async def list_morning_checklists(
     status_filter: Optional[str] = Query(None, alias="status"),
     prepared_by: Optional[str] = Query(None, alias="preparedBy"),
     month: Optional[str] = Query(None),  # YYYY-MM format for month filter
+    current_user: dict = Depends(get_current_user),
 ):
     query: Dict[str, Any] = {}
     if date:
         query["date"] = date
-    if department:
-        query["department"] = department
     if status_filter:
         query["status"] = status_filter
     if prepared_by:
@@ -75,6 +74,10 @@ async def list_morning_checklists(
     if month:
         # Filter by month: date field starts with YYYY-MM
         query["date"] = {"$regex": f"^{month}"}
+
+    target_dept = department or current_user.get("department", "")
+    if not current_user.get("isSuperuser", False) or target_dept:
+        query["department"] = target_dept
 
     total = await collection.count_documents(query)
     cursor = collection.find(query).sort("createdAt", -1).skip(skip).limit(limit)
@@ -99,6 +102,12 @@ async def create_morning_checklist(
     doc["createdAt"] = now
     doc["updatedAt"] = now
     doc["createdBy"] = current_user.get("sub", "")
+
+    # Enforce department context
+    if not current_user.get("isSuperuser", False):
+        doc["department"] = current_user.get("department", "")
+    elif not doc.get("department"):
+        doc["department"] = current_user.get("department", "")
 
     # Enforce one per day per department
     existing = await collection.find_one({

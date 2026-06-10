@@ -39,7 +39,7 @@ def serialize_checklist(doc: dict) -> dict:
 
 
 @router.get(
-    "/",
+    "",
     response_description="List BMS checklists",
     response_model=PaginatedBMSChecklistsModel,
     response_model_by_alias=False,
@@ -50,12 +50,21 @@ async def list_bms_checklists(
     limit: int = Query(50, ge=1),
     status_filter: Optional[str] = Query(None, alias="status"),
     prepared_by: Optional[str] = Query(None, alias="preparedBy"),
+    department: Optional[str] = Query(None),
+    date: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user),
 ):
     query: Dict[str, Any] = {}
     if status_filter:
         query["status"] = status_filter
     if prepared_by:
         query["preparedBy"] = {"$regex": prepared_by, "$options": "i"}
+    if date:
+        query["date"] = date
+
+    target_dept = department or current_user.get("department", "")
+    if not current_user.get("isSuperuser", False) or target_dept:
+        query["department"] = target_dept
 
     total = await collection.count_documents(query)
     cursor = collection.find(query).sort("createdAt", -1).skip(skip).limit(limit)
@@ -64,7 +73,7 @@ async def list_bms_checklists(
 
 
 @router.post(
-    "/",
+    "",
     response_description="Create BMS checklist",
     response_model=BMSChecklistModel,
     status_code=status.HTTP_201_CREATED,
@@ -80,6 +89,20 @@ async def create_bms_checklist(
     doc["createdAt"] = now
     doc["updatedAt"] = now
     doc["createdBy"] = current_user.get("sub", "")
+
+    if "department" not in doc or not doc["department"]:
+        doc["department"] = current_user.get("department", "")
+
+    # Enforce one checklist per day per department
+    existing = await collection.find_one({
+        "date": doc["date"],
+        "department": doc["department"]
+    })
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"A BMS checklist already exists for {doc['date']} in this department"
+        )
 
     result = await collection.insert_one(doc)
     created = await collection.find_one({"_id": result.inserted_id})
