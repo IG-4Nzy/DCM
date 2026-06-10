@@ -16,7 +16,8 @@ import {
   MdFactCheck as BMSChecklistIcon,
   MdAssignmentInd as VisitorLogsIcon,
   MdPlaylistAddCheck as DailyActivitiesIcon,
-  MdEventRepeat as PeriodicActivitiesIcon
+  MdEventRepeat as PeriodicActivitiesIcon,
+  MdCampaign as AnnouncementsIcon
 } from "react-icons/md";
 
 import { IoIosUnlock as RolesIcon } from "react-icons/io";
@@ -59,5 +60,6 @@ export const Icons = {
   BMSChecklistIcon,
   VisitorLogsIcon,
   DailyActivitiesIcon,
-  PeriodicActivitiesIcon
+  PeriodicActivitiesIcon,
+  AnnouncementsIcon
 };

@@ -70,5 +70,9 @@
     "View Periodic Activity",
     "Create Periodic Activity",
     "Update Periodic Activity",
-    "Delete Periodic Activity"
+    "Delete Periodic Activity",
+    "View Announcements",
+    "Create Announcement",
+    "Update Announcement",
+    "Delete Announcement"
 ]

@@ -33,6 +33,7 @@ from routers.vcenter_monitor import router as vcenter_monitor_router
 from dashboard import router as dashboard_router
 from notifications import router as notifications_router
 from periodic_activities import router as periodic_activities_router
+from announcements import router as announcements_router
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from database import db
@@ -316,6 +317,7 @@ app.include_router(bms_checklist_config_router, tags=["bms_checklist_config"], p
 app.include_router(morning_checklists_router, tags=["morning_checklists"], prefix="/api/morning-checklists")
 app.include_router(morning_checklist_config_router, tags=["morning_checklist_config"], prefix="/api/morning-checklist-config")
 app.include_router(periodic_activities_router, tags=["periodic_activities"], prefix="/api/periodic-activities")
+app.include_router(announcements_router, tags=["announcements"], prefix="/api/announcements")
 app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")
 app.include_router(notifications_router, tags=["notifications"], prefix="/api/notifications")
 

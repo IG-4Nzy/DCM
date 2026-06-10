@@ -271,6 +271,64 @@ async def get_dashboard_summary(
     except Exception:
         pass
         
+    # 12. Fetch active announcements for the current user
+    announcement_col = db.get_collection("announcements")
+    announcement_query = {
+        "$or": [
+            {"mentionType": "all"},
+            {"$and": [{"mentionType": "department"}, {"mentionedDepartment": active_dept}]},
+            {"$and": [{"mentionType": "staff"}, {"mentionedStaff": username}]},
+            {"createdBy": username}
+        ]
+    }
+    announcements_cursor = announcement_col.find(announcement_query)
+    announcements_list = await announcements_cursor.to_list(length=1000)
+    
+    enriched_announcements = []
+    current_date_obj = None
+    try:
+        current_date_obj = datetime.strptime(date, "%Y-%m-%d")
+    except Exception:
+        pass
+
+    for ann in announcements_list:
+        ann_dict = dict(ann)
+        ann_dict["_id"] = str(ann["_id"])
+        
+        # Calculate daysRemaining if "date" (optional target/due date) is provided
+        due_date_str = ann.get("date")
+        is_expired = False
+        if due_date_str and current_date_obj:
+            try:
+                due_date_obj = datetime.strptime(due_date_str, "%Y-%m-%d")
+                delta = (due_date_obj - current_date_obj).days
+                if delta < 0:
+                    is_expired = True
+                ann_dict["daysRemaining"] = delta
+            except Exception:
+                ann_dict["daysRemaining"] = None
+        else:
+            ann_dict["daysRemaining"] = None
+
+        if is_expired:
+            continue
+
+        # Fetch creator full name
+        created_by_username = ann.get("createdBy", "")
+        if created_by_username:
+            created_user = await users_col.find_one({"username": created_by_username})
+            if created_user:
+                fname = created_user.get("firstName", "")
+                lname = created_user.get("lastName", "")
+                fullname = f"{fname} {lname}".strip()
+                ann_dict["createdByFullName"] = fullname or created_by_username
+            else:
+                ann_dict["createdByFullName"] = created_by_username
+        else:
+            ann_dict["createdByFullName"] = ""
+            
+        enriched_announcements.append(ann_dict)
+
     return {
         "roasterShifts": enriched_roasters,
         "roasterStatus": roaster_status,
@@ -287,6 +345,7 @@ async def get_dashboard_summary(
         "userDepartment": active_dept,
         "shiftConfig": shift_config,
         "todayAttendance": enriched_attendance,
-        "periodicActivities": alert_activities
+        "periodicActivities": alert_activities,
+        "announcements": enriched_announcements
     }
 

@@ -30,4 +30,5 @@ export default {
   dailyActivities: "Daily Activities",
   morningChecklist: "Morning Checklist",
   periodicActivities: "Periodic Activities",
+  announcements: "Announcements",
 };

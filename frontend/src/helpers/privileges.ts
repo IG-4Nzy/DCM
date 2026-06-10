@@ -81,4 +81,8 @@ export const PRIVILEGES = {
     PERIODIC_ACTIVITY_CREATE: "Create Periodic Activity",
     PERIODIC_ACTIVITY_UPDATE: "Update Periodic Activity",
     PERIODIC_ACTIVITY_DELETE: "Delete Periodic Activity",
+    ANNOUNCEMENT_VIEW: "View Announcements",
+    ANNOUNCEMENT_CREATE: "Create Announcement",
+    ANNOUNCEMENT_UPDATE: "Update Announcement",
+    ANNOUNCEMENT_DELETE: "Delete Announcement",
 }

@@ -29,6 +29,7 @@ const BMSChecklist = lazy(() => import("../pages/BMSChecklist"));
 const VisitorLogs = lazy(() => import("../pages/Requests/VisitorLogs"));
 const DailyActivities = lazy(() => import("../pages/DailyActivities"));
 const PeriodicActivities = lazy(() => import("../pages/PeriodicActivities"));
+const Announcements = lazy(() => import("../pages/Announcements"));
 
 
 const AppRouter: React.FC = () => {
@@ -68,6 +69,7 @@ const AppRouter: React.FC = () => {
             <Route path={ROUTE_CONSTANTS.VISITOR_LOGS} element={<VisitorLogs />} />
             <Route path={ROUTE_CONSTANTS.DAILY_ACTIVITIES} element={<DailyActivities />} />
             <Route path={ROUTE_CONSTANTS.PERIODIC_ACTIVITIES} element={<PeriodicActivities />} />
+            <Route path={ROUTE_CONSTANTS.ANNOUNCEMENTS} element={<Announcements />} />
           </Route>
 
           <Route path="*" element={<PageNotFound />} />

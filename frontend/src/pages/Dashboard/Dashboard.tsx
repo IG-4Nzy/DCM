@@ -69,16 +69,18 @@ const Dashboard: React.FC = () => {
 
   const latestObservations = data.observations.slice(0, 5);
 
+  const activeAnnouncements = useMemo(() => {
+    return (data.announcements || []).filter((ann: any) => ann.daysRemaining === null || ann.daysRemaining >= 0);
+  }, [data.announcements]);
+
   return (
-    <Box sx={{ width: '100%', flexGrow: 1, bgcolor: colors.bg, p: { xs: 2, sm: 3, md: 4 }, boxSizing: 'border-box' }}>
+    <Box sx={{ width: '100%', flexGrow: 1, bgcolor: colors.bg, p: { xs: 2, sm: 3, md: 4 }, pb: { xs: 8, md: 9 }, boxSizing: 'border-box' }}>
 
       {/* Weekly Roster Reminder Alert Banner */}
       <RosterBanner
         show={data.showRoasterReminder}
         onConfigureClick={() => navigate(ROUTE_CONSTANTS.ROASTER)}
       />
-
-
 
       {/* Page Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, flexWrap: 'wrap', gap: 2 }}>
@@ -233,6 +235,84 @@ const Dashboard: React.FC = () => {
               </CardContent>
             </Card>
           )}
+          {activeAnnouncements && activeAnnouncements.length > 0 && (
+            <Card sx={cardSx}>
+              <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography sx={{ fontSize: '15px', fontWeight: 700, color: colors.textPrimary }}>
+                    Announcements
+                  </Typography>
+                  <Button
+                    size="small"
+                    endIcon={<MdArrowForward />}
+                    onClick={() => navigate(ROUTE_CONSTANTS.ANNOUNCEMENTS)}
+                    sx={{ textTransform: 'none', fontWeight: 600, color: colors.blue, fontSize: '13px' }}
+                  >
+                    View All
+                  </Button>
+                </Box>
+                <Box 
+                  sx={{ 
+                    maxHeight: '220px', 
+                    overflowY: 'auto', 
+                    pr: 0.5, 
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1.5,
+                    '&::-webkit-scrollbar': { width: '4px' }, 
+                    '&::-webkit-scrollbar-thumb': { bgcolor: '#cbd5e1', borderRadius: '2px' } 
+                  }}
+                >
+                  {activeAnnouncements.map((ann: any, idx: number) => {
+                    const daysLeft = ann.daysRemaining;
+                    const isCritical = daysLeft !== null && daysLeft <= 2;
+                    const dateText = ann.date ? dayjs(ann.date).format('DD-MM-YYYY') : '';
+
+                    return (
+                      <Box
+                        key={ann._id || ann.id}
+                        sx={{
+                          pb: idx < (data.announcements || []).length - 1 ? 1.5 : 0,
+                          borderBottom: idx < (data.announcements || []).length - 1 ? `1px solid ${colors.borderLight}` : 'none',
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                          <Typography sx={{ fontSize: '13px', fontWeight: 700, color: colors.textPrimary }}>
+                            {ann.title}
+                          </Typography>
+                          {ann.date && (
+                            <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexShrink: 0 }}>
+                              <Typography sx={{ fontSize: '11px', color: colors.textMuted }}>
+                                {dateText}
+                              </Typography>
+                              {daysLeft !== null && daysLeft <= 5 && (
+                                <Chip
+                                  label={daysLeft === 0 ? 'Today' : `${daysLeft}d left`}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: isCritical ? colors.redLight : colors.blueLight,
+                                    color: isCritical ? colors.red : colors.blue,
+                                    fontWeight: 700, border: 'none', height: 18, fontSize: '0.65rem',
+                                    ml: 0.5
+                                  }}
+                                />
+                              )}
+                            </Box>
+                          )}
+                        </Box>
+                        <Typography sx={{ fontSize: '12px', color: colors.textSecondary, whiteSpace: 'pre-wrap' }}>
+                          {ann.description}
+                        </Typography>
+                        <Typography sx={{ fontSize: '10px', color: colors.textMuted, mt: 0.5, textAlign: 'right' }}>
+                          Published by {ann.createdByFullName || (ann.createdBy ? `@${ann.createdBy}` : 'System')}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              </CardContent>
+            </Card>
+          )}
           <ChecklistStatusCard
             data={data}
             onMorningClick={() => navigate(ROUTE_CONSTANTS.DAILY_ACTIVITIES)}
@@ -244,6 +324,89 @@ const Dashboard: React.FC = () => {
           />
         </Box>
       </Box>
+
+      {/* Fixed Running Announcements Bar at Bottom */}
+      {activeAnnouncements && activeAnnouncements.length > 0 && (
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            width: '100%',
+            height: '46px',
+            bgcolor: 'rgba(239, 246, 255, 0.95)',
+            backdropFilter: 'blur(8px)',
+            borderTop: '1.5px solid #bfdbfe',
+            py: 0,
+            px: 3,
+            display: 'flex',
+            alignItems: 'center',
+            zIndex: 1100,
+            boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.05)',
+            boxSizing: 'border-box'
+          }}
+        >
+          {/* <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              bgcolor: '#2563eb',
+              color: '#fff',
+              px: 1.5,
+              py: 0.5,
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: 'bold',
+              mr: 2,
+              zIndex: 2,
+              boxShadow: '0 2px 4px rgba(37,99,235,0.2)',
+              flexShrink: 0
+            }}
+          >
+            ANNOUNCEMENTS
+          </Box> */}
+          <Box
+            sx={{
+              width: '100%',
+              overflow: 'hidden',
+              whiteSpace: 'nowrap',
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center'
+            }}
+          >
+            <Box
+              sx={{
+                display: 'inline-block',
+                pl: '100%',
+                animation: 'marquee 30s linear infinite',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: '#1e40af',
+                '&:hover': {
+                  animationPlayState: 'paused'
+                },
+                '@keyframes marquee': {
+                  '0%': { transform: 'translate3d(0, 0, 0)' },
+                  '100%': { transform: 'translate3d(-100%, 0, 0)' }
+                }
+              }}
+            >
+              {activeAnnouncements.map((ann: any) => {
+                const daysLeft = ann.daysRemaining;
+                const showDaysLeft = daysLeft !== null && daysLeft <= 5;
+                const dateText = ann.date ? ` (Due: ${dayjs(ann.date).format('DD-MM-YYYY')}${showDaysLeft ? `, ${daysLeft === 0 ? 'Today!' : `${daysLeft}d left`}` : ''})` : '';
+                return (
+                  <span key={ann._id || ann.id} style={{ marginRight: '3.5rem', display: 'inline-block' }}>
+                    📢 <strong>{ann.title}</strong>: {ann.description}{dateText}
+                  </span>
+                );
+              })}
+            </Box>
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 };
