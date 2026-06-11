@@ -1,8 +1,14 @@
-AMC will have multiple services,once services are done,we will mark the date and time with report pdf also
-in periodic activities,mark amc with a flag
-display roles in configuration assignee dropdown -> in request configuration, no need for users list.
+need alert for every activities,
+inside amc,create services along with creation of amc and give service repition time like every 3 months...like that
+give alert 1 week ago in dashboard for these services
 
-in mobile app,for more that 1 QR,there is a issue,not properly handling multiple QR when scanning.
+in creating new user,add option to tag existing user (for showing he is joined as replacement of another user)
+like,if user is leaving,then create a new user and select
 
-check all get api calls and remove limit() if there is ,dont limit the list,just give pagination.dont limit the list anywhere.
-and check all page - for expired ,dont show day count .. just show expired badge.
+give option in work -> transfer the work to another staff,and also show the logs in work
+
+in requests,give option to send back the request to the previous assignee,currently there is only approve and move forward,need backward options also
+also show them in the logs of that work
+
+every actions should be notified if not done within a specified time, notify in the dashboard
+
