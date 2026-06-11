@@ -230,12 +230,14 @@ async def add_vm_details_on_completion(existing_request: dict, username: str):
             vm_data = {
                 "clusterId": cluster_id,
                 "ipAddress": details.get("ip") or "",
-                "applications": details.get("applications") or "Web Server",
+                "applications": details.get("vmName") or details.get("applications") or "Web Server",
                 "node": details.get("node") or "Unknown Host",
                 "osAndExpiry": details.get("osVersion") or "Ubuntu Server 22.04 LTS",
                 "hdd": str(details.get("hdd") or "120"),
                 "ram": str(details.get("ram") or "8"),
                 "cpu": str(details.get("cpu") or "4"),
+                "backupLocation": details.get("backupLocation") or "",
+                "addedToMonitoring": bool(details.get("addedToMonitoring")),
                 "createdBy": username or "system",
                 "createdAt": datetime.now(timezone.utc).isoformat(),
                 "updatedAt": datetime.now(timezone.utc).isoformat()
@@ -244,8 +246,7 @@ async def add_vm_details_on_completion(existing_request: dict, username: str):
             vms_col = db.get_collection("vm_details")
             # Avoid duplicate VM entries
             existing_vm = await vms_col.find_one({
-                "ipAddress": vm_data["ipAddress"], 
-                "node": vm_data["node"],
+                "applications": vm_data["applications"], 
                 "clusterId": vm_data["clusterId"]
             })
             if not existing_vm:

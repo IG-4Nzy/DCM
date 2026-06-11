@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, Divider, Grid, Chip, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, Divider, Grid, Chip, TextField, FormControl, InputLabel, Select, MenuItem, Checkbox, FormControlLabel } from '@mui/material';
 import Button from '../../components/Button';
 import type { RequestData, RequestLogData } from './model';
 import { fetchUsers } from '../Users/action';
@@ -63,6 +63,11 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
 
   const isMarkEntryTime = request?.requestType === 'DC Entry' && (request?.status?.toLowerCase() === 'mark entry time' || request?.status?.toLowerCase().includes('entry'));
   const isMarkExitTime = request?.requestType === 'DC Entry' && (request?.status?.toLowerCase() === 'mark exit time' || request?.status?.toLowerCase().includes('exit'));
+  const isVMCreationStage = request?.requestType === 'VM Creation' && (request?.status?.toLowerCase() === 'vm creation' || request?.status?.toLowerCase().includes('creation'));
+
+  const [backupLocation, setBackupLocation] = useState('');
+  const [backupError, setBackupError] = useState(false);
+  const [addedToMonitoring, setAddedToMonitoring] = useState(false);
 
   const requestId = request?.id || request?._id || '';
 
@@ -73,6 +78,9 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       setRemarks('');
       setIpAddress(request.details?.ip || '');
       setIpError(false);
+      setBackupLocation(request.details?.backupLocation || '');
+      setBackupError(false);
+      setAddedToMonitoring(!!request.details?.addedToMonitoring);
 
       setEntryTime(
         request.details?.entryTime 
@@ -167,12 +175,21 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       setExitTimeError(true);
       return;
     }
+    if (isVMCreationStage && !backupLocation.trim()) {
+      setBackupError(true);
+      return;
+    }
 
     setSubmitting(true);
     try {
       let payload: any = { remarks };
       if (isIpIssuance) {
         payload.details = { ip: ipAddress.trim() };
+      } else if (isVMCreationStage) {
+        payload.details = { 
+          backupLocation: backupLocation.trim(),
+          addedToMonitoring: !!addedToMonitoring
+        };
       } else if (isClusterDeciding) {
         payload.details = { 
           cluster: selectedCluster,
@@ -316,6 +333,10 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                 {request.requestType === 'VM Creation' && (
                   <>
                     <Grid item xs={12} sm={4}>
+                      <Typography variant="caption" color="textSecondary">VM Name</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.vmName || '-'}</Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
                       <Typography variant="caption" color="textSecondary">OS and Version</Typography>
                       <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.osVersion || '-'}</Typography>
                     </Grid>
@@ -347,6 +368,16 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                       <Typography variant="caption" color="textSecondary">Decided Host Node</Typography>
                       <Typography variant="body2" sx={{ fontWeight: 600, color: request.details?.node ? '#1976d2' : 'inherit' }}>
                         {request.details?.node || 'Not Decided Yet'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="caption" color="textSecondary">Backup Location</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.backupLocation || '-'}</Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="caption" color="textSecondary">Added to Monitoring</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: request.details?.addedToMonitoring ? '#2e7d32' : '#c62828' }}>
+                        {request.details?.addedToMonitoring ? 'Yes' : 'No'}
                       </Typography>
                     </Grid>
                   </>
@@ -495,6 +526,37 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                     </Box>
                   )}
 
+                  {isVMCreationStage && (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1, minWidth: 240 }}>
+                      <TextField
+                        label="VM Backup Path / Location"
+                        variant="outlined"
+                        fullWidth
+                        required
+                        error={backupError}
+                        helperText={backupError ? "You must provide a VM backup path to advance." : "Enter VM backup directory path"}
+                        value={backupLocation}
+                        onChange={(e) => {
+                          setBackupLocation(e.target.value);
+                          if (e.target.value.trim()) setBackupError(false);
+                        }}
+                        placeholder="e.g. /backups/vms/my-vm"
+                        sx={{ bgcolor: '#fff' }}
+                      />
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={addedToMonitoring}
+                            onChange={(e) => setAddedToMonitoring(e.target.checked)}
+                            color="primary"
+                          />
+                        }
+                        label="VM added to monitoring confirmation"
+                        sx={{ color: '#374151', alignSelf: 'flex-start' }}
+                      />
+                    </Box>
+                  )}
+
                   {isMarkEntryTime && (
                     <Box sx={{ flex: 1, minWidth: 200 }}>
                       <TextField
@@ -624,7 +686,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
               color="success"
               disabled={submitting}
             >
-              {submitting ? 'Processing...' : (isIpIssuance ? 'Submit IP & Approve' : isClusterDeciding ? 'Submit Cluster & Approve' : isMarkEntryTime ? 'Submit Entry Time & Advance' : isMarkExitTime ? 'Submit Exit Time & Approve' : 'Approve & Advance')}
+              {submitting ? 'Processing...' : (isIpIssuance ? 'Submit IP & Approve' : isVMCreationStage ? 'Submit Backup Path & Approve' : isClusterDeciding ? 'Submit Cluster & Approve' : isMarkEntryTime ? 'Submit Entry Time & Advance' : isMarkExitTime ? 'Submit Exit Time & Approve' : 'Approve & Advance')}
             </Button>
           </>
         )}

@@ -227,6 +227,7 @@ const Requests: React.FC = () => {
                 if (row.details) {
                     const parts = [];
                     if (row.requestType === 'VM Creation') {
+                        if (row.details.vmName) parts.push(`VM: ${row.details.vmName}`);
                         if (row.details.osVersion) parts.push(`OS: ${row.details.osVersion}`);
                         if (row.details.ram) parts.push(`RAM: ${row.details.ram}`);
                     } else if (row.requestType === 'DC Entry') {

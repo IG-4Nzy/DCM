@@ -794,6 +794,8 @@ class VMDetailsModel(BaseModel):
     hdd: str
     ram: str
     cpu: str
+    backupLocation: Optional[str] = ""
+    addedToMonitoring: Optional[bool] = False
     
     model_config = ConfigDict(
         populate_by_name=True,
@@ -809,6 +811,8 @@ class CreateVMDetailsModel(BaseModel):
     hdd: str
     ram: str
     cpu: str
+    backupLocation: Optional[str] = ""
+    addedToMonitoring: Optional[bool] = False
 
 class UpdateVMDetailsModel(BaseModel):
     ipAddress: Optional[str] = None
@@ -818,6 +822,8 @@ class UpdateVMDetailsModel(BaseModel):
     hdd: Optional[str] = None
     ram: Optional[str] = None
     cpu: Optional[str] = None
+    backupLocation: Optional[str] = None
+    addedToMonitoring: Optional[bool] = None
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

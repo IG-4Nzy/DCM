@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, Checkbox, FormControlLabel } from '@mui/material';
 import Modal from '../../../components/Modal';
 import TextField from '../../../components/TextField';
 import Dropdown from '../../../components/Dropdown';
@@ -25,7 +25,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         osAndExpiry: '',
         hdd: '',
         ram: '',
-        cpu: ''
+        cpu: '',
+        backupLocation: '',
+        addedToMonitoring: false
     });
 
     const [nodes, setNodes] = useState<any[]>([]);
@@ -49,7 +51,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     osAndExpiry: editingItem.osAndExpiry || '',
                     hdd: editingItem.hdd || '',
                     ram: editingItem.ram || '',
-                    cpu: editingItem.cpu || ''
+                    cpu: editingItem.cpu || '',
+                    backupLocation: editingItem.backupLocation || '',
+                    addedToMonitoring: editingItem.addedToMonitoring || false
                 });
             } else {
                 setFormData({
@@ -60,7 +64,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     osAndExpiry: '',
                     hdd: '',
                     ram: '',
-                    cpu: ''
+                    cpu: '',
+                    backupLocation: '',
+                    addedToMonitoring: false
                 });
             }
         }
@@ -68,6 +74,10 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
 
     const handleChange = (field: keyof CreateVMDetailsPayload, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleCheckboxChange = (field: keyof CreateVMDetailsPayload, checked: boolean) => {
+        setFormData(prev => ({ ...prev, [field]: checked }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -82,6 +92,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
             if (formData.hdd !== editingItem.hdd) changedData.hdd = formData.hdd;
             if (formData.ram !== editingItem.ram) changedData.ram = formData.ram;
             if (formData.cpu !== editingItem.cpu) changedData.cpu = formData.cpu;
+            if (formData.backupLocation !== editingItem.backupLocation) changedData.backupLocation = formData.backupLocation;
+            if (formData.addedToMonitoring !== editingItem.addedToMonitoring) changedData.addedToMonitoring = formData.addedToMonitoring;
             onSubmit(changedData);
         } else {
             onSubmit(formData);
@@ -128,6 +140,24 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         value={formData.osAndExpiry} 
                         onChange={(e) => handleChange('osAndExpiry', e.target.value)} 
                         required 
+                    />
+                    <TextField 
+                        label="VM Backup Location" 
+                        size="small"
+                        className={styles.formGrid__field}
+                        value={formData.backupLocation} 
+                        onChange={(e) => handleChange('backupLocation', e.target.value)} 
+                    />
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={!!formData.addedToMonitoring}
+                                onChange={(e) => handleCheckboxChange('addedToMonitoring', e.target.checked)}
+                                color="primary"
+                            />
+                        }
+                        label="VM added to monitoring confirmation"
+                        className={styles.formGrid__field}
                     />
                     
                     <Typography variant="subtitle1" className={styles.formGrid__title}>

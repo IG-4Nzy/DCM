@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, status, Depends, Query, Body, Form, UploadFile, File
 from auth_utils import get_current_user, require_privilege
 from database import db
@@ -12,6 +12,26 @@ import shutil
 router = APIRouter()
 collection = db.get_collection("periodic_activities")
 
+def add_interval(date_str: str, interval: int, unit: str) -> str:
+    dt = datetime.strptime(date_str, "%Y-%m-%d")
+    if unit == "days":
+        dt += timedelta(days=interval)
+    elif unit == "weeks":
+        dt += timedelta(weeks=interval)
+    elif unit == "months":
+        month = dt.month - 1 + interval
+        year = dt.year + month // 12
+        month = month % 12 + 1
+        day = min(dt.day, [31,
+            29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,
+            31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
+        dt = dt.replace(year=year, month=month, day=day)
+    elif unit == "years":
+        year = dt.year + interval
+        day = min(dt.day, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28) if dt.month == 2 and dt.day == 29 else dt.day
+        dt = dt.replace(year=year, day=day)
+    return dt.strftime("%Y-%m-%d")
+
 class PeriodicActivityModel(BaseModel):
     id: Optional[str] = Field(alias="_id", default=None)
     name: str
@@ -22,6 +42,9 @@ class PeriodicActivityModel(BaseModel):
     services: Optional[List[Dict[str, Any]]] = None
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
+    repeatInterval: Optional[int] = None
+    repeatUnit: Optional[str] = None
+    repeatCount: Optional[int] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -56,8 +79,32 @@ async def create_periodic_activity(
     elif not doc.get("department"):
         doc["department"] = current_user.get("department", "")
 
-    result = await collection.insert_one(doc)
-    created = await collection.find_one({"_id": result.inserted_id})
+    repeat_interval = doc.pop("repeatInterval", None)
+    repeat_unit = doc.pop("repeatUnit", None)
+    repeat_count = doc.pop("repeatCount", None)
+
+    if repeat_interval and repeat_unit and repeat_count and repeat_count > 1:
+        docs_to_insert = []
+        current_date = doc["dueDate"]
+        for _ in range(repeat_count):
+            new_doc = doc.copy()
+            new_doc["dueDate"] = current_date
+            new_doc["createdAt"] = now
+            new_doc["updatedAt"] = now
+            docs_to_insert.append(new_doc)
+            try:
+                current_date = add_interval(current_date, repeat_interval, repeat_unit)
+            except Exception as e:
+                # Fallback if parsing fails
+                break
+        
+        result = await collection.insert_many(docs_to_insert)
+        inserted_id = result.inserted_ids[0]
+    else:
+        result = await collection.insert_one(doc)
+        inserted_id = result.inserted_id
+
+    created = await collection.find_one({"_id": inserted_id})
     return serialize_doc(created)
 
 @router.get("", response_description="List periodic activities", response_model=PaginatedPeriodicActivitiesModel, dependencies=[Depends(require_privilege("View Periodic Activity"))])

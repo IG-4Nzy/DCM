@@ -139,6 +139,7 @@ const VMDetails = ({ clusterId }: VMDetailsProps) => {
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Applications</TableCell>
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Node</TableCell>
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>OS and Expiry</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Backup Location</TableCell>
                                 <TableCell colSpan={3} align="center" className={styles.tableWrapper__headerCell}>Resource Allotter</TableCell>
                                 {(hasUpdate || hasDelete) && (
                                     <TableCell rowSpan={2} align="right" className={styles.tableWrapper__headerCellLast}>Actions</TableCell>
@@ -153,11 +154,11 @@ const VMDetails = ({ clusterId }: VMDetailsProps) => {
                         <TableBody>
                             {loading && data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} align="center" sx={{ py: 3 }}>Loading...</TableCell>
+                                    <TableCell colSpan={9} align="center" sx={{ py: 3 }}>Loading...</TableCell>
                                 </TableRow>
                             ) : data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
+                                    <TableCell colSpan={9} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
                                 </TableRow>
                             ) : (
                                 data.map((row) => (
@@ -166,6 +167,7 @@ const VMDetails = ({ clusterId }: VMDetailsProps) => {
                                         <TableCell className={styles.tableWrapper__cell}>{row.applications || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.node || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.osAndExpiry || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.backupLocation || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.hdd || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.ram || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.cpu || '--'}</TableCell>

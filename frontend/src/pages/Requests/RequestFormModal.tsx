@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Box, TextField, MenuItem, FormControl, InputLabel, Select } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, TextField, MenuItem, FormControl, InputLabel, Select, Checkbox, FormControlLabel } from '@mui/material';
 import Button from '../../components/Button';
 import type { RequestData } from './model';
 import type { RootState, AppDispatch } from '../../store';
 import { fetchInventory } from '../Inventory/action';
 import { fetchStagesForType } from './action';
 import { useToast } from '../../contexts/ToastContext';
+
+import request from '../../services/request';
 
 interface RequestFormModalProps {
   isModalOpen: boolean;
@@ -42,10 +44,24 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [details, setDetails] = useState<any>({});
   const [configuredStages, setConfiguredStages] = useState<string[]>([]);
+  const [clustersList, setClustersList] = useState<any[]>([]);
+  const [nodesList, setNodesList] = useState<any[]>([]);
+
+  const currentRequestType = editingRequest ? (editingRequest.requestType || editingRequest.category || '') : requestType;
 
   useEffect(() => {
     if (isModalOpen) {
       dispatch(fetchInventory({ pagination: false }));
+      
+      // Fetch clusters for dropdown
+      request.get('/api/clusters/', { params: { pagination: false } })
+        .then(res => setClustersList(res.data.data || []))
+        .catch(err => console.error('Failed to load clusters for request', err));
+
+      // Fetch nodes for dropdown
+      request.get('/api/nodes/', { params: { pagination: false } })
+        .then(res => setNodesList(res.data.data || []))
+        .catch(err => console.error('Failed to load nodes for request', err));
     }
   }, [isModalOpen, dispatch]);
 
@@ -102,7 +118,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!editingRequest && requestType === 'DC Entry' && details.dateTime) {
+    if (!editingRequest && currentRequestType === 'DC Entry' && details.dateTime) {
       const selected = new Date(details.dateTime);
       const now = new Date();
       // Use 1 minute buffer to account for minor system delays
@@ -155,6 +171,8 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
               </Select>
             </FormControl>
 
+            <Box sx={{ display: 'none' }} />
+
             <TextField
               label="Purpose"
               fullWidth
@@ -167,17 +185,30 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
             />
 
             {/* Dynamic Fields based on Request Type */}
-            {requestType === 'VM Creation' && (
+            {currentRequestType === 'VM Creation' && (
               <>
-                <TextField label="OS and Version" fullWidth required value={details.osVersion || ''} onChange={(e) => handleDetailChange('osVersion', e.target.value)} />
-                <TextField label="RAM" fullWidth required value={details.ram || ''} onChange={(e) => handleDetailChange('ram', e.target.value)} />
-                <TextField label="HDD" fullWidth required value={details.hdd || ''} onChange={(e) => handleDetailChange('hdd', e.target.value)} />
-                <TextField label="CPU" fullWidth required value={details.cpu || ''} onChange={(e) => handleDetailChange('cpu', e.target.value)} />
-                <TextField label="IP (Optional)" fullWidth value={details.ip || ''} onChange={(e) => handleDetailChange('ip', e.target.value)} />
+                {!editingRequest ? (
+                  <>
+                    <TextField label="VM Name" fullWidth required value={details.vmName || ''} onChange={(e) => handleDetailChange('vmName', e.target.value)} />
+                    <TextField label="OS and Version" fullWidth required value={details.osVersion || ''} onChange={(e) => handleDetailChange('osVersion', e.target.value)} />
+                    <TextField label="RAM" fullWidth required value={details.ram || ''} onChange={(e) => handleDetailChange('ram', e.target.value)} />
+                    <TextField label="HDD" fullWidth required value={details.hdd || ''} onChange={(e) => handleDetailChange('hdd', e.target.value)} />
+                    <TextField label="CPU" fullWidth required value={details.cpu || ''} onChange={(e) => handleDetailChange('cpu', e.target.value)} />
+                    <TextField label="IP (Optional)" fullWidth value={details.ip || ''} onChange={(e) => handleDetailChange('ip', e.target.value)} />
+                  </>
+                ) : (
+                  <>
+                    <TextField label="VM Name" fullWidth disabled value={details.vmName || ''} />
+                    <TextField label="OS and Version" fullWidth disabled value={details.osVersion || ''} />
+                    <TextField label="RAM" fullWidth disabled value={details.ram || ''} />
+                    <TextField label="HDD" fullWidth disabled value={details.hdd || ''} />
+                    <TextField label="CPU" fullWidth disabled value={details.cpu || ''} />
+                  </>
+                )}
               </>
             )}
 
-            {requestType === 'DC Entry' && (
+            {currentRequestType === 'DC Entry' && (
               <>
                 <TextField 
                   label="Date and Time" 
@@ -199,7 +230,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
               </>
             )}
 
-            {requestType === 'Hardware Issuance' && (
+            {currentRequestType === 'Hardware Issuance' && (
               <>
                 <FormControl fullWidth required>
                   <InputLabel>Hardware (from Inventory)</InputLabel>
@@ -219,12 +250,12 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
               </>
             )}
 
-            {requestType === 'Hardware Replacement' && (
+            {currentRequestType === 'Hardware Replacement' && (
               <TextField label="Remarks" fullWidth required multiline rows={3} value={details.remarks || ''} onChange={(e) => handleDetailChange('remarks', e.target.value)} />
             )}
 
             {/* General Description */}
-            {requestType !== 'Hardware Replacement' && (
+            {currentRequestType !== 'Hardware Replacement' && (
               <TextField
                 label="General Description (Optional)"
                 fullWidth
@@ -259,6 +290,72 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                     <MenuItem value="Rejected">Rejected</MenuItem>
                   </Select>
                 </FormControl>
+
+                {status === 'Completed' && currentRequestType === 'VM Creation' && (
+                  <>
+                    <FormControl fullWidth required sx={{ mt: 1 }}>
+                      <InputLabel>Cluster</InputLabel>
+                      <Select
+                        value={details.cluster || ''}
+                        label="Cluster"
+                        onChange={(e) => handleDetailChange('cluster', e.target.value)}
+                      >
+                        {clustersList.map((c: any) => (
+                          <MenuItem key={c.id || c._id} value={c.clusterName}>
+                            {c.clusterName}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    <FormControl fullWidth required sx={{ mt: 1 }}>
+                      <InputLabel>Node (Physical Host)</InputLabel>
+                      <Select
+                        value={details.node || ''}
+                        label="Node (Physical Host)"
+                        onChange={(e) => handleDetailChange('node', e.target.value)}
+                      >
+                        {nodesList.map((n: any) => (
+                          <MenuItem key={n.id || n._id} value={n.node}>
+                            {n.node}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    <TextField
+                      label="IP Address"
+                      fullWidth
+                      required
+                      value={details.ip || ''}
+                      onChange={(e) => handleDetailChange('ip', e.target.value)}
+                      placeholder="e.g. 192.168.1.10"
+                      sx={{ mt: 1 }}
+                    />
+
+                    <TextField
+                      label="VM Backup Path"
+                      fullWidth
+                      required
+                      value={details.backupLocation || ''}
+                      onChange={(e) => handleDetailChange('backupLocation', e.target.value)}
+                      placeholder="e.g. /backups/vms/my-vm"
+                      sx={{ mt: 1 }}
+                    />
+                    
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={!!details.addedToMonitoring}
+                          onChange={(e) => handleDetailChange('addedToMonitoring', e.target.checked)}
+                          color="primary"
+                        />
+                      }
+                      label="VM added to monitoring confirmation"
+                      sx={{ mt: 0.5, color: '#374151' }}
+                    />
+                  </>
+                )}
 
                 <TextField
                   label="Remarks"

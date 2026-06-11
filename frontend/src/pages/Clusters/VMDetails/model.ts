@@ -8,6 +8,8 @@ export interface VMDetailsData {
     hdd: string;
     ram: string;
     cpu: string;
+    backupLocation?: string;
+    addedToMonitoring?: boolean;
     createdAt?: string;
     updatedAt?: string;
     createdBy?: string;
@@ -22,6 +24,8 @@ export interface CreateVMDetailsPayload {
     hdd: string;
     ram: string;
     cpu: string;
+    backupLocation?: string;
+    addedToMonitoring?: boolean;
 }
 
 export interface UpdateVMDetailsPayload extends Partial<CreateVMDetailsPayload> {}

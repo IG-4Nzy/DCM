@@ -82,6 +82,10 @@ const PeriodicActivities: React.FC = () => {
   const [dueDate, setDueDate] = useState('');
   const [remarks, setRemarks] = useState('');
   const [isAmc, setIsAmc] = useState(false);
+  const [repeats, setRepeats] = useState(false);
+  const [repeatInterval, setRepeatInterval] = useState(1);
+  const [repeatUnit, setRepeatUnit] = useState('months');
+  const [repeatCount, setRepeatCount] = useState(5);
   const [submitting, setSubmitting] = useState(false);
 
   // Services State
@@ -191,6 +195,10 @@ const PeriodicActivities: React.FC = () => {
     setDueDate(dayjs().format('YYYY-MM-DD'));
     setRemarks('');
     setIsAmc(false);
+    setRepeats(false);
+    setRepeatInterval(1);
+    setRepeatUnit('months');
+    setRepeatCount(5);
     setIsModalOpen(true);
   };
 
@@ -216,12 +224,18 @@ const PeriodicActivities: React.FC = () => {
 
     setSubmitting(true);
     try {
-      const payload = {
+      const payload: any = {
         name,
         dueDate,
         remarks,
         isAmc
       };
+
+      if (!editingActivity && repeats) {
+        payload.repeatInterval = repeatInterval;
+        payload.repeatUnit = repeatUnit;
+        payload.repeatCount = repeatCount;
+      }
 
       if (editingActivity) {
         const activityId = editingActivity.id || editingActivity._id;
@@ -620,6 +634,60 @@ const PeriodicActivities: React.FC = () => {
               label="Mark this activity as an AMC"
               sx={{ mt: -0.5, color: '#374151' }}
             />
+
+            {!editingActivity && (
+              <>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={repeats}
+                      onChange={(e) => setRepeats(e.target.checked)}
+                      color="primary"
+                    />
+                  }
+                  label="Enable repeats (create multiple occurrences)"
+                  sx={{ mt: -0.5, color: '#374151' }}
+                />
+
+                {repeats && (
+                  <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mt: 0.5 }}>
+                    <TextField
+                      label="Repeat Every"
+                      type="number"
+                      variant="outlined"
+                      size="small"
+                      value={repeatInterval}
+                      onChange={(e) => setRepeatInterval(Math.max(1, parseInt(e.target.value) || 1))}
+                      sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                    />
+                    <TextField
+                      label="Unit"
+                      select
+                      variant="outlined"
+                      size="small"
+                      value={repeatUnit}
+                      onChange={(e) => setRepeatUnit(e.target.value)}
+                      SelectProps={{ native: true }}
+                      sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                    >
+                      <option value="days">Days</option>
+                      <option value="weeks">Weeks</option>
+                      <option value="months">Months</option>
+                      <option value="years">Years</option>
+                    </TextField>
+                    <TextField
+                      label="Occurrences"
+                      type="number"
+                      variant="outlined"
+                      size="small"
+                      value={repeatCount}
+                      onChange={(e) => setRepeatCount(Math.max(2, parseInt(e.target.value) || 2))}
+                      sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                    />
+                  </Box>
+                )}
+              </>
+            )}
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
             <Button onClick={() => setIsModalOpen(false)} disabled={submitting} sx={{ borderRadius: '8px', textTransform: 'none' }}>
