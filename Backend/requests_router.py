@@ -132,6 +132,14 @@ async def resolve_assignees(stage: dict, requester_username: str) -> List[str]:
             return [assigned_to]
         return []
 
+    elif assignment_type == "Role":
+        role_name = assigned_to
+        if role_name:
+            users_cursor = users_collection.find({"role": role_name, "status": True})
+            users_list = await users_cursor.to_list(length=None)
+            return [u["username"] for u in users_list if u.get("username")]
+        return []
+
     elif assignment_type == "TargetApprover":
         # Legacy: assigned_to holds the target approver username
         if assigned_to:

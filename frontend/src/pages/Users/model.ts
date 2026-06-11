@@ -1,7 +1,7 @@
 export interface UserData {
   id: string;
   username: string;
-  role: string;
+  role: string | string[];
   status: boolean;
   firstName?: string;
   lastName?: string;
@@ -19,7 +19,7 @@ export interface UserData {
 export interface CreateUserPayload {
   username: string;
   password?: string;
-  role: string;
+  role: string | string[];
   status: boolean;
   firstName?: string;
   lastName?: string;
@@ -36,7 +36,7 @@ export interface UpdateUserPayload {
   id: string;
   username: string;
   password?: string;
-  role: string;
+  role: string | string[];
   status: boolean;
   firstName?: string;
   lastName?: string;

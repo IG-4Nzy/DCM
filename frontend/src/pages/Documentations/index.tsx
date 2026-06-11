@@ -67,7 +67,7 @@ const Documentations: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   
   const { showToast } = useToast();
-  const confirm = useConfirm();
+  const { confirm } = useConfirm();
 
   const fetchDocs = async () => {
     setLoading(true);

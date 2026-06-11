@@ -80,7 +80,7 @@ const Announcements: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   
   const { showToast } = useToast();
-  const confirm = useConfirm();
+  const { confirm } = useConfirm();
 
   const fetchAnnouncements = async () => {
     setLoading(true);
@@ -383,7 +383,7 @@ const Announcements: React.FC = () => {
                           {formattedDate}
                           {daysLeft !== null && (
                             <Chip
-                              label={daysLeft < 0 ? `Expired ${Math.abs(daysLeft)}d ago` : daysLeft === 0 ? 'Today' : `${daysLeft}d left`}
+                              label={daysLeft < 0 ? 'Expired' : daysLeft === 0 ? 'Today' : `${daysLeft}d left`}
                               size="small"
                               sx={{
                                 bgcolor: daysLeft < 0 ? '#FEF2F2' : '#FFFBEB',

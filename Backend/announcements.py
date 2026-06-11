@@ -58,6 +58,7 @@ async def create_announcement(
 
 @router.get("", response_description="List announcements", response_model=PaginatedAnnouncementsModel, dependencies=[Depends(require_privilege("View Announcements"))])
 async def list_announcements(
+    pagination: bool = Query(True),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1),
     search: Optional[str] = None,
@@ -75,7 +76,9 @@ async def list_announcements(
         query["department"] = current_user.get("department", "")
 
     total = await collection.count_documents(query)
-    cursor = collection.find(query).sort("createdAt", -1).skip(skip).limit(limit)
+    cursor = collection.find(query).sort("createdAt", -1)
+    if pagination:
+        cursor = cursor.skip(skip).limit(limit)
     
     data = [serialize_doc(doc) async for doc in cursor]
     return {"data": data, "total": total}

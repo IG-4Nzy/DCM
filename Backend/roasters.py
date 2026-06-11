@@ -121,6 +121,7 @@ async def list_roasters(
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
     order: str = Query("desc"),
+    pagination: bool = Query(True),
     current_user: dict = Depends(get_current_user)
 ):
     is_superuser = current_user.get("isSuperuser", False)
@@ -143,8 +144,12 @@ async def list_roasters(
     sort_order = 1 if order == "asc" else -1
 
     total = await roasters_collection.count_documents(query)
-    cursor = roasters_collection.find(query).sort(actual_sort_by, sort_order).skip(skip).limit(limit)
-    roasters = await cursor.to_list(length=limit)
+    cursor = roasters_collection.find(query).sort(actual_sort_by, sort_order)
+    if pagination:
+        cursor = cursor.skip(skip).limit(limit)
+        roasters = await cursor.to_list(length=limit)
+    else:
+        roasters = await cursor.to_list(length=None)
 
     return {"data": roasters, "total": total}
 

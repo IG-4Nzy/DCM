@@ -197,7 +197,7 @@ const Dashboard: React.FC = () => {
                   {data.periodicActivities.map((activity: any, idx: number) => {
                     const isOverdue = activity.daysRemaining < 0;
                     const remainingText = isOverdue
-                      ? `Expired ${Math.abs(activity.daysRemaining)}d ago`
+                      ? 'Expired'
                       : activity.daysRemaining === 0
                       ? 'Today!'
                       : `${activity.daysRemaining}d left`;

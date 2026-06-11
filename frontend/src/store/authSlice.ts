@@ -4,7 +4,7 @@ import { getItemFromLocalstorage, removeItemFromLocalstorage, setItemToLocalstor
 
 interface AuthState {
   token: string | null;
-  role: string | null;
+  role: string | string[] | null;
   username: string | null;
   displayName: string | null;
   privileges: string[];
@@ -26,7 +26,7 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    loginSuccess(state, action: PayloadAction<{ token: string; role: string; username: string; displayName?: string; privileges: string[], isSuperuser: boolean }>) {
+    loginSuccess(state, action: PayloadAction<{ token: string; role: string | string[]; username: string; displayName?: string; privileges: string[], isSuperuser: boolean }>) {
       state.token = action.payload.token;
       state.role = action.payload.role;
       state.username = action.payload.username;

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Body
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Union, List
 import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
@@ -19,7 +19,7 @@ class LoginRequest(BaseModel):
 
 class LoginResponse(BaseModel):
     token: str
-    role: str
+    role: Union[str, list[str]]
     username: str
     privileges: list[str]
     isSuperuser: bool = False
@@ -79,9 +79,19 @@ async def login(credentials: LoginRequest):
         
     role = user.get("role", "User")
     
+    user_roles = role
+    if isinstance(user_roles, str):
+        user_roles = [user_roles]
+    elif not isinstance(user_roles, list):
+        user_roles = ["User"]
+        
     roles_collection = db.get_collection("roles")
-    role_obj = await roles_collection.find_one({"name": role})
-    privileges = role_obj.get("privileges", []) if role_obj else []
+    privileges_set = set()
+    for role_name in user_roles:
+        role_obj = await roles_collection.find_one({"name": role_name})
+        if role_obj:
+            privileges_set.update(role_obj.get("privileges", []))
+    privileges = list(privileges_set)
     
     is_superuser = user.get("is_superuser", False)
     
@@ -157,7 +167,14 @@ async def logout(current_user: dict = Depends(get_current_user)):
 
         should_track = True
         user_role = current_user.get("role")
-        if tracked_role and tracked_role != "All Roles" and user_role != tracked_role:
+        if isinstance(user_role, list):
+            user_roles = user_role
+        elif isinstance(user_role, str):
+            user_roles = [user_role]
+        else:
+            user_roles = []
+
+        if tracked_role and tracked_role != "All Roles" and tracked_role not in user_roles:
             should_track = False
 
         if should_track:

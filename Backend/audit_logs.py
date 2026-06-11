@@ -26,6 +26,7 @@ class PaginatedAuditLogsModel(BaseModel):
 
 @router.get("/", response_description="List all audit logs", response_model=PaginatedAuditLogsModel)
 async def list_audit_logs(
+    pagination: bool = Query(True),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1),
     search: Optional[str] = None,
@@ -47,7 +48,9 @@ async def list_audit_logs(
         query = search_query
 
     total = await logs_collection.count_documents(query)
-    cursor = logs_collection.find(query).sort("timestamp", -1).skip(skip).limit(limit)
+    cursor = logs_collection.find(query).sort("timestamp", -1)
+    if pagination:
+        cursor = cursor.skip(skip).limit(limit)
     
     items = []
     async for doc in cursor:

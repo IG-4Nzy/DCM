@@ -19,8 +19,8 @@ interface PropType {
     formUsername: string;
     formPassword: string;
     setFormPassword: (value: string) => void;
-    setFormRole: (value: string) => void;
-    formRole: string;
+    setFormRole: (value: string | string[]) => void;
+    formRole: string | string[];
     formStatus: boolean;
     setFormStatus: (value: boolean) => void;
     availableRoles: { id: string; name: string }[];
@@ -112,7 +112,7 @@ const UserFormModal = ({
                     <>
                         <div className={styles.row}>
                             <ViewField label="Username" value={formUsername} />
-                            <ViewField label="Role" value={formRole} />
+                            <ViewField label="Role" value={Array.isArray(formRole) ? formRole.join(", ") : formRole} />
                         </div>
                         <div className={styles.row}>
                             <ViewField label="Status" value={formStatus ? "Active" : "Inactive"} />
@@ -164,14 +164,15 @@ const UserFormModal = ({
                                 }}
                             />
                         </div>
-                        
                         <div className={styles.row}>
                             <FormControl fullWidth className={styles.field}>
-                                <InputLabel>Role</InputLabel>
+                                <InputLabel>Role(s)</InputLabel>
                                 <Select
-                                    value={formRole}
-                                    label="Role"
-                                    onChange={(e) => setFormRole(e.target.value as string)}
+                                    multiple
+                                    value={Array.isArray(formRole) ? formRole : (formRole ? [formRole] : [])}
+                                    label="Role(s)"
+                                    onChange={(e) => setFormRole(e.target.value as string[])}
+                                    renderValue={(selected) => (selected as string[]).join(', ')}
                                     sx={{ borderRadius: '8px' }}
                                 >
                                     {(availableRoles || []).map((role) => (

@@ -46,7 +46,7 @@ class UpdateItemModel(BaseModel):
 class UserModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     username: str
-    role: str
+    role: Union[List[str], str]
     status: bool
     firstName: Optional[str] = None
     lastName: Optional[str] = None
@@ -67,7 +67,7 @@ class UserModel(BaseModel):
 class CreateUserModel(BaseModel):
     username: str
     password: str
-    role: str = "User"
+    role: Union[List[str], str] = "User"
     status: bool = True
     firstName: Optional[str] = None
     lastName: Optional[str] = None
@@ -82,7 +82,7 @@ class CreateUserModel(BaseModel):
 class UpdateUserModel(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
-    role: Optional[str] = None
+    role: Optional[Union[List[str], str]] = None
     status: Optional[bool] = None
     firstName: Optional[str] = None
     lastName: Optional[str] = None

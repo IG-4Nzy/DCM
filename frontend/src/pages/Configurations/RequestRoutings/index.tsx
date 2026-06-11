@@ -160,6 +160,8 @@ const RequestRoutings = () => {
                                 label += 'Dept Head';
                             } else if (stage.assignmentType === 'DeptStaffs') {
                                 label += `${stage.assignedTo} Staffs`;
+                            } else if (stage.assignmentType === 'Role') {
+                                label += `${stage.assignedTo} Role`;
                             } else {
                                 label += stage.assignedTo;
                             }
@@ -174,6 +176,8 @@ const RequestRoutings = () => {
                                             ? 'warning'
                                             : stage.assignmentType === 'DeptStaffs'
                                             ? 'secondary'
+                                            : stage.assignmentType === 'Role'
+                                            ? 'success'
                                             : 'info'
                                     }
                                 />

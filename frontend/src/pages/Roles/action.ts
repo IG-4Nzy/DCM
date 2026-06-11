@@ -12,14 +12,15 @@ interface FetchRolesParams {
   order: string;
   search: string;
   showToast?: ToastFunction;
+  pagination?: boolean;
 }
 
 export const fetchRoles = createAsyncThunk(
   'roles/fetchRoles',
-  async ({ skip, limit, sortBy, order, search, showToast }: FetchRolesParams, { rejectWithValue }) => {
+  async ({ skip, limit, sortBy, order, search, showToast, pagination }: FetchRolesParams, { rejectWithValue }) => {
     try {
       const response = await request.get(ROLES_ENDPOINT, {
-        params: { skip, limit, sort_by: sortBy, order, search }
+        params: { skip, limit, sort_by: sortBy, order, search, pagination }
       });
       return response.data;
     } catch (error: any) {

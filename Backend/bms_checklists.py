@@ -46,6 +46,7 @@ def serialize_checklist(doc: dict) -> dict:
     dependencies=[Depends(require_privilege("View BMS Checklist"))],
 )
 async def list_bms_checklists(
+    pagination: bool = Query(True),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1),
     status_filter: Optional[str] = Query(None, alias="status"),
@@ -67,7 +68,9 @@ async def list_bms_checklists(
         query["department"] = target_dept
 
     total = await collection.count_documents(query)
-    cursor = collection.find(query).sort("createdAt", -1).skip(skip).limit(limit)
+    cursor = collection.find(query).sort("createdAt", -1)
+    if pagination:
+        cursor = cursor.skip(skip).limit(limit)
     data = [serialize_checklist(doc) async for doc in cursor]
     return {"data": data, "total": total}
 

@@ -9,7 +9,7 @@ import { MdAdd as AddIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import Button from '../../../components/Button';
 import type { RequestRoutingData, RequestRoutingStage } from './model';
 import type { RootState, AppDispatch } from '../../../store';
-import { fetchUsers } from '../../Users/action';
+import { fetchRoles } from '../../Roles/action';
 import { fetchDepartments } from '../../Departments/action';
 
 const REQUEST_TYPES = [
@@ -38,7 +38,7 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
   editingItem,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { users } = useSelector((state: RootState) => state.users);
+  const { roles } = useSelector((state: RootState) => state.roles);
   const { departments } = useSelector((state: RootState) => state.departments);
 
   const [requestType, setRequestType] = useState(REQUEST_TYPES[0]);
@@ -47,7 +47,7 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
 
   useEffect(() => {
     if (open) {
-      dispatch(fetchUsers({ pagination: false }));
+      dispatch(fetchRoles({ skip: 0, limit: 1000, sortBy: 'name', order: 'asc', search: '', pagination: false }));
       dispatch(fetchDepartments({ skip: 0, limit: 1000 }));
     }
   }, [open, dispatch]);
@@ -63,7 +63,7 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
   }, [editingItem, open]);
 
   const addStage = () => {
-    setStages([...stages, { stageName: '', order: stages.length + 1, assignmentType: 'SpecificUser', assignedTo: '' }]);
+    setStages([...stages, { stageName: '', order: stages.length + 1, assignmentType: 'Role', assignedTo: '' }]);
   };
 
   const removeStage = (index: number) => {
@@ -82,12 +82,16 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
     // Check if it's a special assignment type
     const isSpecial = SPECIAL_ASSIGNEES.some(s => s.value === value);
     const isDeptStaffs = value.startsWith('DeptStaffs:');
+    const isRole = value.startsWith('Role:');
 
     if (isSpecial) {
       updated[index] = { ...updated[index], assignmentType: value, assignedTo: '' };
     } else if (isDeptStaffs) {
       const deptName = value.replace('DeptStaffs:', '');
       updated[index] = { ...updated[index], assignmentType: 'DeptStaffs', assignedTo: deptName };
+    } else if (isRole) {
+      const roleName = value.replace('Role:', '');
+      updated[index] = { ...updated[index], assignmentType: 'Role', assignedTo: roleName };
     } else {
       // Specific user
       updated[index] = { ...updated[index], assignmentType: 'SpecificUser', assignedTo: value };
@@ -99,6 +103,7 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
   const getAssigneeValue = (stage: RequestRoutingStage) => {
     if (stage.assignmentType === 'RequesterDeptHead') return 'RequesterDeptHead';
     if (stage.assignmentType === 'DeptStaffs' && stage.assignedTo) return `DeptStaffs:${stage.assignedTo}`;
+    if (stage.assignmentType === 'Role' && stage.assignedTo) return `Role:${stage.assignedTo}`;
     // Legacy support
     if (stage.assignmentType === 'TargetApproverDeptStaffs') return 'RequesterDeptHead'; // fallback
     return stage.assignedTo || '';
@@ -228,13 +233,13 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                       </MenuItem>
                     ))}
 
-                    {/* Specific users */}
+                    {/* Specific roles */}
                     <ListSubheader sx={{ fontWeight: 700, color: 'info.main', backgroundColor: 'background.paper' }}>
-                      Specific User
+                      Specific Role
                     </ListSubheader>
-                    {users.map((user: any) => (
-                      <MenuItem key={user.id || user._id} value={user.username} sx={{ pl: 3 }}>
-                        👤 {`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username} ({user.username})
+                    {roles.map((role: any) => (
+                      <MenuItem key={role.id || role._id} value={`Role:${role.name}`} sx={{ pl: 3 }}>
+                        ⚙️ {role.name}
                       </MenuItem>
                     ))}
                   </Select>

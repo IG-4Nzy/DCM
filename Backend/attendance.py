@@ -370,7 +370,13 @@ async def get_attendance_summary(
     # Filter users by trackedRole
     tracked_role = config.get("trackedRole")
     if tracked_role and tracked_role != "All Roles":
-        users = [u for u in users if u.get("role") == tracked_role]
+        users = [
+            u for u in users
+            if (
+                u.get("role") == tracked_role
+                or (isinstance(u.get("role"), list) and tracked_role in u.get("role"))
+            )
+        ]
         
     shift_start = config.get("shiftStart", "09:00")
     grace = config.get("lateGracePeriod", 30)

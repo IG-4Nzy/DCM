@@ -3,3 +3,6 @@ in periodic activities,mark amc with a flag
 display roles in configuration assignee dropdown -> in request configuration, no need for users list.
 
 in mobile app,for more that 1 QR,there is a issue,not properly handling multiple QR when scanning.
+
+check all get api calls and remove limit() if there is ,dont limit the list,just give pagination.dont limit the list anywhere.
+and check all page - for expired ,dont show day count .. just show expired badge.

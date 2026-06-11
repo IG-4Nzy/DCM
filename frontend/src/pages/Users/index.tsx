@@ -54,7 +54,7 @@ const Users: React.FC = () => {
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
   const [formUsername, setFormUsername] = useState("");
   const [formPassword, setFormPassword] = useState("");
-  const [formRole, setFormRole] = useState("");
+  const [formRole, setFormRole] = useState<string | string[]>([]);
   const [formStatus, setFormStatus] = useState(true);
   const [formFirstName, setFormFirstName] = useState("");
   const [formLastName, setFormLastName] = useState("");
@@ -101,7 +101,7 @@ const Users: React.FC = () => {
       setEditingUser(user);
       setFormUsername(user.username);
       setFormPassword("");
-      setFormRole(user.role);
+      setFormRole(user.role || []);
       setFormStatus(user.status);
       setFormFirstName(user.firstName || "");
       setFormLastName(user.lastName || "");
@@ -117,7 +117,7 @@ const Users: React.FC = () => {
       setEditingUser(null);
       setFormUsername("");
       setFormPassword("");
-      setFormRole("");
+      setFormRole([]);
       setFormStatus(true);
       setFormFirstName("");
       setFormLastName("");
@@ -231,7 +231,7 @@ const Users: React.FC = () => {
       render: (row) => `${row.firstName || ''} ${row.lastName || ''}`.trim() || '-'
     },
     { id: "department", label: "Department", sortable: true, render: (row) => row.department || '-' },
-    { id: "role", label: "Role", sortable: true },
+    { id: "role", label: "Role", sortable: true, render: (row) => Array.isArray(row.role) ? row.role.join(", ") : (row.role || "-") },
     {
       id: "status",
       label: "Status",

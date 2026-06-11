@@ -62,6 +62,7 @@ async def create_documentation(
 
 @router.get("/", response_description="List documentations", response_model=PaginatedDocumentationsModel, dependencies=[Depends(require_privilege("View Documentation"))])
 async def list_documentations(
+    pagination: bool = Query(True),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1),
     search: Optional[str] = None,
@@ -72,7 +73,9 @@ async def list_documentations(
         query["title"] = {"$regex": search, "$options": "i"}
         
     total = await collection.count_documents(query)
-    cursor = collection.find(query).sort("createdAt", -1).skip(skip).limit(limit)
+    cursor = collection.find(query).sort("createdAt", -1)
+    if pagination:
+        cursor = cursor.skip(skip).limit(limit)
     
     data = []
     async for doc in cursor:
