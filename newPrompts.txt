@@ -12,3 +12,4 @@ also show them in the logs of that work
 
 every actions should be notified if not done within a specified time, notify in the dashboard
 
+remove delete,restart..action buttons from server monitoring.
