@@ -17,6 +17,7 @@ interface RequestViewModalProps {
   request: RequestData | null;
   onAdvance: (id: string, payload?: any) => Promise<void>;
   onReject: (id: string, remarks: string) => Promise<void>;
+  onSendBack: (id: string, reason: string) => Promise<void>;
   username: string;
   isSuperuser: boolean;
   hasUpdatePrivilege: boolean;
@@ -28,6 +29,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   request,
   onAdvance,
   onReject,
+  onSendBack,
   username,
   isSuperuser,
   hasUpdatePrivilege
@@ -42,6 +44,8 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   const [ipError, setIpError] = useState(false);
   const [logs, setLogs] = useState<RequestLogData[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [isSendBackOpen, setIsSendBackOpen] = useState(false);
+  const [sendBackReason, setSendBackReason] = useState('');
 
   // Cluster Selection States
   const [clusters, setClusters] = useState<any[]>([]);
@@ -64,6 +68,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   const isMarkEntryTime = request?.requestType === 'DC Entry' && (request?.status?.toLowerCase() === 'mark entry time' || request?.status?.toLowerCase().includes('entry'));
   const isMarkExitTime = request?.requestType === 'DC Entry' && (request?.status?.toLowerCase() === 'mark exit time' || request?.status?.toLowerCase().includes('exit'));
   const isVMCreationStage = request?.requestType === 'VM Creation' && (request?.status?.toLowerCase() === 'vm creation' || request?.status?.toLowerCase().includes('creation'));
+  const isVMBackupStage = request?.requestType === 'VM Creation' && (request?.status?.toLowerCase() === 'vm backup' || request?.status?.toLowerCase().includes('backup'));
 
   const [backupLocation, setBackupLocation] = useState('');
   const [backupError, setBackupError] = useState(false);
@@ -150,9 +155,24 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   const isAssigned = request.currentAssignedUsers && request.currentAssignedUsers.includes(username);
   const canAction = isSuperuser || isAssigned || hasUpdatePrivilege;
   const isTerminal = request.status === 'Completed' || request.status === 'Rejected';
+  const canSendBack = request && typeof request.currentStageIndex === 'number' && request.currentStageIndex > 0;
   
   // Check if status is IP Issuance
   const isIpIssuance = request.status?.toLowerCase() === 'ip issuance' || request.status?.toLowerCase().includes('ip');
+
+  const handleConfirmSendBack = async () => {
+    if (!sendBackReason.trim()) return;
+    setSubmitting(true);
+    try {
+      await onSendBack(request.id || request._id || '', sendBackReason.trim());
+      setIsSendBackOpen(false);
+      onClose();
+    } catch (err) {
+      // Handled in parent
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleAdvance = async () => {
     if (isIpIssuance && !ipAddress.trim()) {
@@ -175,7 +195,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       setExitTimeError(true);
       return;
     }
-    if (isVMCreationStage && !backupLocation.trim()) {
+    if (isVMBackupStage && !backupLocation.trim()) {
       setBackupError(true);
       return;
     }
@@ -187,8 +207,11 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
         payload.details = { ip: ipAddress.trim() };
       } else if (isVMCreationStage) {
         payload.details = { 
-          backupLocation: backupLocation.trim(),
           addedToMonitoring: !!addedToMonitoring
+        };
+      } else if (isVMBackupStage) {
+        payload.details = {
+          backupLocation: backupLocation.trim()
         };
       } else if (isClusterDeciding) {
         payload.details = { 
@@ -254,7 +277,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
 
   return (
     <Dialog open={isOpen} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{ pb: 1, fontWeight: 'bold', fontSize: '1.25rem'}}>
+      <DialogTitle sx={{ pb: 1, fontWeight: 'bold', fontSize: '1.25rem', color: '#333' }}>
         Request Details
       </DialogTitle>
       <DialogContent dividers sx={{ backgroundColor: '#fafbfd' }}>
@@ -528,6 +551,22 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
 
                   {isVMCreationStage && (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1, minWidth: 240 }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={addedToMonitoring}
+                            onChange={(e) => setAddedToMonitoring(e.target.checked)}
+                            color="primary"
+                          />
+                        }
+                        label="VM added to monitoring confirmation"
+                        sx={{ color: '#374151', alignSelf: 'flex-start' }}
+                      />
+                    </Box>
+                  )}
+
+                  {isVMBackupStage && (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1, minWidth: 240 }}>
                       <TextField
                         label="VM Backup Path / Location"
                         variant="outlined"
@@ -542,17 +581,6 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                         }}
                         placeholder="e.g. /backups/vms/my-vm"
                         sx={{ bgcolor: '#fff' }}
-                      />
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={addedToMonitoring}
-                            onChange={(e) => setAddedToMonitoring(e.target.checked)}
-                            color="primary"
-                          />
-                        }
-                        label="VM added to monitoring confirmation"
-                        sx={{ color: '#374151', alignSelf: 'flex-start' }}
                       />
                     </Box>
                   )}
@@ -667,6 +695,20 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
         </Grid>
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
+        {canAction && !isTerminal && canSendBack && (
+          <Button
+            onClick={() => {
+              setSendBackReason('');
+              setIsSendBackOpen(true);
+            }}
+            variant="outlined"
+            color="warning"
+            disabled={submitting}
+            sx={{ mr: 'auto' }}
+          >
+            Send Back
+          </Button>
+        )}
         <Button onClick={onClose} variant="text" color="inherit">
           Close
         </Button>
@@ -686,11 +728,51 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
               color="success"
               disabled={submitting}
             >
-              {submitting ? 'Processing...' : (isIpIssuance ? 'Submit IP & Approve' : isVMCreationStage ? 'Submit Backup Path & Approve' : isClusterDeciding ? 'Submit Cluster & Approve' : isMarkEntryTime ? 'Submit Entry Time & Advance' : isMarkExitTime ? 'Submit Exit Time & Approve' : 'Approve & Advance')}
+              {submitting ? 'Processing...' : (isIpIssuance ? 'Submit IP & Approve' : isVMCreationStage ? 'Submit Monitoring Confirmation & Approve' : isVMBackupStage ? 'Submit Backup Path & Approve' : isClusterDeciding ? 'Submit Cluster & Approve' : isMarkEntryTime ? 'Submit Entry Time & Advance' : isMarkExitTime ? 'Submit Exit Time & Approve' : 'Approve & Advance')}
             </Button>
           </>
         )}
       </DialogActions>
+      
+      <Dialog 
+        open={isSendBackOpen} 
+        onClose={() => setIsSendBackOpen(false)}
+        slotProps={{
+          paper: {
+            sx: { borderRadius: "12px", p: 1, minWidth: "400px" }
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: "bold", color: "#333" }}>Send Back Request</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <Typography variant="body2" color="textSecondary">
+              Are you sure you want to send this request back to the previous stage and assignees?
+            </Typography>
+            <TextField
+              fullWidth
+              label="Reason for Send Back"
+              multiline
+              rows={3}
+              required
+              value={sendBackReason}
+              onChange={(e) => setSendBackReason(e.target.value)}
+              placeholder="Provide reason for sending back..."
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button variant="text" onClick={() => setIsSendBackOpen(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            color="error"
+            onClick={handleConfirmSendBack}
+            disabled={!sendBackReason.trim() || submitting}
+          >
+            Send Back
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   );
 };

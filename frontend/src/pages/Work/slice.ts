@@ -1,5 +1,5 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { fetchWorks, createWork, updateWork, deleteWork } from './action';
+import { createSlice } from '@reduxjs/toolkit';
+import { fetchWorks, createWork, updateWork, deleteWork, transferWork } from './action';
 import type { WorkData } from './model';
 
 interface WorksState {
@@ -48,6 +48,13 @@ const worksSlice = createSlice({
       })
       // updateWork
       .addCase(updateWork.fulfilled, (state, action) => {
+        const index = state.works.findIndex((work) => work.id === action.payload.id || work._id === action.payload._id);
+        if (index !== -1) {
+          state.works[index] = action.payload;
+        }
+      })
+      // transferWork
+      .addCase(transferWork.fulfilled, (state, action) => {
         const index = state.works.findIndex((work) => work.id === action.payload.id || work._id === action.payload._id);
         if (index !== -1) {
           state.works[index] = action.payload;

@@ -45,6 +45,8 @@ class PeriodicActivityModel(BaseModel):
     repeatInterval: Optional[int] = None
     repeatUnit: Optional[str] = None
     repeatCount: Optional[int] = None
+    firstServiceDate: Optional[str] = None
+    serviceRepeatMonths: Optional[int] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -70,6 +72,42 @@ async def create_periodic_activity(
     doc = payload.model_dump(by_alias=True, exclude={"id"})
     if doc.get("services") is None:
         doc["services"] = []
+
+    # Generate AMC services if applicable
+    if doc.get("isAmc") and doc.get("firstServiceDate") and doc.get("serviceRepeatMonths"):
+        services_list = []
+        first_date_str = doc.get("firstServiceDate")
+        repeat_months = doc.get("serviceRepeatMonths")
+        expiry_date_str = doc.get("dueDate")
+        
+        try:
+            expiry_dt = datetime.strptime(expiry_date_str, "%Y-%m-%d")
+            curr_dt = datetime.strptime(first_date_str, "%Y-%m-%d")
+            
+            while curr_dt <= expiry_dt:
+                services_list.append({
+                    "id": str(uuid.uuid4()),
+                    "dueDate": curr_dt.strftime("%Y-%m-%d"),
+                    "status": "pending",
+                    "completedDate": None,
+                    "completedTime": None,
+                    "remarks": "",
+                    "reportName": None,
+                    "reportUrl": None
+                })
+                
+                # Advance by repeat_months
+                month = curr_dt.month - 1 + repeat_months
+                year = curr_dt.year + month // 12
+                month = month % 12 + 1
+                day = min(curr_dt.day, [31,
+                    29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,
+                    31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
+                curr_dt = curr_dt.replace(year=year, month=month, day=day)
+            doc["services"] = services_list
+        except Exception as e:
+            print(f"Error generating AMC services: {e}")
+
     doc["createdAt"] = now
     doc["updatedAt"] = now
     
@@ -328,6 +366,69 @@ async def delete_service(
         {
             "$pull": {"services": {"id": service_id}},
             "$set": {"updatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}
+        }
+    )
+
+    updated = await collection.find_one({"_id": ObjectId(id)})
+    return serialize_doc(updated)
+
+@router.put("/{id}/services/{service_id}/complete", dependencies=[Depends(require_privilege("Update Periodic Activity"))])
+async def complete_service(
+    id: str,
+    service_id: str,
+    completedDate: str = Form(...),
+    completedTime: str = Form(...),
+    remarks: str = Form(""),
+    file: Optional[UploadFile] = File(default=None),
+    current_user: dict = Depends(get_current_user)
+):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    existing = await collection.find_one({"_id": ObjectId(id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Periodic activity not found")
+
+    if not current_user.get("isSuperuser", False) and existing.get("department") != current_user.get("department", ""):
+        raise HTTPException(status_code=403, detail="Forbidden: You cannot modify activities of other departments")
+
+    services = existing.get("services", [])
+    service_index = -1
+    for i, s in enumerate(services):
+        if s.get("id") == service_id:
+            service_index = i
+            break
+
+    if service_index == -1:
+        raise HTTPException(status_code=404, detail="Service record not found")
+
+    # Save file if provided
+    report_name = services[service_index].get("reportName")
+    report_url = services[service_index].get("reportUrl")
+    if file:
+        base_dir = "uploads/periodic_activities"
+        os.makedirs(base_dir, exist_ok=True)
+        file_ext = os.path.splitext(file.filename)[1]
+        unique_name = f"{uuid.uuid4()}{file_ext}"
+        file_path = os.path.join(base_dir, unique_name)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        report_name = file.filename
+        report_url = f"/uploads/periodic_activities/{unique_name}"
+
+    await collection.update_one(
+        {"_id": ObjectId(id)},
+        {
+            "$set": {
+                f"services.{service_index}.status": "completed",
+                f"services.{service_index}.completedDate": completedDate,
+                f"services.{service_index}.completedTime": completedTime,
+                f"services.{service_index}.remarks": remarks,
+                f"services.{service_index}.reportName": report_name,
+                f"services.{service_index}.reportUrl": report_url,
+                f"services.{service_index}.completedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "updatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            }
         }
     )
 

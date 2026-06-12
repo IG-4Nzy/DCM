@@ -246,7 +246,7 @@ const MorningChecklistConfig: React.FC = () => {
 
       {/* Create/Edit Modal */}
       <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>
+        <DialogTitle sx={{ fontWeight: 700, color: '#333' }}>
           {editingField ? 'Edit Field' : 'Add New Field'}
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>

@@ -621,7 +621,6 @@ const ServerMonitoring: React.FC = () => {
                     <TableCell sx={{ fontWeight: 800 }}>Hypervisor</TableCell>
                     <TableCell sx={{ fontWeight: 800 }}>Resource Provision</TableCell>
                     <TableCell sx={{ fontWeight: 800 }}>Active Warnings & Alarms</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 800, width: '100px' }}>Action</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -792,26 +791,12 @@ const ServerMonitoring: React.FC = () => {
                             </Box>
                           </TableCell>
 
-                          {/* Delete Action */}
-                          <TableCell align="right">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteClick(vcId);
-                              }}
-                              sx={{ opacity: 0.6, '&:hover': { opacity: 1, bgcolor: 'rgba(239, 68, 68, 0.08)' } }}
-                            >
-                              <DeleteIcon style={{ fontSize: '1.15rem' }} />
-                            </IconButton>
-                          </TableCell>
                         </TableRow>
 
                         {/* Hierarchical Expansion Panel */}
                         {isExpanded && (
                           <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                            <TableCell colSpan={9} sx={{ p: 3, borderLeft: '4px solid #3b82f6' }}>
+                            <TableCell colSpan={8} sx={{ p: 3, borderLeft: '4px solid #3b82f6' }}>
                               {loadingMonitor && !telemetry ? (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1 }}>
                                   <CircularProgress size={20} />
@@ -1520,7 +1505,7 @@ const ServerMonitoring: React.FC = () => {
       >
         {selectedVm && (
           <>
-            <DialogTitle sx={{ fontWeight: 800, pb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <DialogTitle sx={{ fontWeight: 800, pb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#333' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <PlayIcon style={{ color: selectedVm.status === 'Running' ? '#10b981' : '#64748b', fontSize: '1.6rem' }} />
                 <Box>
@@ -1638,49 +1623,7 @@ const ServerMonitoring: React.FC = () => {
                 </Grid>
               </Box>
 
-              {/* Console Operations Actions */}
-              <Box>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748b', display: 'block', mb: 1.5 }}>
-                  GUEST OPERATIONS & POWER ACTIONS
-                </Typography>
-                
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                  <Button 
-                    variant="contained" 
-                    color={selectedVm.status === 'Running' ? 'error' : 'success'}
-                    size="small"
-                    sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600 }}
-                    onClick={() => {
-                      showToast(`${selectedVm.status === 'Running' ? 'Power off' : 'Power on'} request sent for VM ${selectedVm.name}`, 'info');
-                      setSelectedVm(prev => prev ? { ...prev, status: prev.status === 'Running' ? 'Stopped' : 'Running' } : null);
-                    }}
-                  >
-                    {selectedVm.status === 'Running' ? 'Power Off' : 'Power On'}
-                  </Button>
-                  
-                  <Button 
-                    variant="outlined" 
-                    color="warning"
-                    size="small"
-                    disabled={selectedVm.status !== 'Running'}
-                    sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600 }}
-                    onClick={() => showToast(`Guest reboot command issued to VM ${selectedVm.name}`, 'warning')}
-                  >
-                    Reboot Guest
-                  </Button>
 
-                  <Button 
-                    variant="outlined" 
-                    color="primary"
-                    size="small"
-                    disabled={selectedVm.status !== 'Running'}
-                    sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600 }}
-                    onClick={() => showToast(`Opening Web Console for VM ${selectedVm.name}...`, 'success')}
-                  >
-                    Web Console
-                  </Button>
-                </Box>
-              </Box>
 
             </DialogContent>
             

@@ -382,7 +382,7 @@ const BMSChecklistConfig = () => {
 
       {/* Add Template Field Dialog */}
       <Dialog open={isModalOpen} onClose={handleCloseModal} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ fontWeight: 'bold' }}>Add Template Field</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 'bold', color: '#333' }}>Add Template Field</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
@@ -477,7 +477,7 @@ const BMSChecklistConfig = () => {
 
       {/* Edit Single Parameter Rule Dialog */}
       <Dialog open={!!editingRow} onClose={handleCloseEditModal} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 'bold' }}>
+        <DialogTitle sx={{ fontWeight: 'bold', color: '#333' }}>
           Configure Parameter: {editingRow?.parameter}
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>

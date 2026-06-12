@@ -48,3 +48,8 @@ export const fetchRequestLogs = async (id: string): Promise<any[]> => {
   const response = await request.get(`/api/requests/${id}/logs`);
   return response.data;
 };
+
+export const sendBackwardRequest = async (id: string, reason: string): Promise<RequestData> => {
+  const response = await request.post(`/api/requests/${id}/backward`, { reason });
+  return response.data;
+};

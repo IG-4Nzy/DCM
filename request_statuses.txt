@@ -1,0 +1,44 @@
+DCM Request Workflow: Conditional Statuses Guide
+===============================================
+
+In the Data Centre Staff Management (DCM) application, requests progress through custom multi-stage approval routing. Admin users can configure these stages via the "Request Routings" administration panel.
+
+To enable conditional, stage-specific form fields in the user interface during approval, you must name the stages using specific keyword statuses. 
+
+Below is the complete list of supported conditional status names, categorized by request type:
+
+
+1. VM Creation Request Type
+---------------------------
+* Stage Keyword: "IP Issuance" (e.g., "IP Issuance", "Assign IP")
+  - UI Input Field: IP Address Assignment (required)
+  - Purpose: Collects the target IP address assigned to the new virtual machine.
+
+* Stage Keyword: "Cluster Deciding" (e.g., "Cluster Deciding", "Choose Cluster")
+  - UI Input Fields: Choose Cluster & Choose Node (required)
+  - Purpose: Assigns the specific physical cluster and hypervisor host node for placement.
+
+* Stage Keyword: "VM Creation" (e.g., "VM Creation", "VM Creation Phase")
+  - UI Input Field: VM added to monitoring confirmation checkbox (required)
+  - Purpose: Confirms that the VM instance was successfully configured on the host hypervisor and registered in the monitoring stack.
+
+* Stage Keyword: "VM Backup" (e.g., "VM Backup", "VM Backup Phase")
+  - UI Input Field: VM Backup Path / Location (required)
+  - Purpose: Collects the backup path or directory assigned to the virtual machine instance.
+
+
+2. DC Entry Request Type
+------------------------
+* Stage Keyword: "Mark Entry Time" (e.g., "Mark Entry Time", "Visitor Entry")
+  - UI Input Field: Actual Entry Time (required, datetime picker)
+  - Purpose: Logs the precise date and time the visitor entered the facility.
+
+* Stage Keyword: "Mark Exit Time" (e.g., "Mark Exit Time", "Visitor Exit")
+  - UI Input Field: Actual Exit Time (required, datetime picker)
+  - Purpose: Logs the precise date and time the visitor left the facility.
+
+
+Configuration Notes
+===================
+- Matches are case-insensitive and perform partial substring matching (e.g., "VM Backup Stage" matches the "backup" keyword).
+- All collected data is persisted sequentially to the request object details and synced to inventory / hypervisor telemetry on completion.

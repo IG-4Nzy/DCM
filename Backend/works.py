@@ -1,6 +1,7 @@
 import os
 import uuid
 import shutil
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, UploadFile, File, Response
 from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
@@ -21,6 +22,7 @@ async def list_works(
     sort_by: Optional[str] = Query(None),
     order: str = Query("asc"),
     search: Optional[str] = None,
+    status: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     query = {}
@@ -39,24 +41,57 @@ async def list_works(
         else:
             raise HTTPException(status_code=403, detail="User record not found")
 
+    if status and status != "All" and status != "All Statuses":
+        query["status"] = status
+
     if search:
-        query = {
+        search_query = {
             "$or": [
                 {"workName": {"$regex": search, "$options": "i"}},
                 {"assignee": {"$regex": search, "$options": "i"}},
                 {"priority": {"$regex": search, "$options": "i"}},
             ]
         }
+        if query:
+            query = {"$and": [query, search_query]}
+        else:
+            query = search_query
         
     actual_sort_by = sortBy or sort_by or "workName"
     sort_order = 1 if order == "asc" else -1
     
+    pipeline = []
+    if query:
+        pipeline.append({"$match": query})
+        
+    pipeline.append({
+        "$addFields": {
+            "status_weight": {
+                "$cond": {
+                    "if": {"$in": ["$status", ["Completed", "Closed"]]},
+                    "then": 1,
+                    "else": 0
+                }
+            }
+        }
+    })
+    
+    pipeline.append({
+        "$sort": {
+            "status_weight": 1,
+            actual_sort_by: sort_order
+        }
+    })
+    
     total = await works_collection.count_documents(query)
-    cursor = works_collection.find(query).sort(actual_sort_by, sort_order)
+    
     if pagination:
-        cursor = cursor.skip(skip).limit(limit)
+        pipeline.append({"$skip": skip})
+        pipeline.append({"$limit": limit})
+        cursor = works_collection.aggregate(pipeline)
         works = await cursor.to_list(length=limit)
     else:
+        cursor = works_collection.aggregate(pipeline)
         works = await cursor.to_list(length=None)
             
     return {"data": works, "total": total}
@@ -172,6 +207,78 @@ async def update_work(id: str, work: UpdateWorkModel = Body(...), current_user: 
         return existing_work
 
     raise HTTPException(status_code=404, detail=f"Work {id} not found")
+
+@router.post("/{id}/transfer", response_description="Transfer work to another staff", response_model=WorkModel)
+async def transfer_work(
+    id: str,
+    transfer_data: dict = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+        
+    existing_work = await works_collection.find_one({"_id": ObjectId(id)})
+    if not existing_work:
+        raise HTTPException(status_code=404, detail="Work not found")
+        
+    new_assignee_id = transfer_data.get("newAssigneeId")
+    reason = transfer_data.get("reason")
+    
+    if not new_assignee_id:
+        raise HTTPException(status_code=400, detail="New assignee is required")
+    if not reason:
+        raise HTTPException(status_code=400, detail="Reason is required")
+        
+    users_collection = db.get_collection("users")
+    new_assignee_user = await users_collection.find_one({
+        "$or": [
+            {"_id": ObjectId(new_assignee_id) if ObjectId.is_valid(new_assignee_id) else None},
+            {"username": new_assignee_id}
+        ]
+    })
+    if not new_assignee_user:
+        raise HTTPException(status_code=404, detail="New assignee not found")
+        
+    new_assignee_username = new_assignee_user.get("username")
+    new_assignee_id_str = str(new_assignee_user["_id"])
+    
+    # Check permission: must be currently assigned user, or superuser, or have "Update Work" privilege
+    is_superuser = current_user.get("isSuperuser", False)
+    privileges = current_user.get("privileges", [])
+    
+    current_user_record = await users_collection.find_one({"username": current_user["sub"]})
+    is_assignee = current_user_record and existing_work.get("assignee") == str(current_user_record["_id"])
+    has_update_privilege = is_superuser or "Update Work" in privileges
+    
+    if not (is_assignee or has_update_privilege):
+        raise HTTPException(status_code=403, detail="You do not have permission to transfer this work")
+        
+    transferring_username = current_user.get("sub", "Unknown")
+    now_str = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    local_time_formatted = datetime.now().strftime("%Y-%m-%d %I:%M %p")
+    
+    log_text = f"Transferred this work to {new_assignee_username} at {local_time_formatted}. Reason: {reason}"
+    
+    new_comment = {
+        "text": log_text,
+        "user": transferring_username,
+        "timestamp": now_str
+    }
+    
+    await works_collection.update_one(
+        {"_id": ObjectId(id)},
+        {
+            "$set": {"assignee": new_assignee_id_str},
+            "$push": {"comments": new_comment}
+        }
+    )
+    
+    updated_work = await works_collection.find_one({"_id": ObjectId(id)})
+    
+    from notification_helper import log_page_update
+    await log_page_update("works", assignee=new_assignee_id_str, username=transferring_username)
+    
+    return updated_work
 
 @router.delete("/{id}", response_description="Delete a work", dependencies=[Depends(require_privilege("Delete Work"))])
 async def delete_work(id: str):

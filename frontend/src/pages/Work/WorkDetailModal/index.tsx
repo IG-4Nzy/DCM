@@ -1,13 +1,20 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Modal from "../../../components/Modal";
 import TextField from "../../../components/TextField";
 import {
   Button,
-  IconButton,
   Avatar,
   Menu,
   MenuItem,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Select,
+  InputLabel,
+  FormControl,
+  Box,
 } from "@mui/material";
 import {
   MdSend,
@@ -32,6 +39,7 @@ interface PropType {
   work: WorkData | null;
   users: any[];
   onUpdate: (payload: any, silent?: boolean) => Promise<void>;
+  onTransfer: (id: string, newAssigneeId: string, reason: string) => Promise<void>;
 }
 
 
@@ -41,10 +49,14 @@ const WorkDetailModal = ({
   work,
   users,
   onUpdate,
+  onTransfer,
 }: PropType) => {
   const [newComment, setNewComment] = useState("");
   const [currentStatus, setCurrentStatus] = useState("Pending");
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [transferAssignee, setTransferAssignee] = useState("");
+  const [transferReason, setTransferReason] = useState("");
   const openMenu = Boolean(anchorEl);
   const currentUser =
     useSelector(
@@ -78,6 +90,18 @@ const WorkDetailModal = ({
       setCurrentStatus(work.status || "Pending");
     }
   }, [work]);
+
+  const canTransfer = (isAssignee || canUpdateWork) && currentStatus !== "Completed" && currentStatus !== "Closed";
+
+  const handleConfirmTransfer = async () => {
+    if (!work || !transferAssignee || !transferReason.trim()) return;
+    try {
+      await onTransfer(work.id || work._id!, transferAssignee, transferReason.trim());
+      setIsTransferring(false);
+    } catch (err) {
+      // Handled in parent/toast
+    }
+  };
 
   if (!work) return null;
 
@@ -193,6 +217,32 @@ const WorkDetailModal = ({
               variant="outlined"
               sx={{ borderRadius: "8px", fontWeight: 500 }}
             />
+            {canTransfer && (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setTransferAssignee("");
+                  setTransferReason("");
+                  setIsTransferring(true);
+                }}
+                sx={{
+                  borderRadius: "8px",
+                  textTransform: "none",
+                  fontWeight: "bold",
+                  borderColor: "#1976d2",
+                  color: "#1976d2",
+                  px: 2,
+                  height: 32,
+                  fontSize: "0.85rem",
+                  "&:hover": {
+                    backgroundColor: "rgba(25, 118, 210, 0.04)"
+                  }
+                }}
+              >
+                Transfer Work
+              </Button>
+            )}
             <Chip
               icon={<MdFlag />}
               label={`Priority: ${work.priority}`}
@@ -450,6 +500,62 @@ const WorkDetailModal = ({
           </Button>
         </div>
       </div>
+      <Dialog 
+        open={isTransferring} 
+        onClose={() => setIsTransferring(false)}
+        slotProps={{
+          paper: {
+            sx: { borderRadius: "12px", p: 1, minWidth: "400px" }
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: "bold", color: "#333" }}>Transfer Work Assignment</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <FormControl fullWidth>
+              <InputLabel>New Assignee</InputLabel>
+              <Select
+                value={transferAssignee}
+                label="New Assignee"
+                onChange={(e) => setTransferAssignee(e.target.value)}
+                sx={{ borderRadius: "8px" }}
+              >
+                {(users || [])
+                  .filter((u) => u.username !== currentUser)
+                  .map((u) => {
+                    const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || u.name;
+                    return (
+                      <MenuItem key={u.id || u._id} value={u.id || u._id}>
+                        {name} ({u.username})
+                      </MenuItem>
+                    );
+                  })
+                }
+              </Select>
+            </FormControl>
+            <TextField
+              fullWidth
+              label="Reason for Transfer"
+              multiline
+              rows={3}
+              value={transferReason}
+              onChange={(e) => setTransferReason(e.target.value)}
+              placeholder="Provide reason for transfer..."
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button variant="text" onClick={() => setIsTransferring(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={handleConfirmTransfer}
+            disabled={!transferAssignee || !transferReason.trim()}
+          >
+            Transfer
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Modal>
   );
 };

@@ -268,6 +268,26 @@ async def get_dashboard_summary(
                     alert_activities.append(pa_dict)
             except Exception:
                 pass
+
+            # Check AMC services if isAmc is True
+            if pa.get("isAmc") and pa.get("services"):
+                for s in pa["services"]:
+                    if s.get("status") == "pending":
+                        s_due_str = s.get("dueDate", "")
+                        try:
+                            s_due_obj = datetime.strptime(s_due_str, "%Y-%m-%d")
+                            delta_days = (s_due_obj - current_date_obj).days
+                            if delta_days <= 7:
+                                pa_dict = dict(pa)
+                                pa_dict["_id"] = f"{str(pa['_id'])}-service-{s.get('id')}"
+                                pa_dict["name"] = f"Service: {pa.get('name')} (Due: {s_due_str})"
+                                pa_dict["dueDate"] = s_due_str
+                                pa_dict["daysRemaining"] = delta_days
+                                pa_dict["isAmcService"] = True
+                                pa_dict["serviceId"] = s.get("id")
+                                alert_activities.append(pa_dict)
+                        except Exception:
+                            pass
     except Exception:
         pass
         

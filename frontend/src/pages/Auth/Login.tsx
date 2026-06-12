@@ -126,7 +126,7 @@ const Login: React.FC = () => {
         </Paper>
       </motion.div>
       <Dialog open={birthdayWish.open} onClose={handleBirthdayClose} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700, color: '#1976d2' }}>
+        <DialogTitle sx={{ fontWeight: 700, color: '#333' }}>
           Happy Birthday, {birthdayWish.name}!
         </DialogTitle>
         <DialogContent>

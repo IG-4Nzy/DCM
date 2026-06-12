@@ -1411,7 +1411,7 @@ const BMSChecklist: React.FC = () => {
 
       {/* ═══ Delete Confirmation ═══ */}
       <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
-        <DialogTitle sx={{ fontWeight: 600 }}>Delete Checklist</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 600, color: '#333' }}>Delete Checklist</DialogTitle>
         <DialogContent>
           <Typography>Are you sure you want to permanently delete this checklist? This action cannot be undone.</Typography>
         </DialogContent>

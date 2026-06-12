@@ -109,7 +109,10 @@ async def resolve_assignees(stage: dict, requester_username: str) -> List[str]:
     assignment_type = stage.get("assignmentType", "")
     assigned_to = stage.get("assignedTo", "")
 
-    if assignment_type == "RequesterDeptHead":
+    if assignment_type == "Requester":
+        return [requester_username]
+
+    elif assignment_type == "RequesterDeptHead":
         # Find the requester's department, then get department head
         user = await users_collection.find_one({"username": requester_username})
         if user and user.get("department"):
@@ -600,6 +603,82 @@ async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), c
             await log_page_update("visitor-logs", username=username)
     return updated
 
+
+@router.post("/{id}/backward", response_description="Send request back to previous stage", response_model=RequestModel, response_model_by_alias=False)
+async def backward_stage(
+    id: str,
+    payload: dict = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    existing = await collection.find_one({"_id": ObjectId(id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Request {id} not found")
+
+    is_superuser = current_user.get("isSuperuser", False)
+    username = current_user.get("sub", "")
+    privileges = current_user.get("privileges", [])
+    assigned_users = existing.get("currentAssignedUsers") or []
+
+    if not is_superuser and "Update Request" not in privileges and username not in assigned_users:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions to send back this request. Must be superuser, have 'Update Request' privilege, or be assigned to this request."
+        )
+
+    reason = payload.get("reason")
+    if not reason:
+        raise HTTPException(status_code=400, detail="Reason is required")
+
+    request_type = existing.get("requestType") or existing.get("category", "")
+    routing = await get_routing_for_type(request_type)
+
+    if not routing or not routing.get("stages"):
+        raise HTTPException(status_code=400, detail="No routing stages configured for this request type")
+
+    stages = sorted(routing["stages"], key=lambda s: s.get("order", 0))
+    current_index = existing.get("currentStageIndex", 0)
+    
+    prev_index = current_index - 1
+
+    if prev_index < 0:
+        raise HTTPException(status_code=400, detail="Request is already at the first stage")
+
+    prev_stage = stages[prev_index]
+    requester = existing.get("createdBy", "")
+    assignees = await resolve_assignees(prev_stage, requester)
+    
+    update_data = {
+        "status": prev_stage.get("stageName", ""),
+        "currentStageIndex": prev_index,
+        "currentAssignedUsers": assignees,
+        "updatedAt": datetime.now(timezone.utc).isoformat()
+    }
+
+    old_status = existing.get("status")
+    await collection.update_one({"_id": ObjectId(id)}, {"$set": update_data})
+    
+    updated = await collection.find_one({"_id": ObjectId(id)})
+    if updated:
+        new_status = updated.get("status")
+        local_time_formatted = datetime.now().strftime("%Y-%m-%d %I:%M %p")
+        details = f"Request sent back from stage '{old_status}' to '{new_status}' at {local_time_formatted}. Reason: {reason}"
+        
+        await log_request_action(
+            request_id=id,
+            action=f"Sent Back ({new_status})",
+            details=details,
+            username=username,
+            remarks=reason
+        )
+        from notification_helper import log_page_update
+        await log_page_update("requests", username=username)
+        if updated.get("requestType") == "DC Entry":
+            await log_page_update("visitor-logs", username=username)
+            
+    return updated
 
 
 @router.delete("/{id}", response_description="Delete a request", dependencies=[Depends(require_privilege("Delete Request"))])

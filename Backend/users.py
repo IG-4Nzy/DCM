@@ -27,6 +27,53 @@ async def sync_department_head(username: str, department: Optional[str], is_dept
 router = APIRouter()
 users_collection = db.get_collection("users")
 
+async def check_replacement_constraint(replacement_for: Optional[str], exclude_user_id: Optional[str] = None):
+    if not replacement_for:
+        return
+    if not ObjectId.is_valid(replacement_for):
+        raise HTTPException(status_code=400, detail="Invalid replacement user ID format")
+    
+    rep_user = await users_collection.find_one({"_id": ObjectId(replacement_for)})
+    if not rep_user:
+        raise HTTPException(status_code=404, detail="Relieved user not found")
+    
+    # Check status of relieved user
+    if rep_user.get("status") is not False:
+        raise HTTPException(status_code=400, detail="Relieved user must be inactive")
+    
+    # Check uniqueness: "only can be add to one user"
+    dup_query = {"replacementFor": replacement_for}
+    if exclude_user_id:
+        dup_query["_id"] = {"$ne": ObjectId(exclude_user_id)}
+    
+    dup_user = await users_collection.find_one(dup_query)
+    if dup_user:
+        raise HTTPException(status_code=400, detail=f"User '{dup_user.get('username')}' has already replaced this relieved user")
+
+async def populate_replacement_names(users):
+    if not users:
+        return
+    
+    is_single = isinstance(users, dict)
+    users_list = [users] if is_single else users
+    
+    rep_ids = []
+    for u in users_list:
+        rep_id = u.get("replacementFor")
+        if rep_id and ObjectId.is_valid(rep_id):
+            rep_ids.append(ObjectId(rep_id))
+            
+    if not rep_ids:
+        return
+        
+    replaced_users = await users_collection.find({"_id": {"$in": rep_ids}}).to_list(length=None)
+    replaced_map = {str(ru["_id"]): ru.get("username", "") for ru in replaced_users}
+    
+    for u in users_list:
+        rep_id = u.get("replacementFor")
+        if rep_id:
+            u["replacementForName"] = replaced_map.get(rep_id)
+
 @router.get("/", response_description="List all users", response_model=PaginatedUsersModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["View All Users", "View Department Users"]))])
 async def list_users(
     skip: int = Query(0, ge=0),
@@ -89,6 +136,7 @@ async def list_users(
             user["status"] = True
         user["isDepartmentHead"] = user.get("username") in dept_heads
             
+    await populate_replacement_names(users)
     return {"data": users, "total": total}
 
 @router.post("/", response_description="Create a new user", response_model=UserModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create User"))])
@@ -98,6 +146,9 @@ async def create_user(user: CreateUserModel = Body(...)):
     
     if await users_collection.find_one({"username": user_dict["username"]}):
         raise HTTPException(status_code=400, detail="Username already registered")
+        
+    # Check replacement constraints
+    await check_replacement_constraint(user_dict.get("replacementFor"))
         
     hashed_password = bcrypt.hashpw(user_dict["password"].encode('utf-8'), bcrypt.gensalt())
     user_dict["password"] = hashed_password.decode('utf-8')
@@ -109,6 +160,7 @@ async def create_user(user: CreateUserModel = Body(...)):
     created_user = await users_collection.find_one({"_id": new_user.inserted_id})
     if created_user:
         created_user["isDepartmentHead"] = is_dept_head or False
+        await populate_replacement_names(created_user)
     return created_user
 
 @router.get("/{id}", response_description="Get a single user", response_model=UserModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["View All Users", "View Department Users"]))])
@@ -129,6 +181,7 @@ async def show_user(id: str, current_user: dict = Depends(get_current_user)):
         departments_collection = db.get_collection("departments")
         is_head = await departments_collection.find_one({"departmentHead": user.get("username")}) is not None
         user["isDepartmentHead"] = is_head
+        await populate_replacement_names(user)
         return user
     raise HTTPException(status_code=404, detail=f"User {id} not found")
 
@@ -143,6 +196,10 @@ async def update_user(id: str, user: UpdateUserModel = Body(...)):
 
     user_dict = {k: v for k, v in user.model_dump().items() if v is not None}
     is_dept_head = user_dict.pop("isDepartmentHead", None)
+
+    # Check replacement constraints if replacementFor is updated/added
+    if "replacementFor" in user_dict:
+        await check_replacement_constraint(user_dict.get("replacementFor"), id)
 
     if "password" in user_dict:
         user_dict["password"] = bcrypt.hashpw(user_dict["password"].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
@@ -167,6 +224,7 @@ async def update_user(id: str, user: UpdateUserModel = Body(...)):
         departments_collection = db.get_collection("departments")
         is_head = await departments_collection.find_one({"departmentHead": updated_user.get("username")}) is not None
         updated_user["isDepartmentHead"] = is_head
+        await populate_replacement_names(updated_user)
         return updated_user
 
     raise HTTPException(status_code=404, detail=f"User {id} not found")

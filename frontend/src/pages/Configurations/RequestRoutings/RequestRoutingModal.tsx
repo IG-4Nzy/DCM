@@ -21,6 +21,7 @@ const REQUEST_TYPES = [
 
 // Special assignment types
 const SPECIAL_ASSIGNEES = [
+  { value: 'Requester', label: 'Requester', type: 'special' },
   { value: 'RequesterDeptHead', label: 'Department Head of Requester', type: 'special' },
 ];
 
@@ -101,6 +102,7 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
 
   // Get the current combined value for the assignee select
   const getAssigneeValue = (stage: RequestRoutingStage) => {
+    if (stage.assignmentType === 'Requester') return 'Requester';
     if (stage.assignmentType === 'RequesterDeptHead') return 'RequesterDeptHead';
     if (stage.assignmentType === 'DeptStaffs' && stage.assignedTo) return `DeptStaffs:${stage.assignedTo}`;
     if (stage.assignmentType === 'Role' && stage.assignedTo) return `Role:${stage.assignedTo}`;
@@ -128,7 +130,7 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>{editingItem ? 'Edit Request Routing' : 'Create Request Routing'}</DialogTitle>
+      <DialogTitle sx={{ color: '#333' }}>{editingItem ? 'Edit Request Routing' : 'Create Request Routing'}</DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent dividers>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Paper, Tooltip, IconButton} from '@mui/material';
-import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdRemoveRedEye as ViewIcon } from 'react-icons/md';
+import { Box, Paper, Tooltip, IconButton, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';
@@ -18,7 +18,7 @@ import styles from "./index.module.scss";
 
 // Import fetchUsers from users action to populate assignee dropdown
 import { fetchUsers } from '../Users/action';
-import { fetchWorks, createWork, updateWork, deleteWork } from './action';
+import { fetchWorks, createWork, updateWork, deleteWork, transferWork } from './action';
 import type { WorkData } from './model';
 
 type Order = 'asc' | 'desc';
@@ -26,15 +26,31 @@ type Order = 'asc' | 'desc';
 const Works: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { users } = useSelector((state: RootState) => state?.users || { users: [] });
+  const currentUser = useSelector((state: RootState) => state?.auth?.username);
   const { showToast } = useToast();
 
+  const filteredUsersForAssignee = React.useMemo(() => {
+    if (!currentUser || !users) return [];
+    const loggedInUser = users.find((u) => u.username === currentUser);
+    if (!loggedInUser || !loggedInUser.department) {
+      return users;
+    }
+    return users.filter((u) => u.department === loggedInUser.department);
+  }, [users, currentUser]);
+
   const [searchQuery, setSearchQuery] = useTableState('work_search', '');
+  const [statusFilter, setStatusFilter] = useTableState('work_statusFilter', 'All Statuses');
   const [page, setPage] = useTableState('work_page', 0);
   const [rowsPerPage, setRowsPerPage] = useTableState('work_rowsPerPage', 5);
   const [order, setOrder] = useTableState<Order>('work_order', 'asc');
   const [orderBy, setOrderBy] = useTableState<string>('work_orderBy', 'workName');
 
-  const { works, totalCount, loading } = useSelector((state: RootState) => state?.works || { works: [], totalCount: 0, loading: false });
+  const handleStatusFilterChange = (val: string) => {
+    setStatusFilter(val);
+    setPage(0);
+  };
+
+  const { works, totalCount } = useSelector((state: RootState) => state?.works || { works: [], totalCount: 0 });
 
   // Modal and Form state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -65,9 +81,10 @@ const Works: React.FC = () => {
       sortBy: orderBy,
       order,
       search: searchQuery,
+      status: statusFilter,
       showToast
     }));
-  }, [dispatch, page, rowsPerPage, orderBy, order, searchQuery, showToast]);
+  }, [dispatch, page, rowsPerPage, orderBy, order, searchQuery, statusFilter, showToast]);
 
   const handleOpenModal = (work?: any) => {
     if (work) {
@@ -109,6 +126,23 @@ const Works: React.FC = () => {
       await dispatch(updateWork({ payload, showToast, silent })).unwrap();
       // Update viewingWork so modal reflects new status/comments without closing
       setViewingWork((prev: any) => ({ ...prev, ...payload }));
+    } catch (err: any) {
+      // Handled in thunk
+    }
+  };
+
+  const handleTransferFromDetail = async (id: string, newAssigneeId: string, reason: string) => {
+    try {
+      const updatedWork = await dispatch(transferWork({ id, newAssigneeId, reason, showToast })).unwrap();
+      setViewingWork(updatedWork);
+      dispatch(fetchWorks({
+        skip: page * rowsPerPage,
+        limit: rowsPerPage,
+        sortBy: orderBy,
+        order,
+        search: searchQuery,
+        status: statusFilter
+      }));
     } catch (err: any) {
       // Handled in thunk
     }
@@ -165,7 +199,8 @@ const Works: React.FC = () => {
         limit: rowsPerPage,
         sortBy: orderBy,
         order,
-        search: searchQuery
+        search: searchQuery,
+        status: statusFilter
       }));
     } catch (err: any) {
       console.error("Error submitting work:", err);
@@ -187,7 +222,8 @@ const Works: React.FC = () => {
           limit: rowsPerPage,
           sortBy: orderBy,
           order,
-          search: searchQuery
+          search: searchQuery,
+          status: statusFilter
         }));
       } catch (err: any) {}
     }
@@ -199,7 +235,7 @@ const Works: React.FC = () => {
     setOrderBy(property);
   };
 
-  const handleChangePage = (event: unknown, newPage: number) => {
+  const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);
   };
 
@@ -342,6 +378,20 @@ const Works: React.FC = () => {
             onChange={setSearchQuery}
             placeholder="Search works..."
           />
+          <FormControl size="small" sx={{ minWidth: 160, bgcolor: '#fff' }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={statusFilter}
+              label="Status"
+              onChange={(e) => handleStatusFilterChange(e.target.value as string)}
+            >
+              <MenuItem value="All Statuses">All Statuses</MenuItem>
+              <MenuItem value="Pending">Pending</MenuItem>
+              <MenuItem value="On Hold">On Hold</MenuItem>
+              <MenuItem value="Completed">Completed</MenuItem>
+              <MenuItem value="Closed">Closed</MenuItem>
+            </Select>
+          </FormControl>
           {hasPrivilege(PRIVILEGES.WORK_CREATE) && (
             <Button
               variant="contained"
@@ -387,7 +437,7 @@ const Works: React.FC = () => {
         setDescription={setDescription}
         attachments={attachments}
         setAttachments={setAttachments}
-        users={users}
+        users={filteredUsersForAssignee}
         handleSubmit={handleSubmit}
       />
 
@@ -395,8 +445,9 @@ const Works: React.FC = () => {
         isOpen={isDetailModalOpen}
         onClose={handleCloseDetailModal}
         work={viewingWork}
-        users={users}
+        users={filteredUsersForAssignee}
         onUpdate={handleUpdateFromDetail}
+        onTransfer={handleTransferFromDetail}
       />
     </Box>
   );

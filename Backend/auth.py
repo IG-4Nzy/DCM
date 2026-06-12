@@ -77,6 +77,12 @@ async def login(credentials: LoginRequest):
             detail="Invalid username or password"
         )
         
+    if user.get("status") is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Contact your administrator"
+        )
+        
     role = user.get("role", "User")
     
     user_roles = role

@@ -44,6 +44,10 @@ interface PropType {
     formIsDepartmentHead: boolean;
     setFormIsDepartmentHead: (v: boolean) => void;
     availableDepartments: any[];
+    formReplacementFor: string;
+    setFormReplacementFor: (v: string) => void;
+    inactiveUsers: any[];
+    onViewReplacedUser?: (id: string) => void;
 }
 
 const BLOOD_GROUPS = [
@@ -81,7 +85,9 @@ const UserFormModal = ({
     formDateOfJoin, setFormDateOfJoin,
     formDepartment, setFormDepartment,
     formIsDepartmentHead, setFormIsDepartmentHead,
-    availableDepartments
+    availableDepartments,
+    formReplacementFor, setFormReplacementFor,
+    inactiveUsers, onViewReplacedUser
 }: PropType) => {
     
     const canEdit = isEditMode;
@@ -121,6 +127,27 @@ const UserFormModal = ({
                         <div className={styles.row}>
                             <ViewField label="Is Department Head" value={formIsDepartmentHead ? "Yes" : "No"} />
                         </div>
+                        {editingUser?.replacementFor && (
+                            <div className={styles.row}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, p: 1, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 1, border: '1px solid rgba(0,0,0,0.05)' }}>
+                                    <Typography variant="caption" color="textSecondary">Replacement For (Relieved User)</Typography>
+                                    <Typography 
+                                        variant="body1" 
+                                        sx={{ 
+                                            mt: 0.5, 
+                                            color: '#1976d2', 
+                                            textDecoration: 'underline', 
+                                            cursor: 'pointer',
+                                            fontWeight: 'bold',
+                                            '&:hover': { color: '#115293' }
+                                        }}
+                                        onClick={() => onViewReplacedUser && onViewReplacedUser(editingUser.replacementFor!)}
+                                    >
+                                        {editingUser.replacementForName || 'View Details'}
+                                    </Typography>
+                                </Box>
+                            </div>
+                        )}
                         <div className={styles.row}>
                             <ViewField label="First Name" value={formFirstName} />
                             <ViewField label="Last Name" value={formLastName} />
@@ -269,6 +296,25 @@ const UserFormModal = ({
                                 />
                             </div>
                         )}
+                        
+                        <div className={styles.row}>
+                            <FormControl fullWidth className={styles.field}>
+                                <InputLabel>Replacement For (Relieved User)</InputLabel>
+                                <Select
+                                    value={formReplacementFor || ""}
+                                    label="Replacement For (Relieved User)"
+                                    onChange={(e) => setFormReplacementFor(e.target.value)}
+                                    sx={{ borderRadius: '8px' }}
+                                >
+                                    <MenuItem value=""><em>None</em></MenuItem>
+                                    {(inactiveUsers || []).map((u: any) => (
+                                        <MenuItem key={u.id} value={u.id}>
+                                            {u.username} {u.firstName || u.lastName ? `(${u.firstName || ''} ${u.lastName || ''})`.trim() : ''}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </div>
                         
                         <div className={styles.row}>
                             <TextField

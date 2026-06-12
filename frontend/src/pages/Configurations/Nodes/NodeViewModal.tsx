@@ -70,7 +70,7 @@ const NodeViewModal: React.FC<NodeViewModalProps> = ({ open, onClose, node }) =>
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <DialogTitle sx={{ pb: 1, fontWeight: 'bold', fontSize: '1.25rem' }}>
+            <DialogTitle sx={{ pb: 1, fontWeight: 'bold', fontSize: '1.25rem', color: '#333' }}>
                 Node Details
             </DialogTitle>
             <DialogContent dividers sx={{ backgroundColor: '#fafbfd' }}>

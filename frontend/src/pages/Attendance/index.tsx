@@ -1247,7 +1247,7 @@ const Attendance: React.FC = () => {
                     }
                 }}
             >
-                <DialogTitle sx={{ fontWeight: 700, color: '#1976d2', pb: 1 }}>
+                <DialogTitle sx={{ fontWeight: 700, color: '#333', pb: 1 }}>
                     Attendance & Regularization Details
                 </DialogTitle>
                 <DialogContent dividers sx={{ p: 3 }}>

@@ -8,7 +8,7 @@ import Button from '../../components/Button';
 import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { useTableState } from '../../hooks/useTableState';
-import { fetchRequests, createRequest, updateRequest, deleteRequest, advanceRequest } from './action';
+import { fetchRequests, createRequest, updateRequest, deleteRequest, advanceRequest, sendBackwardRequest } from './action';
 import type { RequestData } from './model';
 import type { RootState, AppDispatch } from '../../store';
 import RequestFormModal from './RequestFormModal';
@@ -165,6 +165,19 @@ const Requests: React.FC = () => {
             loadData();
         } catch (err: any) {
             showToast(err.message || 'Failed to reject request', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSendBack = async (id: string, reason: string) => {
+        try {
+            setLoading(true);
+            await sendBackwardRequest(id, reason);
+            showToast('Request sent back to previous stage successfully', 'success');
+            loadData();
+        } catch (err: any) {
+            showToast(err.message || 'Failed to send back request', 'error');
         } finally {
             setLoading(false);
         }
@@ -416,6 +429,7 @@ const Requests: React.FC = () => {
                 request={selectedViewRequest}
                 onAdvance={handleAdvanceWithPayload}
                 onReject={handleRejectWithRemarks}
+                onSendBack={handleSendBack}
                 username={username}
                 isSuperuser={isSuperuser}
                 hasUpdatePrivilege={hasUpdatePrivilege}

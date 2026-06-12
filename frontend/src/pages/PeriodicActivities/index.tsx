@@ -44,12 +44,16 @@ import { PRIVILEGES } from '../../helpers/privileges';
 
 interface ServiceRecord {
   id: string;
-  date: string;
-  time: string;
+  date?: string;
+  time?: string;
   remarks?: string;
   reportName?: string;
   reportUrl?: string;
   createdAt?: string;
+  status?: string;
+  dueDate?: string;
+  completedDate?: string;
+  completedTime?: string;
 }
 
 interface PeriodicActivity {
@@ -82,6 +86,8 @@ const PeriodicActivities: React.FC = () => {
   const [dueDate, setDueDate] = useState('');
   const [remarks, setRemarks] = useState('');
   const [isAmc, setIsAmc] = useState(false);
+  const [firstServiceDate, setFirstServiceDate] = useState(dayjs().format('YYYY-MM-DD'));
+  const [serviceRepeatMonths, setServiceRepeatMonths] = useState(3);
   const [repeats, setRepeats] = useState(false);
   const [repeatInterval, setRepeatInterval] = useState(1);
   const [repeatUnit, setRepeatUnit] = useState('months');
@@ -96,6 +102,14 @@ const PeriodicActivities: React.FC = () => {
   const [serviceTime, setServiceTime] = useState(dayjs().format('HH:mm'));
   const [serviceRemarks, setServiceRemarks] = useState('');
   const [serviceFile, setServiceFile] = useState<File | null>(null);
+
+  // Service Completion State
+  const [isCompleteServiceOpen, setIsCompleteServiceOpen] = useState(false);
+  const [completingServiceId, setCompletingServiceId] = useState<string | null>(null);
+  const [completionDate, setCompletionDate] = useState(dayjs().format('YYYY-MM-DD'));
+  const [completionTime, setCompletionTime] = useState(dayjs().format('HH:mm'));
+  const [completionRemarks, setCompletionRemarks] = useState('');
+  const [completionFile, setCompletionFile] = useState<File | null>(null);
   
   // Renew Modal State
   const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
@@ -195,6 +209,8 @@ const PeriodicActivities: React.FC = () => {
     setDueDate(dayjs().format('YYYY-MM-DD'));
     setRemarks('');
     setIsAmc(false);
+    setFirstServiceDate(dayjs().format('YYYY-MM-DD'));
+    setServiceRepeatMonths(3);
     setRepeats(false);
     setRepeatInterval(1);
     setRepeatUnit('months');
@@ -231,7 +247,10 @@ const PeriodicActivities: React.FC = () => {
         isAmc
       };
 
-      if (!editingActivity && repeats) {
+      if (isAmc && !editingActivity) {
+        payload.firstServiceDate = firstServiceDate;
+        payload.serviceRepeatMonths = serviceRepeatMonths;
+      } else if (!editingActivity && repeats) {
         payload.repeatInterval = repeatInterval;
         payload.repeatUnit = repeatUnit;
         payload.repeatCount = repeatCount;
@@ -349,6 +368,43 @@ const PeriodicActivities: React.FC = () => {
     }
   };
 
+  const handleCompleteServiceSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAmcActivity || !completingServiceId) return;
+
+    const activityId = selectedAmcActivity.id || selectedAmcActivity._id;
+    if (!activityId) return;
+
+    setSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append('completedDate', completionDate);
+      formData.append('completedTime', completionTime);
+      formData.append('remarks', completionRemarks);
+      if (completionFile) {
+        formData.append('file', completionFile);
+      }
+
+      const res = await request.put(`/api/periodic-activities/${activityId}/services/${completingServiceId}/complete`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      showToast('Service marked completed successfully', 'success');
+      setSelectedAmcActivity(res.data);
+      setIsCompleteServiceOpen(false);
+      setCompletingServiceId(null);
+      setCompletionFile(null);
+      fetchActivities();
+    } catch (err) {
+      console.error('Failed to complete service', err);
+      showToast('Failed to complete service', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleDeleteService = async (serviceId: string) => {
     if (!selectedAmcActivity) return;
     const activityId = selectedAmcActivity.id || selectedAmcActivity._id;
@@ -429,21 +485,23 @@ const PeriodicActivities: React.FC = () => {
           }}
         >
           <TextField
-            variant="outlined"
-            size="small"
-            placeholder="Search activities..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            InputProps={{
-              startAdornment: <SearchIcon style={{ color: '#a0aec0', marginRight: '8px' }} />,
-            }}
-            sx={{ 
-              width: '350px',
-              '& .MuiOutlinedInput-root': {
-                borderRadius: '8px',
-                bgcolor: '#f8fafc'
+            {...({
+              variant: "outlined",
+              size: "small",
+              placeholder: "Search activities...",
+              value: search,
+              onChange: (e: any) => setSearch(e.target.value),
+              InputProps: {
+                startAdornment: <SearchIcon style={{ color: '#a0aec0', marginRight: '8px' }} />,
+              },
+              sx: { 
+                width: '350px',
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '8px',
+                  bgcolor: '#f8fafc'
+                }
               }
-            }}
+            } as any)}
           />
           
           <Typography variant="body2" sx={{ fontWeight: '600', color: '#4a5568' }}>
@@ -573,13 +631,15 @@ const PeriodicActivities: React.FC = () => {
 
       {/* Form Dialog Modal */}
       <Dialog 
-        open={isModalOpen} 
-        onClose={() => !submitting && setIsModalOpen(false)}
-        maxWidth="xs"
-        fullWidth
-        PaperProps={{
-          sx: { borderRadius: '12px', p: 1 }
-        }}
+        {...({
+          open: isModalOpen,
+          onClose: () => { if (!submitting) setIsModalOpen(false); },
+          maxWidth: "xs",
+          fullWidth: true,
+          PaperProps: {
+            sx: { borderRadius: '12px', p: 1 }
+          }
+        } as any)}
       >
         <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.25rem', pb: 1, color: '#333' }}>
           {editingActivity ? 'Edit Periodic Activity' : 'Add Periodic Activity'}
@@ -587,40 +647,46 @@ const PeriodicActivities: React.FC = () => {
         <form onSubmit={handleSubmit}>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
             <TextField
-              label="Activity Name"
-              variant="outlined"
-              fullWidth
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Fire Extinguisher Refill"
-              InputLabelProps={{ shrink: true }}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+              {...({
+                label: "Activity Name",
+                variant: "outlined",
+                fullWidth: true,
+                required: true,
+                value: name,
+                onChange: (e: any) => setName(e.target.value),
+                placeholder: "e.g. Fire Extinguisher Refill",
+                InputLabelProps: { shrink: true },
+                sx: { '& .MuiOutlinedInput-root': { borderRadius: '8px' } }
+              } as any)}
             />
 
             <TextField
-              label="Due or Expiry Date"
-              type="date"
-              variant="outlined"
-              fullWidth
-              required
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+              {...({
+                label: "Due or Expiry Date",
+                type: "date",
+                variant: "outlined",
+                fullWidth: true,
+                required: true,
+                value: dueDate,
+                onChange: (e: any) => setDueDate(e.target.value),
+                InputLabelProps: { shrink: true },
+                sx: { '& .MuiOutlinedInput-root': { borderRadius: '8px' } }
+              } as any)}
             />
 
             <TextField
-              label="Remarks"
-              variant="outlined"
-              fullWidth
-              multiline
-              rows={3}
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              placeholder="Enter additional remarks or description..."
-              InputLabelProps={{ shrink: true }}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+              {...({
+                label: "Remarks",
+                variant: "outlined",
+                fullWidth: true,
+                multiline: true,
+                rows: 3,
+                value: remarks,
+                onChange: (e: any) => setRemarks(e.target.value),
+                placeholder: "Enter additional remarks or description...",
+                InputLabelProps: { shrink: true },
+                sx: { '& .MuiOutlinedInput-root': { borderRadius: '8px' } }
+              } as any)}
             />
 
             <FormControlLabel
@@ -629,13 +695,45 @@ const PeriodicActivities: React.FC = () => {
                   checked={isAmc}
                   onChange={(e) => setIsAmc(e.target.checked)}
                   color="success"
+                  disabled={!!editingActivity}
                 />
               }
               label="Mark this activity as an AMC"
               sx={{ mt: -0.5, color: '#374151' }}
             />
 
-            {!editingActivity && (
+            {!editingActivity && isAmc && (
+              <Box sx={{ display: 'flex', gap: 1.5, mt: 0.5 }}>
+                <TextField
+                  {...({
+                    label: "First Service Date",
+                    type: "date",
+                    variant: "outlined",
+                    size: "small",
+                    required: true,
+                    value: firstServiceDate,
+                    onChange: (e: any) => setFirstServiceDate(e.target.value),
+                    InputLabelProps: { shrink: true },
+                    sx: { flex: 1.2, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }
+                  } as any)}
+                />
+                <TextField
+                  {...({
+                    label: "Repeat Every (Months)",
+                    type: "number",
+                    variant: "outlined",
+                    size: "small",
+                    required: true,
+                    value: serviceRepeatMonths,
+                    onChange: (e: any) => setServiceRepeatMonths(Math.max(1, parseInt(e.target.value) || 1)),
+                    InputLabelProps: { shrink: true },
+                    sx: { flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }
+                  } as any)}
+                />
+              </Box>
+            )}
+
+            {!editingActivity && !isAmc && (
               <>
                 <FormControlLabel
                   control={
@@ -661,14 +759,16 @@ const PeriodicActivities: React.FC = () => {
                       sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
                     />
                     <TextField
-                      label="Unit"
-                      select
-                      variant="outlined"
-                      size="small"
-                      value={repeatUnit}
-                      onChange={(e) => setRepeatUnit(e.target.value)}
-                      SelectProps={{ native: true }}
-                      sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                      {...({
+                        label: "Unit",
+                        select: true,
+                        variant: "outlined",
+                        size: "small",
+                        value: repeatUnit,
+                        onChange: (e: any) => setRepeatUnit(e.target.value),
+                        SelectProps: { native: true },
+                        sx: { flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }
+                      } as any)}
                     >
                       <option value="days">Days</option>
                       <option value="weeks">Weeks</option>
@@ -712,13 +812,15 @@ const PeriodicActivities: React.FC = () => {
 
       {/* Renew Activity Dialog Modal */}
       <Dialog 
-        open={isRenewModalOpen} 
-        onClose={() => !submitting && setIsRenewModalOpen(false)}
-        maxWidth="xs"
-        fullWidth
-        PaperProps={{
-          sx: { borderRadius: '12px', p: 1 }
-        }}
+        {...({
+          open: isRenewModalOpen,
+          onClose: () => { if (!submitting) setIsRenewModalOpen(false); },
+          maxWidth: "xs",
+          fullWidth: true,
+          PaperProps: {
+            sx: { borderRadius: '12px', p: 1 }
+          }
+        } as any)}
       >
         <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.25rem', pb: 1, color: '#333' }}>
           Renew Periodic Activity
@@ -729,15 +831,17 @@ const PeriodicActivities: React.FC = () => {
               Enter the new due/expiry date for <strong>{renewingActivity?.name}</strong>.
             </Typography>
             <TextField
-              label="New Due or Expiry Date"
-              type="date"
-              variant="outlined"
-              fullWidth
-              required
-              value={newDueDate}
-              onChange={(e) => setNewDueDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+              {...({
+                label: "New Due or Expiry Date",
+                type: "date",
+                variant: "outlined",
+                fullWidth: true,
+                required: true,
+                value: newDueDate,
+                onChange: (e: any) => setNewDueDate(e.target.value),
+                InputLabelProps: { shrink: true },
+                sx: { '& .MuiOutlinedInput-root': { borderRadius: '8px' } }
+              } as any)}
             />
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
@@ -764,15 +868,17 @@ const PeriodicActivities: React.FC = () => {
 
       {/* ═══ AMC Services Dialog ═══ */}
       <Dialog
-        open={isServicesDialogOpen}
-        onClose={() => setIsServicesDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: { borderRadius: '12px', p: 1 }
-        }}
+        {...({
+          open: isServicesDialogOpen,
+          onClose: () => setIsServicesDialogOpen(false),
+          maxWidth: "md",
+          fullWidth: true,
+          PaperProps: {
+            sx: { borderRadius: '12px', p: 1 }
+          }
+        } as any)}
       >
-        <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#111827' }}>
+        <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#333' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <ServiceIcon style={{ color: '#059669' }} />
             AMC Services — {selectedAmcActivity?.name}
@@ -811,44 +917,55 @@ const PeriodicActivities: React.FC = () => {
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                       <TextField
-                        label="Service Date"
-                        type="date"
-                        size="small"
-                        required
-                        value={serviceDate}
-                        onChange={(e) => setServiceDate(e.target.value)}
-                        InputLabelProps={{ shrink: true }}
-                        sx={{ flex: 1, minWidth: '150px' }}
+                        {...({
+                          label: "Service Date",
+                          type: "date",
+                          variant: "outlined",
+                          size: "small",
+                          required: true,
+                          value: serviceDate,
+                          onChange: (e: any) => setServiceDate(e.target.value),
+                          InputLabelProps: { shrink: true },
+                          sx: { flex: 1, minWidth: '150px' }
+                        } as any)}
                       />
                       <TextField
-                        label="Service Time"
-                        type="time"
-                        size="small"
-                        required
-                        value={serviceTime}
-                        onChange={(e) => setServiceTime(e.target.value)}
-                        InputLabelProps={{ shrink: true }}
-                        sx={{ flex: 1, minWidth: '150px' }}
+                        {...({
+                          label: "Service Time",
+                          type: "time",
+                          variant: "outlined",
+                          size: "small",
+                          required: true,
+                          value: serviceTime,
+                          onChange: (e: any) => setServiceTime(e.target.value),
+                          InputLabelProps: { shrink: true },
+                          sx: { flex: 1, minWidth: '150px' }
+                        } as any)}
                       />
                     </Box>
                     <TextField
-                      label="Service Remarks"
-                      size="small"
-                      multiline
-                      rows={2}
-                      value={serviceRemarks}
-                      onChange={(e) => setServiceRemarks(e.target.value)}
-                      placeholder="Detail of work done, parts replaced, etc."
-                      InputLabelProps={{ shrink: true }}
-                      fullWidth
+                      {...({
+                        label: "Service Remarks",
+                        variant: "outlined",
+                        size: "small",
+                        multiline: true,
+                        rows: 2,
+                        value: serviceRemarks,
+                        onChange: (e: any) => setServiceRemarks(e.target.value),
+                        placeholder: "Detail of work done, parts replaced, etc.",
+                        InputLabelProps: { shrink: true },
+                        fullWidth: true
+                      } as any)}
                     />
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                       <Button
-                        component="label"
-                        variant="outlined"
-                        size="small"
-                        startIcon={<UploadIcon />}
-                        sx={{ textTransform: 'none' }}
+                        {...({
+                          component: "label",
+                          variant: "outlined",
+                          size: "small",
+                          startIcon: <UploadIcon />,
+                          sx: { textTransform: 'none' }
+                        } as any)}
                       >
                         {serviceFile ? 'Change Report file' : 'Upload Report (PDF/Doc)'}
                         <input
@@ -899,69 +1016,115 @@ const PeriodicActivities: React.FC = () => {
                 <Table size="small">
                   <TableHead sx={{ bgcolor: '#f9fafb' }}>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Date & Time</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Target Due Date</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Completed At</TableCell>
                       <TableCell sx={{ fontWeight: 'bold' }}>Remarks</TableCell>
                       <TableCell sx={{ fontWeight: 'bold' }}>Report Document</TableCell>
                       {canUpdate && <TableCell align="right" sx={{ fontWeight: 'bold' }}>Action</TableCell>}
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {selectedAmcActivity.services.map((service) => (
-                      <TableRow key={service.id}>
-                        <TableCell sx={{ fontWeight: 600 }}>
-                          {dayjs(`${service.date}T${service.time}`).format('DD-MM-YYYY HH:mm')}
-                        </TableCell>
-                        <TableCell>{service.remarks || '--'}</TableCell>
-                        <TableCell>
-                          {service.reportUrl ? (
-                            <Button
-                              component="a"
-                              href={service.reportUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              startIcon={<FileIcon />}
-                              variant="text"
-                              size="small"
-                              sx={{ textTransform: 'none', fontWeight: 600 }}
-                            >
-                              {service.reportName || 'View Report'}
-                            </Button>
-                          ) : (
-                            <Button
-                              component="label"
-                              variant="text"
-                              color="primary"
-                              size="small"
-                              startIcon={<UploadIcon />}
-                              sx={{ textTransform: 'none' }}
-                            >
-                              Upload Report
-                              <input
-                                type="file"
-                                hidden
-                                accept=".pdf,.doc,.docx"
-                                onChange={(e) => {
-                                  if (e.target.files && e.target.files[0]) {
-                                    handleUploadReport(service.id, e.target.files[0]);
-                                  }
-                                }}
-                              />
-                            </Button>
-                          )}
-                        </TableCell>
-                        {canUpdate && (
-                          <TableCell align="right">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleDeleteService(service.id)}
-                            >
-                              <DeleteIcon size={16} />
-                            </IconButton>
+                    {selectedAmcActivity.services.map((service) => {
+                      const isServiceCompleted = service.status === 'completed' || (!service.status && service.date);
+                      return (
+                        <TableRow key={service.id}>
+                          <TableCell sx={{ fontWeight: 600 }}>
+                            {service.dueDate ? dayjs(service.dueDate).format('DD-MM-YYYY') : (service.date ? dayjs(service.date).format('DD-MM-YYYY') : '--')}
                           </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
+                          <TableCell>
+                            <Chip 
+                              label={isServiceCompleted ? 'Completed' : 'Pending'} 
+                              size="small" 
+                              color={isServiceCompleted ? 'success' : 'warning'}
+                              sx={{ fontWeight: 'bold', height: 20, fontSize: '0.7rem' }}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ fontSize: '0.85rem' }}>
+                            {isServiceCompleted ? (
+                              service.completedDate && service.completedTime ? (
+                                dayjs(`${service.completedDate}T${service.completedTime}`).format('DD-MM-YYYY HH:mm')
+                              ) : (
+                                service.date && service.time ? (
+                                  dayjs(`${service.date}T${service.time}`).format('DD-MM-YYYY HH:mm')
+                                ) : '--'
+                              )
+                            ) : '--'}
+                          </TableCell>
+                          <TableCell sx={{ fontSize: '0.85rem' }}>{service.remarks || '--'}</TableCell>
+                          <TableCell>
+                            {service.reportUrl ? (
+                              <Button
+                                component="a"
+                                href={service.reportUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                startIcon={<FileIcon />}
+                                variant="text"
+                                size="small"
+                                sx={{ textTransform: 'none', fontWeight: 600, p: 0 }}
+                              >
+                                {service.reportName || 'View Report'}
+                              </Button>
+                            ) : (
+                              isServiceCompleted ? (
+                                <Button
+                                  component="label"
+                                  variant="text"
+                                  color="primary"
+                                  size="small"
+                                  startIcon={<UploadIcon />}
+                                  sx={{ textTransform: 'none', p: 0 }}
+                                >
+                                  Upload Report
+                                  <input
+                                    type="file"
+                                    hidden
+                                    accept=".pdf,.doc,.docx"
+                                    onChange={(e) => {
+                                      if (e.target.files && e.target.files[0]) {
+                                        handleUploadReport(service.id, e.target.files[0]);
+                                      }
+                                    }}
+                                  />
+                                </Button>
+                              ) : '--'
+                            )}
+                          </TableCell>
+                          {canUpdate && (
+                            <TableCell align="right">
+                              <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
+                                {!isServiceCompleted && (
+                                  <Button
+                                    variant="outlined"
+                                    color="success"
+                                    size="small"
+                                    onClick={() => {
+                                      setCompletingServiceId(service.id);
+                                      setCompletionDate(dayjs().format('YYYY-MM-DD'));
+                                      setCompletionTime(dayjs().format('HH:mm'));
+                                      setCompletionRemarks('');
+                                      setCompletionFile(null);
+                                      setIsCompleteServiceOpen(true);
+                                    }}
+                                    sx={{ textTransform: 'none', py: 0.2, px: 1, fontSize: '0.75rem', fontWeight: 600 }}
+                                  >
+                                    Mark Completed
+                                  </Button>
+                                )}
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => handleDeleteService(service.id)}
+                                >
+                                  <DeleteIcon size={16} />
+                                </IconButton>
+                              </Box>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>
@@ -973,6 +1136,122 @@ const PeriodicActivities: React.FC = () => {
             Close
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* ═══ Service Completion Dialog ═══ */}
+      <Dialog
+        {...({
+          open: isCompleteServiceOpen,
+          onClose: () => { if (!submitting) setIsCompleteServiceOpen(false); },
+          maxWidth: "xs",
+          fullWidth: true,
+          PaperProps: {
+            sx: { borderRadius: '12px', p: 1 }
+          }
+        } as any)}
+      >
+        <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.2rem', pb: 1, color: '#333' }}>
+          Complete AMC Service
+        </DialogTitle>
+        <form onSubmit={handleCompleteServiceSubmit}>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                {...({
+                  label: "Completion Date",
+                  type: "date",
+                  variant: "outlined",
+                  size: "small",
+                  required: true,
+                  value: completionDate,
+                  onChange: (e: any) => setCompletionDate(e.target.value),
+                  InputLabelProps: { shrink: true },
+                  sx: { flex: 1 }
+                } as any)}
+              />
+              <TextField
+                {...({
+                  label: "Completion Time",
+                  type: "time",
+                  variant: "outlined",
+                  size: "small",
+                  required: true,
+                  value: completionTime,
+                  onChange: (e: any) => setCompletionTime(e.target.value),
+                  InputLabelProps: { shrink: true },
+                  sx: { flex: 1 }
+                } as any)}
+              />
+            </Box>
+            <TextField
+              {...({
+                label: "Remarks",
+                variant: "outlined",
+                size: "small",
+                multiline: true,
+                rows: 3,
+                value: completionRemarks,
+                onChange: (e: any) => setCompletionRemarks(e.target.value),
+                placeholder: "Detail of maintenance done, parts replaced, etc.",
+                InputLabelProps: { shrink: true },
+                fullWidth: true
+              } as any)}
+            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Button
+                component="label"
+                variant="outlined"
+                size="small"
+                startIcon={<UploadIcon />}
+                sx={{ textTransform: 'none' }}
+              >
+                {completionFile ? 'Change Report file' : 'Upload Report (PDF/Doc)'}
+                <input
+                  type="file"
+                  hidden
+                  accept=".pdf,.doc,.docx"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setCompletionFile(e.target.files[0]);
+                    }
+                  }}
+                />
+              </Button>
+              {completionFile && (
+                <Typography variant="caption" sx={{ color: '#4b5563', fontWeight: 500 }}>
+                  {completionFile.name}
+                </Typography>
+              )}
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+            <Button 
+              onClick={() => {
+                setIsCompleteServiceOpen(false);
+                setCompletingServiceId(null);
+                setCompletionFile(null);
+              }} 
+              disabled={submitting} 
+              sx={{ borderRadius: '8px', textTransform: 'none' }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              variant="contained" 
+              color="success"
+              disabled={submitting}
+              sx={{ 
+                borderRadius: '8px', 
+                textTransform: 'none',
+                px: 3,
+                fontWeight: 600
+              }}
+            >
+              {submitting ? 'Submitting...' : 'Complete Service'}
+            </Button>
+          </DialogActions>
+        </form>
       </Dialog>
     </Box>
   );

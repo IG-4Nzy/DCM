@@ -8,10 +8,10 @@ type ToastFunction = (msg: string, severity?: 'error' | 'success') => void;
 
 export const fetchWorks = createAsyncThunk(
   'works/fetchWorks',
-  async ({ skip, limit, sortBy, order, search, showToast }: FetchWorksParams, { rejectWithValue }) => {
+  async ({ skip, limit, sortBy, order, search, status, showToast }: FetchWorksParams, { rejectWithValue }) => {
     try {
       const response = await request.get(WORKS_ENDPOINT, {
-        params: { skip, limit, sort_by: sortBy, order, search }
+        params: { skip, limit, sort_by: sortBy, order, search, status }
       });
       return response.data;
     } catch (error: any) {
@@ -62,6 +62,21 @@ export const deleteWork = createAsyncThunk(
       return id;
     } catch (error: any) {
       const msg = error.response?.data?.detail || 'Failed to delete work';
+      showToast(msg, 'error');
+      return rejectWithValue(msg);
+    }
+  }
+);
+
+export const transferWork = createAsyncThunk(
+  'works/transferWork',
+  async ({ id, newAssigneeId, reason, showToast }: { id: string; newAssigneeId: string; reason: string; showToast: ToastFunction }, { rejectWithValue }) => {
+    try {
+      const response = await request.post(`${WORKS_ENDPOINT}/${id}/transfer`, { newAssigneeId, reason });
+      showToast('Work transferred successfully', 'success');
+      return response.data;
+    } catch (error: any) {
+      const msg = error.response?.data?.detail || 'Failed to transfer work';
       showToast(msg, 'error');
       return rejectWithValue(msg);
     }

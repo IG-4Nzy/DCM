@@ -12,6 +12,7 @@ import Table, { type Column } from "../../components/Table";
 import { useToast } from "../../contexts/ToastContext";
 import { useConfirm } from "../../contexts/ConfirmContext";
 import { useTableState } from "../../hooks/useTableState";
+import request from "../../services/request";
 import {
   createUser,
   deleteUser,
@@ -66,6 +67,8 @@ const Users: React.FC = () => {
   const [formDepartment, setFormDepartment] = useState("");
   const [formIsDepartmentHead, setFormIsDepartmentHead] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [formReplacementFor, setFormReplacementFor] = useState("");
+  const [allSystemUsers, setAllSystemUsers] = useState<UserData[]>([]);
 
   useEffect(() => {
     dispatch(fetchAllRolesForDropdown());
@@ -95,6 +98,43 @@ const Users: React.FC = () => {
     loadData();
   }, [loadData]);
 
+  const loadSystemUsers = async () => {
+    try {
+      const res = await request.get("/api/users", { params: { pagination: false } });
+      setAllSystemUsers(res.data.data || []);
+    } catch (err) {
+      console.error("Failed to load system users", err);
+    }
+  };
+
+  const inactiveUsers = useMemo(() => {
+    if (!formDepartment) return [];
+    const chosenReplacementIds = new Set(
+      allSystemUsers
+        .filter((u) => u.id !== editingUser?.id)
+        .map((u) => u.replacementFor)
+        .filter((id): id is string => !!id)
+    );
+    return allSystemUsers.filter((u) => {
+      if (u.status !== false) return false;
+      if (u.department !== formDepartment) return false;
+      if (chosenReplacementIds.has(u.id)) return false;
+      if (editingUser && u.id === editingUser.id) return false;
+      return true;
+    });
+  }, [allSystemUsers, formDepartment, editingUser]);
+
+  const handleViewReplacedUser = async (replacedUserId: string) => {
+    try {
+      const res = await request.get(`/api/users/${replacedUserId}`);
+      const user: UserData = res.data;
+      handleOpenModal(user, false);
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || "Failed to fetch relieved user details";
+      showToast(msg, "error");
+    }
+  };
+
   const handleOpenModal = (user?: UserData, editMode: boolean = false) => {
     setIsEditMode(editMode);
     if (user) {
@@ -112,6 +152,8 @@ const Users: React.FC = () => {
       setFormDateOfJoin(user.dateOfJoin || "");
       setFormDepartment(user.department || "");
       setFormIsDepartmentHead(user.isDepartmentHead || false);
+      setFormReplacementFor(user.replacementFor || "");
+      loadSystemUsers();
     } else {
       setIsEditMode(true);
       setEditingUser(null);
@@ -128,6 +170,8 @@ const Users: React.FC = () => {
       setFormDateOfJoin("");
       setFormDepartment("");
       setFormIsDepartmentHead(false);
+      setFormReplacementFor("");
+      loadSystemUsers();
     }
     setIsModalOpen(true);
   };
@@ -154,6 +198,7 @@ const Users: React.FC = () => {
           dateOfJoin: formDateOfJoin,
           department: formDepartment,
           isDepartmentHead: formIsDepartmentHead,
+          replacementFor: formReplacementFor || null,
         };
         if (formPassword) {
           payload.password = formPassword;
@@ -176,6 +221,7 @@ const Users: React.FC = () => {
               dateOfJoin: formDateOfJoin,
               department: formDepartment,
               isDepartmentHead: formIsDepartmentHead,
+              replacementFor: formReplacementFor || null,
             },
             showToast,
           }),
@@ -417,6 +463,10 @@ const Users: React.FC = () => {
         formIsDepartmentHead={formIsDepartmentHead}
         setFormIsDepartmentHead={setFormIsDepartmentHead}
         availableDepartments={availableDepartments}
+        formReplacementFor={formReplacementFor}
+        setFormReplacementFor={setFormReplacementFor}
+        inactiveUsers={inactiveUsers}
+        onViewReplacedUser={handleViewReplacedUser}
       />
     </Box>
   );
