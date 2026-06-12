@@ -20,7 +20,12 @@ import {
   TableRow,
   Chip,
   Checkbox,
-  FormControlLabel
+  FormControlLabel,
+  Collapse,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel
 } from '@mui/material';
 import { 
   MdAdd as AddIcon, 
@@ -66,6 +71,9 @@ interface PeriodicActivity {
   createdAt?: string;
   isAmc?: boolean;
   services?: ServiceRecord[];
+  repeatInterval?: number;
+  repeatUnit?: string;
+  repeatCount?: number;
 }
 
 const PeriodicActivities: React.FC = () => {
@@ -92,7 +100,9 @@ const PeriodicActivities: React.FC = () => {
   const [repeatInterval, setRepeatInterval] = useState(1);
   const [repeatUnit, setRepeatUnit] = useState('months');
   const [repeatCount, setRepeatCount] = useState(5);
+  const [neverEnds, setNeverEnds] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   // Services State
   const [selectedAmcActivity, setSelectedAmcActivity] = useState<PeriodicActivity | null>(null);
@@ -215,6 +225,7 @@ const PeriodicActivities: React.FC = () => {
     setRepeatInterval(1);
     setRepeatUnit('months');
     setRepeatCount(5);
+    setNeverEnds(false);
     setIsModalOpen(true);
   };
 
@@ -253,7 +264,7 @@ const PeriodicActivities: React.FC = () => {
       } else if (!editingActivity && repeats) {
         payload.repeatInterval = repeatInterval;
         payload.repeatUnit = repeatUnit;
-        payload.repeatCount = repeatCount;
+        payload.repeatCount = neverEnds ? -1 : repeatCount;
       }
 
       if (editingActivity) {
@@ -296,7 +307,7 @@ const PeriodicActivities: React.FC = () => {
     if (target.closest('button') || target.closest('a') || target.closest('svg') || target.closest('.MuiChip-root')) {
       return;
     }
-    if (activity.isAmc) {
+    if (activity.isAmc || activity.repeatInterval || (activity.services && activity.services.length > 0)) {
       setSelectedAmcActivity(activity);
       setIsServicesDialogOpen(true);
     }
@@ -358,6 +369,7 @@ const PeriodicActivities: React.FC = () => {
       });
 
       showToast('Report uploaded successfully', 'success');
+      setActivities(prev => prev.map(act => (act.id === res.data.id || act._id === res.data._id) ? res.data : act));
       setSelectedAmcActivity(res.data);
       fetchActivities();
     } catch (err) {
@@ -392,6 +404,7 @@ const PeriodicActivities: React.FC = () => {
       });
 
       showToast('Service marked completed successfully', 'success');
+      setActivities(prev => prev.map(act => (act.id === res.data.id || act._id === res.data._id) ? res.data : act));
       setSelectedAmcActivity(res.data);
       setIsCompleteServiceOpen(false);
       setCompletingServiceId(null);
@@ -417,6 +430,7 @@ const PeriodicActivities: React.FC = () => {
     try {
       const res = await request.delete(`/api/periodic-activities/${activityId}/services/${serviceId}`);
       showToast('Service record deleted successfully', 'success');
+      setActivities(prev => prev.map(act => (act.id === res.data.id || act._id === res.data._id) ? res.data : act));
       setSelectedAmcActivity(res.data);
       fetchActivities();
     } catch (err) {
@@ -545,12 +559,13 @@ const PeriodicActivities: React.FC = () => {
                       : '--';
                     const daysLeft = getDaysRemaining(activity.dueDate);
                     const isCritical = daysLeft <= 7;
+
                     return (
                       <TableRow 
                         key={activity.id || activity._id} 
                         hover 
                         onClick={(e) => handleRowClick(activity, e)}
-                        style={{ cursor: activity.isAmc ? 'pointer' : 'default' }}
+                        style={{ cursor: (activity.isAmc || activity.repeatInterval || (activity.services && activity.services.length > 0)) ? 'pointer' : 'default' }}
                       >
                         <TableCell sx={{ fontWeight: '600', color: '#2d3748' }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -567,6 +582,14 @@ const PeriodicActivities: React.FC = () => {
                                   </Typography>
                                 </Box>
                               )}
+                              {!activity.isAmc && activity.repeatInterval && (
+                                <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, alignItems: 'center' }}>
+                                  <Chip label="Repeating" size="small" color="primary" sx={{ height: 18, fontSize: '0.65rem', fontWeight: 'bold' }} />
+                                  <Typography variant="caption" sx={{ color: '#3182ce', fontWeight: 600 }}>
+                                    {activity.services?.length || 0} occurrences
+                                  </Typography>
+                                </Box>
+                              )}
                             </Box>
                           </Box>
                         </TableCell>
@@ -575,7 +598,7 @@ const PeriodicActivities: React.FC = () => {
                             {formattedDate}
                             {isCritical && (
                               <Chip
-                                label={daysLeft < 0 ? 'Expired' : daysLeft === 0 ? 'Today!' : `${daysLeft}d left`}
+                                label={daysLeft < 0 ? (activity.repeatInterval ? 'Overdue' : 'Expired') : daysLeft === 0 ? 'Today!' : `${daysLeft}d left`}
                                 size="small"
                                 sx={{
                                   bgcolor: daysLeft < 0 ? '#FEF2F2' : '#FFFBEB',
@@ -748,42 +771,57 @@ const PeriodicActivities: React.FC = () => {
                 />
 
                 {repeats && (
-                  <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mt: 0.5 }}>
-                    <TextField
-                      label="Repeat Every"
-                      type="number"
-                      variant="outlined"
-                      size="small"
-                      value={repeatInterval}
-                      onChange={(e) => setRepeatInterval(Math.max(1, parseInt(e.target.value) || 1))}
-                      sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                    />
-                    <TextField
-                      {...({
-                        label: "Unit",
-                        select: true,
-                        variant: "outlined",
-                        size: "small",
-                        value: repeatUnit,
-                        onChange: (e: any) => setRepeatUnit(e.target.value),
-                        SelectProps: { native: true },
-                        sx: { flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }
-                      } as any)}
-                    >
-                      <option value="days">Days</option>
-                      <option value="weeks">Weeks</option>
-                      <option value="months">Months</option>
-                      <option value="years">Years</option>
-                    </TextField>
-                    <TextField
-                      label="Occurrences"
-                      type="number"
-                      variant="outlined"
-                      size="small"
-                      value={repeatCount}
-                      onChange={(e) => setRepeatCount(Math.max(2, parseInt(e.target.value) || 2))}
-                      sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                    />
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 0.5 }}>
+                    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                      <TextField
+                        label="Repeat Every"
+                        type="number"
+                        variant="outlined"
+                        size="small"
+                        value={repeatInterval}
+                        onChange={(e) => setRepeatInterval(Math.max(1, parseInt(e.target.value) || 1))}
+                        sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                      />
+                      <FormControl size="small" sx={{ flex: 1 }}>
+                        <InputLabel id="repeat-unit-label">Unit</InputLabel>
+                        <Select
+                          labelId="repeat-unit-label"
+                          label="Unit"
+                          value={repeatUnit}
+                          onChange={(e) => setRepeatUnit(e.target.value)}
+                          sx={{ borderRadius: '8px' }}
+                        >
+                          <MenuItem value="days">Days</MenuItem>
+                          <MenuItem value="weeks">Weeks</MenuItem>
+                          <MenuItem value="months">Months</MenuItem>
+                          <MenuItem value="years">Years</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={neverEnds}
+                            onChange={(e) => setNeverEnds(e.target.checked)}
+                            color="primary"
+                          />
+                        }
+                        label="Repeats never ends"
+                        sx={{ color: '#374151' }}
+                      />
+                      {!neverEnds && (
+                        <TextField
+                          label="Occurrences"
+                          type="number"
+                          variant="outlined"
+                          size="small"
+                          value={repeatCount}
+                          onChange={(e) => setRepeatCount(Math.max(2, parseInt(e.target.value) || 2))}
+                          sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                        />
+                      )}
+                    </Box>
                   </Box>
                 )}
               </>
@@ -881,7 +919,7 @@ const PeriodicActivities: React.FC = () => {
         <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#333' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <ServiceIcon style={{ color: '#059669' }} />
-            AMC Services — {selectedAmcActivity?.name}
+            {selectedAmcActivity?.isAmc ? 'AMC Services' : 'Activity Occurrences'} — {selectedAmcActivity?.name}
           </Box>
           <IconButton onClick={() => setIsServicesDialogOpen(false)} size="small">
             <CloseIcon />
@@ -893,9 +931,9 @@ const PeriodicActivities: React.FC = () => {
           <Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: '700', color: '#374151' }}>
-                Completed Services ({selectedAmcActivity?.services?.length || 0})
+                {selectedAmcActivity?.isAmc ? 'Completed Services' : 'Occurrences'} ({selectedAmcActivity?.services?.length || 0})
               </Typography>
-              {canUpdate && !isAddServiceOpen && (
+              {canUpdate && !isAddServiceOpen && selectedAmcActivity?.isAmc && (
                 <Button
                   variant="contained"
                   color="success"
@@ -1008,7 +1046,9 @@ const PeriodicActivities: React.FC = () => {
             {!selectedAmcActivity?.services || selectedAmcActivity.services.length === 0 ? (
               <Box sx={{ py: 6, textAlign: 'center', border: '2px dashed #e5e7eb', borderRadius: '8px' }}>
                 <Typography variant="body2" color="textSecondary">
-                  No service records logged yet for this AMC.
+                  {selectedAmcActivity?.isAmc 
+                    ? 'No service records logged yet for this AMC.' 
+                    : 'No occurrences logged yet for this activity.'}
                 </Typography>
               </Box>
             ) : (
@@ -1112,13 +1152,15 @@ const PeriodicActivities: React.FC = () => {
                                     Mark Completed
                                   </Button>
                                 )}
-                                <IconButton
-                                  size="small"
-                                  color="error"
-                                  onClick={() => handleDeleteService(service.id)}
-                                >
-                                  <DeleteIcon size={16} />
-                                </IconButton>
+                                {selectedAmcActivity?.isAmc && (
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={() => handleDeleteService(service.id)}
+                                  >
+                                    <DeleteIcon size={16} />
+                                  </IconButton>
+                                )}
                               </Box>
                             </TableCell>
                           )}
@@ -1151,7 +1193,7 @@ const PeriodicActivities: React.FC = () => {
         } as any)}
       >
         <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.2rem', pb: 1, color: '#333' }}>
-          Complete AMC Service
+          {selectedAmcActivity?.isAmc ? 'Complete AMC Service' : 'Complete Occurrence'}
         </DialogTitle>
         <form onSubmit={handleCompleteServiceSubmit}>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>

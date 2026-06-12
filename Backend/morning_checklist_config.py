@@ -19,7 +19,7 @@ class MorningChecklistFieldModel(BaseModel):
     options: List[str] = Field(default_factory=list)  # for checkbox/dropdown
     showRemarks: bool = False
     slNumber: int = 0
-    department: str = ""
+    department: Optional[str] = None
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
 
@@ -111,13 +111,19 @@ async def update_field(
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
+    existing = await collection.find_one({"_id": ObjectId(id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Field not found")
+
     if not current_user.get("isSuperuser", False):
-        existing = await collection.find_one({"_id": ObjectId(id)})
-        if not existing or existing.get("department") != current_user.get("department"):
+        if existing.get("department") != current_user.get("department"):
             raise HTTPException(status_code=403, detail="Forbidden: You can only edit fields in your department")
 
     update_data = payload.model_dump(by_alias=True, exclude={"id", "_id"}, exclude_none=True)
     update_data["updatedAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    if "department" not in update_data or not update_data["department"]:
+        update_data["department"] = existing.get("department", "")
 
     result = await collection.update_one({"_id": ObjectId(id)}, {"$set": update_data})
     if result.matched_count != 1:

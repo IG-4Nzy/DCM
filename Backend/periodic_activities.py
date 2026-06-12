@@ -108,39 +108,30 @@ async def create_periodic_activity(
         except Exception as e:
             print(f"Error generating AMC services: {e}")
 
-    doc["createdAt"] = now
-    doc["updatedAt"] = now
-    
     # Enforce department context
     if not current_user.get("isSuperuser", False):
         doc["department"] = current_user.get("department", "")
     elif not doc.get("department"):
         doc["department"] = current_user.get("department", "")
 
-    repeat_interval = doc.pop("repeatInterval", None)
-    repeat_unit = doc.pop("repeatUnit", None)
-    repeat_count = doc.pop("repeatCount", None)
+    # For non-AMC repeating activities:
+    if not doc.get("isAmc") and doc.get("repeatInterval") and doc.get("repeatUnit"):
+        doc["services"] = [{
+            "id": str(uuid.uuid4()),
+            "dueDate": doc["dueDate"],
+            "status": "pending",
+            "completedDate": None,
+            "completedTime": None,
+            "remarks": "",
+            "reportName": None,
+            "reportUrl": None
+        }]
 
-    if repeat_interval and repeat_unit and repeat_count and repeat_count > 1:
-        docs_to_insert = []
-        current_date = doc["dueDate"]
-        for _ in range(repeat_count):
-            new_doc = doc.copy()
-            new_doc["dueDate"] = current_date
-            new_doc["createdAt"] = now
-            new_doc["updatedAt"] = now
-            docs_to_insert.append(new_doc)
-            try:
-                current_date = add_interval(current_date, repeat_interval, repeat_unit)
-            except Exception as e:
-                # Fallback if parsing fails
-                break
-        
-        result = await collection.insert_many(docs_to_insert)
-        inserted_id = result.inserted_ids[0]
-    else:
-        result = await collection.insert_one(doc)
-        inserted_id = result.inserted_id
+    doc["createdAt"] = now
+    doc["updatedAt"] = now
+
+    result = await collection.insert_one(doc)
+    inserted_id = result.inserted_id
 
     created = await collection.find_one({"_id": inserted_id})
     return serialize_doc(created)
@@ -431,6 +422,56 @@ async def complete_service(
             }
         }
     )
+
+    # Load the updated document to see if we should create a new repeating occurrence
+    updated_doc = await collection.find_one({"_id": ObjectId(id)})
+    if updated_doc:
+        repeat_interval = updated_doc.get("repeatInterval")
+        repeat_unit = updated_doc.get("repeatUnit")
+        repeat_count = updated_doc.get("repeatCount")
+        
+        if repeat_interval and repeat_unit:
+            services = updated_doc.get("services", [])
+            completed_count = sum(1 for s in services if s.get("status") == "completed")
+            
+            should_create_next = False
+            if repeat_count is None or repeat_count == -1:
+                should_create_next = True
+            elif completed_count < repeat_count:
+                should_create_next = True
+                
+            if should_create_next:
+                completed_service = services[service_index]
+                completed_due_date = completed_service.get("dueDate")
+                if not completed_due_date:
+                    completed_due_date = completed_service.get("date")
+                    
+                try:
+                    next_due_date = add_interval(completed_due_date, repeat_interval, repeat_unit)
+                    
+                    next_service = {
+                        "id": str(uuid.uuid4()),
+                        "dueDate": next_due_date,
+                        "status": "pending",
+                        "completedDate": None,
+                        "completedTime": None,
+                        "remarks": "",
+                        "reportName": None,
+                        "reportUrl": None
+                    }
+                    
+                    await collection.update_one(
+                        {"_id": ObjectId(id)},
+                        {
+                            "$push": {"services": next_service},
+                            "$set": {
+                                "dueDate": next_due_date,
+                                "updatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                            }
+                        }
+                    )
+                except Exception as e:
+                    print(f"Error generating next repeating service: {e}")
 
     updated = await collection.find_one({"_id": ObjectId(id)})
     return serialize_doc(updated)
