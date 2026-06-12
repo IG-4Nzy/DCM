@@ -4,5 +4,7 @@ show roles instead of individual names in observation category
 add tools/items in dc entry -> so that we can keep logs for the devices /items brings with them and bought back from the dc
 Add new tab in attendance -> attendance splitup (show total days count should be taken in every weeks for achiivng total days count )
 Remove the notification from dashboard if roaster is created
+in roaster,user list dropdown should not close after selecting a user
+
 
 Remove download button from mobile app.
