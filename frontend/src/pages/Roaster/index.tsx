@@ -9,9 +9,12 @@ import {
   Chip,
   Menu,
   MenuItem,
-  IconButton
+  IconButton,
+  Tabs,
+  Tab,
+  Paper
 } from "@mui/material";
-import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon, MdPrint as PrintIcon } from "react-icons/md";
+import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon, MdPrint as PrintIcon, MdContentCopy as CopyIcon } from "react-icons/md";
 import dayjs, { Dayjs } from "dayjs";
 import { getServerTime } from "../../helpers/time";
 import isoWeekPlugin from "dayjs/plugin/isoWeek";
@@ -26,7 +29,7 @@ import type { RootState, AppDispatch } from "../../store";
 import { jwtDecode } from "jwt-decode";
 import { validateRoster } from "./validation";
 import { fetchUsers, fetchAllDepartmentsForDropdown } from "../Users/action";
-import { fetchRostersData, fetchRosterStatusData, updateRosterStatus, resetRosterStatus, createRoster, updateRoster, fetchDutySummary } from "./action";
+import { fetchRostersData, fetchRosterStatusData, updateRosterStatus, resetRosterStatus, createRoster, updateRoster, fetchDutySummary, saveRosterSplitup } from "./action";
 
 dayjs.extend(isoWeekPlugin);
 
@@ -39,12 +42,18 @@ interface RosterData {
 
 const RoasterPage: React.FC = () => {
   const [selectedWeek, setSelectedWeek] = useState<Dayjs>(getServerTime());
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [rosterData, setRosterData] = useState<Record<string, RosterData>>({});
+  const [editModes, setEditModes] = useState<Record<string, boolean>>({});
+  const [rosterDataByWeek, setRosterDataByWeek] = useState<Record<string, Record<string, RosterData>>>({});
   const [rosterStatus, setRosterStatus] = useState<any>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [dutySummary, setDutySummary] = useState<any>(null);
-  const [savedRosterData, setSavedRosterData] = useState<Record<string, RosterData>>({});
+  const [savedRosterDataByWeek, setSavedRosterDataByWeek] = useState<Record<string, Record<string, RosterData>>>({});
+  const [activeTab, setActiveTab] = useState<number>(0);
+  const [localSplitups, setLocalSplitups] = useState<any>({});
+
+  const currentWeekKey = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
+  const isEditMode = !!editModes[currentWeekKey];
+  const rosterData = rosterDataByWeek[currentWeekKey] || {};
 
   const dispatch = useDispatch<AppDispatch>();
   const { showToast } = useToast();
@@ -93,10 +102,10 @@ const RoasterPage: React.FC = () => {
 
 
   const fetchRosters = async () => {
-    const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
+    const prevSundayStr = selectedWeek.startOf("isoWeek").subtract(1, "day").format("YYYY-MM-DD");
     const endDate = selectedWeek.endOf("isoWeek").format("YYYY-MM-DD");
     try {
-      const data = await dispatch(fetchRostersData({ startDate, endDate, department: userDepartment || '' })).unwrap();
+      const data = await dispatch(fetchRostersData({ startDate: prevSundayStr, endDate, department: userDepartment || '' })).unwrap();
       const newRosterData: Record<string, RosterData> = {};
       data.forEach((r: any) => {
         newRosterData[`${r.date}_${r.shift}`] = {
@@ -106,8 +115,13 @@ const RoasterPage: React.FC = () => {
           updatedByFullName: r.updatedByFullName
         };
       });
-      setRosterData(newRosterData);
-      setSavedRosterData(newRosterData);
+      setSavedRosterDataByWeek((prev) => ({ ...prev, [currentWeekKey]: newRosterData }));
+      setRosterDataByWeek((prev) => {
+        if (prev[currentWeekKey] && editModes[currentWeekKey]) {
+          return prev;
+        }
+        return { ...prev, [currentWeekKey]: newRosterData };
+      });
     } catch (e) {
       console.error(e);
       showToast("Failed to fetch rosters", "error");
@@ -131,8 +145,39 @@ const RoasterPage: React.FC = () => {
       const dateStr = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
       const data = await dispatch(fetchDutySummary({ department: userDepartment, date: dateStr })).unwrap();
       setDutySummary(data);
+      if (data && data.splitups) {
+        setLocalSplitups(data.splitups);
+      } else {
+        setLocalSplitups({});
+      }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleSplitupChange = (username: string, weekLabel: string, value: number) => {
+    setLocalSplitups((prev: any) => ({
+      ...prev,
+      [username]: {
+        ...(prev[username] || {}),
+        [weekLabel]: value
+      }
+    }));
+  };
+
+  const handleSaveSplitup = async () => {
+    if (!userDepartment || !dutySummary?.cycleStart) return;
+    try {
+      await dispatch(saveRosterSplitup({
+        department: userDepartment,
+        cycleStart: dutySummary.cycleStart,
+        splitups: localSplitups
+      })).unwrap();
+      showToast('Roaster splitup targets saved successfully', 'success');
+      setEditModes(prev => ({ ...prev, [currentWeekKey]: false }));
+      fetchSummary();
+    } catch (err: any) {
+      showToast(typeof err === 'string' ? `Failed to save splitup targets: ${err}` : 'Failed to save splitup targets', 'error');
     }
   };
 
@@ -182,6 +227,7 @@ const RoasterPage: React.FC = () => {
       const realWeekDays = weekDatesAssigned.size;
 
       // 2. Calculate real-time month counts
+      const savedRosterData = savedRosterDataByWeek[currentWeekKey] || {};
       const savedCycleDates = new Set<string>();
       weekDatesInCycle.forEach((dateStr) => {
         shiftNames.forEach((shift) => {
@@ -263,27 +309,93 @@ const RoasterPage: React.FC = () => {
     return username;
   };
 
+  const handleCopyPreviousRoster = async () => {
+    const prevWeek = selectedWeek.subtract(1, "week");
+    const startDate = prevWeek.startOf("isoWeek").format("YYYY-MM-DD");
+    const endDate = prevWeek.endOf("isoWeek").format("YYYY-MM-DD");
+    try {
+      const data = await dispatch(fetchRostersData({ startDate, endDate, department: userDepartment || '' })).unwrap();
+      const prevRoster: Record<string, string[]> = {};
+      data.forEach((r: any) => {
+        prevRoster[`${r.date}_${r.shift}`] = r.assignees;
+      });
+
+      // Now copy to the current week
+      const currentRosterData = { ...(rosterDataByWeek[currentWeekKey] || {}) };
+      const currentWeekDays = Array.from({ length: 7 }).map((_, index) =>
+        selectedWeek.startOf("isoWeek").add(index, "day")
+      );
+      const prevWeekDays = Array.from({ length: 7 }).map((_, index) =>
+        prevWeek.startOf("isoWeek").add(index, "day")
+      );
+
+      currentWeekDays.forEach((currDay, idx) => {
+        const currDateStr = currDay.format("YYYY-MM-DD");
+        const prevDateStr = prevWeekDays[idx].format("YYYY-MM-DD");
+
+        uniqueShifts.forEach((shift) => {
+          const prevKey = `${prevDateStr}_${shift}`;
+          const currKey = `${currDateStr}_${shift}`;
+          const prevAssignees = prevRoster[prevKey] || [];
+          
+          currentRosterData[currKey] = {
+            ...currentRosterData[currKey],
+            assignees: prevAssignees,
+          };
+        });
+      });
+
+      setRosterDataByWeek((prev) => ({
+        ...prev,
+        [currentWeekKey]: currentRosterData
+      }));
+      showToast("Copied roster from previous week. Please save changes.", "success");
+    } catch (e) {
+      console.error(e);
+      showToast("Failed to copy previous roster", "error");
+    }
+  };
+
+  const handleCopyPreviousSplitup = async () => {
+    if (!userDepartment || !dutySummary?.cycleStart) return;
+    try {
+      const dateInPrevCycle = dayjs(dutySummary.cycleStart).subtract(15, 'days').format('YYYY-MM-DD');
+      const prevData = await dispatch(fetchDutySummary({ department: userDepartment, date: dateInPrevCycle })).unwrap();
+      if (prevData && prevData.splitups && Object.keys(prevData.splitups).length > 0) {
+        setLocalSplitups(prevData.splitups);
+        showToast("Copied splitup targets from previous month. Please save changes.", "success");
+      } else {
+        showToast("No previous splitup targets found to copy.", "warning");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to copy previous splitup targets", "error");
+    }
+  };
+
   const handleSave = async () => {
     try {
-      const promises = Object.entries(rosterData).map(async ([key, data]) => {
+      const currentRosterData = rosterDataByWeek[currentWeekKey] || {};
+      const promises = Object.entries(currentRosterData).map(async ([key, data]) => {
         const [date, shift] = key.split("_");
         // Skip past weeks (allow past days within the current week) to prevent past weeks modifications
         if (!isSuperuser && dayjs(date).isBefore(getServerTime().startOf("isoWeek"), "day")) {
           return;
         }
+        const cleanAssignees = data.assignees ? data.assignees.filter(Boolean) : [];
         if (data.id) {
           await dispatch(updateRoster({
             id: data.id,
             date,
             shift,
-            assignees: data.assignees,
+            assignees: cleanAssignees,
             department: userDepartment || 'General',
           })).unwrap();
-        } else if (data.assignees.length > 0) {
+        } else if (cleanAssignees.length > 0) {
           await dispatch(createRoster({
             date,
             shift,
-            assignees: data.assignees,
+            assignees: cleanAssignees,
             department: userDepartment || 'General',
           })).unwrap();
         }
@@ -306,12 +418,12 @@ const RoasterPage: React.FC = () => {
       }
 
       showToast("Roster saved successfully", "success");
-      setIsEditMode(false);
+      setEditModes(prev => ({ ...prev, [currentWeekKey]: false }));
       fetchRosters();
       fetchSummary();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      showToast("Failed to save roster", "error");
+      showToast(typeof e === 'string' ? `Failed to save roster: ${e}` : "Failed to save roster", "error");
     }
   };
 
@@ -347,25 +459,69 @@ const RoasterPage: React.FC = () => {
           </Typography>
           
         
-          {canEdit &&
+           {canEdit &&
             (isEditMode ? (
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Tooltip title="Save Roster">
-                  <IconButton
-                    color="primary"
-                    onClick={handleSave}
-                    size="small"
-                    sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }}
-                  >
-                    <SaveIcon />
-                  </IconButton>
-                </Tooltip>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                 {activeTab === 0 ? (
+                   <Tooltip title="Save Roster">
+                     <IconButton
+                       color="primary"
+                       onClick={handleSave}
+                       size="small"
+                       sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }}
+                     >
+                       <SaveIcon />
+                     </IconButton>
+                   </Tooltip>
+                 ) : (
+                   <Tooltip title="Save Roster Splitup">
+                     <IconButton
+                       color="primary"
+                       onClick={handleSaveSplitup}
+                       size="small"
+                       sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }}
+                     >
+                       <SaveIcon />
+                     </IconButton>
+                   </Tooltip>
+                 )}
+                 {activeTab === 0 ? (
+                   <Tooltip title="Copy Previous Roster">
+                     <IconButton
+                       color="primary"
+                       onClick={handleCopyPreviousRoster}
+                       size="small"
+                       sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }}
+                     >
+                       <CopyIcon />
+                     </IconButton>
+                   </Tooltip>
+                 ) : (
+                   <Tooltip title="Copy Previous Roster Splitup">
+                     <IconButton
+                       color="primary"
+                       onClick={handleCopyPreviousSplitup}
+                       size="small"
+                       sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }}
+                     >
+                       <CopyIcon />
+                     </IconButton>
+                   </Tooltip>
+                 )}
                 <Tooltip title="Cancel Edit">
                   <IconButton
                     color="error"
                     onClick={() => {
-                      setIsEditMode(false);
-                      fetchRosters(); // reset unsaved changes
+                      setEditModes(prev => ({ ...prev, [currentWeekKey]: false }));
+                      setRosterDataByWeek(prev => ({
+                        ...prev,
+                        [currentWeekKey]: savedRosterDataByWeek[currentWeekKey] || {}
+                      }));
+                      if (dutySummary && dutySummary.splitups) {
+                        setLocalSplitups(dutySummary.splitups);
+                      } else {
+                        setLocalSplitups({});
+                      }
                     }}
                     size="small"
                     sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }}
@@ -378,7 +534,7 @@ const RoasterPage: React.FC = () => {
               <Tooltip title="Edit Roster">
                 <IconButton
                   color="primary"
-                  onClick={() => setIsEditMode(true)}
+                  onClick={() => setEditModes(prev => ({ ...prev, [currentWeekKey]: true }))}
                   size="small"
                   className="hide-on-print"
                   sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }}
@@ -389,29 +545,6 @@ const RoasterPage: React.FC = () => {
             ))}
 
         
-
-          {canApprove && rosterStatus?.status !== "Approved" && hasRosterData && (
-            <>
-              <Button
-                variant="outlined"
-                color="secondary"
-                size="small"
-                className="hide-on-print"
-                onClick={(e) => setAnchorEl(e.currentTarget)}
-                sx={{ width: '150px', height: '32px', fontSize: '12px' }}
-              >
-                Approve/Reject
-              </Button>
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={() => setAnchorEl(null)}
-              >
-                <MenuItem onClick={() => handleStatusChange("Approved")}>Approve</MenuItem>
-                <MenuItem onClick={() => handleStatusChange("Rejected")}>Reject</MenuItem>
-              </Menu>
-            </>
-          )}
 
             {rosterStatus && hasRosterData && (
             <Chip
@@ -464,7 +597,18 @@ const RoasterPage: React.FC = () => {
         </Box>
       </header>
 
-      <section className={styles["container__roasterContainer"]}>
+      <Tabs
+        value={activeTab}
+        onChange={(e, val) => setActiveTab(val)}
+        sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
+        className="hide-on-print"
+      >
+        <Tab label="Duty Roster" />
+        <Tab label="Roaster Splitup" />
+      </Tabs>
+
+      {activeTab === 0 && (
+        <section className={styles["container__roasterContainer"]}>
         <header className={styles["container__roasterContainer__header"]}>
           <label
             className={styles["container__roasterContainer__header__label"]}
@@ -567,9 +711,12 @@ const RoasterPage: React.FC = () => {
                               getOptionLabel={(option) => getUserDisplayName(option)}
                               value={assignees}
                               onChange={(e, val) => {
-                                setRosterData((prev) => ({
+                                setRosterDataByWeek((prev) => ({
                                   ...prev,
-                                  [key]: { ...(prev[key] || {}), assignees: val },
+                                  [currentWeekKey]: {
+                                    ...(prev[currentWeekKey] || {}),
+                                    [key]: { ...(prev[currentWeekKey]?.[key] || {}), assignees: val }
+                                  }
                                 }));
                               }}
                               renderInput={(params) => (
@@ -596,7 +743,6 @@ const RoasterPage: React.FC = () => {
                                 })
                               }
                               sx={{ width: "90%" }}
-                              disableCloseOnSelect
                             />
                           ) : (
                             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, p: 1, justifyContent: "center", width: "100%", height: "100%", alignItems: "center" }}>
@@ -653,9 +799,12 @@ const RoasterPage: React.FC = () => {
                                   onChange={(e, val) => {
                                     const newAssignees = [...assignees];
                                     newAssignees[slotIdx] = val || "";
-                                    setRosterData((prev) => ({
+                                    setRosterDataByWeek((prev) => ({
                                       ...prev,
-                                      [key]: { ...(prev[key] || {}), assignees: newAssignees },
+                                      [currentWeekKey]: {
+                                        ...(prev[currentWeekKey] || {}),
+                                        [key]: { ...(prev[currentWeekKey]?.[key] || {}), assignees: newAssignees }
+                                      }
                                     }));
                                   }}
                                   renderInput={(params) => (
@@ -664,7 +813,6 @@ const RoasterPage: React.FC = () => {
                                   // @ts-ignore
                                   renderTags={() => null}
                                   sx={{ width: '90%' }}
-                                  disableCloseOnSelect
                                 />
                               </label>
                             );
@@ -727,7 +875,17 @@ const RoasterPage: React.FC = () => {
                     {getUserDisplayName(item.username)}
                   </div>
                   <div style={{ flex: 1, padding: "8px 12px", borderRight: "1px solid #333", textAlign: "center", fontWeight: "bold" }}>
-                    {item.weekDays}
+                    {(() => {
+                      const currentWeekStart = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
+                      const currentWeekLabel = dutySummary?.weeks?.find((w: any) => w.start === currentWeekStart)?.label;
+                      const totalWeeksCount = dutySummary?.weeks ? dutySummary.weeks.length : 1;
+                      const defaultTargetPerWeek = dutySummary?.maxAllowedDays ? Math.round(dutySummary.maxAllowedDays / totalWeeksCount) : 0;
+                      const userSplitups = localSplitups[item.username] || {};
+                      const targetVal = (currentWeekLabel && userSplitups[currentWeekLabel] !== undefined)
+                        ? userSplitups[currentWeekLabel]
+                        : defaultTargetPerWeek;
+                      return `${item.weekDays} / ${targetVal}`;
+                    })()}
                   </div>
                   <div style={{ flex: 1, padding: "8px 12px", textAlign: "center", fontWeight: "bold" }}>
                     {item.monthDays}
@@ -780,7 +938,98 @@ const RoasterPage: React.FC = () => {
           </article>
         </footer>
       </section>
+      )}
 
+      {activeTab === 1 && (
+        <section style={{ paddingBottom: '40px' }} className="hide-on-print">
+          <Paper sx={{ p: 3, borderRadius: '8px', boxShadow: 'none', border: '1px solid #ddd' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#333' }}>
+                Roaster Splitup (Monthly Cycle: {dayjs(dutySummary?.cycleStart).format('DD MMM YYYY')} - {dayjs(dutySummary?.cycleEnd).format('DD MMM YYYY')})
+              </Typography>
+            </Box>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f5f5f5', borderBottom: '2px solid #ddd' }}>
+                    <th style={{ padding: '12px', fontWeight: 'bold' }}>Staff Name</th>
+                    {dutySummary?.weeks?.map((week: any) => (
+                      <th key={week.label} style={{ padding: '12px', fontWeight: 'bold', textAlign: 'center' }}>
+                        {week.label}
+                      </th>
+                    ))}
+                    <th style={{ padding: '12px', fontWeight: 'bold', textAlign: 'center' }}>Total Scheduled</th>
+                    <th style={{ padding: '12px', fontWeight: 'bold', textAlign: 'center' }}>Monthly Target</th>
+                    <th style={{ padding: '12px', fontWeight: 'bold', textAlign: 'center' }}>Remaining Required</th>
+                  </tr>
+                </thead>
+                <tbody>
+                   {dutySummary?.summary?.map((item: any, idx: number) => {
+                    const totalWeeksCount = dutySummary.weeks ? dutySummary.weeks.length : 1;
+                    const targetPerWeek = Math.round(dutySummary.maxAllowedDays / totalWeeksCount);
+                    
+                    const userSplitups = localSplitups[item.username] || {};
+                    let userMonthlyTarget = 0;
+                    dutySummary?.weeks?.forEach((week: any) => {
+                      const targetVal = userSplitups[week.label] !== undefined ? userSplitups[week.label] : targetPerWeek;
+                      userMonthlyTarget += Number(targetVal);
+                    });
+
+                    const remaining = Math.max(0, userMonthlyTarget - item.monthDays);
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid #eee', backgroundColor: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
+                        <td style={{ padding: '12px', fontWeight: 500 }}>{getUserDisplayName(item.username)}</td>
+                        {dutySummary?.weeks?.map((week: any) => {
+                          const scheduled = item.weeksBreakdown?.[week.label] || 0;
+                          const targetVal = userSplitups[week.label] !== undefined ? userSplitups[week.label] : targetPerWeek;
+                          const haveToTake = Math.max(0, targetVal - scheduled);
+                          return (
+                            <td key={week.label} style={{ padding: '12px', textAlign: 'center' }}>
+                              {isEditMode ? (
+                                <Box sx={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                                  <TextField
+                                    type="number"
+                                    size="small"
+                                    value={targetVal}
+                                    onChange={(e) => {
+                                      let val = parseInt(e.target.value, 10);
+                                      if (isNaN(val)) val = 0;
+                                      if (val < 0) val = 0;
+                                      if (val > 7) val = 7;
+                                      handleSplitupChange(item.username, week.label, val);
+                                    }}
+                                    inputProps={{ min: 0, max: 7, style: { textAlign: 'center', padding: '4px 8px', width: '50px', fontWeight: 'bold' } }}
+                                  />
+                                  <span style={{ fontSize: '10px', color: '#777' }}>Scheduled: {scheduled}</span>
+                                </Box>
+                              ) : (
+                                <Box sx={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center' }}>
+                                  <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#333' }}>{targetVal}</span>
+                                  <span style={{ fontSize: '10px', color: '#777' }}>Scheduled: {scheduled}</span>
+                                </Box>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', fontSize: '15px' }}>{item.monthDays}</td>
+                        <td style={{ padding: '12px', textAlign: 'center', color: '#555', fontWeight: 'bold' }}>{userMonthlyTarget}</td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          <Chip
+                            label={remaining > 0 ? `${remaining} days` : 'Achieved'}
+                            color={remaining > 0 ? 'warning' : 'success'}
+                            size="small"
+                            sx={{ fontWeight: 'bold' }}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Paper>
+        </section>
+      )}
 
     </Box>
   );

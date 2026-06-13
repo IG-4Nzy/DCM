@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Box, Paper, Tooltip, IconButton, Chip, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Box, Paper, Tooltip, IconButton, Chip, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';
@@ -42,6 +42,7 @@ const Requests: React.FC = () => {
     const [order, setOrder] = useTableState<Order>('requests_order', 'desc');
     const [orderBy, setOrderBy] = useTableState<string>('requests_orderBy', 'createdAt');
     const [statusFilter, setStatusFilter] = useTableState<'all' | 'completed' | 'active'>('requests_statusFilter', 'all');
+    const [requestTypeFilter, setRequestTypeFilter] = useTableState<string>('requests_requestTypeFilter', 'all');
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRequest, setEditingRequest] = useState<RequestData | null>(null);
@@ -67,6 +68,7 @@ const Requests: React.FC = () => {
                 limit: rowsPerPage,
                 search: searchQuery,
                 completed: completedParam,
+                requestType: requestTypeFilter === 'all' ? undefined : requestTypeFilter,
             });
             setRequests(res.data);
             setTotalCount(res.total);
@@ -84,7 +86,7 @@ const Requests: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, rowsPerPage, searchQuery, statusFilter, showToast, hasViewPrivilege, isViewModalOpen, selectedViewRequest]);
+    }, [page, rowsPerPage, searchQuery, statusFilter, requestTypeFilter, showToast, hasViewPrivilege, isViewModalOpen, selectedViewRequest]);
 
     useEffect(() => {
         loadData();
@@ -387,6 +389,25 @@ const Requests: React.FC = () => {
                             Completed
                         </ToggleButton>
                     </ToggleButtonGroup>
+                    <FormControl size="small" sx={{ minWidth: 200 }}>
+                        <InputLabel id="request-type-filter-label">Request Type</InputLabel>
+                        <Select
+                            labelId="request-type-filter-label"
+                            value={requestTypeFilter}
+                            label="Request Type"
+                            onChange={(e) => {
+                                setRequestTypeFilter(e.target.value);
+                                setPage(0);
+                            }}
+                            sx={{ bgcolor: '#fff' }}
+                        >
+                            <MenuItem value="all">All Request Types</MenuItem>
+                            <MenuItem value="VM Creation">VM Creation</MenuItem>
+                            <MenuItem value="DC Entry">DC Entry</MenuItem>
+                            <MenuItem value="Hardware Issuance">Hardware Issuance</MenuItem>
+                            <MenuItem value="Hardware Replacement">Hardware Replacement</MenuItem>
+                        </Select>
+                    </FormControl>
                 </Box>
 
                 {hasCreatePrivilege && (

@@ -74,6 +74,8 @@ interface PeriodicActivity {
   repeatInterval?: number;
   repeatUnit?: string;
   repeatCount?: number;
+  firstServiceDate?: string;
+  serviceRepeatMonths?: number;
 }
 
 const PeriodicActivities: React.FC = () => {
@@ -96,7 +98,6 @@ const PeriodicActivities: React.FC = () => {
   const [isAmc, setIsAmc] = useState(false);
   const [firstServiceDate, setFirstServiceDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [serviceRepeatMonths, setServiceRepeatMonths] = useState(3);
-  const [repeats, setRepeats] = useState(false);
   const [repeatInterval, setRepeatInterval] = useState(1);
   const [repeatUnit, setRepeatUnit] = useState('months');
   const [repeatCount, setRepeatCount] = useState(5);
@@ -221,7 +222,6 @@ const PeriodicActivities: React.FC = () => {
     setIsAmc(false);
     setFirstServiceDate(dayjs().format('YYYY-MM-DD'));
     setServiceRepeatMonths(3);
-    setRepeats(false);
     setRepeatInterval(1);
     setRepeatUnit('months');
     setRepeatCount(5);
@@ -235,6 +235,12 @@ const PeriodicActivities: React.FC = () => {
     setDueDate(activity.dueDate);
     setRemarks(activity.remarks || '');
     setIsAmc(activity.isAmc || false);
+    setFirstServiceDate(activity.firstServiceDate || dayjs().format('YYYY-MM-DD'));
+    setServiceRepeatMonths(activity.serviceRepeatMonths || 3);
+    setRepeatInterval(activity.repeatInterval || 1);
+    setRepeatUnit(activity.repeatUnit || 'months');
+    setNeverEnds(activity.repeatCount === -1);
+    setRepeatCount(activity.repeatCount && activity.repeatCount !== -1 ? activity.repeatCount : 5);
     setIsModalOpen(true);
   };
 
@@ -258,10 +264,10 @@ const PeriodicActivities: React.FC = () => {
         isAmc
       };
 
-      if (isAmc && !editingActivity) {
+      if (isAmc) {
         payload.firstServiceDate = firstServiceDate;
         payload.serviceRepeatMonths = serviceRepeatMonths;
-      } else if (!editingActivity && repeats) {
+      } else {
         payload.repeatInterval = repeatInterval;
         payload.repeatUnit = repeatUnit;
         payload.repeatCount = neverEnds ? -1 : repeatCount;
@@ -718,14 +724,13 @@ const PeriodicActivities: React.FC = () => {
                   checked={isAmc}
                   onChange={(e) => setIsAmc(e.target.checked)}
                   color="success"
-                  disabled={!!editingActivity}
                 />
               }
               label="Mark this activity as an AMC"
               sx={{ mt: -0.5, color: '#374151' }}
             />
 
-            {!editingActivity && isAmc && (
+            {isAmc && (
               <Box sx={{ display: 'flex', gap: 1.5, mt: 0.5 }}>
                 <TextField
                   {...({
@@ -756,75 +761,59 @@ const PeriodicActivities: React.FC = () => {
               </Box>
             )}
 
-            {!editingActivity && !isAmc && (
-              <>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={repeats}
-                      onChange={(e) => setRepeats(e.target.checked)}
-                      color="primary"
+            {!isAmc && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 0.5 }}>
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                  <TextField
+                    label="Repeat Every"
+                    type="number"
+                    variant="outlined"
+                    size="small"
+                    value={repeatInterval}
+                    onChange={(e) => setRepeatInterval(Math.max(1, parseInt(e.target.value) || 1))}
+                    sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                  />
+                  <FormControl size="small" sx={{ flex: 1 }}>
+                    <InputLabel id="repeat-unit-label">Unit</InputLabel>
+                    <Select
+                      labelId="repeat-unit-label"
+                      label="Unit"
+                      value={repeatUnit}
+                      onChange={(e) => setRepeatUnit(e.target.value as string)}
+                      sx={{ borderRadius: '8px' }}
+                    >
+                      <MenuItem value="days">Days</MenuItem>
+                      <MenuItem value="weeks">Weeks</MenuItem>
+                      <MenuItem value="months">Months</MenuItem>
+                      <MenuItem value="years">Years</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={neverEnds}
+                        onChange={(e) => setNeverEnds(e.target.checked)}
+                        color="primary"
+                      />
+                    }
+                    label="Repeats never ends"
+                    sx={{ color: '#374151' }}
+                  />
+                  {!neverEnds && (
+                    <TextField
+                      label="Occurrences"
+                      type="number"
+                      variant="outlined"
+                      size="small"
+                      value={repeatCount}
+                      onChange={(e) => setRepeatCount(Math.max(2, parseInt(e.target.value) || 2))}
+                      sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
                     />
-                  }
-                  label="Enable repeats (create multiple occurrences)"
-                  sx={{ mt: -0.5, color: '#374151' }}
-                />
-
-                {repeats && (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 0.5 }}>
-                    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-                      <TextField
-                        label="Repeat Every"
-                        type="number"
-                        variant="outlined"
-                        size="small"
-                        value={repeatInterval}
-                        onChange={(e) => setRepeatInterval(Math.max(1, parseInt(e.target.value) || 1))}
-                        sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                      />
-                      <FormControl size="small" sx={{ flex: 1 }}>
-                        <InputLabel id="repeat-unit-label">Unit</InputLabel>
-                        <Select
-                          labelId="repeat-unit-label"
-                          label="Unit"
-                          value={repeatUnit}
-                          onChange={(e) => setRepeatUnit(e.target.value)}
-                          sx={{ borderRadius: '8px' }}
-                        >
-                          <MenuItem value="days">Days</MenuItem>
-                          <MenuItem value="weeks">Weeks</MenuItem>
-                          <MenuItem value="months">Months</MenuItem>
-                          <MenuItem value="years">Years</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={neverEnds}
-                            onChange={(e) => setNeverEnds(e.target.checked)}
-                            color="primary"
-                          />
-                        }
-                        label="Repeats never ends"
-                        sx={{ color: '#374151' }}
-                      />
-                      {!neverEnds && (
-                        <TextField
-                          label="Occurrences"
-                          type="number"
-                          variant="outlined"
-                          size="small"
-                          value={repeatCount}
-                          onChange={(e) => setRepeatCount(Math.max(2, parseInt(e.target.value) || 2))}
-                          sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                        />
-                      )}
-                    </Box>
-                  </Box>
-                )}
-              </>
+                  )}
+                </Box>
+              </Box>
             )}
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>

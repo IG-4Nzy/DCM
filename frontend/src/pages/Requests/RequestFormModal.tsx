@@ -227,6 +227,15 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                   value={details.dateTime || ''} 
                   onChange={(e) => handleDetailChange('dateTime', e.target.value)} 
                 />
+                <TextField
+                  label="Tools / Items to bring (Optional)"
+                  fullWidth
+                  multiline
+                  rows={2}
+                  placeholder="e.g. Laptop, screwdriver, patch cords, etc."
+                  value={details.itemsToBring || ''}
+                  onChange={(e) => handleDetailChange('itemsToBring', e.target.value)}
+                />
               </>
             )}
 

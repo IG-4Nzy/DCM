@@ -89,3 +89,16 @@ export const fetchDutySummary = createAsyncThunk(
   }
 );
 
+export const saveRosterSplitup = createAsyncThunk(
+  'roaster/saveRosterSplitup',
+  async ({ department, cycleStart, splitups }: { department: string; cycleStart: string; splitups: any }, { rejectWithValue }) => {
+    try {
+      const res = await request.post('/api/roasters/duty-summary/splitup', { department, cycleStart, splitups });
+      return res.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to save roster splitup');
+    }
+  }
+);
+
+

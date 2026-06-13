@@ -92,6 +92,18 @@ const VisitorLogs: React.FC = () => {
             sortable: false,
             render: (row) => row.purpose || '-'
         },
+        {
+            id: 'itemsToBring',
+            label: 'Tools / Items',
+            sortable: false,
+            render: (row) => row.itemsToBring || '-'
+        },
+        {
+            id: 'keptItemsOnExit',
+            label: 'Kept on Exit?',
+            sortable: false,
+            render: (row) => row.itemsToBring ? (row.keptItemsOnExit ? 'Yes' : 'No') : '-'
+        },
         { 
             id: 'entryTime', 
             label: 'Entry Time', 

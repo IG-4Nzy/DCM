@@ -90,7 +90,7 @@ const MorningChecklist: React.FC = () => {
   const [historyMonth, setHistoryMonth] = useState(dayjs().format('YYYY-MM'));
   const [historySearch, setHistorySearch] = useState('');
   const [historyPage, setHistoryPage] = useState(0);
-  const [historyRowsPerPage, setHistoryRowsPerPage] = useState(10);
+  const [historyRowsPerPage, setHistoryRowsPerPage] = useState(25);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [viewingChecklist, setViewingChecklist] = useState<MorningChecklistData | null>(null);
 
@@ -518,6 +518,7 @@ const MorningChecklist: React.FC = () => {
               page={historyPage}
               onPageChange={(_, p) => setHistoryPage(p)}
               rowsPerPage={historyRowsPerPage}
+              rowsPerPageOptions={[25, 50, 100]}
               onRowsPerPageChange={(e) => {
                 setHistoryRowsPerPage(parseInt(e.target.value, 10));
                 setHistoryPage(0);

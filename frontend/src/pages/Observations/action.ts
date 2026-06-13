@@ -13,6 +13,7 @@ interface FetchParams {
   search?: string;
   status_filter?: string;
   date_filter?: string;
+  category_filter?: string;
   pagination?: boolean;
 }
 

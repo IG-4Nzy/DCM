@@ -64,6 +64,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   const [entryTimeError, setEntryTimeError] = useState(false);
   const [exitTime, setExitTime] = useState('');
   const [exitTimeError, setExitTimeError] = useState(false);
+  const [keptItemsOnExit, setKeptItemsOnExit] = useState(false);
 
   const isMarkEntryTime = request?.requestType === 'DC Entry' && (request?.status?.toLowerCase() === 'mark entry time' || request?.status?.toLowerCase().includes('entry'));
   const isMarkExitTime = request?.requestType === 'DC Entry' && (request?.status?.toLowerCase() === 'mark exit time' || request?.status?.toLowerCase().includes('exit'));
@@ -101,6 +102,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
           : dayjs().format('YYYY-MM-DDTHH:mm')
       );
       setExitTimeError(false);
+      setKeptItemsOnExit(!!request.details?.keptItemsOnExit);
 
       setLoadingLogs(true);
       fetchRequestLogs(requestId)
@@ -224,7 +226,8 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
         };
       } else if (isMarkExitTime) {
         payload.details = { 
-          exitTime: new Date(exitTime).toISOString() 
+          exitTime: new Date(exitTime).toISOString(),
+          keptItemsOnExit: !!keptItemsOnExit
         };
       }
       await onAdvance(request.id || request._id || '', payload);
@@ -430,6 +433,20 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                         {request.details?.exitTime ? safeParseDate(request.details.exitTime) : 'Not Marked Yet'}
                       </Typography>
                     </Grid>
+                    {request.details?.itemsToBring && (
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="caption" color="textSecondary">Tools / Items to Bring</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details.itemsToBring}</Typography>
+                      </Grid>
+                    )}
+                    {request.details?.itemsToBring && (
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="caption" color="textSecondary">Kept Tools / Items on Exit</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: request.details?.keptItemsOnExit ? '#2e7d32' : '#c62828' }}>
+                          {request.details?.exitTime ? (request.details?.keptItemsOnExit ? 'Yes' : 'No') : 'Pending Exit'}
+                        </Typography>
+                      </Grid>
+                    )}
                   </>
                 )}
 
@@ -607,7 +624,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                   )}
 
                   {isMarkExitTime && (
-                    <Box sx={{ flex: 1, minWidth: 200 }}>
+                    <Box sx={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', gap: 1 }}>
                       <TextField
                         label="Actual Exit Time"
                         type="datetime-local"
@@ -622,8 +639,21 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                           if (e.target.value) setExitTimeError(false);
                         }}
                         InputLabelProps={{ shrink: true }}
-                        sx={{ bgcolor: '#fff' }}
+                        sx={{ bgcolor: '#fff', mb: 1 }}
                       />
+                      {request.details?.itemsToBring && (
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={keptItemsOnExit}
+                              onChange={(e) => setKeptItemsOnExit(e.target.checked)}
+                              color="primary"
+                            />
+                          }
+                          label="Visitor kept tools/items with them on exit"
+                          sx={{ color: '#374151' }}
+                        />
+                      )}
                     </Box>
                   )}
 

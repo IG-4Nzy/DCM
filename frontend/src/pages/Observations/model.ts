@@ -11,6 +11,8 @@ export interface ObservationData {
   informedToOther?: string;
   loggedBy: string;
   status: string;
+  remarks?: string;
+  comments?: { text: string; user: string; timestamp: string }[];
 }
 
 export interface ObservationCategoryData {

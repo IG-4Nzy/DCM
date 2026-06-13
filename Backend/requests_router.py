@@ -57,6 +57,8 @@ async def add_visitor_log_on_completion(existing_request: dict, username: str):
                 "purpose": existing_request.get("purpose") or details.get("purpose") or "Datacentre Visit",
                 "entryTime": details.get("entryTime") or details.get("dateTime") or existing_request.get("createdAt") or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 "exitTime": details.get("exitTime") or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "itemsToBring": details.get("itemsToBring") or "",
+                "keptItemsOnExit": bool(details.get("keptItemsOnExit")),
                 "loggedBy": username or "system",
                 "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             }
@@ -271,12 +273,18 @@ async def list_items(
     pagination: bool = Query(True),
     search: Optional[str] = None,
     completed: Optional[bool] = Query(None),
+    requestType: Optional[str] = Query(None),
+    request_type: Optional[str] = Query(None),
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
     order: str = Query("desc"),
     current_user: dict = Depends(get_current_user)
 ):
     conditions = []
+    
+    actual_request_type = requestType or request_type
+    if actual_request_type:
+        conditions.append({"requestType": actual_request_type})
 
     is_superuser = current_user.get("isSuperuser", False)
     if not is_superuser:
@@ -331,7 +339,8 @@ async def list_visitor_logs(
         query["$or"] = [
             {"visitorName": {"$regex": search, "$options": "i"}},
             {"division": {"$regex": search, "$options": "i"}},
-            {"purpose": {"$regex": search, "$options": "i"}}
+            {"purpose": {"$regex": search, "$options": "i"}},
+            {"itemsToBring": {"$regex": search, "$options": "i"}}
         ]
     
     col = db.get_collection("visitor_logs")

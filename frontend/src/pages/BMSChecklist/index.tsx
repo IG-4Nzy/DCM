@@ -10,7 +10,7 @@ import {
 import {
   MdAdd, MdDelete, MdDownload, MdCheckCircle, MdHistory, MdExpandMore,
   MdChevronRight, MdSearch, MdSave, MdFilterList, MdViewList, MdViewModule,
-  MdDarkMode, MdLightMode, MdRemove
+  MdRemove
 } from 'react-icons/md';
 import dayjs from 'dayjs';
 import styles from './index.module.scss';
@@ -94,6 +94,44 @@ type ParameterUnitDraft = {
 const EMPTY_PARAMETER_UNIT: ParameterUnitDraft = {
   parameter: '',
   unit: '',
+};
+
+const mergePreviousBMSData = (template: any, prevData: any) => {
+  if (!prevData) return template;
+  const cloned = JSON.parse(JSON.stringify(template));
+  
+  const normalizeParam = (val: any) => {
+    if (typeof val === 'string') {
+      return { value: val, BMS_Reading: '', remarks: '' };
+    }
+    return val || { value: '', BMS_Reading: '', remarks: '' };
+  };
+
+  Object.entries(prevData).forEach(([category, devices]: [string, any]) => {
+    if (cloned[category]) {
+      Object.entries(devices).forEach(([device, params]: [string, any]) => {
+        if (cloned[category][device]) {
+          Object.entries(params).forEach(([param, raw]: [string, any]) => {
+            if (cloned[category][device][param]) {
+              const pPrev = normalizeParam(raw);
+              const pCloned = cloned[category][device][param];
+              if (typeof pCloned === 'string') {
+                cloned[category][device][param] = pPrev.value;
+              } else {
+                cloned[category][device][param] = {
+                  ...pCloned,
+                  value: pPrev.value || '',
+                  BMS_Reading: pPrev.BMS_Reading || '',
+                  remarks: pPrev.remarks || '',
+                };
+              }
+            }
+          });
+        }
+      });
+    }
+  });
+  return cloned;
 };
 
 const BMSChecklist: React.FC = () => {
@@ -191,7 +229,7 @@ const BMSChecklist: React.FC = () => {
   const [collapsedDevs, setCollapsedDevs] = useState<Set<string>>(new Set());
   const [filterCategory, setFilterCategory] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
-  const [darkMode, setDarkMode] = useState(false);
+  const darkMode = false;
   const [currentTime, setCurrentTime] = useState(dayjs().format('HH:mm:ss'));
   const [addFieldOpen, setAddFieldOpen] = useState(false);
   const [newField, setNewField] = useState<FlatRow>(EMPTY_FIELD);
@@ -354,7 +392,25 @@ const BMSChecklist: React.FC = () => {
       return;
     }
 
-    const newCl = createNewChecklist(displayName, templateConfig, userDepartment, username, selectedDate);
+    // Fetch the previous checklist's data to auto-populate
+    let prevChecklistData = null;
+    try {
+      const resPrev = await fetchBMSChecklists({
+        department: userDepartment,
+        limit: 50,
+      });
+      if (resPrev && resPrev.data && resPrev.data.length > 0) {
+        const found = resPrev.data.find((cl: any) => dayjs(cl.date).isBefore(dayjs(selectedDate), 'day'));
+        if (found) {
+          prevChecklistData = found.data;
+        }
+      }
+    } catch (prevErr) {
+      console.warn("Failed to fetch previous BMS checklist:", prevErr);
+    }
+
+    const mergedConfig = mergePreviousBMSData(templateConfig, prevChecklistData);
+    const newCl = createNewChecklist(displayName, mergedConfig, userDepartment, username, selectedDate);
     setChecklist(newCl);
     setRows(flattenConfig(newCl.data));
     setPreparedBy(newCl.preparedBy);
@@ -1058,14 +1114,6 @@ const BMSChecklist: React.FC = () => {
           >
             New Checklist
           </Button>
-          <Tooltip title={darkMode ? 'Light mode' : 'Dark mode'}>
-            <IconButton
-              onClick={() => setDarkMode((prev) => !prev)}
-              className={styles.container__iconButton}
-            >
-              {darkMode ? <MdLightMode /> : <MdDarkMode />}
-            </IconButton>
-          </Tooltip>
         </Box>
       </Box>
 

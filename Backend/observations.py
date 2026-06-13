@@ -83,6 +83,7 @@ async def list_observations(
     search: Optional[str] = None,
     status_filter: Optional[str] = None,
     date_filter: Optional[str] = None,
+    category_filter: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     query = {}
@@ -105,6 +106,9 @@ async def list_observations(
         
     if date_filter:
         query["observedDate"] = date_filter
+
+    if category_filter:
+        query["category"] = category_filter
         
     if not is_superuser:
         users_collection = db.get_collection("users")

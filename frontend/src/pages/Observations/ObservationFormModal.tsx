@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import type { AppDispatch, RootState } from '../../store';
+import { updateObservation } from './action';
 import Modal from '../../components/Modal';
 import TextField from '../../components/TextField';
 import DatePicker from '../../components/DatePicker';
-import { FormControl, InputLabel, MenuItem, Select, Button, Box, IconButton, Tooltip, Typography, Chip, OutlinedInput, FormGroup, FormControlLabel, Checkbox } from '@mui/material';
-import { MdEdit as EditIcon } from 'react-icons/md';
+import { FormControl, InputLabel, MenuItem, Select, Button, Box, IconButton, Tooltip, Typography, Chip, OutlinedInput, FormGroup, FormControlLabel, Checkbox, Avatar } from '@mui/material';
+import { MdEdit as EditIcon, MdSend } from 'react-icons/md';
 import styles from './index.module.scss';
 
 interface ObservationFormModalProps {
@@ -50,13 +53,43 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
   categories,
   handleSubmit
 }) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const [newComment, setNewComment] = useState("");
+  const currentUser = useSelector((state: RootState) => (state?.auth as any)?.user?.username || state?.auth?.username) || "User";
+
   // Get reportsTo options belongs to the selected category
   const selectedCat = (categories || []).find(c => c.name === formData.category);
   const categoryReportsToOptions = selectedCat?.reportsTo 
     ? selectedCat.reportsTo.split(',').map((s: string) => s.trim()).filter(Boolean) 
     : [];
   const canEdit = isEditMode;
-  const showEditButton = editingObs && !isEditMode && hasUpdatePrivilege;
+  const isResolved = editingObs?.status === 'Resolved';
+  const showEditButton = editingObs && !isEditMode && hasUpdatePrivilege && !isResolved;
+
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !editingObs) return;
+
+    const newCommentObj = {
+      text: newComment.trim(),
+      user: currentUser,
+      timestamp: new Date().toISOString()
+    };
+
+    const updatedComments = [...(formData.comments || []), newCommentObj];
+    try {
+      const id = editingObs._id || editingObs.id;
+      const res = await dispatch(updateObservation({
+        id,
+        data: {
+          comments: updatedComments
+        }
+      })).unwrap();
+      setFormData((prev: any) => ({ ...prev, comments: res.comments }));
+      setNewComment("");
+    } catch (err) {
+      console.error("Failed to add comment", err);
+    }
+  };
 
   const headerTitle = (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
@@ -277,6 +310,71 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
               </div>
             )}
           </>
+        )}
+
+        {editingObs && (
+          <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid rgba(0,0,0,0.08)', width: '100%' }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 2 }}>
+              Comments
+            </Typography>
+            
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 2, maxHeight: '200px', overflowY: 'auto', pr: 1 }}>
+              {formData.comments && formData.comments.length > 0 ? (
+                formData.comments.map((comment: any, index: number) => {
+                  const avatarLetter = (comment.user || "?")[0].toUpperCase();
+                  return (
+                    <Box key={index} sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                      <Avatar sx={{ width: 28, height: 28, bgcolor: '#1976d2', fontSize: '0.85rem' }}>
+                        {avatarLetter}
+                      </Avatar>
+                      <Box sx={{ flex: 1, bgcolor: 'rgba(0,0,0,0.02)', p: 1, borderRadius: 1.5, border: '1px solid rgba(0,0,0,0.04)' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>{comment.user}</Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {new Date(comment.timestamp).toLocaleString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </Typography>
+                        </Box>
+                        <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>{comment.text}</Typography>
+                      </Box>
+                    </Box>
+                  );
+                })
+              ) : (
+                <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic', textAlign: 'center', py: 1 }}>
+                  No comments yet.
+                </Typography>
+              )}
+            </Box>
+
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Add a comment..."
+                value={newComment}
+                onChange={(e: any) => setNewComment(e.target.value)}
+                onKeyPress={(e: any) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddComment();
+                  }
+                }}
+              />
+              <IconButton 
+                color="primary" 
+                onClick={handleAddComment}
+                disabled={!newComment.trim()}
+                sx={{ bgcolor: 'rgba(25, 118, 210, 0.04)', borderRadius: 1.5 }}
+              >
+                <MdSend size={18} />
+              </IconButton>
+            </Box>
+          </Box>
         )}
 
         <div className={styles.actions}>

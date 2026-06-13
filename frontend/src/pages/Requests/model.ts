@@ -38,6 +38,8 @@ export interface VisitorLogData {
   exitTime: string;
   loggedBy: string;
   createdAt: string;
+  itemsToBring?: string;
+  keptItemsOnExit?: boolean;
 }
 
 export interface RequestLogData {

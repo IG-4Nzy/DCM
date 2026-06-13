@@ -199,7 +199,20 @@ async def create_roaster(
         "department": roaster_dict["department"]
     })
     if existing:
-        raise HTTPException(status_code=400, detail=f"Roster for {roaster_dict['date']} - {roaster_dict['shift']} shift already exists for department {roaster_dict['department']}")
+        update_fields = {
+            "assignees": roaster_dict.get("assignees", []),
+            "notes": roaster_dict.get("notes"),
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+            "updatedByFullName": roaster_dict.get("updatedByFullName")
+        }
+        await roasters_collection.update_one(
+            {"_id": existing["_id"]},
+            {"$set": update_fields}
+        )
+        created = await roasters_collection.find_one({"_id": existing["_id"]})
+        from notification_helper import log_page_update
+        await log_page_update("roasters", department=created.get("department"), username=current_user.get("sub"))
+        return created
 
     new_roaster = await roasters_collection.insert_one(roaster_dict)
     created = await roasters_collection.find_one({"_id": new_roaster.inserted_id})
@@ -300,6 +313,7 @@ async def get_duty_summary(
     config = await config_collection.find_one({}) or {}
     start_day = int(config.get("startDay", 1))
     end_day = int(config.get("endDay", 31))
+    max_days = int(config.get("maxAllowedDays", 26))
 
     if date_str:
         try:
@@ -336,7 +350,26 @@ async def get_duty_summary(
     cycle_start_str = cycle_start.isoformat()
     cycle_end_str = cycle_end.isoformat()
 
-    # Calculate current week boundaries (ISO week: Mon-Sun)
+    # Calculate weeks list within cycle_start and cycle_end
+    weeks = []
+    curr = cycle_start
+    while curr <= cycle_end:
+        w_start = curr - timedelta(days=curr.weekday())
+        w_end = w_start + timedelta(days=6)
+        week_key = (w_start, w_end)
+        if week_key not in weeks:
+            weeks.append(week_key)
+        curr += timedelta(days=7 - curr.weekday())
+
+    weeks_list = []
+    for ws, we in sorted(weeks):
+        weeks_list.append({
+            "start": ws.isoformat(),
+            "end": we.isoformat(),
+            "label": f"Week ({ws.strftime('%d %b')} - {we.strftime('%d %b')})"
+        })
+
+    # Calculate current week boundaries
     week_start = today - timedelta(days=today.weekday())
     week_end = week_start + timedelta(days=6)
     week_start_str = week_start.isoformat()
@@ -359,8 +392,8 @@ async def get_duty_summary(
     week_rosters = await roasters_collection.find(week_query).to_list(length=None)
 
     # Count unique duty days per staff member
-    month_days: dict = {}  # username -> set of dates
-    week_days: dict = {}   # username -> set of dates
+    month_days = {}  # username -> set of dates
+    week_days = {}   # username -> set of dates
 
     for roster in month_rosters:
         for assignee in roster.get("assignees", []):
@@ -374,15 +407,61 @@ async def get_duty_summary(
                 week_days[assignee] = set()
             week_days[assignee].add(roster["date"])
 
-    # Merge all staff into a single result
-    all_staff = set(list(month_days.keys()) + list(week_days.keys()))
+    # Get all users of this department with the tracked role
+    users_collection = db.get_collection("users")
+    tracked_role = config.get("trackedRole", "All Roles")
+    user_query = {"department": department}
+    user_query["$or"] = [
+        {"isSuperuser": {"$ne": True}},
+        {"is_superuser": {"$ne": True}}
+    ]
+    all_users = await users_collection.find(user_query).to_list(length=None)
+
+    all_staff = set()
+    for u in all_users:
+        if tracked_role == "All Roles" or u.get("role") == tracked_role:
+            all_staff.add(u["username"])
+
+    all_staff.update(month_days.keys())
+    all_staff.update(week_days.keys())
+
+    # Count days per week per staff
+    staff_weeks = {}
+    for staff in all_staff:
+        staff_weeks[staff] = {w["label"]: set() for w in weeks_list}
+
+    for roster in month_rosters:
+        r_date = roster["date"]
+        for assignee in roster.get("assignees", []):
+            if assignee in staff_weeks:
+                dt = datetime.strptime(r_date, "%Y-%m-%d").date()
+                for w in weeks_list:
+                    ws = datetime.strptime(w["start"], "%Y-%m-%d").date()
+                    we = datetime.strptime(w["end"], "%Y-%m-%d").date()
+                    if ws <= dt <= we:
+                        staff_weeks[assignee][w["label"]].add(r_date)
+
     summary = []
     for staff in sorted(all_staff):
+        weeks_breakdown = {}
+        for w in weeks_list:
+            weeks_breakdown[w["label"]] = len(staff_weeks[staff][w["label"]])
+
         summary.append({
             "username": staff,
             "monthDays": len(month_days.get(staff, set())),
-            "weekDays": len(week_days.get(staff, set()))
+            "weekDays": len(week_days.get(staff, set())),
+            "weeksBreakdown": weeks_breakdown
         })
+
+    roaster_splitup_collection = db.get_collection("roaster_splitup")
+    splitup_doc = await roaster_splitup_collection.find_one({
+        "department": department,
+        "cycleStart": cycle_start_str
+    })
+    splitups = {}
+    if splitup_doc:
+        splitups = splitup_doc.get("splitups", {})
 
     return {
         "cycleStart": cycle_start_str,
@@ -390,7 +469,42 @@ async def get_duty_summary(
         "weekStart": week_start_str,
         "weekEnd": week_end_str,
         "trackedRole": config.get("trackedRole", "All Roles"),
+        "maxAllowedDays": max_days,
+        "weeks": weeks_list,
         "rosterRows": config.get("rosterRows", []),
-        "summary": summary
+        "summary": summary,
+        "splitups": splitups
     }
+
+@router.post("/duty-summary/splitup", response_description="Save roaster splitup overrides")
+async def save_roaster_splitup(
+    payload: dict = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    is_superuser = current_user.get("isSuperuser", False)
+    privileges = current_user.get("privileges", [])
+    if not is_superuser and "Create Roaster" not in privileges and "Update Roaster" not in privileges:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    department = payload.get("department")
+    cycleStart = payload.get("cycleStart")
+    splitups = payload.get("splitups", {})
+
+    if not department or not cycleStart:
+        raise HTTPException(status_code=400, detail="Missing department or cycleStart")
+
+    roaster_splitup_collection = db.get_collection("roaster_splitup")
+    await roaster_splitup_collection.update_one(
+        {"department": department, "cycleStart": cycleStart},
+        {"$set": {
+            "department": department,
+            "cycleStart": cycleStart,
+            "splitups": splitups,
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+            "updatedBy": current_user.get("sub")
+        }},
+        upsert=True
+    )
+    return {"status": "success"}
+
 

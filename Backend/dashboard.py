@@ -94,13 +94,23 @@ async def get_dashboard_summary(
     show_roaster_reminder = False
     try:
         dt_obj = datetime.strptime(date, "%Y-%m-%d")
-        if dt_obj.weekday() == 4:  # Friday is 4
-            show_roaster_reminder = True
+        if dt_obj.weekday() >= 4:  # Friday is 4, Saturday is 5, Sunday is 6
+            start_of_week = dt_obj - timedelta(days=dt_obj.weekday())
+            next_week_start = start_of_week + timedelta(days=7)
+            next_week_start_str = next_week_start.strftime("%Y-%m-%d")
+            next_week_end_str = (next_week_start + timedelta(days=6)).strftime("%Y-%m-%d")
+            
+            next_week_roster = await roasters_col.find_one({
+                "date": {"$gte": next_week_start_str, "$lte": next_week_end_str},
+                "department": active_dept
+            })
+            if not next_week_roster:
+                show_roaster_reminder = True
     except Exception:
         pass
         
     # 5. Fetch pending works
-    works_query = {"status": {"$ne": "Closed"}}
+    works_query = {"status": "Pending"}
     if is_superuser:
         pass
     elif is_dept_head:

@@ -157,7 +157,7 @@ function Table<T extends { id?: string | number }>(props: ReusableTableProps<T>)
       {page !== undefined && rowsPerPage !== undefined && totalCount !== undefined && onPageChange && onRowsPerPageChange && (
         <Box sx={{ borderTop: '1px solid #e0e0e0' }}>
           <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
+            rowsPerPageOptions={[25, 50, 100]}
             component="div"
             count={totalCount}
             rowsPerPage={rowsPerPage}

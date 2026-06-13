@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 export interface ValidationError {
   date: string;
   shift: string;
@@ -113,6 +115,29 @@ export const validateRoster = (
       });
     }
   });
+
+  // Rule 3: Those who were in Shift 4 (UI Shift-3) on Sunday of the previous week cannot enter Shift 1, 2, and 3 (UI Shift-1, Shift-2, Shift-3) on Monday.
+  if (weekDates.length > 0) {
+    const monday = weekDates[0];
+    const prevSunday = dayjs(monday).subtract(1, 'day').format('YYYY-MM-DD');
+    const prevSundayShift3Assignees = rosterData[`${prevSunday}_Shift-3`]?.assignees || [];
+
+    prevSundayShift3Assignees.forEach((username) => {
+      if (username) {
+        ['Shift-1', 'Shift-2', 'Shift-3'].forEach((colShift) => {
+          const mondayAssignees = rosterData[`${monday}_${colShift}`]?.assignees || [];
+          if (mondayAssignees.includes(username)) {
+            errors.push({
+              date: monday,
+              shift: colShift,
+              username,
+              reason: `Cannot enter ${colShift.replace('-', ' ')} on Monday after being in Shift 4 (Shift-3 Row 1/2) on Sunday of the previous week`,
+            });
+          }
+        });
+      }
+    });
+  }
 
   return errors;
 };

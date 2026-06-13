@@ -34,6 +34,7 @@ const ObservationList: React.FC = () => {
   const todayStr = new Date().toISOString().split('T')[0];
   const [statusFilter, setStatusFilter] = useTableState('obs_status', 'Not Resolved');
   const [dateFilter, setDateFilter] = useTableState('obs_date', '');
+  const [categoryFilter, setCategoryFilter] = useTableState('obs_category', '');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingObs, setEditingObs] = useState<any>(null);
@@ -47,7 +48,8 @@ const ObservationList: React.FC = () => {
     informedTo: [] as string[],
     informedToOther: '',
     remarks: '',
-    status: 'Not Resolved'
+    status: 'Not Resolved',
+    comments: [] as any[]
   };
   const [formData, setFormData] = useState(initialFormData);
   const [showOther, setShowOther] = useState(false);
@@ -69,12 +71,25 @@ const ObservationList: React.FC = () => {
       limit: rowsPerPage,
       search: searchQuery,
       status_filter: statusFilter,
-      date_filter: dateFilter || undefined
+      date_filter: dateFilter || undefined,
+      category_filter: categoryFilter || undefined
     }));
-  }, [dispatch, page, rowsPerPage, statusFilter, dateFilter, searchQuery]);
+  }, [dispatch, page, rowsPerPage, statusFilter, dateFilter, categoryFilter, searchQuery]);
+
+  const currentObs = observations.find((o: any) => (o._id || o.id) === (editingObs?._id || editingObs?.id)) || editingObs;
+
+  useEffect(() => {
+    if (currentObs) {
+      setFormData(prev => ({
+        ...prev,
+        comments: currentObs.comments || []
+      }));
+    }
+  }, [currentObs?.comments]);
 
   const handleOpenModal = (obs?: any, editMode: boolean = false) => {
-    setIsEditMode(editMode);
+    const isResolved = obs?.status === 'Resolved';
+    setIsEditMode(isResolved ? false : editMode);
     if (obs) {
       setEditingObs(obs);
       setFormData({
@@ -86,7 +101,8 @@ const ObservationList: React.FC = () => {
         informedTo: Array.isArray(obs.informedTo) ? obs.informedTo : (obs.informedTo ? [obs.informedTo] : []),
         informedToOther: obs.informedToOther || '',
         remarks: obs.remarks || '',
-        status: obs.status
+        status: obs.status,
+        comments: obs.comments || []
       });
       setShowOther(Array.isArray(obs.informedTo) ? obs.informedTo.includes('Other') : obs.informedTo === 'Other');
     } else {
@@ -134,7 +150,8 @@ const ObservationList: React.FC = () => {
       limit: rowsPerPage,
       search: searchQuery,
       status_filter: statusFilter,
-      date_filter: dateFilter || undefined
+      date_filter: dateFilter || undefined,
+      category_filter: categoryFilter || undefined
     }));
   };
 
@@ -178,6 +195,7 @@ const ObservationList: React.FC = () => {
       search: searchQuery,
       status_filter: statusFilter,
       date_filter: dateFilter || undefined,
+      category_filter: categoryFilter || undefined,
     });
 
     const rows = response.data.map((row) => {
@@ -264,7 +282,7 @@ const ObservationList: React.FC = () => {
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          {hasUpdatePrivilege && (
+          {hasUpdatePrivilege && row.status !== 'Resolved' && (
             <Tooltip title="Edit Observation">
               <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }} onClick={(e) => { e.stopPropagation(); handleOpenModal(row, true); }}>
                 <EditIcon fontSize="small" />
@@ -303,6 +321,7 @@ const ObservationList: React.FC = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <FormControl size="small">
             <Select
+              displayEmpty
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
               sx={{ minWidth: 150, height: 40 }}
@@ -310,6 +329,19 @@ const ObservationList: React.FC = () => {
               <MenuItem value="Not Resolved">Not Resolved</MenuItem>
               <MenuItem value="Resolved">Resolved</MenuItem>
               <MenuItem value="">All Observations</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small">
+            <Select
+              displayEmpty
+              value={categoryFilter}
+              onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }}
+              sx={{ minWidth: 150, height: 40 }}
+            >
+              <MenuItem value="">All Categories</MenuItem>
+              {categoryOptions.map(opt => (
+                <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+              ))}
             </Select>
           </FormControl>
           <TextField 
@@ -373,7 +405,7 @@ const ObservationList: React.FC = () => {
       <ObservationFormModal
         isModalOpen={isModalOpen}
         handleCloseModal={handleCloseModal}
-        editingObs={editingObs}
+        editingObs={currentObs}
         isEditMode={isEditMode}
         setIsEditMode={setIsEditMode}
         hasUpdatePrivilege={hasUpdatePrivilege}

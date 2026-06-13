@@ -333,6 +333,21 @@ class ObservationModel(BaseModel):
     informedToOther: Optional[str] = None
     loggedBy: str
     status: str = "Not Resolved"
+    remarks: Optional[str] = ""
+    comments: List[dict] = Field(default_factory=list)
+
+    @field_validator('comments', mode='before')
+    @classmethod
+    def parse_comments(cls, v: Any) -> List[dict]:
+        if not isinstance(v, list):
+            return []
+        parsed = []
+        for c in v:
+            if isinstance(c, str):
+                parsed.append({"text": c, "user": "Unknown", "timestamp": "2023-01-01T00:00:00.000Z"})
+            elif isinstance(c, dict):
+                parsed.append(c)
+        return parsed
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -349,6 +364,8 @@ class CreateObservationModel(BaseModel):
     informedToOther: Optional[str] = None
     loggedBy: str
     status: str = "Not Resolved"
+    remarks: Optional[str] = ""
+    comments: List[dict] = Field(default_factory=list)
 
 class UpdateObservationModel(BaseModel):
     observedDate: Optional[str] = None
@@ -359,6 +376,8 @@ class UpdateObservationModel(BaseModel):
     informedTo: Optional[Union[str, List[str]]] = None
     informedToOther: Optional[str] = None
     status: Optional[str] = None
+    remarks: Optional[str] = None
+    comments: Optional[List[dict]] = None
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

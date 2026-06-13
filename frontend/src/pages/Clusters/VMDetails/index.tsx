@@ -24,7 +24,7 @@ const VMDetails = ({ clusterId }: VMDetailsProps) => {
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [rowsPerPage, setRowsPerPage] = useState(25);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<VMDetailsData | null>(null);
@@ -198,7 +198,7 @@ const VMDetails = ({ clusterId }: VMDetailsProps) => {
                     </Table>
                 </TableContainer>
                 <TablePagination
-                    rowsPerPageOptions={[5, 10, 25]}
+                    rowsPerPageOptions={[25, 50, 100]}
                     component="div"
                     count={totalCount}
                     rowsPerPage={rowsPerPage}

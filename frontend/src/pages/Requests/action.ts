@@ -6,6 +6,7 @@ interface FetchParams {
   limit?: number;
   search?: string;
   completed?: boolean;
+  requestType?: string;
   pagination?: boolean;
 }
 

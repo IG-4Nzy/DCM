@@ -6,6 +6,7 @@ import type { AppDispatch, RootState } from '../../store';
 import { fetchObservationCategories, createObservationCategory, updateObservationCategory, deleteObservationCategory } from './action';
 import { fetchDepartments } from '../Departments/action';
 import { fetchUsers } from '../Users/action';
+import { fetchRoles } from '../Roles/action';
 import Table, { type Column } from '../../components/Table';
 import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';
@@ -22,6 +23,7 @@ const CategoryList: React.FC = () => {
   const { isSuperuser, privileges } = useSelector((state: RootState) => state.auth);
   const { departments } = useSelector((state: RootState) => state.departments || { departments: [] });
   const { users } = useSelector((state: RootState) => state.users || { users: [] });
+  const { roles } = useSelector((state: RootState) => state.roles || { roles: [] });
 
   const [page, setPage] = useTableState('category_page', 0);
   const [rowsPerPage, setRowsPerPage] = useTableState('category_rowsPerPage', 10);
@@ -48,6 +50,7 @@ const CategoryList: React.FC = () => {
     }));
     dispatch(fetchDepartments({ pagination: false }));
     dispatch(fetchUsers({ pagination: false }));
+    dispatch(fetchRoles({ skip: 0, limit: 1000, sortBy: 'name', order: 'asc', search: '', pagination: false }));
   }, [dispatch, page, rowsPerPage, searchQuery]);
 
   const handleOpenModal = (category?: any) => {
@@ -170,19 +173,12 @@ const CategoryList: React.FC = () => {
   const paginatedCategories = displayedCategories.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   // Build options for multi-select reportsTo dropdown
+  const roleOptions = (roles || []).map((r: any) => ({ value: r.name, label: `${r.name} (Role)` }));
   const deptOptions = (departments || []).map((d: any) => ({ value: d.name, label: `${d.name} (Department)` }));
   
-  const deptHeads = Array.from(new Set((departments || []).filter((d: any) => d.departmentHead).map((d: any) => d.departmentHead)));
-  const deptHeadOptions = deptHeads.map((dh: any) => {
-    const u = (users || []).find((user: any) => user.username === dh || user.id === dh);
-    const label = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : dh;
-    return { value: label, label: `${label} (Dept Head)` };
-  });
-
   const reportsToOptions = [
-    { value: 'Server Admin', label: 'Server Admin' },
-    ...deptOptions,
-    ...deptHeadOptions
+    ...roleOptions,
+    ...deptOptions
   ];
 
   return (

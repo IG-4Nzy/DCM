@@ -182,6 +182,125 @@ async def update_periodic_activity(
     update_data = payload.model_dump(by_alias=True, exclude={"id", "_id"}, exclude_none=True)
     update_data["updatedAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
+    # Handle service list regeneration/update if settings changed
+    is_amc = payload.isAmc if payload.isAmc is not None else existing.get("isAmc", False)
+    
+    if is_amc:
+        first_service_date = payload.firstServiceDate or existing.get("firstServiceDate")
+        service_repeat_months = payload.serviceRepeatMonths or existing.get("serviceRepeatMonths")
+        due_date = payload.dueDate or existing.get("dueDate")
+        
+        amc_changed = (
+            is_amc != existing.get("isAmc") or
+            first_service_date != existing.get("firstServiceDate") or
+            service_repeat_months != existing.get("serviceRepeatMonths") or
+            due_date != existing.get("dueDate")
+        )
+        
+        if amc_changed and first_service_date and service_repeat_months and due_date:
+            try:
+                expiry_dt = datetime.strptime(due_date, "%Y-%m-%d")
+                curr_dt = datetime.strptime(first_service_date, "%Y-%m-%d")
+                target_dates = []
+                while curr_dt <= expiry_dt:
+                    target_dates.append(curr_dt.strftime("%Y-%m-%d"))
+                    
+                    # Advance by service_repeat_months
+                    month = curr_dt.month - 1 + service_repeat_months
+                    year = curr_dt.year + month // 12
+                    month = month % 12 + 1
+                    day = min(curr_dt.day, [31,
+                        29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,
+                        31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
+                    curr_dt = curr_dt.replace(year=year, month=month, day=day)
+                
+                existing_services = existing.get("services", [])
+                completed_services = [s for s in existing_services if s.get("status") == "completed"]
+                completed_services_sorted = sorted(
+                    completed_services,
+                    key=lambda x: x.get("dueDate") or x.get("completedDate") or ""
+                )
+                
+                new_services = []
+                n_completed = len(completed_services_sorted)
+                for i, target_date in enumerate(target_dates):
+                    if i < n_completed:
+                        service = completed_services_sorted[i]
+                        service["dueDate"] = target_date
+                        new_services.append(service)
+                    else:
+                        new_services.append({
+                            "id": str(uuid.uuid4()),
+                            "dueDate": target_date,
+                            "status": "pending",
+                            "completedDate": None,
+                            "completedTime": None,
+                            "remarks": "",
+                            "reportName": None,
+                            "reportUrl": None
+                        })
+                if n_completed > len(target_dates):
+                    for i in range(len(target_dates), n_completed):
+                        new_services.append(completed_services_sorted[i])
+                
+                update_data["services"] = new_services
+            except Exception as e:
+                print(f"Error regenerating AMC services: {e}")
+        
+        # Clear repeating parameters in database
+        update_data["repeatInterval"] = None
+        update_data["repeatUnit"] = None
+        update_data["repeatCount"] = None
+    else:
+        repeat_interval = payload.repeatInterval or existing.get("repeatInterval")
+        repeat_unit = payload.repeatUnit or existing.get("repeatUnit")
+        repeat_count = payload.repeatCount if payload.repeatCount is not None else existing.get("repeatCount")
+        due_date = payload.dueDate or existing.get("dueDate")
+        
+        repeat_changed = (
+            is_amc != existing.get("isAmc") or
+            repeat_interval != existing.get("repeatInterval") or
+            repeat_unit != existing.get("repeatUnit") or
+            repeat_count != existing.get("repeatCount") or
+            due_date != existing.get("dueDate")
+        )
+        
+        if repeat_changed and repeat_interval and repeat_unit:
+            existing_services = existing.get("services", [])
+            completed_services = [s for s in existing_services if s.get("status") == "completed"]
+            pending_services = [s for s in existing_services if s.get("status") != "completed"]
+            
+            if pending_services:
+                pending_service = pending_services[0]
+                pending_service["dueDate"] = due_date
+                update_data["services"] = completed_services + [pending_service]
+            else:
+                completed_count = len(completed_services)
+                should_create = False
+                if repeat_count is None or repeat_count == -1:
+                    should_create = True
+                elif completed_count < repeat_count:
+                    should_create = True
+                    
+                if should_create:
+                    new_pending = {
+                        "id": str(uuid.uuid4()),
+                        "dueDate": due_date,
+                        "status": "pending",
+                        "completedDate": None,
+                        "completedTime": None,
+                        "remarks": "",
+                        "reportName": None,
+                        "reportUrl": None
+                    }
+                    update_data["services"] = completed_services + [new_pending]
+                else:
+                    update_data["services"] = completed_services
+        
+        # Clear AMC parameters in database
+        update_data["firstServiceDate"] = None
+        update_data["serviceRepeatMonths"] = None
+
     await collection.update_one({"_id": ObjectId(id)}, {"$set": update_data})
     updated = await collection.find_one({"_id": ObjectId(id)})
     return serialize_doc(updated)
