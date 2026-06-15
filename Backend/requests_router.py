@@ -328,6 +328,39 @@ async def list_items(
     return {"data": items, "total": total}
 
 
+@router.get("/types", response_description="List all request types")
+async def get_request_types():
+    types_col = db.get_collection("request_types")
+    count = await types_col.count_documents({})
+    if count == 0:
+        default_types = [
+            {"name": "VM Creation"},
+            {"name": "DC Entry"},
+            {"name": "Hardware Issuance"},
+            {"name": "Hardware Replacement"}
+        ]
+        await types_col.insert_many(default_types)
+    
+    cursor = types_col.find({})
+    types = await cursor.to_list(length=100)
+    return [{"id": str(t["_id"]), "name": t["name"]} for t in types]
+
+
+@router.post("/types", response_description="Create a new request type")
+async def create_request_type(payload: dict = Body(...), current_user: dict = Depends(get_current_user)):
+    name = payload.get("name")
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+        
+    types_col = db.get_collection("request_types")
+    existing = await types_col.find_one({"name": {"$regex": f"^{name}$", "$options": "i"}})
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Request type '{name}' already exists")
+        
+    res = await types_col.insert_one({"name": name})
+    return {"id": str(res.inserted_id), "name": name}
+
+
 @router.get("/visitor-logs", response_description="List all visitor logs", dependencies=[Depends(require_privilege("View Request"))])
 async def list_visitor_logs(
     skip: int = Query(0, ge=0),

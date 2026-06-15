@@ -1,13 +1,4 @@
 Add logs ("user" created role - Admin , "user" updated roaster at date and time)..
 
-in inventory, add returnable items tab, when creating a inventory item,give option (returnable or not - checkbox),
-and in returnable items tab,on row click,give option give the item,and when return ,need to mark returned with time and date, when give,then also mark date and time.
-history should be maintained in history tab 
-
-in observations ,need to mark repeated Observations,by clicking reapeated issue checkbox and choosing the repeated obseravation from the dropdown.also in the table view if it is repeated show count and on row click ,give full details - which observation is repeated like that..
-
-for requests page,give option to create request types.
-
-
 
 Remove download button from mobile app.

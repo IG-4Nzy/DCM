@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../../components/Modal';
 import TextField from '../../components/TextField';
-import { Button } from '@mui/material';
+import { Button, FormControlLabel, Checkbox } from '@mui/material';
 
 interface PropType {
   isModalOpen: boolean;
@@ -24,6 +24,7 @@ const InventoryFormModal: React.FC<PropType> = ({
   const [quantity, setQuantity] = useState(1);
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(getLocalDatetime());
+  const [isReturnable, setIsReturnable] = useState(false);
 
   useEffect(() => {
     if (isModalOpen) {
@@ -31,12 +32,13 @@ const InventoryFormModal: React.FC<PropType> = ({
       setQuantity(1);
       setDescription('');
       setDate(getLocalDatetime());
+      setIsReturnable(false);
     }
   }, [isModalOpen]);
 
   const handleSubmit = () => {
     if (!itemName) return;
-    onSubmit({ itemName, quantity, description, date });
+    onSubmit({ itemName, quantity, description, date, isReturnable });
     handleCloseModal();
   };
 
@@ -72,6 +74,19 @@ const InventoryFormModal: React.FC<PropType> = ({
         fullWidth
         style={{ marginBottom: '1rem' }}
       />
+      
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={isReturnable}
+            onChange={(e) => setIsReturnable(e.target.checked)}
+            color="primary"
+          />
+        }
+        label="Returnable Item"
+        style={{ marginBottom: '1rem', display: 'block' }}
+      />
+
       <TextField
         label="Description"
         value={description}

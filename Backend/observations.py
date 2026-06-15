@@ -72,6 +72,50 @@ async def delete_category(id: str):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     raise HTTPException(status_code=404, detail=f"Category {id} not found")
 
+async def enrich_observation(obs: dict):
+    if not obs:
+        return obs
+    obs_id = str(obs["_id"])
+    parent_id = obs.get("repeatedFromId")
+    group_parent_id = parent_id if parent_id else obs_id
+    
+    children_cursor = obs_collection.find({"repeatedFromId": group_parent_id})
+    children = await children_cursor.to_list(length=None)
+    
+    total_occurrences = 1 + len(children)
+    obs["repeatCount"] = total_occurrences if total_occurrences > 1 else 0
+    
+    if total_occurrences > 1:
+        parent_obs = None
+        if group_parent_id != obs_id:
+            parent_obs = await obs_collection.find_one({"_id": ObjectId(group_parent_id)})
+        else:
+            parent_obs = obs
+        
+        if parent_obs:
+            obs["repeatedDetails"] = {
+                "parent": {
+                    "id": str(parent_obs["_id"]),
+                    "observationId": parent_obs.get("observationId", ""),
+                    "description": parent_obs.get("description", ""),
+                    "observedDate": parent_obs.get("observedDate", "")
+                },
+                "children": [
+                    {
+                        "id": str(c["_id"]),
+                        "observationId": c.get("observationId", ""),
+                        "description": c.get("description", ""),
+                        "observedDate": c.get("observedDate", "")
+                    }
+                    for c in children
+                ]
+            }
+        else:
+            obs["repeatedDetails"] = None
+    else:
+        obs["repeatedDetails"] = None
+    return obs
+
 @router.get("/", response_description="List all observations", response_model=PaginatedObservationsModel, response_model_by_alias=False)
 async def list_observations(
     skip: int = Query(0, ge=0),
@@ -131,6 +175,9 @@ async def list_observations(
         observations = await cursor.to_list(length=limit)
     else:
         observations = await cursor.to_list(length=None)
+        
+    for obs in observations:
+        await enrich_observation(obs)
             
     return {"data": observations, "total": total}
 
@@ -168,6 +215,7 @@ async def create_observation(
     from notification_helper import log_page_update
     await log_page_update("observations", department=user_dept, username=current_user.get("sub"))
 
+    await enrich_observation(created_obs)
     return created_obs
 
 @router.get("/{id}", response_description="Get a single observation", response_model=ObservationModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Observations"))])
@@ -179,6 +227,7 @@ async def show_observation(id: str):
     if obs is None:
         raise HTTPException(status_code=404, detail=f"Observation {id} not found")
 
+    await enrich_observation(obs)
     return obs
 
 @router.put("/{id}", response_description="Update an observation", response_model=ObservationModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Observation"))])
@@ -205,9 +254,11 @@ async def update_observation(
 
                 from notification_helper import log_page_update
                 await log_page_update("observations", department=user_dept, username=current_user.get("sub"))
+                await enrich_observation(updated_obs)
                 return updated_obs
 
     if (existing_obs := await obs_collection.find_one({"_id": ObjectId(id)})) is not None:
+        await enrich_observation(existing_obs)
         return existing_obs
 
     raise HTTPException(status_code=404, detail=f"Observation {id} not found")

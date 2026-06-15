@@ -13,6 +13,13 @@ export interface ObservationData {
   status: string;
   remarks?: string;
   comments?: { text: string; user: string; timestamp: string }[];
+  isRepeated?: boolean;
+  repeatedFromId?: string;
+  repeatCount?: number;
+  repeatedDetails?: {
+    parent: { id: string; observationId: string; description: string; observedDate: string };
+    children: { id: string; observationId: string; description: string; observedDate: string }[];
+  };
 }
 
 export interface ObservationCategoryData {

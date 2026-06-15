@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Box, Paper, Tooltip, IconButton, Chip, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Box, Paper, Tooltip, IconButton, Chip, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';
@@ -13,6 +13,7 @@ import type { RequestData } from './model';
 import type { RootState, AppDispatch } from '../../store';
 import RequestFormModal from './RequestFormModal';
 import RequestViewModal from './RequestViewModal';
+import request from '../../services/request';
 
 // Need fetchUsers to show creator name properly
 import { fetchUsers } from '../Users/action';
@@ -49,6 +50,15 @@ const Requests: React.FC = () => {
 
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedViewRequest, setSelectedViewRequest] = useState<RequestData | null>(null);
+
+    const [requestTypes, setRequestTypes] = useState<string[]>([
+        'VM Creation',
+        'DC Entry',
+        'Hardware Issuance',
+        'Hardware Replacement'
+    ]);
+    const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
+    const [newTypeName, setNewTypeName] = useState('');
 
     const hasCreatePrivilege = isSuperuser || hasPrivilege(PRIVILEGES.REQUEST_CREATE);
     const hasViewPrivilege = isSuperuser || hasPrivilege(PRIVILEGES.REQUEST_VIEW);
@@ -88,11 +98,42 @@ const Requests: React.FC = () => {
         }
     }, [page, rowsPerPage, searchQuery, statusFilter, requestTypeFilter, showToast, hasViewPrivilege, isViewModalOpen, selectedViewRequest]);
 
+    const fetchRequestTypes = useCallback(async () => {
+        try {
+            const res = await request.get('/api/requests/types');
+            if (res.data && Array.isArray(res.data)) {
+                setRequestTypes(res.data.map((t: any) => t.name));
+            }
+        } catch (err) {
+            console.error('Failed to fetch request types:', err);
+        }
+    }, []);
+
     useEffect(() => {
         loadData();
+        fetchRequestTypes();
         dispatch(fetchUsers({ pagination: false }));
         dispatch(fetchInventory({ pagination: false }));
-    }, [loadData, dispatch]);
+    }, [loadData, fetchRequestTypes, dispatch]);
+
+    const handleAddRequestType = async () => {
+        if (!newTypeName.trim()) {
+            showToast('Request type name cannot be empty', 'error');
+            return;
+        }
+        try {
+            setLoading(true);
+            await request.post('/api/requests/types', { name: newTypeName.trim() });
+            showToast('Request type created successfully', 'success');
+            setNewTypeName('');
+            setIsTypeModalOpen(false);
+            await fetchRequestTypes();
+        } catch (err: any) {
+            showToast(err.response?.data?.detail || err.message || 'Failed to create request type', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleOpenModal = (req?: RequestData) => {
         setEditingRequest(req || null);
@@ -402,16 +443,18 @@ const Requests: React.FC = () => {
                             sx={{ bgcolor: '#fff' }}
                         >
                             <MenuItem value="all">All Request Types</MenuItem>
-                            <MenuItem value="VM Creation">VM Creation</MenuItem>
-                            <MenuItem value="DC Entry">DC Entry</MenuItem>
-                            <MenuItem value="Hardware Issuance">Hardware Issuance</MenuItem>
-                            <MenuItem value="Hardware Replacement">Hardware Replacement</MenuItem>
+                            {requestTypes.map((type) => (
+                                <MenuItem key={type} value={type}>{type}</MenuItem>
+                            ))}
                         </Select>
                     </FormControl>
                 </Box>
 
                 {hasCreatePrivilege && (
                     <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button variant="outlined" color="primary" startIcon={<AddIcon />} onClick={() => setIsTypeModalOpen(true)}>
+                            Add Request Type
+                        </Button>
                         <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => handleOpenModal()}>
                             Create Request
                         </Button>
@@ -442,7 +485,33 @@ const Requests: React.FC = () => {
                 editingRequest={editingRequest}
                 onSubmit={handleSubmit}
                 isSuperuser={isSuperuser}
+                requestTypes={requestTypes}
             />
+
+            <Dialog open={isTypeModalOpen} onClose={() => setIsTypeModalOpen(false)} maxWidth="xs" fullWidth>
+                <DialogTitle sx={{ pb: 1, fontWeight: 'bold', fontSize: '1.25rem', color: '#333' }}>Add Request Type</DialogTitle>
+                <DialogContent dividers>
+                    <Box sx={{ pt: 1 }}>
+                        <TextField
+                            label="Request Type Name"
+                            fullWidth
+                            required
+                            value={newTypeName}
+                            onChange={(e) => setNewTypeName(e.target.value)}
+                            placeholder="e.g. Server Access"
+                            autoFocus
+                        />
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setIsTypeModalOpen(false)} variant="text" color="inherit">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleAddRequestType} variant="contained" color="primary" disabled={loading}>
+                        Save
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             <RequestViewModal
                 isOpen={isViewModalOpen}

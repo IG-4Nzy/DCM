@@ -16,27 +16,22 @@ interface RequestFormModalProps {
   editingRequest: RequestData | null;
   onSubmit: (data: Partial<RequestData>) => Promise<void>;
   isSuperuser?: boolean;
+  requestTypes: string[];
 }
-
-const REQUEST_TYPES = [
-  'VM Creation',
-  'DC Entry',
-  'Hardware Issuance',
-  'Hardware Replacement'
-];
 
 const RequestFormModal: React.FC<RequestFormModalProps> = ({
   isModalOpen,
   handleCloseModal,
   editingRequest,
   onSubmit,
-  isSuperuser
+  isSuperuser,
+  requestTypes
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { showToast } = useToast();
   const { inventory } = useSelector((state: RootState) => state.inventory);
 
-  const [requestType, setRequestType] = useState(REQUEST_TYPES[0]);
+  const [requestType, setRequestType] = useState('');
   const [description, setDescription] = useState('');
   const [purpose, setPurpose] = useState('');
   const [status, setStatus] = useState('');
@@ -85,21 +80,21 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
 
   useEffect(() => {
     if (editingRequest) {
-      setRequestType(editingRequest.requestType || editingRequest.category || REQUEST_TYPES[0]);
+      setRequestType(editingRequest.requestType || editingRequest.category || (requestTypes[0] || ''));
       setDescription(editingRequest.description || '');
       setPurpose(editingRequest.purpose || '');
       setStatus(editingRequest.status || 'Pending');
       setRemarks(editingRequest.remarks || '');
       setDetails(editingRequest.details || {});
     } else {
-      setRequestType(REQUEST_TYPES[0]);
+      setRequestType(requestTypes[0] || '');
       setDescription('');
       setPurpose('');
       setStatus('');
       setRemarks('');
       setDetails({});
     }
-  }, [editingRequest, isModalOpen]);
+  }, [editingRequest, isModalOpen, requestTypes]);
 
   const handleDetailChange = (field: string, value: any) => {
     setDetails((prev: any) => ({ ...prev, [field]: value }));
@@ -165,7 +160,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                 }}
                 disabled={!!editingRequest}
               >
-                {REQUEST_TYPES.map(type => (
+                {requestTypes.map(type => (
                   <MenuItem key={type} value={type}>{type}</MenuItem>
                 ))}
               </Select>

@@ -3,7 +3,7 @@ import request from '../../services/request';
 
 export const fetchInventory = createAsyncThunk(
   'inventory/fetchInventory',
-  async (params: { skip?: number; limit?: number; search?: string; sort_by?: string; order?: string }, { rejectWithValue }) => {
+  async (params: { skip?: number; limit?: number; search?: string; sort_by?: string; order?: string; isReturnable?: boolean }, { rejectWithValue }) => {
     try {
       const response = await request.get('/api/inventory', { params });
       return response.data;
@@ -59,6 +59,30 @@ export const bulkCreateInventory = createAsyncThunk(
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.detail || 'Failed to bulk create items');
+    }
+  }
+);
+
+export const giveInventoryItem = createAsyncThunk(
+  'inventory/giveInventoryItem',
+  async ({ id, data }: { id: string; data: { givenTo: string; date: string } }, { rejectWithValue }) => {
+    try {
+      const response = await request.put(`/api/inventory/${id}/give`, data);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to check out item');
+    }
+  }
+);
+
+export const returnInventoryItem = createAsyncThunk(
+  'inventory/returnInventoryItem',
+  async ({ id, data }: { id: string; data: { holderId: string; date: string } }, { rejectWithValue }) => {
+    try {
+      const response = await request.put(`/api/inventory/${id}/return`, data);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to return item');
     }
   }
 );

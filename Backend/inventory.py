@@ -5,7 +5,8 @@ from fastapi.responses import JSONResponse
 from typing import Optional
 from database import db
 from models import (
-    InventoryModel, CreateInventoryModel, UpdateInventoryModel, PaginatedInventoryModel, InventoryHistoryModel
+    InventoryModel, CreateInventoryModel, UpdateInventoryModel, PaginatedInventoryModel, InventoryHistoryModel,
+    InventoryGiveModel, InventoryReturnModel
 )
 from bson import ObjectId
 from datetime import datetime
@@ -25,6 +26,7 @@ async def list_inventory(
     sort_by: Optional[str] = Query(None),
     order: str = Query("desc"),
     search: Optional[str] = None,
+    isReturnable: Optional[bool] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
     query = {}
@@ -35,6 +37,12 @@ async def list_inventory(
 
     if only_dept_scoped:
         query["department"] = current_user.get("department") or "None"
+
+    if isReturnable is not None:
+        if isReturnable:
+            query["isReturnable"] = True
+        else:
+            query["isReturnable"] = {"$ne": True}
 
     if search:
         query["$or"] = [
@@ -77,7 +85,9 @@ async def create_inventory(item: CreateInventoryModel = Body(...), current_user:
         "department": user_dept,
         "lastUpdatedDate": item.date,
         "lastUpdatedBy": username,
-        "history": [history_entry]
+        "history": [history_entry],
+        "isReturnable": item.isReturnable or False,
+        "currentHolders": []
     }
     
     new_inv = await inventory_collection.insert_one(inv_dict)
@@ -291,3 +301,106 @@ async def bulk_create_inventory(file: UploadFile = File(...), current_user: dict
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error parsing file: {str(e)}")
+
+@router.put("/{id}/give", response_description="Give returnable inventory item to user", response_model=InventoryModel, response_model_by_alias=False)
+async def give_inventory_item(id: str, give_data: InventoryGiveModel = Body(...), current_user: dict = Depends(require_privilege("Update Inventory"))):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    existing_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
+    if existing_inv is None:
+        raise HTTPException(status_code=404, detail=f"Item {id} not found")
+
+    if not existing_inv.get("isReturnable"):
+        raise HTTPException(status_code=400, detail="Item is not returnable")
+
+    current_holders = existing_inv.get("currentHolders", [])
+    total_qty = existing_inv.get("quantity", 0)
+    
+    if len(current_holders) >= total_qty:
+        raise HTTPException(status_code=400, detail="Insufficient quantity available to give out")
+
+    username = current_user.get("sub", "Unknown")
+    session_id = str(ObjectId())
+    
+    new_holder = {
+        "id": session_id,
+        "givenTo": give_data.givenTo,
+        "givenDate": give_data.date,
+        "givenBy": username
+    }
+    
+    remaining_qty = total_qty - len(current_holders) - 1
+
+    history_entry = {
+        "date": give_data.date,
+        "action": "given",
+        "quantityChange": -1,
+        "remainingQuantity": remaining_qty,
+        "user": username,
+        "givenTo": give_data.givenTo
+    }
+
+    await inventory_collection.update_one(
+        {"_id": ObjectId(id)},
+        {
+            "$push": {
+                "currentHolders": new_holder,
+                "history": history_entry
+            },
+            "$set": {
+                "lastUpdatedDate": give_data.date,
+                "lastUpdatedBy": username
+            }
+        }
+    )
+
+    updated_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
+    return updated_inv
+
+@router.put("/{id}/return", response_description="Return a returnable inventory item", response_model=InventoryModel, response_model_by_alias=False)
+async def return_inventory_item(id: str, return_data: InventoryReturnModel = Body(...), current_user: dict = Depends(require_privilege("Update Inventory"))):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    existing_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
+    if existing_inv is None:
+        raise HTTPException(status_code=404, detail=f"Item {id} not found")
+
+    current_holders = existing_inv.get("currentHolders", [])
+    holder = next((h for h in current_holders if h["id"] == return_data.holderId), None)
+    if not holder:
+        raise HTTPException(status_code=404, detail="Holder checkout session not found for this item")
+
+    username = current_user.get("sub", "Unknown")
+    total_qty = existing_inv.get("quantity", 0)
+    
+    remaining_qty = total_qty - len(current_holders) + 1
+
+    history_entry = {
+        "date": return_data.date,
+        "action": "returned",
+        "quantityChange": 1,
+        "remainingQuantity": remaining_qty,
+        "user": username,
+        "givenTo": holder["givenTo"]
+    }
+
+    await inventory_collection.update_one(
+        {"_id": ObjectId(id)},
+        {
+            "$pull": {
+                "currentHolders": {"id": return_data.holderId}
+            },
+            "$push": {
+                "history": history_entry
+            },
+            "$set": {
+                "lastUpdatedDate": return_data.date,
+                "lastUpdatedBy": username
+            }
+        }
+    )
+
+    updated_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
+    return updated_inv

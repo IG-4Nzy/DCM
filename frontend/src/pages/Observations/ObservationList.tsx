@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Paper, Tooltip, IconButton, MenuItem, Select, FormControl, TextField } from '@mui/material';
+import { Box, Paper, Tooltip, IconButton, MenuItem, Select, FormControl, TextField, Chip } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdDownload as DownloadIcon } from 'react-icons/md';
 import type { AppDispatch, RootState } from '../../store';
 import { fetchObservations, createObservation, updateObservation, deleteObservation, downloadObservations } from './action';
@@ -49,7 +49,9 @@ const ObservationList: React.FC = () => {
     informedToOther: '',
     remarks: '',
     status: 'Not Resolved',
-    comments: [] as any[]
+    comments: [] as any[],
+    isRepeated: false,
+    repeatedFromId: ''
   };
   const [formData, setFormData] = useState(initialFormData);
   const [showOther, setShowOther] = useState(false);
@@ -102,7 +104,9 @@ const ObservationList: React.FC = () => {
         informedToOther: obs.informedToOther || '',
         remarks: obs.remarks || '',
         status: obs.status,
-        comments: obs.comments || []
+        comments: obs.comments || [],
+        isRepeated: obs.isRepeated || false,
+        repeatedFromId: obs.repeatedFromId || ''
       });
       setShowOther(Array.isArray(obs.informedTo) ? obs.informedTo.includes('Other') : obs.informedTo === 'Other');
     } else {
@@ -136,6 +140,10 @@ const ObservationList: React.FC = () => {
     const payload: any = { ...formData };
     if (!payload.informedTo.includes('Other')) {
       payload.informedToOther = '';
+    }
+    if (!payload.isRepeated || !payload.repeatedFromId) {
+      payload.isRepeated = false;
+      payload.repeatedFromId = null;
     }
 
     if (editingObs) {
@@ -234,7 +242,25 @@ const ObservationList: React.FC = () => {
   };
 
   const columns: Column<any>[] = [
-    { id: 'observationId', label: 'ID', sortable: true },
+    {
+      id: 'observationId',
+      label: 'ID',
+      sortable: true,
+      render: (row) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <span>{row.observationId}</span>
+          {row.repeatCount && row.repeatCount > 0 ? (
+            <Chip
+              label={`Repeated (${row.repeatCount})`}
+              size="small"
+              color="warning"
+              variant="outlined"
+              sx={{ height: 20, fontSize: '0.7rem', fontWeight: 'bold' }}
+            />
+          ) : null}
+        </Box>
+      )
+    },
     {
       id: 'observedDate',
       label: 'Observed Date & Time',

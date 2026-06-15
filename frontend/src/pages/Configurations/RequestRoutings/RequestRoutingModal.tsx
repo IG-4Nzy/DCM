@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
@@ -11,13 +11,8 @@ import type { RequestRoutingData, RequestRoutingStage } from './model';
 import type { RootState, AppDispatch } from '../../../store';
 import { fetchRoles } from '../../Roles/action';
 import { fetchDepartments } from '../../Departments/action';
+import request from '../../../services/request';
 
-const REQUEST_TYPES = [
-  'VM Creation',
-  'DC Entry',
-  'Hardware Issuance',
-  'Hardware Replacement'
-];
 
 // Special assignment types
 const SPECIAL_ASSIGNEES = [
@@ -42,26 +37,44 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
   const { roles } = useSelector((state: RootState) => state.roles);
   const { departments } = useSelector((state: RootState) => state.departments);
 
-  const [requestType, setRequestType] = useState(REQUEST_TYPES[0]);
+  const [requestTypes, setRequestTypes] = useState<string[]>([
+    'VM Creation',
+    'DC Entry',
+    'Hardware Issuance',
+    'Hardware Replacement'
+  ]);
+  const [requestType, setRequestType] = useState('');
   const [stages, setStages] = useState<RequestRoutingStage[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
+  const fetchRequestTypes = useCallback(async () => {
+    try {
+      const res = await request.get('/api/requests/types');
+      if (res.data && Array.isArray(res.data)) {
+        setRequestTypes(res.data.map((t: any) => t.name));
+      }
+    } catch (err) {
+      console.error('Failed to fetch request types:', err);
+    }
+  }, []);
+
   useEffect(() => {
     if (open) {
+      fetchRequestTypes();
       dispatch(fetchRoles({ skip: 0, limit: 1000, sortBy: 'name', order: 'asc', search: '', pagination: false }));
       dispatch(fetchDepartments({ skip: 0, limit: 1000 }));
     }
-  }, [open, dispatch]);
+  }, [open, fetchRequestTypes, dispatch]);
 
   useEffect(() => {
     if (editingItem) {
       setRequestType(editingItem.requestType);
       setStages(editingItem.stages || []);
     } else {
-      setRequestType(REQUEST_TYPES[0]);
+      setRequestType(requestTypes[0] || '');
       setStages([]);
     }
-  }, [editingItem, open]);
+  }, [editingItem, open, requestTypes]);
 
   const addStage = () => {
     setStages([...stages, { stageName: '', order: stages.length + 1, assignmentType: 'Role', assignedTo: '' }]);
@@ -142,7 +155,7 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                 onChange={(e) => setRequestType(e.target.value)}
                 disabled={!!editingItem}
               >
-                {REQUEST_TYPES.map((type) => (
+                {requestTypes.map((type) => (
                   <MenuItem key={type} value={type}>
                     {type}
                   </MenuItem>

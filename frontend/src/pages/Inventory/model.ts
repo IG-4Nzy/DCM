@@ -7,6 +7,13 @@ export interface InventoryHistory {
   user: string;
 }
 
+export interface HolderData {
+  id: string;
+  givenTo: string;
+  givenDate: string;
+  givenBy: string;
+}
+
 export interface InventoryData {
   id?: string;
   _id?: string;
@@ -16,4 +23,6 @@ export interface InventoryData {
   lastUpdatedDate: string;
   lastUpdatedBy: string;
   history: InventoryHistory[];
+  isReturnable?: boolean;
+  currentHolders?: HolderData[];
 }

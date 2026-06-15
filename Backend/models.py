@@ -338,6 +338,10 @@ class ObservationModel(BaseModel):
     status: str = "Not Resolved"
     remarks: Optional[str] = ""
     comments: List[dict] = Field(default_factory=list)
+    isRepeated: Optional[bool] = False
+    repeatedFromId: Optional[str] = None
+    repeatCount: Optional[int] = 0
+    repeatedDetails: Optional[dict] = None
 
     @field_validator('comments', mode='before')
     @classmethod
@@ -369,6 +373,8 @@ class CreateObservationModel(BaseModel):
     status: str = "Not Resolved"
     remarks: Optional[str] = ""
     comments: List[dict] = Field(default_factory=list)
+    isRepeated: Optional[bool] = False
+    repeatedFromId: Optional[str] = None
 
 class UpdateObservationModel(BaseModel):
     observedDate: Optional[str] = None
@@ -381,6 +387,8 @@ class UpdateObservationModel(BaseModel):
     status: Optional[str] = None
     remarks: Optional[str] = None
     comments: Optional[List[dict]] = None
+    isRepeated: Optional[bool] = None
+    repeatedFromId: Optional[str] = None
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -400,6 +408,12 @@ class InventoryHistoryModel(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+class HolderModel(BaseModel):
+    id: str
+    givenTo: str
+    givenDate: str
+    givenBy: str
+
 class InventoryModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     itemName: str
@@ -409,6 +423,8 @@ class InventoryModel(BaseModel):
     lastUpdatedDate: str
     lastUpdatedBy: str
     history: List[InventoryHistoryModel] = []
+    isReturnable: Optional[bool] = False
+    currentHolders: List[HolderModel] = []
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -420,11 +436,20 @@ class CreateInventoryModel(BaseModel):
     quantity: int
     description: Optional[str] = None
     date: str
+    isReturnable: Optional[bool] = False
 
 class UpdateInventoryModel(BaseModel):
     quantityChange: int
     action: str
     givenTo: Optional[str] = None
+    date: str
+
+class InventoryGiveModel(BaseModel):
+    givenTo: str
+    date: str
+
+class InventoryReturnModel(BaseModel):
+    holderId: str
     date: str
 
 class PaginatedInventoryModel(BaseModel):

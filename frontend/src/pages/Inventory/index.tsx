@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Paper, Tooltip, IconButton, Button } from '@mui/material';
+import { Box, Paper, Tooltip, IconButton, Button, Tabs, Tab, Chip } from '@mui/material';
 import { MdAdd as AddIcon, MdDelete as DeleteIcon, MdUploadFile as UploadIcon } from 'react-icons/md';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';
@@ -31,6 +31,8 @@ const Inventory: React.FC = () => {
   const [orderBy, setOrderBy] = useTableState<string>('inventory_orderBy', 'lastUpdatedDate');
   const [searchQuery, setSearchQuery] = useTableState('inventory_search', '');
 
+  const [activeTab, setActiveTab] = useTableState<'general' | 'returnable'>('inventory_activeTab', 'general');
+
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryData | null>(null);
@@ -50,9 +52,10 @@ const Inventory: React.FC = () => {
       limit: rowsPerPage,
       search: searchQuery,
       sort_by: orderBy,
-      order: order
+      order: order,
+      isReturnable: activeTab === 'returnable'
     }));
-  }, [dispatch, page, rowsPerPage, searchQuery, orderBy, order]);
+  }, [dispatch, page, rowsPerPage, searchQuery, orderBy, order, activeTab]);
 
   const handleRequestSort = (property: string) => {
     const isAsc = orderBy === property && order === 'asc';
@@ -77,14 +80,14 @@ const Inventory: React.FC = () => {
       } else {
         showToast((result.payload as string) || 'Failed to delete item', 'error');
       }
-      dispatch(fetchInventory({ skip: page * rowsPerPage, limit: rowsPerPage, search: searchQuery, sort_by: orderBy, order }));
+      dispatch(fetchInventory({ skip: page * rowsPerPage, limit: rowsPerPage, search: searchQuery, sort_by: orderBy, order, isReturnable: activeTab === 'returnable' }));
     }
   };
 
   const handleCreateSubmit = async (data: any) => {
     await dispatch(createInventory(data));
     showToast('Item created successfully', 'success');
-    dispatch(fetchInventory({ skip: page * rowsPerPage, limit: rowsPerPage, search: searchQuery, sort_by: orderBy, order }));
+    dispatch(fetchInventory({ skip: page * rowsPerPage, limit: rowsPerPage, search: searchQuery, sort_by: orderBy, order, isReturnable: activeTab === 'returnable' }));
   };
 
   const handleUpdateItem = async (id: string, data: any) => {
@@ -100,7 +103,7 @@ const Inventory: React.FC = () => {
     const resultAction = await dispatch(bulkCreateInventory(file));
     if (bulkCreateInventory.fulfilled.match(resultAction)) {
       showToast('Bulk upload successful', 'success');
-      dispatch(fetchInventory({ skip: page * rowsPerPage, limit: rowsPerPage, search: searchQuery, sort_by: orderBy, order }));
+      dispatch(fetchInventory({ skip: page * rowsPerPage, limit: rowsPerPage, search: searchQuery, sort_by: orderBy, order, isReturnable: activeTab === 'returnable' }));
     } else {
       showToast(resultAction.payload as string || 'Bulk upload failed', 'error');
     }
@@ -120,7 +123,69 @@ const Inventory: React.FC = () => {
 
   const columns: Column<InventoryData>[] = [
     { id: 'itemName', label: 'Item Name', sortable: true },
-    { id: 'quantity', label: 'Quantity', sortable: true },
+    { 
+      id: 'quantity', 
+      label: 'Quantity', 
+      sortable: true,
+      render: (row: InventoryData) => {
+        if (row.isReturnable) {
+          const out = row.currentHolders?.length || 0;
+          const avail = row.quantity - out;
+          return `${avail} / ${row.quantity} Available`;
+        }
+        return row.quantity;
+      }
+    },
+  ];
+
+  if (activeTab === 'returnable') {
+    columns.push({
+      id: 'status',
+      label: 'Status',
+      sortable: false,
+      render: (row: InventoryData) => {
+        const out = row.currentHolders?.length || 0;
+        const avail = row.quantity - out;
+        if (out === 0) {
+          return <Chip label="In Stock" color="success" size="small" variant="outlined" />;
+        } else if (avail === 0) {
+          return <Chip label="All Checked Out" color="error" size="small" />;
+        } else {
+          return <Chip label={`${out} Out`} color="warning" size="small" />;
+        }
+      }
+    });
+
+    columns.push({
+      id: 'currentHolders',
+      label: 'Current Holders',
+      sortable: false,
+      render: (row: InventoryData) => {
+        if (!row.currentHolders || row.currentHolders.length === 0) {
+          return <span style={{ color: '#999', fontStyle: 'italic' }}>None</span>;
+        }
+        return (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {row.currentHolders.map((h, i) => (
+              <Chip 
+                key={i} 
+                label={h.givenTo} 
+                size="small" 
+                sx={{ 
+                  backgroundColor: 'rgba(237, 108, 2, 0.08)', 
+                  color: '#ed6c02', 
+                  fontWeight: 600,
+                  fontSize: '0.75rem' 
+                }} 
+              />
+            ))}
+          </Box>
+        );
+      }
+    });
+  }
+
+  columns.push(
     { id: 'description', label: 'Description', sortable: false },
     { 
       id: 'lastUpdatedDate', 
@@ -142,8 +207,8 @@ const Inventory: React.FC = () => {
         return row.lastUpdatedDate;
       }
     },
-    { id: 'lastUpdatedBy', label: 'Last Updated By', sortable: true },
-  ];
+    { id: 'lastUpdatedBy', label: 'Last Updated By', sortable: true }
+  );
 
   if (hasDelete) {
     columns.push({
@@ -166,6 +231,13 @@ const Inventory: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <h2 style={{ margin: 0 ,color:"#333"}}>Inventory</h2>
+      </Box>
+
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={activeTab} onChange={(e, val) => { setActiveTab(val); setPage(0); }} aria-label="inventory tabs">
+          <Tab label="General Inventory" value="general" sx={{ textTransform: 'none', fontWeight: 'bold' }} />
+          <Tab label="Returnable Items" value="returnable" sx={{ textTransform: 'none', fontWeight: 'bold' }} />
+        </Tabs>
       </Box>
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>

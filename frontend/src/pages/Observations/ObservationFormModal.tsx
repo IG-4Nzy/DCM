@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../../store';
 import { updateObservation } from './action';
 import Modal from '../../components/Modal';
 import TextField from '../../components/TextField';
 import DatePicker from '../../components/DatePicker';
-import { FormControl, InputLabel, MenuItem, Select, Button, Box, IconButton, Tooltip, Typography, Chip, OutlinedInput, FormGroup, FormControlLabel, Checkbox, Avatar } from '@mui/material';
+import { FormControl, InputLabel, MenuItem, Select, Button, Box, IconButton, Tooltip, Typography, Chip, OutlinedInput, FormGroup, FormControlLabel, Checkbox, Avatar, Autocomplete, TextField as MuiTextField } from '@mui/material';
 import { MdEdit as EditIcon, MdSend } from 'react-icons/md';
 import styles from './index.module.scss';
+import request from '../../services/request';
 
 interface ObservationFormModalProps {
   isModalOpen: boolean;
@@ -56,6 +57,23 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
   const dispatch = useDispatch<AppDispatch>();
   const [newComment, setNewComment] = useState("");
   const currentUser = useSelector((state: RootState) => (state?.auth as any)?.user?.username || state?.auth?.username) || "User";
+  const [allObservations, setAllObservations] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isModalOpen) {
+      request.get('/api/observations/', { params: { pagination: false } })
+        .then(res => {
+          const list = res.data.data || [];
+          const currentId = editingObs?._id || editingObs?.id;
+          setAllObservations(list.filter((o: any) => (o._id || o.id) !== currentId));
+        })
+        .catch(err => console.error('Failed to fetch observations for repeat dropdown', err));
+    }
+  }, [isModalOpen, editingObs]);
+
+  const selectedObservationObj = allObservations.find(
+    (obs: any) => (obs._id || obs.id) === formData.repeatedFromId
+  ) || null;
 
   // Get reportsTo options belongs to the selected category
   const selectedCat = (categories || []).find(c => c.name === formData.category);
@@ -163,6 +181,42 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
               <ViewField label="Status" value={formData.status} />
               {formData.status === 'Resolved' && <ViewField label="Remarks" value={formData.remarks} />}
             </div>
+            
+            {(formData.isRepeated || (editingObs?.repeatCount && editingObs.repeatCount > 0)) && (
+              <Box sx={{ mt: 1, mb: 1, p: 2, bgcolor: '#e3f2fd', borderRadius: 2, border: '1px solid #90caf9', width: '100%' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#1565c0', mb: 1 }}>
+                  Repeated Issue Information
+                </Typography>
+                
+                {formData.isRepeated && editingObs?.repeatedDetails?.parent && (
+                  <Box sx={{ mb: 1.5 }}>
+                    <Typography variant="body2" color="textSecondary">
+                      This observation is repeated from:
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', mt: 0.5 }}>
+                      {editingObs.repeatedDetails.parent.observationId} - {editingObs.repeatedDetails.parent.description} ({editingObs.repeatedDetails.parent.observedDate})
+                    </Typography>
+                  </Box>
+                )}
+                
+                {editingObs?.repeatedDetails?.children && editingObs.repeatedDetails.children.length > 0 && (
+                  <Box>
+                    <Typography variant="body2" color="textSecondary">
+                      Repeated occurrences of this issue ({editingObs.repeatedDetails.children.length}):
+                    </Typography>
+                    <ul style={{ margin: 0, paddingLeft: '20px', marginTop: '4px' }}>
+                      {editingObs.repeatedDetails.children.map((child: any) => (
+                        <li key={child.id}>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {child.observationId} - {child.description} ({child.observedDate})
+                          </Typography>
+                        </li>
+                      ))}
+                    </ul>
+                  </Box>
+                )}
+              </Box>
+            )}
           </>
         ) : (
           <>
@@ -231,6 +285,72 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                 multiline
                 rows={3}
               />
+            </div>
+            
+            <div className={styles.row} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px', width: '100%', paddingLeft: '8px', paddingRight: '8px' }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={formData.isRepeated || false}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      isRepeated: e.target.checked,
+                      repeatedFromId: e.target.checked ? formData.repeatedFromId : '' 
+                    })}
+                    color="primary"
+                  />
+                }
+                label="Repeated Issue"
+              />
+              {formData.isRepeated && (
+                <Autocomplete
+                  fullWidth
+                  sx={{ mt: 1 }}
+                  options={allObservations}
+                  getOptionLabel={(obs: any) => 
+                    obs ? `${obs.observationId} - ${obs.description.substring(0, 50)}${obs.description.length > 50 ? '...' : ''} (${obs.observedDate})` : ''
+                  }
+                  value={selectedObservationObj}
+                  onChange={(event, newValue: any) => {
+                    setFormData({
+                      ...formData,
+                      repeatedFromId: newValue ? (newValue._id || newValue.id) : ''
+                    });
+                  }}
+                  filterOptions={(options, state) => {
+                    const query = state.inputValue.trim();
+                    if (query === '') {
+                      return [];
+                    }
+                    const selectedLabel = selectedObservationObj 
+                      ? `${selectedObservationObj.observationId} - ${selectedObservationObj.description.substring(0, 50)}${selectedObservationObj.description.length > 50 ? '...' : ''} (${selectedObservationObj.observedDate})`
+                      : '';
+                    if (query === selectedLabel) {
+                      return selectedObservationObj ? [selectedObservationObj] : [];
+                    }
+                    const lowerQuery = query.toLowerCase();
+                    return options.filter((obs: any) => 
+                      (obs.observationId || '').toLowerCase().includes(lowerQuery) ||
+                      (obs.description || '').toLowerCase().includes(lowerQuery) ||
+                      (obs.observedDate || '').includes(lowerQuery)
+                    );
+                  }}
+                  noOptionsText={allObservations.length === 0 ? 'No other observations available' : 'Type to search observations...'}
+                  renderInput={(params) => (
+                    <MuiTextField
+                      {...params}
+                      label="Choose Repeated Observation"
+                      required
+                      variant="outlined"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: '8px',
+                        }
+                      }}
+                    />
+                  )}
+                />
+              )}
             </div>
             
             <div className={styles.row} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>

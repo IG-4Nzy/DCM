@@ -1,5 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { fetchInventory, createInventory, updateInventory, deleteInventory } from './action';
+import { fetchInventory, createInventory, updateInventory, deleteInventory, giveInventoryItem, returnInventoryItem } from './action';
 import type { InventoryData } from './model';
 
 interface InventoryState {
@@ -66,6 +66,40 @@ const inventorySlice = createSlice({
         }
       })
       .addCase(updateInventory.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    builder
+      .addCase(giveInventoryItem.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(giveInventoryItem.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.inventory.findIndex((item) => item.id === action.payload.id || (item as any)._id === (action.payload as any)._id);
+        if (index !== -1) {
+          state.inventory[index] = action.payload;
+        }
+      })
+      .addCase(giveInventoryItem.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    builder
+      .addCase(returnInventoryItem.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(returnInventoryItem.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.inventory.findIndex((item) => item.id === action.payload.id || (item as any)._id === (action.payload as any)._id);
+        if (index !== -1) {
+          state.inventory[index] = action.payload;
+        }
+      })
+      .addCase(returnInventoryItem.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });
