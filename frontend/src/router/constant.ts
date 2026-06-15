@@ -25,4 +25,6 @@ export const ROUTE_CONSTANTS = {
     DAILY_ACTIVITIES: "/daily-activities",
     PERIODIC_ACTIVITIES: "/periodic-activities",
     ANNOUNCEMENTS: "/announcements",
+    NOTIFICATION_TRIGGERING: "/notification-triggering",
+    OPERATION_LOGS: "/operation-logs",
 }

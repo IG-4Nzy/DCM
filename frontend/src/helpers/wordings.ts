@@ -31,4 +31,6 @@ export default {
   morningChecklist: "Morning Checklist",
   periodicActivities: "Periodic Activities",
   announcements: "Announcements",
+  notificationTriggering: "Notification Triggering",
+  operationLogs: "Operation Logs",
 };

@@ -34,6 +34,7 @@ from dashboard import router as dashboard_router
 from notifications import router as notifications_router
 from periodic_activities import router as periodic_activities_router
 from announcements import router as announcements_router
+from operation_logs import router as operation_logs_router
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from database import db
@@ -134,6 +135,13 @@ def get_action_name(method: str, path: str) -> str:
         if method == "PUT": return "Update Work Assignment"
         if method == "DELETE": return "Delete Work Assignment"
         return "Work Action"
+
+    # Check operation logs
+    if "operation-logs" in parts:
+        if method == "POST": return "Create Operation Log"
+        if method == "PUT": return "Update Operation Log"
+        if method == "DELETE": return "Delete Operation Log"
+        return "Operation Log Action"
 
     # Default fallback
     action_type = parts[1] if len(parts) > 1 else parts[0]
@@ -506,6 +514,7 @@ app.include_router(morning_checklists_router, tags=["morning_checklists"], prefi
 app.include_router(morning_checklist_config_router, tags=["morning_checklist_config"], prefix="/api/morning-checklist-config")
 app.include_router(periodic_activities_router, tags=["periodic_activities"], prefix="/api/periodic-activities")
 app.include_router(announcements_router, tags=["announcements"], prefix="/api/announcements")
+app.include_router(operation_logs_router, tags=["operation_logs"], prefix="/api/operation-logs")
 app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")
 app.include_router(notifications_router, tags=["notifications"], prefix="/api/notifications")
 

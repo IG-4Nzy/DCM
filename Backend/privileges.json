@@ -74,5 +74,10 @@
     "View Announcements",
     "Create Announcement",
     "Update Announcement",
-    "Delete Announcement"
+    "Delete Announcement",
+    "View Notification Triggering",
+    "View Logs",
+    "Create Log",
+    "Update Log",
+    "Delete Log"
 ]

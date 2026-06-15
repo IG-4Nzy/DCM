@@ -17,7 +17,9 @@ import {
   MdAssignmentInd as VisitorLogsIcon,
   MdPlaylistAddCheck as DailyActivitiesIcon,
   MdEventRepeat as PeriodicActivitiesIcon,
-  MdCampaign as AnnouncementsIcon
+  MdCampaign as AnnouncementsIcon,
+  MdNotificationsActive as NotificationsActiveIcon,
+  MdAssignment as LogsIcon
 } from "react-icons/md";
 
 import { IoIosUnlock as RolesIcon } from "react-icons/io";
@@ -61,5 +63,7 @@ export const Icons = {
   VisitorLogsIcon,
   DailyActivitiesIcon,
   PeriodicActivitiesIcon,
-  AnnouncementsIcon
+  AnnouncementsIcon,
+  NotificationsActiveIcon,
+  LogsIcon
 };

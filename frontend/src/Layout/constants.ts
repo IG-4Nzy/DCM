@@ -124,5 +124,17 @@ export const SIDEBAR_OPTIONS = [
         icon: Icons.AnnouncementsIcon,
         route: ROUTE_CONSTANTS.ANNOUNCEMENTS,
         privileges: [PRIVILEGES.ANNOUNCEMENT_VIEW, PRIVILEGES.ANNOUNCEMENT_CREATE, PRIVILEGES.ANNOUNCEMENT_UPDATE, PRIVILEGES.ANNOUNCEMENT_DELETE]
+    },
+    {
+        label: wordings.notificationTriggering,
+        icon: Icons.NotificationsActiveIcon,
+        route: ROUTE_CONSTANTS.NOTIFICATION_TRIGGERING,
+        privileges: [PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW]
+    },
+    {
+        label: wordings.operationLogs,
+        icon: Icons.LogsIcon,
+        route: ROUTE_CONSTANTS.OPERATION_LOGS,
+        privileges: [PRIVILEGES.LOGS_VIEW]
     }
 ]

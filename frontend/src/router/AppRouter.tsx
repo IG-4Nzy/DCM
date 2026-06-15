@@ -30,6 +30,8 @@ const VisitorLogs = lazy(() => import("../pages/Requests/VisitorLogs"));
 const DailyActivities = lazy(() => import("../pages/DailyActivities"));
 const PeriodicActivities = lazy(() => import("../pages/PeriodicActivities"));
 const Announcements = lazy(() => import("../pages/Announcements"));
+const NotificationTriggering = lazy(() => import("../pages/NotificationTriggering"));
+const OperationLogs = lazy(() => import("../pages/OperationLogs"));
 
 
 const AppRouter: React.FC = () => {
@@ -70,6 +72,8 @@ const AppRouter: React.FC = () => {
             <Route path={ROUTE_CONSTANTS.DAILY_ACTIVITIES} element={<DailyActivities />} />
             <Route path={ROUTE_CONSTANTS.PERIODIC_ACTIVITIES} element={<PeriodicActivities />} />
             <Route path={ROUTE_CONSTANTS.ANNOUNCEMENTS} element={<Announcements />} />
+            <Route path={ROUTE_CONSTANTS.NOTIFICATION_TRIGGERING} element={<NotificationTriggering />} />
+            <Route path={ROUTE_CONSTANTS.OPERATION_LOGS} element={<OperationLogs />} />
           </Route>
 
           <Route path="*" element={<PageNotFound />} />
