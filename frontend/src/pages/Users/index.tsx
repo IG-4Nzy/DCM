@@ -273,6 +273,17 @@ const Users: React.FC = () => {
     setPage(0);
   };
 
+  const isUserOnline = (user: UserData) => {
+    if (!user.lastActive) return false;
+    try {
+      const lastActiveTime = new Date(user.lastActive).getTime();
+      const now = new Date().getTime();
+      return now - lastActiveTime < 45000;
+    } catch (e) {
+      return false;
+    }
+  };
+
   const columns: Column<UserData>[] = [
     { id: "username", label: "Username", sortable: true },
     { 
@@ -284,6 +295,31 @@ const Users: React.FC = () => {
     { id: "passNumber", label: "Pass Number", sortable: true, render: (row) => row.passNumber || '-' },
     { id: "department", label: "Department", sortable: true, render: (row) => row.department || '-' },
     { id: "role", label: "Role", sortable: true, render: (row) => Array.isArray(row.role) ? row.role.join(", ") : (row.role || "-") },
+    {
+      id: "onlineStatus",
+      label: "Activity",
+      sortable: false,
+      render: (row) => {
+        const online = isUserOnline(row);
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                backgroundColor: online ? "#4caf50" : "#f44336",
+                display: "inline-block",
+                boxShadow: online ? "0 0 8px #4caf50" : "none",
+              }}
+            />
+            <span style={{ fontSize: "0.85rem", color: online ? "#2e7d32" : "#757575", fontWeight: 500 }}>
+              {online ? "Online" : "Offline"}
+            </span>
+          </Box>
+        );
+      }
+    },
     {
       id: "status",
       label: "Status",

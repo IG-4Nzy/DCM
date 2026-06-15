@@ -621,6 +621,7 @@ const ServerMonitoring: React.FC = () => {
                     <TableCell sx={{ fontWeight: 800 }}>Hypervisor</TableCell>
                     <TableCell sx={{ fontWeight: 800 }}>Resource Provision</TableCell>
                     <TableCell sx={{ fontWeight: 800 }}>Active Warnings & Alarms</TableCell>
+                    <TableCell sx={{ fontWeight: 800, textAlign: 'right' }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -791,12 +792,24 @@ const ServerMonitoring: React.FC = () => {
                             </Box>
                           </TableCell>
 
+                          {/* Actions */}
+                          <TableCell align="right" onClick={(e) => e.stopPropagation()}>
+                             <IconButton 
+                               color="error" 
+                               onClick={() => handleDeleteClick(vcId)}
+                               size="small"
+                               title="Delete vCenter"
+                             >
+                               <DeleteIcon style={{ fontSize: '1.2rem' }} />
+                             </IconButton>
+                           </TableCell>
+
                         </TableRow>
 
                         {/* Hierarchical Expansion Panel */}
                         {isExpanded && (
                           <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                            <TableCell colSpan={8} sx={{ p: 3, borderLeft: '4px solid #3b82f6' }}>
+                            <TableCell colSpan={9} sx={{ p: 3, borderLeft: '4px solid #3b82f6' }}>
                               {loadingMonitor && !telemetry ? (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1 }}>
                                   <CircularProgress size={20} />

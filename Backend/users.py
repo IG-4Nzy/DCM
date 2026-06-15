@@ -74,6 +74,10 @@ async def populate_replacement_names(users):
         if rep_id:
             u["replacementForName"] = replaced_map.get(rep_id)
 
+@router.post("/heartbeat", status_code=status.HTTP_200_OK)
+async def user_heartbeat(current_user: dict = Depends(get_current_user)):
+    return {"status": "online"}
+
 @router.get("/", response_description="List all users", response_model=PaginatedUsersModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["View All Users", "View Department Users"]))])
 async def list_users(
     skip: int = Query(0, ge=0),

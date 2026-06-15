@@ -10,6 +10,7 @@ export interface WorkData {
   status: string;
   comments: { text: string; user: string; timestamp: string }[];
   completedAt?: string;
+  createdAt?: string;
 }
 
 export interface CreateWorkPayload {
@@ -22,6 +23,7 @@ export interface CreateWorkPayload {
   status?: string;
   comments?: { text: string; user: string; timestamp: string }[];
   completedAt?: string;
+  createdAt?: string;
 }
 
 export interface UpdateWorkPayload extends Partial<CreateWorkPayload> {

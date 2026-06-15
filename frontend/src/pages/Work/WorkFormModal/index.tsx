@@ -47,9 +47,21 @@ const WorkFormModal = ({
   users,
   handleSubmit,
 }: PropType) => {
+  const isUserOnline = (user: any) => {
+    if (!user.lastActive) return false;
+    try {
+      const lastActiveTime = new Date(user.lastActive).getTime();
+      const now = new Date().getTime();
+      return now - lastActiveTime < 45000;
+    } catch (e) {
+      return false;
+    }
+  };
+
   const formattedUsers = (users || []).map((user) => ({
     label: (user.firstName || user.lastName) ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : (user.username || user.name),
     value: user.id || user._id, 
+    isOnline: isUserOnline(user),
   }));
 
   const today = new Date().toISOString().split("T")[0];

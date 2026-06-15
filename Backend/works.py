@@ -121,6 +121,8 @@ async def upload_attachments(files: list[UploadFile] = File(...)):
 @router.post("/", response_description="Create a new work", response_model=WorkModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Work"))])
 async def create_work(work: CreateWorkModel = Body(...), current_user: dict = Depends(get_current_user)):
     work_dict = work.model_dump()
+    if not work_dict.get("createdAt"):
+        work_dict["createdAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     new_work = await works_collection.insert_one(work_dict)
     created_work = await works_collection.find_one({"_id": new_work.inserted_id})
     

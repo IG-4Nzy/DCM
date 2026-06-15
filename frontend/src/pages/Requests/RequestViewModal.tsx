@@ -356,6 +356,14 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
               <Divider sx={{ mb: 2 }} />
               
               <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Typography variant="caption" color="textSecondary">Purpose</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {request.purpose || request.details?.purpose || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}><Divider sx={{ opacity: 0.6 }} /></Grid>
+
                 {request.requestType === 'VM Creation' && (
                   <>
                     <Grid item xs={12} sm={4}>
@@ -408,7 +416,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                     </Grid>
                   </>
                 )}
-
+ 
                 {request.requestType === 'DC Entry' && (
                   <>
                     <Grid item xs={12} sm={6}>
@@ -416,10 +424,6 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                       <Typography variant="body2" sx={{ fontWeight: 500 }}>
                         {safeParseDate(request.details?.dateTime)}
                       </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography variant="caption" color="textSecondary">Purpose</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.purpose || request.purpose || '-'}</Typography>
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <Typography variant="caption" color="textSecondary">Actual Entry Time</Typography>

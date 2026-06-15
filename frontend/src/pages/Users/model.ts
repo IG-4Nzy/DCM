@@ -17,6 +17,7 @@ export interface UserData {
   replacementFor?: string | null;
   replacementForName?: string | null;
   passNumber?: string;
+  lastActive?: string;
 }
 
 export interface CreateUserPayload {

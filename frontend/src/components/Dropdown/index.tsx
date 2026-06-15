@@ -15,6 +15,7 @@ import { MdClear } from 'react-icons/md';
 export interface DropdownOption {
   label: string;
   value: string | number;
+  isOnline?: boolean;
 }
 
 export interface DropdownProps {
@@ -146,6 +147,20 @@ const Dropdown: React.FC<DropdownProps> = ({
                   Array.isArray(displayValue) &&
                   displayValue.includes(option.value)
                 }
+              />
+            )}
+
+            {option.isOnline !== undefined && (
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  backgroundColor: option.isOnline ? "#4caf50" : "#f44336",
+                  marginRight: 8,
+                  display: "inline-block",
+                  boxShadow: option.isOnline ? "0 0 6px #4caf50" : "none",
+                }}
               />
             )}
 

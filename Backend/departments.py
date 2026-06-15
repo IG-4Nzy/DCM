@@ -35,6 +35,9 @@ async def list_departments(
     if not allowed:
         raise HTTPException(status_code=403, detail="Not enough permissions to view departments")
         
+    if not pagination:
+        query["status"] = {"$ne": False}
+        
     if search:
         query["name"] = {"$regex": search, "$options": "i"}
         

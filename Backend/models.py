@@ -61,6 +61,7 @@ class UserModel(BaseModel):
     replacementFor: Optional[str] = None
     replacementForName: Optional[str] = None
     passNumber: Optional[str] = None
+    lastActive: Optional[str] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -83,6 +84,7 @@ class CreateUserModel(BaseModel):
     isDepartmentHead: Optional[bool] = None
     replacementFor: Optional[str] = None
     passNumber: Optional[str] = None
+    lastActive: Optional[str] = None
 
 class UpdateUserModel(BaseModel):
     username: Optional[str] = None
@@ -100,6 +102,7 @@ class UpdateUserModel(BaseModel):
     isDepartmentHead: Optional[bool] = None
     replacementFor: Optional[str] = None
     passNumber: Optional[str] = None
+    lastActive: Optional[str] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -149,6 +152,7 @@ class WorkModel(BaseModel):
     status: str = "Pending"
     comments: List[dict] = Field(default_factory=list)
     completedAt: Optional[str] = None
+    createdAt: Optional[str] = None
 
     @field_validator('attachments', mode='before')
     @classmethod
@@ -191,6 +195,7 @@ class CreateWorkModel(BaseModel):
     status: str = "Pending"
     comments: List[dict] = Field(default_factory=list)
     completedAt: Optional[str] = None
+    createdAt: Optional[str] = None
 
 class UpdateWorkModel(BaseModel):
     workName: Optional[str] = None
@@ -202,6 +207,7 @@ class UpdateWorkModel(BaseModel):
     status: Optional[str] = None
     comments: Optional[List[dict]] = None
     completedAt: Optional[str] = None
+    createdAt: Optional[str] = None
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

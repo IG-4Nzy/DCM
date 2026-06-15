@@ -23,8 +23,19 @@ async def list_categories(
     search: Optional[str] = None
 ):
     query = {}
+    if not pagination:
+        query["status"] = {"$ne": False}
+
     if search:
-        query = {"name": {"$regex": search, "$options": "i"}}
+        if not pagination:
+            query = {
+                "$and": [
+                    {"status": {"$ne": False}},
+                    {"name": {"$regex": search, "$options": "i"}}
+                ]
+            }
+        else:
+            query = {"name": {"$regex": search, "$options": "i"}}
         
     total = await categories_collection.count_documents(query)
     cursor = categories_collection.find(query)

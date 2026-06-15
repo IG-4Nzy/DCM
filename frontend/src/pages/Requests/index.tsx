@@ -279,16 +279,19 @@ const Requests: React.FC = () => {
             label: 'Details',
             sortable: false,
             render: (row) => {
-                let text = row.description || '';
+                const parts = [];
+                const purp = row.purpose || row.details?.purpose;
+                if (purp) {
+                    parts.push(`Purpose: ${purp}`);
+                }
+
                 if (row.details) {
-                    const parts = [];
                     if (row.requestType === 'VM Creation') {
                         if (row.details.vmName) parts.push(`VM: ${row.details.vmName}`);
                         if (row.details.osVersion) parts.push(`OS: ${row.details.osVersion}`);
                         if (row.details.ram) parts.push(`RAM: ${row.details.ram}`);
                     } else if (row.requestType === 'DC Entry') {
                         if (row.details.dateTime) parts.push(`Time: ${new Date(row.details.dateTime).toLocaleString()}`);
-                        if (row.details.purpose) parts.push(`Purpose: ${row.details.purpose}`);
                     } else if (row.requestType === 'Hardware Issuance') {
                         const hItem = inventory.find((i: any) => (i.id || i._id) === row.details.hardwareId);
                         const hName = hItem ? hItem.itemName : row.details.hardwareId;
@@ -297,8 +300,9 @@ const Requests: React.FC = () => {
                     } else if (row.requestType === 'Hardware Replacement') {
                         if (row.details.remarks) parts.push(`Remarks: ${row.details.remarks}`);
                     }
-                    text = parts.join(' | ') || text;
                 }
+                
+                const text = parts.join(' | ') || row.description || '';
                 return (
                     <span style={{
                         display: 'inline-block',

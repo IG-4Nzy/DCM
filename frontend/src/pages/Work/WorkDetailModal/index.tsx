@@ -64,8 +64,13 @@ const WorkDetailModal = ({
         (state?.auth as any)?.user?.username || state?.auth?.username,
     ) || "User";
 
+  const isSuperuser = useSelector(
+    (state: RootState) => !!(state?.auth as any)?.user?.isSuperuser || !!state?.auth?.isSuperuser
+  );
+
   const canUpdateWork = hasPrivilege(PRIVILEGES.WORK_UPDATE);
-  const isLocked = currentStatus === "Completed" && !canUpdateWork;
+  const isCompletedOrClosed = currentStatus === "Completed" || currentStatus === "Closed";
+  const isLocked = isCompletedOrClosed && !isSuperuser;
   
   const assigneeUser = users.find(
     (u: any) => u.id === work?.assignee || u._id === work?.assignee || u.username === work?.assignee,
@@ -100,6 +105,47 @@ const WorkDetailModal = ({
       setIsTransferring(false);
     } catch (err) {
       // Handled in parent/toast
+    }
+  };
+
+  const formatCreatedTime = (w: WorkData) => {
+    if (w.createdAt) {
+      try {
+        return new Date(w.createdAt).toLocaleString(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      } catch (e) {
+        return w.createdAt;
+      }
+    }
+    const idStr = w.id || w._id;
+    if (idStr && idStr.length === 24) {
+      try {
+        const timestamp = parseInt(idStr.substring(0, 8), 16) * 1000;
+        return new Date(timestamp).toLocaleString(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      } catch (e) {
+        // ignore
+      }
+    }
+    return "Unknown";
+  };
+
+  const isUserOnline = (user: any) => {
+    if (!user.lastActive) return false;
+    try {
+      const lastActiveTime = new Date(user.lastActive).getTime();
+      const now = new Date().getTime();
+      return now - lastActiveTime < 45000;
+    } catch (e) {
+      return false;
     }
   };
 
@@ -170,7 +216,7 @@ const WorkDetailModal = ({
   };
 
   const handleAddComment = async () => {
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || isLocked) return;
 
     const newCommentObj = {
       text: newComment.trim(),
@@ -264,6 +310,12 @@ const WorkDetailModal = ({
                       : "#2e7d32",
                 "& .MuiChip-icon": { color: "inherit" },
               }}
+            />
+            <Chip
+              icon={<MdDateRange />}
+              label={`Created: ${formatCreatedTime(work)}`}
+              variant="outlined"
+              sx={{ borderRadius: "8px", fontWeight: 500 }}
             />
             <Chip
               icon={<MdDateRange />}
@@ -524,8 +576,20 @@ const WorkDetailModal = ({
                   .filter((u) => u.username !== currentUser)
                   .map((u) => {
                     const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || u.name;
+                    const online = isUserOnline(u);
                     return (
                       <MenuItem key={u.id || u._id} value={u.id || u._id}>
+                        <span
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: "50%",
+                            backgroundColor: online ? "#4caf50" : "#f44336",
+                            marginRight: 8,
+                            display: "inline-block",
+                            boxShadow: online ? "0 0 6px #4caf50" : "none",
+                          }}
+                        />
                         {name} ({u.username})
                       </MenuItem>
                     );

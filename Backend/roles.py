@@ -37,10 +37,21 @@ async def list_roles(
         raise HTTPException(status_code=403, detail="Not enough privileges to view roles")
 
     query = {}
+    if not pagination:
+        query["status"] = {"$ne": False}
+
     if search:
-        query = {
-            "name": {"$regex": search, "$options": "i"}
-        }
+        if not pagination:
+            query = {
+                "$and": [
+                    {"status": {"$ne": False}},
+                    {"name": {"$regex": search, "$options": "i"}}
+                ]
+            }
+        else:
+            query = {
+                "name": {"$regex": search, "$options": "i"}
+            }
         
     actual_sort_by = sortBy or sort_by or "name"
     sort_order = 1 if order == "asc" else -1

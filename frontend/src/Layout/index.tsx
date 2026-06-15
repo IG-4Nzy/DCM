@@ -138,6 +138,21 @@ const Layout: React.FC = () => {
 
   useEffect(() => {
     if (username) {
+      const sendHeartbeat = async () => {
+        try {
+          await request.post('/api/users/heartbeat');
+        } catch (err) {
+          // silent ignore
+        }
+      };
+      sendHeartbeat();
+      const interval = setInterval(sendHeartbeat, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [username]);
+
+  useEffect(() => {
+    if (username) {
       const notifyVisit = async () => {
         const currentOption = SIDEBAR_OPTIONS.find(opt => location.pathname.startsWith(opt.route));
         if (currentOption) {

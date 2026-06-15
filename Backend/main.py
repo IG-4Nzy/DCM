@@ -164,18 +164,208 @@ def clean_document_for_logging(doc: dict) -> dict:
                 cleaned[k] = v
     return cleaned
 
+def get_audit_details(username: str, method: str, path: str, status_code: int, body: dict, before: dict, after: dict) -> str:
+    default_desc = f"{method} {path} (Status: {status_code})"
+    if status_code >= 400:
+        return f'"{username}" attempted {method} {path} but failed with status {status_code}'
+
+    parts = [p for p in path.split("/") if p]
+    if not parts:
+        return default_desc
+
+    current_time_str = datetime.now(timezone.utc).strftime("%d-%m-%Y %I:%M:%S %p") + " UTC"
+
+    if "auth" in parts:
+        if "login" in parts:
+            return f'"{username}" logged in successfully'
+        if "register" in parts:
+            reg_user = body.get("username", "new user")
+            return f'"{username}" registered user - {reg_user}'
+        if "logout" in parts:
+            return f'"{username}" logged out'
+        return f'"{username}" performed auth action'
+
+    if "users" in parts:
+        if method == "POST":
+            target_user = body.get("username", "unknown")
+            return f'"{username}" created user - {target_user}'
+        if method == "PUT":
+            target_user = before.get("username") if before else body.get("username", "unknown")
+            return f'"{username}" updated user - {target_user}'
+        if method == "DELETE":
+            target_user = before.get("username") if before else "unknown"
+            return f'"{username}" deleted user - {target_user}'
+
+    if "roles" in parts:
+        if method == "POST":
+            role_name = body.get("name", "unknown")
+            return f'"{username}" created role - {role_name}'
+        if method == "PUT":
+            role_name = before.get("name") if before else body.get("name", "unknown")
+            return f'"{username}" updated privileges for role - {role_name}'
+        if method == "DELETE":
+            role_name = before.get("name") if before else "unknown"
+            return f'"{username}" deleted role - {role_name}'
+
+    if "inventory" in parts:
+        if "give" in parts:
+            item_name = before.get("itemName") if before else "unknown item"
+            given_to = body.get("givenTo", "unknown")
+            return f'"{username}" checked out {item_name} to {given_to}'
+        if "return" in parts:
+            item_name = before.get("itemName") if before else "unknown item"
+            holder_id = body.get("holderId")
+            holder_name = "someone"
+            if before and before.get("currentHolders"):
+                for h in before["currentHolders"]:
+                    if h.get("id") == holder_id:
+                        holder_name = h.get("givenTo", "someone")
+                        break
+            return f'"{username}" received returned {item_name} from {holder_name}'
+            
+        if method == "POST":
+            item_name = body.get("itemName", "unknown")
+            is_ret = " (Returnable)" if body.get("isReturnable") else ""
+            return f'"{username}" created inventory item - {item_name}{is_ret}'
+        if method == "PUT":
+            item_name = before.get("itemName") if before else body.get("itemName", "unknown")
+            qty_before = before.get("quantity", 0) if before else 0
+            qty_after = after.get("quantity", 0) if after else body.get("quantity", 0)
+            if qty_before != qty_after:
+                diff = qty_after - qty_before
+                act_str = f"added {diff} items to" if diff > 0 else f"removed {abs(diff)} items from"
+                return f'"{username}" {act_str} stock of {item_name} (New total: {qty_after})'
+            return f'"{username}" updated inventory item - {item_name}'
+        if method == "DELETE":
+            item_name = before.get("itemName") if before else "unknown"
+            return f'"{username}" deleted inventory item - {item_name}'
+
+    if "requests" in parts:
+        if "advance" in parts:
+            req_type = before.get("requestType", "Request") if before else "Request"
+            stage = after.get("status", "unknown stage") if after else "unknown stage"
+            return f'"{username}" advanced {req_type} to stage - {stage}'
+        if "reject" in parts:
+            req_type = before.get("requestType", "Request") if before else "Request"
+            return f'"{username}" rejected {req_type}'
+        if "cancel" in parts:
+            req_type = before.get("requestType", "Request") if before else "Request"
+            return f'"{username}" cancelled {req_type}'
+        if method == "POST":
+            req_type = body.get("requestType", "Request")
+            return f'"{username}" created request - {req_type}'
+        if method == "PUT":
+            req_type = before.get("requestType", "Request") if before else body.get("requestType", "Request")
+            return f'"{username}" updated details of request - {req_type}'
+        if method == "DELETE":
+            req_type = before.get("requestType", "Request") if before else "Request"
+            return f'"{username}" deleted request - {req_type}'
+
+    if "roasters" in parts:
+        if method == "POST":
+            return f'"{username}" created and published a new shift roaster'
+        if method == "PUT":
+            return f'"{username}" updated roaster at {current_time_str}'
+        if method == "DELETE":
+            return f'"{username}" deleted shift roaster'
+
+    if "works" in parts:
+        if method == "POST":
+            work_name = body.get("workName", "unknown work")
+            return f'"{username}" created work assignment - {work_name}'
+        if method == "PUT":
+            work_name = before.get("workName") if before else body.get("workName", "unknown work")
+            status_before = before.get("status") if before else None
+            status_after = after.get("status") if after else body.get("status")
+            if status_before != status_after and status_after:
+                return f'"{username}" marked work "{work_name}" to {status_after}'
+            return f'"{username}" updated work assignment - {work_name}'
+        if method == "DELETE":
+            work_name = before.get("workName") if before else "unknown"
+            return f'"{username}" deleted work assignment - {work_name}'
+
+    if "observations" in parts:
+        if method == "POST":
+            obs_title = body.get("title", "unknown title")
+            return f'"{username}" reported observation - {obs_title}'
+        if method == "PUT":
+            obs_title = before.get("title") if before else body.get("title", "unknown title")
+            return f'"{username}" updated observation - {obs_title}'
+        if method == "DELETE":
+            obs_title = before.get("title") if before else "unknown"
+            return f'"{username}" deleted observation - {obs_title}'
+
+    if "bms-checklists" in parts:
+        if method == "POST":
+            chk_date = body.get("date", "unknown date")
+            return f'"{username}" completed BMS checklist for {chk_date}'
+        if method == "PUT":
+            chk_date = before.get("date") if before else body.get("date", "unknown date")
+            return f'"{username}" updated BMS checklist for {chk_date}'
+        if method == "DELETE":
+            chk_date = before.get("date") if before else "unknown date"
+            return f'"{username}" deleted BMS checklist for {chk_date}'
+
+    if "morning-checklists" in parts:
+        if method == "POST":
+            chk_date = body.get("date", "unknown date")
+            return f'"{username}" completed Morning checklist for {chk_date}'
+        if method == "PUT":
+            chk_date = before.get("date") if before else body.get("date", "unknown date")
+            return f'"{username}" updated Morning checklist for {chk_date}'
+        if method == "DELETE":
+            chk_date = before.get("date") if before else "unknown date"
+            return f'"{username}" deleted Morning checklist for {chk_date}'
+
+    if "periodic-activities" in parts:
+        if method == "POST":
+            act_name = body.get("title", "unknown activity")
+            return f'"{username}" created periodic activity - {act_name}'
+        if method == "PUT":
+            act_name = before.get("title") if before else body.get("title", "unknown activity")
+            return f'"{username}" updated periodic activity - {act_name}'
+        if method == "DELETE":
+            act_name = before.get("title") if before else "unknown"
+            return f'"{username}" deleted periodic activity - {act_name}'
+
+    if "departments" in parts:
+        if method == "POST":
+            dept_name = body.get("name", "unknown department")
+            return f'"{username}" created department - {dept_name}'
+        if method == "PUT":
+            dept_name = before.get("name") if before else body.get("name", "unknown department")
+            return f'"{username}" updated department - {dept_name}'
+        if method == "DELETE":
+            dept_name = before.get("name") if before else "unknown"
+            return f'"{username}" deleted department - {dept_name}'
+
+    return default_desc
+
 class AuditLogMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
         method = request.method
         
-        if path.startswith("/uploads") or path.startswith("/static") or path == "/" or path == "/favicon.ico":
+        if path.startswith("/uploads") or path.startswith("/static") or path == "/" or path == "/favicon.ico" or method == "GET" or "heartbeat" in path:
             return await call_next(request)
             
         parts = [p for p in path.split("/") if p]
         doc_id = None
         collection_name = None
         before_state = None
+        
+        body_json = {}
+        if method in ["POST", "PUT", "PATCH"]:
+            try:
+                body_bytes = await request.body()
+                async def receive():
+                    return {"type": "http.request", "body": body_bytes, "more_body": False}
+                request._receive = receive
+                if body_bytes:
+                    import json
+                    body_json = json.loads(body_bytes.decode('utf-8'))
+            except Exception:
+                pass
         
         if method in ["PUT", "PATCH", "DELETE"] and parts:
             if "users" in parts: collection_name = "users"
@@ -194,6 +384,9 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             elif "documentations" in parts: collection_name = "documentations"
             elif "bms-checklists" in parts: collection_name = "bms_checklists"
             elif "bms-checklist-config" in parts: collection_name = "bms_checklist_config"
+            elif "morning-checklists" in parts: collection_name = "morning_checklists"
+            elif "periodic-activities" in parts: collection_name = "periodic_activities"
+            elif "observations" in parts: collection_name = "observations"
             
             from bson import ObjectId
             for p in reversed(parts):
@@ -242,12 +435,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
                 pass
                 
         action = get_action_name(method, path)
-        
-        query_params = str(request.query_params)
-        details = f"{method} {path}"
-        if query_params:
-            details += f"?{query_params}"
-        details += f" (Status: {response.status_code})"
+        details = get_audit_details(username, method, path, response.status_code, body_json, before_state, after_state)
         
         try:
             logs_col = db.get_collection("audit_logs")
