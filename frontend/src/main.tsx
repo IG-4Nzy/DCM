@@ -12,7 +12,7 @@ import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
   const originalSetItem = window.localStorage.setItem;
   const originalRemoveItem = window.localStorage.removeItem;
 
-  const EXCLUDED_KEYS = ['token', 'user', 'bms_checklists', 'bms_checklist_template', '__path_keys_map', '__current_saved_path'];
+  const EXCLUDED_KEYS = ['token', 'role', 'username', 'displayName', 'PRIVILEGES', 'isSuperuser', 'user', 'bms_checklists', 'bms_checklist_template', '__path_keys_map', '__current_saved_path'];
 
   const getPathKeysMap = (): Record<string, string[]> => {
     try {
