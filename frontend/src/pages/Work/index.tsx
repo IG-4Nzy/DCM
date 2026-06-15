@@ -74,7 +74,7 @@ const Works: React.FC = () => {
     }));
   }, [dispatch]);
 
-  useEffect(() => {
+  const loadWorks = React.useCallback((silent = false) => {
     dispatch(fetchWorks({
       skip: page * rowsPerPage,
       limit: rowsPerPage,
@@ -82,9 +82,20 @@ const Works: React.FC = () => {
       order,
       search: searchQuery,
       status: statusFilter,
-      showToast
+      showToast: silent ? undefined : showToast
     }));
   }, [dispatch, page, rowsPerPage, orderBy, order, searchQuery, statusFilter, showToast]);
+
+  useEffect(() => {
+    loadWorks();
+  }, [loadWorks]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadWorks(true);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [loadWorks]);
 
   const handleOpenModal = (work?: any) => {
     if (work) {

@@ -17,13 +17,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   useEffect(() => {
     if (token) {
       try {
-        const decoded: any = jwtDecode(token);
-        const currentTime = Date.now() / 1000;
-        
-        // If token is expired
-        if (decoded.exp && decoded.exp < currentTime) {
-          dispatch(logout());
-        }
+        jwtDecode(token);
       } catch (error) {
         // If token is invalid
         dispatch(logout());

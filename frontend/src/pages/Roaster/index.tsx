@@ -12,7 +12,9 @@ import {
   IconButton,
   Tabs,
   Tab,
-  Paper
+  Paper,
+  Switch,
+  FormControlLabel
 } from "@mui/material";
 import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon, MdPrint as PrintIcon, MdContentCopy as CopyIcon } from "react-icons/md";
 import dayjs, { Dayjs } from "dayjs";
@@ -547,13 +549,30 @@ const RoasterPage: React.FC = () => {
         
 
             {rosterStatus && hasRosterData && (
-            <Chip
-              label={rosterStatus.status}
-              color={rosterStatus.status === 'Approved' ? 'success' : rosterStatus.status === 'Rejected' ? 'error' : 'warning'}
-              size="small"
-              sx={{ fontWeight: 'bold' }}
-            />
-          )}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Chip
+                  label={rosterStatus.status}
+                  color={rosterStatus.status === 'Approved' ? 'success' : rosterStatus.status === 'Rejected' ? 'error' : 'warning'}
+                  size="small"
+                  sx={{ fontWeight: 'bold' }}
+                />
+                {canApprove && (
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={rosterStatus.status === 'Approved'}
+                        onChange={(e) => handleStatusChange(e.target.checked ? 'Approved' : 'Pending')}
+                        color="success"
+                        size="small"
+                      />
+                    }
+                    label={<Typography sx={{ fontSize: '12px' }}>{rosterStatus.status === 'Approved' ? 'Approved' : 'Approve Roster'}</Typography>}
+                    className="hide-on-print"
+                    sx={{ ml: 1 }}
+                  />
+                )}
+              </Box>
+            )}
 
               {/* Last Updated Info */}
           {Object.values(rosterData).some(r => r.updatedAt) && (

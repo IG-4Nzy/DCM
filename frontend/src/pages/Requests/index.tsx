@@ -65,10 +65,10 @@ const Requests: React.FC = () => {
     const hasUpdatePrivilege = isSuperuser || hasPrivilege(PRIVILEGES.REQUEST_UPDATE);
     const hasDeletePrivilege = isSuperuser || hasPrivilege(PRIVILEGES.REQUEST_DELETE);
 
-    const loadData = useCallback(async () => {
+    const loadData = useCallback(async (silent = false) => {
         if (!hasViewPrivilege) return;
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             let completedParam: boolean | undefined = undefined;
             if (statusFilter === 'completed') completedParam = true;
             else if (statusFilter === 'active') completedParam = false;
@@ -92,9 +92,9 @@ const Requests: React.FC = () => {
                 }
             }
         } catch (err: any) {
-            showToast(err.message || 'Failed to fetch requests', 'error');
+            if (!silent) showToast(err.message || 'Failed to fetch requests', 'error');
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, [page, rowsPerPage, searchQuery, statusFilter, requestTypeFilter, showToast, hasViewPrivilege, isViewModalOpen, selectedViewRequest]);
 
@@ -115,6 +115,14 @@ const Requests: React.FC = () => {
         dispatch(fetchUsers({ pagination: false }));
         dispatch(fetchInventory({ pagination: false }));
     }, [loadData, fetchRequestTypes, dispatch]);
+
+    useEffect(() => {
+        if (!hasViewPrivilege) return;
+        const interval = setInterval(() => {
+            loadData(true);
+        }, 30000);
+        return () => clearInterval(interval);
+    }, [loadData, hasViewPrivilege]);
 
     const handleAddRequestType = async () => {
         if (!newTypeName.trim()) {
