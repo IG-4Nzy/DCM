@@ -60,6 +60,7 @@ class UserModel(BaseModel):
     isDepartmentHead: Optional[bool] = None
     replacementFor: Optional[str] = None
     replacementForName: Optional[str] = None
+    passNumber: Optional[str] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -81,6 +82,7 @@ class CreateUserModel(BaseModel):
     department: Optional[str] = None
     isDepartmentHead: Optional[bool] = None
     replacementFor: Optional[str] = None
+    passNumber: Optional[str] = None
 
 class UpdateUserModel(BaseModel):
     username: Optional[str] = None
@@ -97,6 +99,7 @@ class UpdateUserModel(BaseModel):
     department: Optional[str] = None
     isDepartmentHead: Optional[bool] = None
     replacementFor: Optional[str] = None
+    passNumber: Optional[str] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

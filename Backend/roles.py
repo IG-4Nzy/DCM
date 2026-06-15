@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
-from auth_utils import require_privilege
+from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import List, Optional
 from database import db
@@ -11,7 +11,7 @@ import os
 router = APIRouter()
 roles_collection = db.get_collection("roles")
 
-@router.get("/", response_description="List all roles", response_model=PaginatedRolesModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Role"))])
+@router.get("/", response_description="List all roles", response_model=PaginatedRolesModel, response_model_by_alias=False)
 async def list_roles(
     skip: int = Query(0, ge=0),
     pagination: bool = Query(True),
@@ -19,8 +19,23 @@ async def list_roles(
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
     order: str = Query("asc"),
-    search: Optional[str] = None
+    search: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
 ):
+    is_superuser = current_user.get("isSuperuser", False)
+    privileges = current_user.get("privileges", [])
+    
+    allowed = (
+        is_superuser or 
+        "View Role" in privileges or 
+        "Create Observation" in privileges or 
+        "Update Observation" in privileges or
+        "Create User" in privileges or
+        "Update User" in privileges
+    )
+    if not allowed:
+        raise HTTPException(status_code=403, detail="Not enough privileges to view roles")
+
     query = {}
     if search:
         query = {

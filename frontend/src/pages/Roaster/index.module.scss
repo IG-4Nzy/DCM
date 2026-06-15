@@ -53,6 +53,7 @@
           border-bottom: #333 solid 1px;
           border-right: #333 solid 1px;
 
+          
           &:first-child {
             flex: none;
             width: 100px;
@@ -75,7 +76,7 @@
       &--body {
         &-cell {
           display: flex;
-
+          min-height: 4.8rem !important;
 
           &--row1 {
             display: flex;
@@ -98,7 +99,7 @@
             min-width: 0px !important;
             /* Ensures content doesn't break perfect equality */
             place-items: center;
-            font-size: 16px;
+            font-size: 18px;
             min-height: 48px;
             justify-content: center;
 
@@ -206,9 +207,9 @@
 
   .container__roasterContainer {
     position: absolute !important;
-    left: 3cm !important;
-    top: 3cm !important;
-    width: calc(100% - 6cm) !important;
+    left: 2cm !important;
+    top: 2cm !important;
+    width: calc(100% - 4cm) !important;
     margin: 0 !important;
     box-sizing: border-box !important;
     transform: none !important;
@@ -217,6 +218,13 @@
   /* Fix overlapping border on the right side when the Leave column is hidden during print */
   .container__roasterContainer__table--header-cell:nth-last-child(2) {
     border-right: none !important;
+  }
+  .container__roasterContainer__table--header-cell label {
+    font-weight: 400 !important;
+  }
+  .container__roasterContainer__table--body-cell--row2 label {
+    color: #333 !important;
+    font-weight: 400 !important;
   }
   .container__roasterContainer__table--body-cell--row2:nth-last-child(2) > label {
     border-right: none !important;

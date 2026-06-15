@@ -641,7 +641,16 @@ const RoasterPage: React.FC = () => {
             {["Day", ...uniqueShifts].map((shiftName) => {
               const isLeave = shiftName === "Leave";
               const cfgShift = dutySummary?.shifts?.find((s: any) => s.name === shiftName);
-              const headerLabel = cfgShift ? `${shiftName} (${formatTime(cfgShift.startTime)} to ${formatTime(cfgShift.endTime)})` : shiftName;
+              let headerLabel = shiftName;
+              if (shiftName === "Shift-1") {
+                headerLabel = "Shift-1 (06-30 AM to 2:30 PM)";
+              } else if (shiftName === "Shift-2") {
+                headerLabel = "Shift - 2 (02:30 PM to 10:30 PM)";
+              } else if (shiftName === "Shift-3") {
+                headerLabel = "Shift - 3 (10:30 PM to 06:30 AM)";
+              } else if (cfgShift) {
+                headerLabel = `${shiftName} (${formatTime(cfgShift.startTime)} to ${formatTime(cfgShift.endTime)})`;
+              }
               return (
                 <div
                   key={shiftName}

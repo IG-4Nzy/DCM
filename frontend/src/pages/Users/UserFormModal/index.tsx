@@ -48,6 +48,8 @@ interface PropType {
     setFormReplacementFor: (v: string) => void;
     inactiveUsers: any[];
     onViewReplacedUser?: (id: string) => void;
+    formPassNumber: string;
+    setFormPassNumber: (v: string) => void;
 }
 
 const BLOOD_GROUPS = [
@@ -63,70 +65,72 @@ const BLOOD_GROUPS = [
 
 const ViewField = ({ label, value }: { label: string, value: any }) => (
     <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, p: 1, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 1, border: '1px solid rgba(0,0,0,0.05)' }}>
-        <Typography variant="caption" color="textSecondary">{label}</Typography>
-        <Typography variant="body1" sx={{ mt: 0.5, wordBreak: 'break-word' }}>{value || '-'}</Typography>
-    </Box>
-);
-
-const UserFormModal = ({ 
-    isModalOpen, handleCloseModal, editingUser, 
-    isEditMode, setIsEditMode, hasUpdatePrivilege,
-    setFormUsername, formUsername, 
-    formPassword, setFormPassword, 
-    setFormRole, formRole, 
-    formStatus, setFormStatus, 
-    availableRoles, handleSubmit,
-    formFirstName, setFormFirstName,
-    formLastName, setFormLastName,
-    formDob, setFormDob,
-    formMobile, setFormMobile,
-    formBloodGroup, setFormBloodGroup,
-    formAddress, setFormAddress,
-    formDateOfJoin, setFormDateOfJoin,
-    formDepartment, setFormDepartment,
-    formIsDepartmentHead, setFormIsDepartmentHead,
-    availableDepartments,
-    formReplacementFor, setFormReplacementFor,
-    inactiveUsers, onViewReplacedUser
-}: PropType) => {
-    
-    const canEdit = isEditMode;
-    const showEditButton = editingUser && !isEditMode && hasUpdatePrivilege;
-
-    const headerTitle = (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
-          <Typography variant="h6">{editingUser ? "User Details" : "Create User"}</Typography>
-          {showEditButton && (
-            <Tooltip title="Edit User">
-              <IconButton size="small" color="primary" onClick={() => setIsEditMode(true)}>
-                <EditIcon />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Box>
-    );
-
-    return (
-        <Modal
-            open={isModalOpen}
-            handleClose={handleCloseModal}
-            title={headerTitle as any}
-        >
-            <form onSubmit={handleSubmit} className={styles.formContainer}>
-                
-                {!canEdit ? (
-                    <>
-                        <div className={styles.row}>
-                            <ViewField label="Username" value={formUsername} />
-                            <ViewField label="Role" value={Array.isArray(formRole) ? formRole.join(", ") : formRole} />
-                        </div>
-                        <div className={styles.row}>
-                            <ViewField label="Status" value={formStatus ? "Active" : "Inactive"} />
-                            <ViewField label="Department" value={formDepartment} />
-                        </div>
-                        <div className={styles.row}>
-                            <ViewField label="Is Department Head" value={formIsDepartmentHead ? "Yes" : "No"} />
-                        </div>
+         <Typography variant="caption" color="textSecondary">{label}</Typography>
+         <Typography variant="body1" sx={{ mt: 0.5, wordBreak: 'break-word' }}>{value || '-'}</Typography>
+     </Box>
+ );
+ 
+ const UserFormModal = ({ 
+     isModalOpen, handleCloseModal, editingUser, 
+     isEditMode, setIsEditMode, hasUpdatePrivilege,
+     setFormUsername, formUsername, 
+     formPassword, setFormPassword, 
+     setFormRole, formRole, 
+     formStatus, setFormStatus, 
+     availableRoles, handleSubmit,
+     formFirstName, setFormFirstName,
+     formLastName, setFormLastName,
+     formDob, setFormDob,
+     formMobile, setFormMobile,
+     formBloodGroup, setFormBloodGroup,
+     formAddress, setFormAddress,
+     formDateOfJoin, setFormDateOfJoin,
+     formDepartment, setFormDepartment,
+     formIsDepartmentHead, setFormIsDepartmentHead,
+     availableDepartments,
+     formReplacementFor, setFormReplacementFor,
+     inactiveUsers, onViewReplacedUser,
+     formPassNumber, setFormPassNumber
+ }: PropType) => {
+     
+     const canEdit = isEditMode;
+     const showEditButton = editingUser && !isEditMode && hasUpdatePrivilege;
+ 
+     const headerTitle = (
+         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
+           <Typography variant="h6">{editingUser ? "User Details" : "Create User"}</Typography>
+           {showEditButton && (
+             <Tooltip title="Edit User">
+               <IconButton size="small" color="primary" onClick={() => setIsEditMode(true)}>
+                 <EditIcon />
+               </IconButton>
+             </Tooltip>
+           )}
+         </Box>
+     );
+ 
+     return (
+         <Modal
+             open={isModalOpen}
+             handleClose={handleCloseModal}
+             title={headerTitle as any}
+         >
+             <form onSubmit={handleSubmit} className={styles.formContainer}>
+                 
+                 {!canEdit ? (
+                     <>
+                         <div className={styles.row}>
+                             <ViewField label="Username" value={formUsername} />
+                             <ViewField label="Role" value={Array.isArray(formRole) ? formRole.join(", ") : formRole} />
+                         </div>
+                         <div className={styles.row}>
+                             <ViewField label="Status" value={formStatus ? "Active" : "Inactive"} />
+                             <ViewField label="Department" value={formDepartment} />
+                         </div>
+                         <div className={styles.row}>
+                             <ViewField label="Is Department Head" value={formIsDepartmentHead ? "Yes" : "No"} />
+                             <ViewField label="Pass Number" value={formPassNumber} />
+                         </div>
                         {editingUser?.replacementFor && (
                             <div className={styles.row}>
                                 <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, p: 1, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 1, border: '1px solid rgba(0,0,0,0.05)' }}>
@@ -314,6 +318,13 @@ const UserFormModal = ({
                                     ))}
                                 </Select>
                             </FormControl>
+                            <TextField
+                                className={styles.field}
+                                fullWidth
+                                label="Pass Number"
+                                value={formPassNumber}
+                                onChange={(e) => setFormPassNumber(e.target.value)}
+                            />
                         </div>
                         
                         <div className={styles.row}>

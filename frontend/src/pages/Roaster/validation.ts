@@ -84,7 +84,7 @@ export const validateRoster = (
 
       Object.entries(userShiftsToday).forEach(([username, todayMappings]) => {
         const todayNightShifts = todayMappings.filter(
-          m => m.actualShift.includes("3") || m.actualShift.toLowerCase().includes("night")
+          m => m.actualShift.includes("4") || m.actualShift.toLowerCase().includes("night")
         );
 
         if (todayNightShifts.length > 0) {
@@ -116,7 +116,7 @@ export const validateRoster = (
     }
   });
 
-  // Rule 3: Those who were in Shift 4 (UI Shift-3) on Sunday of the previous week cannot enter Shift 1, 2, and 3 (UI Shift-1, Shift-2, Shift-3) on Monday.
+  // Rule 3: Those who were in Shift 4 (UI Shift-3) on Sunday of the previous week cannot enter Shift 1 and 2 (UI Shift-1, Shift-2) on Monday.
   if (weekDates.length > 0) {
     const monday = weekDates[0];
     const prevSunday = dayjs(monday).subtract(1, 'day').format('YYYY-MM-DD');
@@ -124,7 +124,7 @@ export const validateRoster = (
 
     prevSundayShift3Assignees.forEach((username) => {
       if (username) {
-        ['Shift-1', 'Shift-2', 'Shift-3'].forEach((colShift) => {
+        ['Shift-1', 'Shift-2'].forEach((colShift) => {
           const mondayAssignees = rosterData[`${monday}_${colShift}`]?.assignees || [];
           if (mondayAssignees.includes(username)) {
             errors.push({

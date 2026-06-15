@@ -16,6 +16,7 @@ export interface UserData {
   isDepartmentHead?: boolean;
   replacementFor?: string | null;
   replacementForName?: string | null;
+  passNumber?: string;
 }
 
 export interface CreateUserPayload {
@@ -33,6 +34,7 @@ export interface CreateUserPayload {
   department?: string;
   isDepartmentHead?: boolean;
   replacementFor?: string | null;
+  passNumber?: string;
 }
 
 export interface UpdateUserPayload {
@@ -52,6 +54,7 @@ export interface UpdateUserPayload {
   isDepartmentHead?: boolean;
   replacementFor?: string | null;
   replacementForName?: string | null;
+  passNumber?: string;
 }
 
 export interface UsersState {

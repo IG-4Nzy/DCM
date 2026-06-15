@@ -24,7 +24,15 @@ async def list_departments(
     is_superuser = current_user.get("isSuperuser", False)
     privileges = current_user.get("privileges", [])
     
-    if not is_superuser and "View Department" not in privileges:
+    allowed = (
+        is_superuser or
+        "View Department" in privileges or
+        "Create Observation" in privileges or
+        "Update Observation" in privileges or
+        "Create User" in privileges or
+        "Update User" in privileges
+    )
+    if not allowed:
         raise HTTPException(status_code=403, detail="Not enough permissions to view departments")
         
     if search:

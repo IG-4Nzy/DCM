@@ -68,6 +68,7 @@ const Users: React.FC = () => {
   const [formIsDepartmentHead, setFormIsDepartmentHead] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formReplacementFor, setFormReplacementFor] = useState("");
+  const [formPassNumber, setFormPassNumber] = useState("");
   const [allSystemUsers, setAllSystemUsers] = useState<UserData[]>([]);
 
   useEffect(() => {
@@ -153,6 +154,7 @@ const Users: React.FC = () => {
       setFormDepartment(user.department || "");
       setFormIsDepartmentHead(user.isDepartmentHead || false);
       setFormReplacementFor(user.replacementFor || "");
+      setFormPassNumber(user.passNumber || "");
       loadSystemUsers();
     } else {
       setIsEditMode(true);
@@ -171,6 +173,7 @@ const Users: React.FC = () => {
       setFormDepartment("");
       setFormIsDepartmentHead(false);
       setFormReplacementFor("");
+      setFormPassNumber("");
       loadSystemUsers();
     }
     setIsModalOpen(true);
@@ -199,6 +202,7 @@ const Users: React.FC = () => {
           department: formDepartment,
           isDepartmentHead: formIsDepartmentHead,
           replacementFor: formReplacementFor || null,
+          passNumber: formPassNumber || null,
         };
         if (formPassword) {
           payload.password = formPassword;
@@ -222,6 +226,7 @@ const Users: React.FC = () => {
               department: formDepartment,
               isDepartmentHead: formIsDepartmentHead,
               replacementFor: formReplacementFor || null,
+              passNumber: formPassNumber || null,
             },
             showToast,
           }),
@@ -276,6 +281,7 @@ const Users: React.FC = () => {
       sortable: false,
       render: (row) => `${row.firstName || ''} ${row.lastName || ''}`.trim() || '-'
     },
+    { id: "passNumber", label: "Pass Number", sortable: true, render: (row) => row.passNumber || '-' },
     { id: "department", label: "Department", sortable: true, render: (row) => row.department || '-' },
     { id: "role", label: "Role", sortable: true, render: (row) => Array.isArray(row.role) ? row.role.join(", ") : (row.role || "-") },
     {
@@ -467,6 +473,8 @@ const Users: React.FC = () => {
         setFormReplacementFor={setFormReplacementFor}
         inactiveUsers={inactiveUsers}
         onViewReplacedUser={handleViewReplacedUser}
+        formPassNumber={formPassNumber}
+        setFormPassNumber={setFormPassNumber}
       />
     </Box>
   );
