@@ -15,8 +15,8 @@ interface PropType {
   editingWork: any | null;
   workName: string;
   setWorkName: (value: string) => void;
-  assignee: string;
-  setAssignee: (value: string) => void;
+  assignees: string[];
+  setAssignees: (value: string[]) => void;
   priority: string;
   setPriority: (value: string) => void;
   dueDate: string;
@@ -35,8 +35,8 @@ const WorkFormModal = ({
   editingWork,
   workName,
   setWorkName,
-  assignee,
-  setAssignee,
+  assignees,
+  setAssignees,
   priority,
   setPriority,
   dueDate,
@@ -95,10 +95,11 @@ const WorkFormModal = ({
           />
 
           <Dropdown
-            label="Assignee"
+            label="Assignees"
             options={formattedUsers}
-            value={assignee}
-            onChange={setAssignee}
+            value={assignees}
+            onChange={setAssignees}
+            multiple={true}
             fullWidth={true}
             className={styles.field}
             clearable={true}

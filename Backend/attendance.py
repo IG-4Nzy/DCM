@@ -27,29 +27,45 @@ def determine_shift_for_user(username: str, roaster: dict, config_shifts: list, 
     if not roaster:
         return "Default", default_start, "17:00"
 
-    roster_row_name = roaster.get("shift") or ""
-    
+    shift_col = roaster.get("shift") or ""
+    assignees = roaster.get("assignees") or []
+
+    try:
+        user_idx = assignees.index(username)
+    except ValueError:
+        user_idx = -1
+
     def norm(s):
         if not s:
             return ""
         return s.lower().replace(" ", "").replace("-", "").replace("_", "")
 
-    norm_row_name = norm(roster_row_name)
+    # Helper to check if a roster row name matches the column/shift (e.g. "Shift-1" matches "Shift 1 Row 1")
+    def row_matches_column(row_name: str, col_name: str) -> bool:
+        r_norm = norm(row_name)
+        c_norm = norm(col_name)
+        if not c_norm or not r_norm:
+            return False
+        return c_norm in r_norm
 
-    # 1. Look up the row/slot in rosterRows to find the mapped shift name
     mapped_shift_name = None
-    if config_roster_rows:
-        row_info = next((r for r in config_roster_rows if norm(r.get("name")) == norm_row_name), None)
-        if row_info:
-            mapped_shift_name = row_info.get("mappedShift")
-            
-    # If not found in rosterRows, assume the roaster.shift itself might be the shift name
+
+    if user_idx >= 0 and config_roster_rows:
+        # Find all roster rows that match the roster column (e.g. "Shift-1")
+        col_rows = [r for r in config_roster_rows if row_matches_column(r.get("name", ""), shift_col)]
+        # Sort alphabetically to keep index matching consistent with rendering
+        col_rows.sort(key=lambda x: x.get("name", "").lower())
+        
+        if user_idx < len(col_rows):
+            matched_row = col_rows[user_idx]
+            mapped_shift_name = matched_row.get("mappedShift")
+
     if not mapped_shift_name:
-        mapped_shift_name = roster_row_name
+        mapped_shift_name = shift_col
 
     norm_mapped_shift = norm(mapped_shift_name)
 
-    # 2. Look up the mapped shift name in config_shifts
+    # Look up mapped shift in config_shifts
     if config_shifts:
         shift_info = next((s for s in config_shifts if norm(s.get("name")) == norm_mapped_shift), None)
         if shift_info:

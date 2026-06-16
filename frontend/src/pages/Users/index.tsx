@@ -33,6 +33,7 @@ type Order = "asc" | "desc";
 
 const Users: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const { username: currentUsername } = useSelector((state: RootState) => state.auth);
   const {
     users,
     availableRoles,
@@ -275,10 +276,12 @@ const Users: React.FC = () => {
   };
 
   const isUserOnline = (user: UserData) => {
+    if (user.username === currentUsername) return true;
     if (!user.lastActive) return false;
     try {
       const lastActiveTime = new Date(user.lastActive).getTime();
-      const now = getServerTime().toDate().getTime();
+      // lastActive is stored as UTC with 'Z' suffix, so compare against UTC now
+      const now = Date.now();
       return now - lastActiveTime < 45000;
     } catch (e) {
       return false;

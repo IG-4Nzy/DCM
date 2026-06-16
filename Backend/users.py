@@ -139,6 +139,11 @@ async def list_users(
         if "status" not in user:
             user["status"] = True
         user["isDepartmentHead"] = user.get("username") in dept_heads
+        
+        # Override lastActive for the current user to prevent page refresh race conditions
+        if current_user and user.get("username") == current_user.get("sub"):
+            from datetime import datetime, timezone
+            user["lastActive"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             
     await populate_replacement_names(users)
     return {"data": users, "total": total}
@@ -185,6 +190,12 @@ async def show_user(id: str, current_user: dict = Depends(get_current_user)):
         departments_collection = db.get_collection("departments")
         is_head = await departments_collection.find_one({"departmentHead": user.get("username")}) is not None
         user["isDepartmentHead"] = is_head
+        
+        # Override lastActive for the current user to prevent page refresh race conditions
+        if current_user and user.get("username") == current_user.get("sub"):
+            from datetime import datetime, timezone
+            user["lastActive"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            
         await populate_replacement_names(user)
         return user
     raise HTTPException(status_code=404, detail=f"User {id} not found")

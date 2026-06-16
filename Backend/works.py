@@ -36,7 +36,11 @@ async def list_works(
         users_collection = db.get_collection("users")
         user_record = await users_collection.find_one({"username": current_user["sub"]})
         if user_record:
-            query["assignee"] = str(user_record["_id"])
+            user_id = str(user_record["_id"])
+            query["$or"] = [
+                {"assignee": user_id},
+                {"assignees": user_id}
+            ]
             query["status"] = {"$ne": "Closed"}
         else:
             raise HTTPException(status_code=403, detail="User record not found")
@@ -49,6 +53,7 @@ async def list_works(
             "$or": [
                 {"workName": {"$regex": search, "$options": "i"}},
                 {"assignee": {"$regex": search, "$options": "i"}},
+                {"assignees": {"$regex": search, "$options": "i"}},
                 {"priority": {"$regex": search, "$options": "i"}},
             ]
         }
@@ -127,7 +132,11 @@ async def create_work(work: CreateWorkModel = Body(...), current_user: dict = De
     created_work = await works_collection.find_one({"_id": new_work.inserted_id})
     
     from notification_helper import log_page_update
-    await log_page_update("works", assignee=work.assignee, username=current_user.get("sub"))
+    assignees_list = work_dict.get("assignees") or []
+    if work_dict.get("assignee") and work_dict.get("assignee") not in assignees_list:
+        assignees_list.append(work_dict.get("assignee"))
+    for asn in assignees_list:
+        await log_page_update("works", assignee=asn, username=current_user.get("sub"))
     
     return created_work
 
@@ -149,7 +158,13 @@ async def show_work(id: str, current_user: dict = Depends(get_current_user)):
         
         users_collection = db.get_collection("users")
         user_record = await users_collection.find_one({"username": current_user["sub"]})
-        if not user_record or work.get("assignee") != str(user_record["_id"]):
+        user_id = str(user_record["_id"]) if user_record else None
+        
+        assignees_list = work.get("assignees") or []
+        if work.get("assignee"):
+            assignees_list.append(work.get("assignee"))
+            
+        if not user_record or user_id not in assignees_list:
             raise HTTPException(status_code=403, detail="You are not assigned to this work")
             
         if work.get("status") == "Closed":
@@ -186,7 +201,13 @@ async def update_work(id: str, work: UpdateWorkModel = Body(...), current_user: 
                 if has_view_assigned:
                     users_collection = db.get_collection("users")
                     user_record = await users_collection.find_one({"username": current_user["sub"]})
-                    if not user_record or existing_work.get("assignee") != str(user_record["_id"]):
+                    user_id = str(user_record["_id"]) if user_record else None
+                    
+                    assignees_list = existing_work.get("assignees") or []
+                    if existing_work.get("assignee"):
+                        assignees_list.append(existing_work.get("assignee"))
+                        
+                    if not user_record or user_id not in assignees_list:
                         raise HTTPException(status_code=403, detail="You can only update status for works assigned to you")
                 else:
                     raise HTTPException(status_code=403, detail="Need Update Work privilege")
@@ -202,7 +223,11 @@ async def update_work(id: str, work: UpdateWorkModel = Body(...), current_user: 
         if update_result.modified_count == 1:
             if (updated_work := await works_collection.find_one({"_id": ObjectId(id)})) is not None:
                 from notification_helper import log_page_update
-                await log_page_update("works", assignee=updated_work.get("assignee"), username=current_user.get("sub"))
+                assignees_list = updated_work.get("assignees") or []
+                if updated_work.get("assignee") and updated_work.get("assignee") not in assignees_list:
+                    assignees_list.append(updated_work.get("assignee"))
+                for asn in assignees_list:
+                    await log_page_update("works", assignee=asn, username=current_user.get("sub"))
                 return updated_work
 
     if (existing_work := await works_collection.find_one({"_id": ObjectId(id)})) is not None:
@@ -249,7 +274,13 @@ async def transfer_work(
     privileges = current_user.get("privileges", [])
     
     current_user_record = await users_collection.find_one({"username": current_user["sub"]})
-    is_assignee = current_user_record and existing_work.get("assignee") == str(current_user_record["_id"])
+    user_id = str(current_user_record["_id"]) if current_user_record else None
+    
+    assignees_list = existing_work.get("assignees") or []
+    if existing_work.get("assignee"):
+        assignees_list.append(existing_work.get("assignee"))
+        
+    is_assignee = user_id in assignees_list
     has_update_privilege = is_superuser or "Update Work" in privileges
     
     if not (is_assignee or has_update_privilege):
@@ -270,7 +301,10 @@ async def transfer_work(
     await works_collection.update_one(
         {"_id": ObjectId(id)},
         {
-            "$set": {"assignee": new_assignee_id_str},
+            "$set": {
+                "assignee": new_assignee_id_str,
+                "assignees": [new_assignee_id_str]
+            },
             "$push": {"comments": new_comment}
         }
     )

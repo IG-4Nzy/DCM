@@ -787,10 +787,16 @@ const RoasterPage: React.FC = () => {
                       );
                     }
 
-                    const shiftRows = [
-                      rows.find(r => r.name === `${shiftName.replace('-', ' ')} Row 1`) || { name: `${shiftName.replace('-', ' ')} Row 1`, mappedShift: shiftName },
-                      rows.find(r => r.name === `${shiftName.replace('-', ' ')} Row 2`) || { name: `${shiftName.replace('-', ' ')} Row 2`, mappedShift: shiftName }
-                    ];
+                    const normStr = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                    let shiftRows = rows
+                      .filter(r => normStr(r.name).includes(normStr(shiftName)))
+                      .sort((a, b) => a.name.localeCompare(b.name));
+                    if (shiftRows.length === 0) {
+                      shiftRows = [
+                        { name: `${shiftName.replace('-', ' ')} Row 1`, mappedShift: shiftName },
+                        { name: `${shiftName.replace('-', ' ')} Row 2`, mappedShift: shiftName }
+                      ];
+                    }
 
                     return (
                       <div

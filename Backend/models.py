@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated
 from typing import Optional, List, Any, Union
@@ -144,7 +144,8 @@ class PaginatedRolesModel(BaseModel):
 class WorkModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     workName: str
-    assignee: str
+    assignees: List[str] = Field(default_factory=list)
+    assignee: Optional[str] = None
     priority: str
     dueDate: str = ""
     description: str = ""
@@ -153,6 +154,20 @@ class WorkModel(BaseModel):
     comments: List[dict] = Field(default_factory=list)
     completedAt: Optional[str] = None
     createdAt: Optional[str] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def convert_assignee_to_assignees(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            assignee = data.get("assignee")
+            assignees = data.get("assignees")
+            if not assignees and assignee:
+                data["assignees"] = [assignee]
+            elif "assignees" not in data:
+                data["assignees"] = []
+            if not assignee and data["assignees"]:
+                data["assignee"] = data["assignees"][0]
+        return data
 
     @field_validator('attachments', mode='before')
     @classmethod
@@ -187,7 +202,8 @@ class WorkModel(BaseModel):
 
 class CreateWorkModel(BaseModel):
     workName: str
-    assignee: str
+    assignees: List[str] = Field(default_factory=list)
+    assignee: Optional[str] = None
     priority: str
     dueDate: str = ""
     description: str = ""
@@ -197,8 +213,23 @@ class CreateWorkModel(BaseModel):
     completedAt: Optional[str] = None
     createdAt: Optional[str] = None
 
+    @model_validator(mode='before')
+    @classmethod
+    def convert_assignee_to_assignees(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            assignee = data.get("assignee")
+            assignees = data.get("assignees")
+            if not assignees and assignee:
+                data["assignees"] = [assignee]
+            elif "assignees" not in data:
+                data["assignees"] = []
+            if not assignee and data["assignees"]:
+                data["assignee"] = data["assignees"][0]
+        return data
+
 class UpdateWorkModel(BaseModel):
     workName: Optional[str] = None
+    assignees: Optional[List[str]] = None
     assignee: Optional[str] = None
     priority: Optional[str] = None
     dueDate: Optional[str] = None
@@ -208,6 +239,19 @@ class UpdateWorkModel(BaseModel):
     comments: Optional[List[dict]] = None
     completedAt: Optional[str] = None
     createdAt: Optional[str] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def convert_assignee_to_assignees(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            assignee = data.get("assignee")
+            assignees = data.get("assignees")
+            if assignees is not None:
+                if len(assignees) > 0:
+                    data["assignee"] = assignees[0]
+            elif assignee is not None:
+                data["assignees"] = [assignee]
+        return data
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

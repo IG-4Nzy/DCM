@@ -40,10 +40,16 @@ export const validateRoster = (
 
     rosterColumns.forEach((colShift) => {
       const assignees = rosterData[`${date}_${colShift}`]?.assignees || [];
-      const colRows = [
-        activeRows.find(r => r.name === `${colShift.replace('-', ' ')} Row 1`) || { name: `${colShift.replace('-', ' ')} Row 1`, mappedShift: colShift },
-        activeRows.find(r => r.name === `${colShift.replace('-', ' ')} Row 2`) || { name: `${colShift.replace('-', ' ')} Row 2`, mappedShift: colShift }
-      ];
+      const normStr = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      let colRows = activeRows
+        .filter(r => normStr(r.name).includes(normStr(colShift)))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      if (colRows.length === 0) {
+        colRows = [
+          { name: `${colShift.replace('-', ' ')} Row 1`, mappedShift: colShift },
+          { name: `${colShift.replace('-', ' ')} Row 2`, mappedShift: colShift }
+        ];
+      }
 
       colRows.forEach((row, rIdx) => {
         const username = assignees[rIdx];

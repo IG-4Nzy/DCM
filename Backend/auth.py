@@ -156,7 +156,6 @@ async def login(credentials: LoginRequest):
                 user_dept = user.get("department") or "Unassigned"
                 roaster = await roaster_col.find_one({
                     "date": today_str,
-                    "department": user_dept,
                     "assignees": user["username"]
                 })
 

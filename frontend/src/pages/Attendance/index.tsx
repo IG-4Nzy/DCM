@@ -1172,12 +1172,28 @@ const Attendance: React.FC = () => {
                                         let shiftEndStr = '17:00';
 
                                         if (dayRoster) {
-                                            shiftName = dayRoster.shift;
-                                            const shiftInfo = (cycleConfig as any).shifts?.find((s: any) => s.name === dayRoster.shift);
-                                            if (shiftInfo) {
-                                                shiftStartStr = shiftInfo.startTime || '09:00';
-                                                shiftEndStr = shiftInfo.endTime || '17:00';
+                                            // Resolve shift via roster row mapping
+                                            const normStr = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                                            const shiftCol = dayRoster.shift || '';
+                                            const rosterAssignees: string[] = dayRoster.assignees || [];
+                                            const userIdx = rosterAssignees.indexOf(calEmployee?.username || '');
+                                            const cfgRosterRows: any[] = (cycleConfig as any).rosterRows || [];
+                                            const cfgShifts: any[] = (cycleConfig as any).shifts || [];
+                                            let mappedShift = shiftCol;
+
+                                            if (userIdx >= 0 && cfgRosterRows.length > 0) {
+                                                const colRows = cfgRosterRows
+                                                    .filter((r: any) => normStr(r.name).includes(normStr(shiftCol)))
+                                                    .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+                                                if (userIdx < colRows.length) {
+                                                    mappedShift = colRows[userIdx].mappedShift || shiftCol;
+                                                }
                                             }
+
+                                            const resolvedShiftInfo = cfgShifts.find((s: any) => normStr(s.name) === normStr(mappedShift));
+                                            shiftName = resolvedShiftInfo?.name || mappedShift;
+                                            shiftStartStr = resolvedShiftInfo?.startTime || shiftStartStr;
+                                            shiftEndStr = resolvedShiftInfo?.endTime || shiftEndStr;
                                         }
 
                                         if (log) {

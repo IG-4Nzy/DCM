@@ -73,11 +73,12 @@ const WorkDetailModal = ({
   const isCompletedOrClosed = currentStatus === "Completed" || currentStatus === "Closed";
   const isLocked = isCompletedOrClosed && !isSuperuser;
   
-  const assigneeUser = users.find(
-    (u: any) => u.id === work?.assignee || u._id === work?.assignee || u.username === work?.assignee,
+  const workAssignees = work?.assignees || (work?.assignee ? [work.assignee] : []);
+  const assigneeUsers = users.filter(
+    (u: any) => workAssignees.includes(u.id) || workAssignees.includes(u._id) || workAssignees.includes(u.username)
   );
   
-  const isAssignee = assigneeUser && assigneeUser.username === currentUser;
+  const isAssignee = assigneeUsers.some((u) => u.username === currentUser);
   const hasStatusUpdate = canUpdateWork || (hasPrivilege(PRIVILEGES.WORK_VIEW_ASSIGNED) && isAssignee);
   const canUpdateStatus = hasStatusUpdate && !isLocked;
 
@@ -153,9 +154,12 @@ const WorkDetailModal = ({
 
   if (!work) return null;
 
-  const assigneeName = assigneeUser
-    ? `${assigneeUser.firstName || ''} ${assigneeUser.lastName || ''}`.trim() || assigneeUser.username || assigneeUser.name
-    : work.assignee
+  const assigneeNames = assigneeUsers.map(
+    (u) => `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || u.name
+  );
+  const assigneeName = assigneeNames.length > 0
+    ? assigneeNames.join(", ")
+    : workAssignees.length > 0
       ? "User Removed"
       : "Unassigned";
 

@@ -62,7 +62,7 @@ const Works: React.FC = () => {
   const [viewingWork, setViewingWork] = useState<WorkData | null>(null);
 
   const [workName, setWorkName] = useState('');
-  const [assignee, setAssignee] = useState('');
+  const [assignees, setAssignees] = useState<string[]>([]);
   const [priority, setPriority] = useState('Medium');
   const [dueDate, setDueDate] = useState('');
   const [description, setDescription] = useState('');
@@ -102,7 +102,7 @@ const Works: React.FC = () => {
     if (work) {
       setEditingWork(work);
       setWorkName(work.workName);
-      setAssignee(work.assignee);
+      setAssignees(work.assignees || (work.assignee ? [work.assignee] : []));
       setPriority(work.priority);
       setDueDate(work.dueDate);
       setDescription(work.description);
@@ -110,7 +110,7 @@ const Works: React.FC = () => {
     } else {
       setEditingWork(null);
       setWorkName('');
-      setAssignee('');
+      setAssignees([]);
       setPriority('Medium');
       setDueDate('');
       setDescription('');
@@ -190,7 +190,7 @@ const Works: React.FC = () => {
 
       const payload: any = {
         workName,
-        assignee,
+        assignees,
         priority,
         dueDate,
         description,
@@ -260,15 +260,19 @@ const Works: React.FC = () => {
     { id: 'workName', label: 'Work Name', sortable: true },
     { 
       id: 'assignee', 
-      label: 'Assignee', 
-      sortable: true,
+      label: 'Assignees', 
+      sortable: false,
       render: (row) => {
-        if (!row.assignee) return "Unassigned";
-        const user = users.find((u: any) => u.id === row.assignee || u._id === row.assignee || u.username === row.assignee);
-        if (user) {
-          return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || '';
-        }
-        return "User Removed";
+        const rowAssignees = row.assignees || (row.assignee ? [row.assignee] : []);
+        if (rowAssignees.length === 0) return "Unassigned";
+        const names = rowAssignees.map((assigneeId) => {
+          const user = users.find((u: any) => u.id === assigneeId || u._id === assigneeId || u.username === assigneeId);
+          if (user) {
+            return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || '';
+          }
+          return "User Removed";
+        });
+        return names.join(', ');
       }
     },
     { 
@@ -439,8 +443,8 @@ const Works: React.FC = () => {
         editingWork={editingWork}
         workName={workName}
         setWorkName={setWorkName}
-        assignee={assignee}
-        setAssignee={setAssignee}
+        assignees={assignees}
+        setAssignees={setAssignees}
         priority={priority}
         setPriority={setPriority}
         dueDate={dueDate}

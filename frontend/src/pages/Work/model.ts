@@ -2,7 +2,8 @@ export interface WorkData {
   id: string;
   _id?: string;
   workName: string;
-  assignee: string;
+  assignee?: string;
+  assignees?: string[];
   priority: string;
   dueDate: string;
   description: string;
@@ -15,7 +16,8 @@ export interface WorkData {
 
 export interface CreateWorkPayload {
   workName: string;
-  assignee: string;
+  assignee?: string;
+  assignees?: string[];
   priority: string;
   dueDate: string;
   description: string;
