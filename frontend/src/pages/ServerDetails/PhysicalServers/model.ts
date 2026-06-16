@@ -1,4 +1,4 @@
-export interface VMDetailsData {
+export interface PhysicalServerData {
     id: string;
     clusterId?: string;
     ipAddress?: string;
@@ -15,7 +15,7 @@ export interface VMDetailsData {
     createdBy?: string;
 }
 
-export interface CreateVMDetailsPayload {
+export interface CreatePhysicalServerPayload {
     clusterId?: string;
     ipAddress?: string;
     applications?: string;
@@ -28,4 +28,4 @@ export interface CreateVMDetailsPayload {
     addedToMonitoring?: boolean;
 }
 
-export interface UpdateVMDetailsPayload extends Partial<CreateVMDetailsPayload> {}
+export interface UpdatePhysicalServerPayload extends Partial<CreatePhysicalServerPayload> {}

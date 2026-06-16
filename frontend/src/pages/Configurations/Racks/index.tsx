@@ -29,6 +29,7 @@ const Racks = () => {
     const { confirm } = useConfirm();
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
+    const hasView = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_VIEW);
     const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_CREATE);
     const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_UPDATE);
     const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_DELETE);
@@ -142,7 +143,40 @@ const Racks = () => {
     };
 
     const columns: Column<ServerRackData>[] = [
-        { id: 'serverRack', label: 'Server Rack', sortable: true },
+        { id: 'serverRack', label: 'Server Rack Name', sortable: true },
+        { 
+            id: 'networksAvailable', 
+            label: 'Networks Available', 
+            sortable: false,
+            render: (row) => {
+                if (!row.networksAvailable || row.networksAvailable.length === 0) return 'None';
+                return row.networksAvailable.map(n => n.charAt(0).toUpperCase() + n.slice(1)).join(', ');
+            }
+        },
+        { 
+            id: 'rackCapacity', 
+            label: 'Capacity', 
+            sortable: true,
+            render: (row) => row.rackCapacity !== undefined && row.rackCapacity !== null ? `${row.remainingCapacity ?? row.rackCapacity} U / ${row.rackCapacity} U` : '-'
+        },
+        { 
+            id: 'temperature', 
+            label: 'Temperature', 
+            sortable: true,
+            render: (row) => row.temperature !== undefined && row.temperature !== null ? `${row.temperature} °C` : '-'
+        },
+        { 
+            id: 'fanAvailable', 
+            label: 'Fan Available', 
+            sortable: true,
+            render: (row) => row.fanAvailable ? 'Yes' : 'No'
+        },
+        { 
+            id: 'sparePowerAvailability', 
+            label: 'Spare Power', 
+            sortable: true,
+            render: (row) => row.sparePowerAvailability ? 'Yes' : 'No'
+        },
         { id: 'remarks', label: 'Remarks', sortable: false }
     ];
 
@@ -171,6 +205,15 @@ const Racks = () => {
                 </Box>
             )
         });
+    }
+
+    if (!hasView) {
+        return (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+                <label style={{ color: '#ff4d4f', fontSize: '18px', fontWeight: 'bold' }}>Access Denied</label>
+                <p style={{ color: '#666', marginTop: '8px' }}>You do not have privilege to view this page.</p>
+            </Box>
+        );
     }
 
     return (

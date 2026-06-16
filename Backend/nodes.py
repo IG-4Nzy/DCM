@@ -85,9 +85,10 @@ async def create_item(
     payload: CreateNodeModel = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
-    existing = await collection.find_one({ "node": {"$regex": f"^{getattr(payload, 'node')}$", "$options": "i"} })
-    if existing:
-        raise HTTPException(status_code=400, detail="Node already exists")
+    if payload.node:
+        existing = await collection.find_one({ "node": {"$regex": f"^{payload.node}$", "$options": "i"} })
+        if existing:
+            raise HTTPException(status_code=400, detail="Node already exists")
 
     item_dict = payload.model_dump()
     item_dict["createdBy"] = current_user.get("sub", "")
@@ -105,7 +106,7 @@ async def update_item(id: str, payload: UpdateNodeModel = Body(...)):
     item_dict = {k: v for k, v in payload.model_dump().items() if v is not None}
 
     if len(item_dict) >= 1:
-        if "node" in item_dict:
+        if "node" in item_dict and item_dict["node"]:
             existing = await collection.find_one({
                 "node": {"$regex": f"^{item_dict['node']}$", "$options": "i"},
                 "_id": {"$ne": ObjectId(id)}

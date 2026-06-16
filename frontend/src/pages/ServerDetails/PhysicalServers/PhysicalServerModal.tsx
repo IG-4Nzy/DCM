@@ -4,21 +4,21 @@ import Modal from '../../../components/Modal';
 import TextField from '../../../components/TextField';
 import Dropdown from '../../../components/Dropdown';
 import Button from '../../../components/Button';
-import { type VMDetailsData, type CreateVMDetailsPayload, type UpdateVMDetailsPayload } from './model';
+import { type PhysicalServerData, type CreatePhysicalServerPayload, type UpdatePhysicalServerPayload } from './model';
 import { fetchAllNodes } from './action';
-import { fetchClusters } from '../action';
+import { fetchClusters } from '../../Clusters/action';
 import styles from './modal.module.scss';
 
-interface VMDetailsModalProps {
+interface PhysicalServerModalProps {
     open: boolean;
     onClose: () => void;
     onSubmit: (data: any) => void;
-    editingItem: VMDetailsData | null;
+    editingItem: PhysicalServerData | null;
     clusterId: string;
 }
 
-const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit, editingItem, clusterId }) => {
-    const [formData, setFormData] = useState<CreateVMDetailsPayload>({
+const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose, onSubmit, editingItem, clusterId }) => {
+    const [formData, setFormData] = useState<CreatePhysicalServerPayload>({
         clusterId: clusterId,
         ipAddress: '',
         applications: '',
@@ -79,11 +79,11 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         }
     }, [open, editingItem, clusterId]);
 
-    const handleChange = (field: keyof CreateVMDetailsPayload, value: string) => {
+    const handleChange = (field: keyof CreatePhysicalServerPayload, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleCheckboxChange = (field: keyof CreateVMDetailsPayload, checked: boolean) => {
+    const handleCheckboxChange = (field: keyof CreatePhysicalServerPayload, checked: boolean) => {
         setFormData(prev => ({ ...prev, [field]: checked }));
     };
 
@@ -91,7 +91,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         e.preventDefault();
         
         if (editingItem) {
-            const changedData: UpdateVMDetailsPayload = {};
+            const changedData: UpdatePhysicalServerPayload = {};
+            if (formData.clusterId !== editingItem.clusterId) changedData.clusterId = formData.clusterId;
             if (formData.ipAddress !== editingItem.ipAddress) changedData.ipAddress = formData.ipAddress;
             if (formData.applications !== editingItem.applications) changedData.applications = formData.applications;
             if (formData.node !== editingItem.node) changedData.node = formData.node;
@@ -111,7 +112,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         <Modal
             open={open}
             handleClose={onClose}
-            title={editingItem ? 'Edit VM Details' : 'Add VM Details'}
+            title={editingItem ? 'Edit Physical Server Details' : 'Add Physical Server Details'}
         >
             <form onSubmit={handleSubmit}>
                 <Box className={styles.formGrid}>
@@ -157,7 +158,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         onChange={(e) => handleChange('osAndExpiry', e.target.value)} 
                     />
                     <TextField 
-                        label="VM Backup Location" 
+                        label="Server Backup Location" 
                         size="small"
                         className={styles.formGrid__field}
                         value={formData.backupLocation} 
@@ -166,12 +167,12 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     <FormControlLabel
                         control={
                             <Checkbox
-                                  checked={!!formData.addedToMonitoring}
+                                checked={!!formData.addedToMonitoring}
                                 onChange={(e) => handleCheckboxChange('addedToMonitoring', e.target.checked)}
                                 color="primary"
                             />
                         }
-                        label="VM added to monitoring confirmation"
+                        label="Server added to monitoring confirmation"
                         className={styles.formGrid__field}
                     />
                     
@@ -210,4 +211,4 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
     );
 };
 
-export default VMDetailsModal;
+export default PhysicalServerModal;

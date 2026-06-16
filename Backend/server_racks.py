@@ -13,6 +13,21 @@ import csv
 router = APIRouter()
 collection = db.get_collection("server_racks")
 
+async def compute_remaining_capacity(rack_doc: dict):
+    if not rack_doc:
+        return rack_doc
+    rack_name = rack_doc.get("serverRack", "")
+    nodes_collection = db.get_collection("nodes")
+    cursor = nodes_collection.find({"rack": {"$regex": f"^{rack_name}$", "$options": "i"}})
+    nodes = await cursor.to_list(length=None)
+    used_units = sum(n.get("rackUnits") or 0 for n in nodes)
+    total_capacity = rack_doc.get("rackCapacity")
+    if total_capacity is not None:
+        rack_doc["remainingCapacity"] = max(0, total_capacity - used_units)
+    else:
+        rack_doc["remainingCapacity"] = None
+    return rack_doc
+
 @router.get("/", response_description="List all server racks", response_model=PaginatedServerRacksModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Configurations"))])
 async def list_items(
     skip: int = Query(0, ge=0),
@@ -42,6 +57,8 @@ async def list_items(
     else:
         items = await cursor.to_list(length=None)
 
+    items = [await compute_remaining_capacity(item) for item in items]
+
     return {"data": items, "total": total}
 
 @router.post("/", response_description="Create a serverRack", response_model=ServerRackModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Configuration"))])
@@ -59,7 +76,7 @@ async def create_item(
 
     new_item = await collection.insert_one(item_dict)
     created = await collection.find_one({"_id": new_item.inserted_id})
-    return created
+    return await compute_remaining_capacity(created)
 
 @router.put("/{id}", response_description="Update a serverRack", response_model=ServerRackModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Configurations"))])
 async def update_item(id: str, payload: UpdateServerRackModel = Body(...)):
@@ -85,10 +102,10 @@ async def update_item(id: str, payload: UpdateServerRackModel = Body(...)):
 
         if update_result.modified_count == 1:
             if (updated := await collection.find_one({"_id": ObjectId(id)})) is not None:
-                return updated
+                return await compute_remaining_capacity(updated)
 
     if (existing := await collection.find_one({"_id": ObjectId(id)})) is not None:
-        return existing
+        return await compute_remaining_capacity(existing)
 
     raise HTTPException(status_code=404, detail=f"Server Rack {id} not found")
 

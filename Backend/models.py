@@ -564,7 +564,7 @@ class PaginatedHypervisorsModel(BaseModel):
 
 class NodeModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    node: str
+    node: Optional[str] = None
     remarks: Optional[str] = None
     totalRam: Optional[int] = None
     totalHardisk: Optional[int] = None
@@ -572,6 +572,15 @@ class NodeModel(BaseModel):
     availableRam: Optional[int] = None
     availableHardisk: Optional[int] = None
     availableCpu: Optional[int] = None
+    rack: Optional[str] = None
+    rackPosition: Optional[str] = None
+    rackUnits: Optional[int] = None
+    clusterId: Optional[str] = None
+    serverModel: Optional[str] = None
+    serialNumber: Optional[str] = None
+    custodian: Optional[str] = None
+    admin: Optional[str] = None
+    raidConfiguration: List[str] = Field(default_factory=list)
     createdBy: Optional[str] = None
     updatedAt: Optional[str] = None
 
@@ -581,11 +590,20 @@ class NodeModel(BaseModel):
     )
 
 class CreateNodeModel(BaseModel):
-    node: str
+    node: Optional[str] = None
     remarks: Optional[str] = None
     totalRam: Optional[int] = None
     totalHardisk: Optional[int] = None
     totalCpu: Optional[int] = None
+    rack: Optional[str] = None
+    rackPosition: Optional[str] = None
+    rackUnits: Optional[int] = None
+    clusterId: Optional[str] = None
+    serverModel: Optional[str] = None
+    serialNumber: Optional[str] = None
+    custodian: Optional[str] = None
+    admin: Optional[str] = None
+    raidConfiguration: Optional[List[str]] = Field(default_factory=list)
 
 class UpdateNodeModel(BaseModel):
     node: Optional[str] = None
@@ -593,6 +611,15 @@ class UpdateNodeModel(BaseModel):
     totalRam: Optional[int] = None
     totalHardisk: Optional[int] = None
     totalCpu: Optional[int] = None
+    rack: Optional[str] = None
+    rackPosition: Optional[str] = None
+    rackUnits: Optional[int] = None
+    clusterId: Optional[str] = None
+    serverModel: Optional[str] = None
+    serialNumber: Optional[str] = None
+    custodian: Optional[str] = None
+    admin: Optional[str] = None
+    raidConfiguration: Optional[List[str]] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -604,7 +631,13 @@ class PaginatedNodesModel(BaseModel):
 
 class ServerRackModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    serverRack: str
+    serverRack: Optional[str] = None
+    networksAvailable: List[str] = Field(default_factory=list)
+    rackCapacity: Optional[int] = None
+    remainingCapacity: Optional[int] = None
+    temperature: Optional[float] = None
+    fanAvailable: Optional[bool] = False
+    sparePowerAvailability: Optional[bool] = False
     remarks: Optional[str] = None
     createdBy: Optional[str] = None
     updatedAt: Optional[str] = None
@@ -615,11 +648,21 @@ class ServerRackModel(BaseModel):
     )
 
 class CreateServerRackModel(BaseModel):
-    serverRack: str
+    serverRack: Optional[str] = None
+    networksAvailable: List[str] = Field(default_factory=list)
+    rackCapacity: Optional[int] = None
+    temperature: Optional[float] = None
+    fanAvailable: Optional[bool] = False
+    sparePowerAvailability: Optional[bool] = False
     remarks: Optional[str] = None
 
 class UpdateServerRackModel(BaseModel):
     serverRack: Optional[str] = None
+    networksAvailable: Optional[List[str]] = None
+    rackCapacity: Optional[int] = None
+    temperature: Optional[float] = None
+    fanAvailable: Optional[bool] = None
+    sparePowerAvailability: Optional[bool] = None
     remarks: Optional[str] = None
     
     model_config = ConfigDict(
@@ -748,8 +791,10 @@ class PaginatedNodeDetailsModel(BaseModel):
 class ClusterModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     slNumber: Optional[str] = None
-    clusterName: str
-    ipAddress: str
+    clusterName: Optional[str] = None
+    ipAddress: Optional[str] = None
+    racks: List[str] = Field(default_factory=list)
+    clusterType: Optional[str] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -757,12 +802,16 @@ class ClusterModel(BaseModel):
     )
 
 class CreateClusterModel(BaseModel):
-    clusterName: str
-    ipAddress: str
+    clusterName: Optional[str] = None
+    ipAddress: Optional[str] = None
+    racks: Optional[List[str]] = Field(default_factory=list)
+    clusterType: Optional[str] = None
 
 class UpdateClusterModel(BaseModel):
     clusterName: Optional[str] = None
     ipAddress: Optional[str] = None
+    racks: Optional[List[str]] = None
+    clusterType: Optional[str] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -887,14 +936,14 @@ class PaginatedVCenterDetailsModel(BaseModel):
 
 class VMDetailsModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    clusterId: str
-    ipAddress: str
-    applications: str
-    node: str
-    osAndExpiry: str
-    hdd: str
-    ram: str
-    cpu: str
+    clusterId: Optional[str] = None
+    ipAddress: Optional[str] = None
+    applications: Optional[str] = None
+    node: Optional[str] = None
+    osAndExpiry: Optional[str] = None
+    hdd: Optional[str] = None
+    ram: Optional[str] = None
+    cpu: Optional[str] = None
     backupLocation: Optional[str] = ""
     addedToMonitoring: Optional[bool] = False
     
@@ -904,14 +953,14 @@ class VMDetailsModel(BaseModel):
     )
 
 class CreateVMDetailsModel(BaseModel):
-    clusterId: str
-    ipAddress: str
-    applications: str
-    node: str
-    osAndExpiry: str
-    hdd: str
-    ram: str
-    cpu: str
+    clusterId: Optional[str] = None
+    ipAddress: Optional[str] = None
+    applications: Optional[str] = None
+    node: Optional[str] = None
+    osAndExpiry: Optional[str] = None
+    hdd: Optional[str] = None
+    ram: Optional[str] = None
+    cpu: Optional[str] = None
     backupLocation: Optional[str] = ""
     addedToMonitoring: Optional[bool] = False
 
@@ -1113,5 +1162,55 @@ class AttendanceConfigModel(BaseModel):
         populate_by_name=True,
         arbitrary_types_allowed=True,
     )
+
+class PhysicalServerModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    clusterId: Optional[str] = None
+    ipAddress: Optional[str] = None
+    applications: Optional[str] = None
+    node: Optional[str] = None
+    osAndExpiry: Optional[str] = None
+    hdd: Optional[str] = None
+    ram: Optional[str] = None
+    cpu: Optional[str] = None
+    backupLocation: Optional[str] = ""
+    addedToMonitoring: Optional[bool] = False
+    
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreatePhysicalServerModel(BaseModel):
+    clusterId: Optional[str] = None
+    ipAddress: Optional[str] = None
+    applications: Optional[str] = None
+    node: Optional[str] = None
+    osAndExpiry: Optional[str] = None
+    hdd: Optional[str] = None
+    ram: Optional[str] = None
+    cpu: Optional[str] = None
+    backupLocation: Optional[str] = ""
+    addedToMonitoring: Optional[bool] = False
+
+class UpdatePhysicalServerModel(BaseModel):
+    clusterId: Optional[str] = None
+    ipAddress: Optional[str] = None
+    applications: Optional[str] = None
+    node: Optional[str] = None
+    osAndExpiry: Optional[str] = None
+    hdd: Optional[str] = None
+    ram: Optional[str] = None
+    cpu: Optional[str] = None
+    backupLocation: Optional[str] = None
+    addedToMonitoring: Optional[bool] = None
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedPhysicalServersModel(BaseModel):
+    data: List[PhysicalServerModel]
+    total: int
 
 

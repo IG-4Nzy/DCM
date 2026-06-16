@@ -7,13 +7,15 @@ import ADDetails from '../ADDetails';
 import VCenterDetails from '../VCenterDetails';
 import VMDetails from '../VMDetails';
 import NodeDetails from '../NodeDetails';
+import PhysicalServers from '../../ServerDetails/PhysicalServers';
 import styles from './index.module.scss';
 
 const tabs: TabItem[] = [
   { id: 'ad-details', label: 'AD Details', value: 'ad_details' },
   { id: 'node-details', label: 'Node Details', value: 'node_details' },
   { id: 'vcenter-details', label: 'Vcenter Details', value: 'vcenter_details' },
-  { id: 'vm-details', label: 'VM Details', value: 'vm_details' }
+  { id: 'vm-details', label: 'VM Details', value: 'vm_details' },
+  { id: 'physical-server-details', label: 'Physical Server Details', value: 'physical_server_details' }
 ];
 
 const ClusterDetails = () => {
@@ -60,6 +62,9 @@ const ClusterDetails = () => {
         )}
         {activeTab === 'vm_details' && (
           <VMDetails clusterId={id || ''} />
+        )}
+        {activeTab === 'physical_server_details' && (
+          <PhysicalServers clusterId={id || ''} />
         )}
       </Paper>
     </Box>

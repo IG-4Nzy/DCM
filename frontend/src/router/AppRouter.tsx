@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import { ROUTE_CONSTANTS } from "./constant";
 import Loader from "../components/Loader";
@@ -32,6 +32,7 @@ const PeriodicActivities = lazy(() => import("../pages/PeriodicActivities"));
 const Announcements = lazy(() => import("../pages/Announcements"));
 const NotificationTriggering = lazy(() => import("../pages/NotificationTriggering"));
 const OperationLogs = lazy(() => import("../pages/OperationLogs"));
+const ServerDetails = lazy(() => import("../pages/ServerDetails"));
 
 
 const AppRouter: React.FC = () => {
@@ -59,7 +60,7 @@ const AppRouter: React.FC = () => {
             <Route path={ROUTE_CONSTANTS.OBSERVATIONS} element={<Observations />} />
             <Route path={ROUTE_CONSTANTS.INVENTORY} element={<Inventory />} />
             <Route path={ROUTE_CONSTANTS.CONFIGURATIONS} element={<Configurations />} />
-            <Route path={ROUTE_CONSTANTS.CLUSTER} element={<Clusters />} />
+            <Route path={ROUTE_CONSTANTS.CLUSTER} element={<Navigate to={ROUTE_CONSTANTS.SERVER_DETAILS} replace />} />
             <Route path={ROUTE_CONSTANTS.CLUSTER_DETAILS} element={<ClusterDetails />} />
             <Route path={ROUTE_CONSTANTS.REQUESTS} element={<Requests />} />
             <Route path={ROUTE_CONSTANTS.SEARCH} element={<Search />} />
@@ -74,6 +75,7 @@ const AppRouter: React.FC = () => {
             <Route path={ROUTE_CONSTANTS.ANNOUNCEMENTS} element={<Announcements />} />
             <Route path={ROUTE_CONSTANTS.NOTIFICATION_TRIGGERING} element={<NotificationTriggering />} />
             <Route path={ROUTE_CONSTANTS.OPERATION_LOGS} element={<OperationLogs />} />
+            <Route path={ROUTE_CONSTANTS.SERVER_DETAILS} element={<ServerDetails />} />
           </Route>
 
           <Route path="*" element={<PageNotFound />} />

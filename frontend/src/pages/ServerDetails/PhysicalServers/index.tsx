@@ -9,18 +9,18 @@ import { useSelector } from 'react-redux';
 import { type RootState } from '../../../store';
 import { hasPrivilege } from '../../../helpers/authUtils';
 import { PRIVILEGES } from '../../../helpers/privileges';
-import { fetchVMDetails, createVMDetails, updateVMDetails, deleteVMDetails } from './action';
-import { fetchClusters } from '../action';
-import { type VMDetailsData } from './model';
-import VMDetailsModal from './VMDetailsModal';
+import { fetchPhysicalServers, createPhysicalServer, updatePhysicalServer, deletePhysicalServer } from './action';
+import { fetchClusters } from '../../Clusters/action';
+import { type PhysicalServerData } from './model';
+import PhysicalServerModal from './PhysicalServerModal';
 import styles from './index.module.scss';
 
-interface VMDetailsProps {
+interface PhysicalServersProps {
     clusterId?: string;
 }
 
-const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
-    const [data, setData] = useState<VMDetailsData[]>([]);
+const PhysicalServers = ({ clusterId = '' }: PhysicalServersProps) => {
+    const [data, setData] = useState<PhysicalServerData[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -28,7 +28,7 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
     const [rowsPerPage, setRowsPerPage] = useState(25);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingItem, setEditingItem] = useState<VMDetailsData | null>(null);
+    const [editingItem, setEditingItem] = useState<PhysicalServerData | null>(null);
 
     const { showToast } = useToast();
     const { confirm } = useConfirm();
@@ -65,11 +65,11 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
             if (clusterId) {
                 params.clusterId = clusterId;
             }
-            const result = await fetchVMDetails(params);
+            const result = await fetchPhysicalServers(params);
             setData(result.data);
             setTotalCount(result.total);
         } catch (e: any) {
-            showToast(e?.response?.data?.detail || 'Failed to load VM Details', 'error');
+            showToast(e?.response?.data?.detail || 'Failed to load Physical Server Details', 'error');
         } finally {
             setLoading(false);
         }
@@ -79,7 +79,7 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
         loadData();
     }, [loadData]);
 
-    const handleOpenModal = (item?: VMDetailsData) => {
+    const handleOpenModal = (item?: PhysicalServerData) => {
         setEditingItem(item || null);
         setIsModalOpen(true);
     };
@@ -96,11 +96,11 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                     handleCloseModal();
                     return;
                 }
-                await updateVMDetails(editingItem.id, formData);
-                showToast('VM Details updated successfully', 'success');
+                await updatePhysicalServer(editingItem.id, formData);
+                showToast('Physical Server Details updated successfully', 'success');
             } else {
-                await createVMDetails(formData);
-                showToast('VM Details created successfully', 'success');
+                await createPhysicalServer(formData);
+                showToast('Physical Server Details created successfully', 'success');
             }
             handleCloseModal();
             loadData();
@@ -110,18 +110,18 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
     };
 
     const handleDelete = async (id: string, ipAddress: string) => {
-        const isConfirmed = await confirm(`Are you sure you want to delete VM Details for ${ipAddress}? This action cannot be undone.`, 'Delete VM Details');
+        const isConfirmed = await confirm(`Are you sure you want to delete Physical Server Details for ${ipAddress}? This action cannot be undone.`, 'Delete Physical Server Details');
         if (isConfirmed) {
             try {
-                await deleteVMDetails(id);
-                showToast('VM Details deleted successfully', 'success');
+                await deletePhysicalServer(id);
+                showToast('Physical Server Details deleted successfully', 'success');
                 if (data.length === 1 && page > 0) {
                     setPage(page - 1);
                 } else {
                     loadData();
                 }
             } catch (e: any) {
-                showToast(e?.response?.data?.detail || 'Failed to delete VM Details', 'error');
+                showToast(e?.response?.data?.detail || 'Failed to delete Physical Server Details', 'error');
             }
         }
     };
@@ -129,7 +129,7 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
     return (
         <Box className={styles.container}>
             <Box className={styles.container__header}>
-                <Typography variant="h6" className={styles.container__header__label}>VM Details</Typography>
+                <Typography variant="h6" className={styles.container__header__label}>Physical Server Details</Typography>
                 <Box className={styles.container__header__search}>
                     <SearchBar
                         value={searchQuery}
@@ -143,7 +143,7 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                             startIcon={<AddIcon />}
                             onClick={() => handleOpenModal()}
                         >
-                            Add VM Details
+                            Add Physical Server
                         </Button>
                     )}
                 </Box>
@@ -180,7 +180,7 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                                 </TableRow>
                             ) : data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 9 : 10} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
+                                    <TableCell colSpan={clusterId ? 9 : 10} align="center" sx={{ py: 3, color: 'text.secondary' }}>No Physical Server Details found</TableCell>
                                 </TableRow>
                             ) : (
                                 data.map((row) => (
@@ -236,7 +236,7 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                 />
             </Paper>
 
-            <VMDetailsModal
+            <PhysicalServerModal
                 open={isModalOpen}
                 onClose={handleCloseModal}
                 onSubmit={handleSubmit}
@@ -247,4 +247,4 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
     );
 };
 
-export default VMDetails;
+export default PhysicalServers;

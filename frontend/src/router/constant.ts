@@ -27,4 +27,5 @@ export const ROUTE_CONSTANTS = {
     ANNOUNCEMENTS: "/announcements",
     NOTIFICATION_TRIGGERING: "/notification-triggering",
     OPERATION_LOGS: "/operation-logs",
+    SERVER_DETAILS: "/server-details",
 }

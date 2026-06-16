@@ -33,4 +33,5 @@ export default {
   announcements: "Announcements",
   notificationTriggering: "Notification Triggering",
   operationLogs: "Operation Logs",
+  racks: "Racks",
 };

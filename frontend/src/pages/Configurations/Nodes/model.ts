@@ -1,6 +1,6 @@
 export interface NodeData {
     id: string;
-    node: string;
+    node?: string;
     remarks?: string;
     totalRam?: number;
     totalHardisk?: number;
@@ -8,16 +8,34 @@ export interface NodeData {
     availableRam?: number;
     availableHardisk?: number;
     availableCpu?: number;
+    rack?: string;
+    rackPosition?: string;
+    rackUnits?: number;
+    clusterId?: string;
+    serverModel?: string;
+    serialNumber?: string;
+    custodian?: string;
+    admin?: string;
+    raidConfiguration?: string[];
     createdBy?: string;
     updatedAt?: string;
 }
 
 export interface CreateNodePayload {
-    node: string;
+    node?: string;
     remarks?: string;
     totalRam?: number;
     totalHardisk?: number;
     totalCpu?: number;
+    rack?: string;
+    rackPosition?: string;
+    rackUnits?: number;
+    clusterId?: string;
+    serverModel?: string;
+    serialNumber?: string;
+    custodian?: string;
+    admin?: string;
+    raidConfiguration?: string[];
 }
 
 export interface UpdateNodePayload {
@@ -27,4 +45,13 @@ export interface UpdateNodePayload {
     totalRam?: number;
     totalHardisk?: number;
     totalCpu?: number;
+    rack?: string;
+    rackPosition?: string;
+    rackUnits?: number;
+    clusterId?: string;
+    serverModel?: string;
+    serialNumber?: string;
+    custodian?: string;
+    admin?: string;
+    raidConfiguration?: string[];
 }

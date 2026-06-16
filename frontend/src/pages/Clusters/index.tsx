@@ -152,7 +152,14 @@ const Clusters = () => {
     const columns: Column<ClusterData>[] = [
         { id: 'slNumber', label: 'SL No', sortable: true },
         { id: 'clusterName', label: 'Cluster Name', sortable: true },
-        { id: 'ipAddress', label: 'IP Address', sortable: true }
+        { id: 'clusterType', label: 'Cluster Type', sortable: true, render: (row) => row.clusterType || '--' },
+        { id: 'ipAddress', label: 'IP Address', sortable: true },
+        {
+            id: 'racks',
+            label: 'Racks Assigned',
+            sortable: false,
+            render: (row) => row.racks && row.racks.length > 0 ? row.racks.join(', ') : '--'
+        }
     ];
 
     if (hasUpdate || hasDelete) {

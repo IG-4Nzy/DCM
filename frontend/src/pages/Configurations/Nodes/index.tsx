@@ -12,6 +12,7 @@ import { hasPrivilege } from '../../../helpers/authUtils';
 import { PRIVILEGES } from '../../../helpers/privileges';
 import { useTableState } from '../../../hooks/useTableState';
 import { fetchNodes, createNode, updateNode, deleteNode } from './action';
+import { fetchClusters } from '../../Clusters/action';
 import { type NodeData } from './model';
 import NodeModal from './NodeModal';
 import NodeViewModal from './NodeViewModal';
@@ -22,6 +23,13 @@ const Nodes = () => {
     const [data, setData] = useState<NodeData[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [clusters, setClusters] = useState<any[]>([]);
+
+    useEffect(() => {
+        fetchClusters({ pagination: false })
+            .then(res => setClusters(res.data || []))
+            .catch(err => console.error("Failed to load clusters", err));
+    }, []);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<NodeData | null>(null);
@@ -33,9 +41,9 @@ const Nodes = () => {
     const { confirm } = useConfirm();
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
-    const hasCreate = false;
-    const hasUpdate = false;
-    const hasDelete = false;
+    const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_CREATE);
+    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_UPDATE);
+    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_DELETE);
 
     const [searchQuery, setSearchQuery] = useTableState('Nodes_search', '');
     const [page, setPage] = useTableState('Nodes_page', 0);
@@ -136,8 +144,22 @@ const Nodes = () => {
         setPage(0);
     };
 
+    const getClusterName = (cid?: string) => {
+        if (!cid) return '-';
+        const found = clusters.find(c => c.id === cid);
+        return found ? found.clusterName : cid;
+    };
+
     const columns: Column<NodeData>[] = [
+        { 
+            id: 'clusterId', 
+            label: 'Cluster', 
+            sortable: true,
+            render: (row) => getClusterName(row.clusterId)
+        },
         { id: 'node', label: 'Node', sortable: true },
+        { id: 'serverModel', label: 'Server Model', sortable: true, render: (row) => row.serverModel || '-' },
+        { id: 'serialNumber', label: 'Serial Number', sortable: true, render: (row) => row.serialNumber || '-' },
         { 
             id: 'totalRam', 
             label: 'Total / Available RAM', 
@@ -155,6 +177,24 @@ const Nodes = () => {
             label: 'Total / Available CPU', 
             sortable: false,
             render: (row) => row.totalCpu !== undefined && row.totalCpu !== null ? `${row.totalCpu} Cores / ${row.availableCpu ?? 0} Cores` : '-'
+        },
+        { 
+            id: 'rack', 
+            label: 'Rack', 
+            sortable: true,
+            render: (row) => row.rack || '-'
+        },
+        { 
+            id: 'rackPosition', 
+            label: 'Position', 
+            sortable: true,
+            render: (row) => row.rackPosition || '-'
+        },
+        { 
+            id: 'rackUnits', 
+            label: 'Units', 
+            sortable: true,
+            render: (row) => row.rackUnits !== undefined && row.rackUnits !== null ? `${row.rackUnits} U` : '-'
         },
         { id: 'remarks', label: 'Remarks', sortable: false }
     ];

@@ -1,18 +1,24 @@
 export interface ClusterData {
     id: string;
-    slNumber: string;
-    clusterName: string;
-    ipAddress: string;
+    slNumber?: string;
+    clusterName?: string;
+    ipAddress?: string;
+    racks?: string[];
+    clusterType?: string;
 }
 
 export interface CreateClusterPayload {
-    clusterName: string;
-    ipAddress: string;
+    clusterName?: string;
+    ipAddress?: string;
+    racks?: string[];
+    clusterType?: string;
 }
 
 export interface UpdateClusterPayload {
     clusterName?: string;
     ipAddress?: string;
+    racks?: string[];
+    clusterType?: string;
 }
 
 export interface FetchClustersParams {

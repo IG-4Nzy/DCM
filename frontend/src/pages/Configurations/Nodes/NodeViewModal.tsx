@@ -101,6 +101,42 @@ const NodeViewModal: React.FC<NodeViewModalProps> = ({ open, onClose, node }) =>
                         </Box>
                     </Grid>
 
+                    {/* Server details */}
+                    <Grid item xs={12}>
+                        <Box sx={{ p: 2, bgcolor: '#fff', borderRadius: '12px', border: '1px solid #eef2f6' }}>
+                            <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 1, fontWeight: 600 }}>
+                                SERVER DETAILS
+                            </Typography>
+                            <Divider sx={{ mb: 2 }} />
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} sm={6}>
+                                    <Typography variant="caption" color="textSecondary">Server Model</Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.serverModel || '-'}</Typography>
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <Typography variant="caption" color="textSecondary">Serial Number</Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.serialNumber || '-'}</Typography>
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <Typography variant="caption" color="textSecondary">Custodian</Typography>
+                                    <Typography variant="body2">{node.custodian || '-'}</Typography>
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <Typography variant="caption" color="textSecondary">Admin</Typography>
+                                    <Typography variant="body2">{node.admin || '-'}</Typography>
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <Typography variant="caption" color="textSecondary">RAID Configuration</Typography>
+                                    <Typography variant="body2">
+                                        {node.raidConfiguration && node.raidConfiguration.length > 0
+                                            ? node.raidConfiguration.join(', ')
+                                            : '-'}
+                                    </Typography>
+                                </Grid>
+                            </Grid>
+                        </Box>
+                    </Grid>
+
                     {/* Resources (Total and Available) */}
                     <Grid item xs={12}>
                         <Box sx={{ p: 2, bgcolor: '#fff', borderRadius: '12px', border: '1px solid #eef2f6' }}>
