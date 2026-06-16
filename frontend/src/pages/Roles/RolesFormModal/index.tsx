@@ -131,6 +131,16 @@ const PRIVILEGE_GROUPS: { [category: string]: string[] } = {
     "Create Announcement",
     "Update Announcement",
     "Delete Announcement"
+  ],
+  "Notification Triggering": [
+    "View Notification Triggering"
+  ],
+  "Operation & Audit Logs": [
+    "View Logs",
+    "Create Log",
+    "Update Log",
+    "Delete Log",
+    "View Audit Logs"
   ]
 };
 

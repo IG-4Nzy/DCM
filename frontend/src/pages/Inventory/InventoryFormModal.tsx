@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../../components/Modal';
 import TextField from '../../components/TextField';
 import { Button, FormControlLabel, Checkbox } from '@mui/material';
+import { getServerTime } from '../../helpers/time';
 
 interface PropType {
   isModalOpen: boolean;
@@ -15,7 +16,7 @@ const InventoryFormModal: React.FC<PropType> = ({
   onSubmit,
 }) => {
   const getLocalDatetime = () => {
-    const now = new Date();
+    const now = getServerTime().toDate();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     return now.toISOString().slice(0, 16);
   };

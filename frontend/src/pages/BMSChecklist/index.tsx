@@ -13,6 +13,7 @@ import {
   MdRemove
 } from 'react-icons/md';
 import dayjs from 'dayjs';
+import { getServerTime } from '../../helpers/time';
 import styles from './index.module.scss';
 import {
   flattenConfig, unflattenRows,
@@ -150,7 +151,7 @@ const BMSChecklist: React.FC = () => {
     }
   }, [token]);
 
-  const [selectedDate, setSelectedDate] = useState<string>(dayjs().format('YYYY-MM-DD'));
+  const [selectedDate, setSelectedDate] = useState<string>(getServerTime().format('YYYY-MM-DD'));
 
   const canView = hasPrivilege(PRIVILEGES.BMS_CHECKLIST_VIEW);
   const canCreate = hasPrivilege(PRIVILEGES.BMS_CHECKLIST_CREATE);
@@ -160,7 +161,7 @@ const BMSChecklist: React.FC = () => {
   const canOpenForEdit = canUpdate || canEditFields;
   const canSaveDraft = canUpdate || canEditFields || canCreate;
 
-  const todayStr = dayjs().format('YYYY-MM-DD');
+  const todayStr = getServerTime().format('YYYY-MM-DD');
   const isPastDaySelected = dayjs(selectedDate).isBefore(todayStr, 'day');
   const isFutureDaySelected = dayjs(selectedDate).isAfter(todayStr, 'day');
 
@@ -192,19 +193,20 @@ const BMSChecklist: React.FC = () => {
   const [preparedBy, setPreparedBy] = useState('');
 
   const checkCanEdit = useCallback((chk: SavedChecklist): boolean => {
-    const todayStr = dayjs().format('YYYY-MM-DD');
+    const todayStr = getServerTime().format('YYYY-MM-DD');
     const isToday = chk.date === todayStr;
     const isFuture = dayjs(chk.date).isAfter(todayStr, 'day');
     const isCompleted = chk.status === 'Completed';
+
+    if (isCompleted) {
+      const completer = chk.completedBy || chk.createdBy;
+      return completer === username;
+    }
 
     if (isSuperuser) {
       return !isFuture;
     }
     if (isToday) {
-      if (isCompleted) {
-        const completer = chk.completedBy || chk.createdBy;
-        return completer === username;
-      }
       return true;
     }
     return false;
@@ -212,14 +214,13 @@ const BMSChecklist: React.FC = () => {
 
   const isViewOnlyMode = useMemo(() => {
     if (!checklist) return false;
+    if (checklist.status === 'Completed') {
+      const completer = checklist.completedBy || checklist.createdBy;
+      return completer !== username;
+    }
     if (isFutureDaySelected) return true;
     if (isPastDaySelected) return !isSuperuser;
 
-    // It's today!
-    if (checklist.status === 'Completed') {
-      const completer = checklist.completedBy || checklist.createdBy;
-      return !isSuperuser && (completer !== username);
-    }
     return false;
   }, [checklist, isFutureDaySelected, isPastDaySelected, isSuperuser, username]);
 
@@ -230,7 +231,7 @@ const BMSChecklist: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
   const darkMode = false;
-  const [currentTime, setCurrentTime] = useState(dayjs().format('HH:mm:ss'));
+  const [currentTime, setCurrentTime] = useState(getServerTime().format('HH:mm:ss'));
   const [addFieldOpen, setAddFieldOpen] = useState(false);
   const [newField, setNewField] = useState<FlatRow>(EMPTY_FIELD);
   const [newParameterUnits, setNewParameterUnits] = useState<ParameterUnitDraft[]>([{ ...EMPTY_PARAMETER_UNIT }]);
@@ -288,7 +289,7 @@ const BMSChecklist: React.FC = () => {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setCurrentTime(dayjs().format('HH:mm:ss'));
+      setCurrentTime(getServerTime().format('HH:mm:ss'));
     }, 1000);
 
     return () => window.clearInterval(timer);
@@ -360,7 +361,7 @@ const BMSChecklist: React.FC = () => {
   const handleNewChecklist = async () => {
     if (!canCreate) return;
 
-    const todayStr = dayjs().format('YYYY-MM-DD');
+    const todayStr = getServerTime().format('YYYY-MM-DD');
     const isPast = dayjs(selectedDate).isBefore(todayStr, 'day');
     const isFuture = dayjs(selectedDate).isAfter(todayStr, 'day');
 
@@ -457,7 +458,7 @@ const BMSChecklist: React.FC = () => {
     if (!checklist || (status === 'Completed' ? !canUpdate : !canSaveDraft)) return;
 
     if (!checkCanEdit(checklist)) {
-      const todayStr = dayjs().format('YYYY-MM-DD');
+      const todayStr = getServerTime().format('YYYY-MM-DD');
       const isToday = checklist.date === todayStr;
       const isCompleted = checklist.status === 'Completed';
 
@@ -482,7 +483,7 @@ const BMSChecklist: React.FC = () => {
       preparedBy,
       status,
       data: updatedConfig,
-      updatedAt: new Date().toISOString(),
+      updatedAt: getServerTime().toDate().toISOString(),
     };
     if (status === 'Completed') {
       updated.completedBy = username;
@@ -535,7 +536,7 @@ const BMSChecklist: React.FC = () => {
 
     if (checklist) {
       if (!checkCanEdit(checklist)) {
-        const todayStr = dayjs().format('YYYY-MM-DD');
+        const todayStr = getServerTime().format('YYYY-MM-DD');
         const isToday = checklist.date === todayStr;
         const isFuture = dayjs(checklist.date).isAfter(todayStr, 'day');
         const isCompleted = checklist.status === 'Completed';
@@ -567,7 +568,7 @@ const BMSChecklist: React.FC = () => {
         updated[realIdx] = {
           ...updated[realIdx],
           [field]: newVal,
-          timestamp: new Date().toISOString(),
+          timestamp: getServerTime().toDate().toISOString(),
         };
       }
       return updated;
@@ -594,7 +595,7 @@ const BMSChecklist: React.FC = () => {
       return;
     }
 
-    const timestamp = new Date().toISOString();
+    const timestamp = getServerTime().toDate().toISOString();
     const newRows = parameters.map(({ parameter, unit }): FlatRow => ({
       ...newField,
       category,
@@ -641,7 +642,7 @@ const BMSChecklist: React.FC = () => {
 
     if (checklist) {
       if (!checkCanEdit(checklist)) {
-        const todayStr = dayjs().format('YYYY-MM-DD');
+        const todayStr = getServerTime().format('YYYY-MM-DD');
         const isToday = checklist.date === todayStr;
         const isFuture = dayjs(checklist.date).isAfter(todayStr, 'day');
         const isCompleted = checklist.status === 'Completed';

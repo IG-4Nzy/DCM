@@ -12,6 +12,7 @@ import WorkFormModal from './WorkFormModal';
 import WorkDetailModal from './WorkDetailModal';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
+import { getServerTime } from '../../helpers/time';
 import request from '../../services/request';
 import { useTableState } from '../../hooks/useTableState';
 import styles from "./index.module.scss";
@@ -293,7 +294,7 @@ const Works: React.FC = () => {
       render: (row) => {
         if (!row.dueDate) return '-';
         
-        const today = new Date();
+        const today = getServerTime().toDate();
         today.setHours(0, 0, 0, 0);
         
         const due = new Date(row.dueDate);

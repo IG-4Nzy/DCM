@@ -6,6 +6,7 @@ import Dropdown from "../../../components/Dropdown";
 import { Button, IconButton } from "@mui/material";
 import { MdClose } from "react-icons/md";
 import { PRIORITY_OPTIONS } from "../constant";
+import { getServerTime } from "../../../helpers/time";
 import styles from "./index.module.scss";
 
 interface PropType {
@@ -51,7 +52,7 @@ const WorkFormModal = ({
     if (!user.lastActive) return false;
     try {
       const lastActiveTime = new Date(user.lastActive).getTime();
-      const now = new Date().getTime();
+      const now = getServerTime().toDate().getTime();
       return now - lastActiveTime < 45000;
     } catch (e) {
       return false;
@@ -64,7 +65,7 @@ const WorkFormModal = ({
     isOnline: isUserOnline(user),
   }));
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getServerTime().toDate().toISOString().split("T")[0];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {

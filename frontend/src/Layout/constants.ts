@@ -99,7 +99,7 @@ export const SIDEBAR_OPTIONS = [
         label: wordings.auditLogs,
         icon: Icons.TerminalIcon,
         route: ROUTE_CONSTANTS.AUDIT_LOGS,
-        superuserOnly: true
+        privileges: [PRIVILEGES.AUDIT_LOGS_VIEW]
     },
     {
         label: wordings.dailyActivities,
@@ -129,7 +129,11 @@ export const SIDEBAR_OPTIONS = [
         label: wordings.notificationTriggering,
         icon: Icons.NotificationsActiveIcon,
         route: ROUTE_CONSTANTS.NOTIFICATION_TRIGGERING,
-        privileges: [PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW]
+        privileges: [
+            PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW,
+            PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW_DEPT,
+            PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW_OWN
+        ]
     },
     {
         label: wordings.operationLogs,

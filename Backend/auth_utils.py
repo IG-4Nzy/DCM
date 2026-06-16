@@ -14,7 +14,7 @@ except ImportError:
 
 async def update_attendance_on_request(username: str, user_dept: str, user_role: str):
     try:
-        from database import db
+        from database import db, get_local_now
         from datetime import datetime
         
         config_collection = db.get_collection("attendance_config")
@@ -32,7 +32,7 @@ async def update_attendance_on_request(username: str, user_dept: str, user_role:
             should_track = False
 
         if should_track:
-            now_local = datetime.now()
+            now_local = get_local_now()
             today_str = now_local.strftime("%Y-%m-%d")
             
             attendance_collection = db.get_collection("attendance")
@@ -70,7 +70,8 @@ async def update_attendance_on_request(username: str, user_dept: str, user_role:
                         {
                             "$set": {
                                 "lastLogout": now_local.isoformat(),
-                                "workedHours": worked_hours
+                                "workedHours": worked_hours,
+                                "loggedOut": False
                             }
                         }
                     )

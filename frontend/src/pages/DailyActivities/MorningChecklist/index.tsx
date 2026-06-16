@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import { MdSave, MdCheckCircle, MdHistory, MdSearch, MdVisibility } from 'react-icons/md';
 import dayjs from 'dayjs';
+import { getServerTime } from '../../../helpers/time';
 import { hasPrivilege } from '../../../helpers/authUtils';
 import { PRIVILEGES } from '../../../helpers/privileges';
 import { useToast } from '../../../contexts/ToastContext';
@@ -72,7 +73,7 @@ const MorningChecklist: React.FC = () => {
   const canCreate = hasPrivilege(PRIVILEGES.MORNING_CHECKLIST_CREATE);
   const canUpdate = hasPrivilege(PRIVILEGES.MORNING_CHECKLIST_UPDATE);
 
-  const todayStr = dayjs().format('YYYY-MM-DD');
+  const todayStr = getServerTime().format('YYYY-MM-DD');
 
   // Sub-tabs: 0 = Active Checklist, 1 = History
   const [activeTab, setActiveTab] = useState(0);
@@ -87,7 +88,7 @@ const MorningChecklist: React.FC = () => {
   // History state
   const [historyList, setHistoryList] = useState<MorningChecklistData[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyMonth, setHistoryMonth] = useState(dayjs().format('YYYY-MM'));
+  const [historyMonth, setHistoryMonth] = useState(getServerTime().format('YYYY-MM'));
   const [historySearch, setHistorySearch] = useState('');
   const [historyPage, setHistoryPage] = useState(0);
   const [historyRowsPerPage, setHistoryRowsPerPage] = useState(25);
@@ -329,7 +330,7 @@ const MorningChecklist: React.FC = () => {
               {dayjs(todayStr).format('dddd, MMMM D, YYYY')}
             </Typography>
             <Typography variant="caption" color="textSecondary">
-              Server Time: {dayjs().format('hh:mm:ss A')}
+              Server Time: {getServerTime().format('hh:mm:ss A')}
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>

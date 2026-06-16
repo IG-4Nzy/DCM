@@ -9,6 +9,7 @@ import { fetchStagesForType } from './action';
 import { useToast } from '../../contexts/ToastContext';
 
 import request from '../../services/request';
+import { getServerTime } from '../../helpers/time';
 
 interface RequestFormModalProps {
   isModalOpen: boolean;
@@ -101,7 +102,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
   };
 
   const getMinDateTime = () => {
-    const now = new Date();
+    const now = getServerTime().toDate();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
@@ -115,7 +116,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
 
     if (!editingRequest && currentRequestType === 'DC Entry' && details.dateTime) {
       const selected = new Date(details.dateTime);
-      const now = new Date();
+      const now = getServerTime().toDate();
       // Use 1 minute buffer to account for minor system delays
       if (selected < new Date(now.getTime() - 60000)) {
         showToast('Please select a date and time in the present or future.', 'error');

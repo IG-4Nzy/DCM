@@ -36,6 +36,7 @@ import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '../../store';
 import { giveInventoryItem, returnInventoryItem } from './action';
 import { useToast } from '../../contexts/ToastContext';
+import { getServerTime } from '../../helpers/time';
 
 interface PropType {
   isModalOpen: boolean;
@@ -59,7 +60,7 @@ const InventoryDetailModal: React.FC<PropType> = ({
   const [showUpdateForm, setShowUpdateForm] = useState(false);
   
   const getLocalDatetime = () => {
-    const now = new Date();
+    const now = getServerTime().toDate();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     return now.toISOString().slice(0, 16);
   };

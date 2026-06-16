@@ -10,6 +10,7 @@ import { fetchRequestLogs } from './action';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../../store';
 import dayjs from 'dayjs';
+import { getServerTime } from '../../helpers/time';
 
 interface RequestViewModalProps {
   isOpen: boolean;
@@ -93,13 +94,13 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
           ? dayjs(request.details.entryTime).format('YYYY-MM-DDTHH:mm') 
           : (request.details?.dateTime 
               ? dayjs(request.details.dateTime).format('YYYY-MM-DDTHH:mm') 
-              : dayjs(request.createdAt || new Date()).format('YYYY-MM-DDTHH:mm'))
+              : dayjs(request.createdAt || getServerTime().toDate()).format('YYYY-MM-DDTHH:mm'))
       );
       setEntryTimeError(false);
       setExitTime(
         request.details?.exitTime 
           ? dayjs(request.details.exitTime).format('YYYY-MM-DDTHH:mm') 
-          : dayjs().format('YYYY-MM-DDTHH:mm')
+          : getServerTime().format('YYYY-MM-DDTHH:mm')
       );
       setExitTimeError(false);
       setKeptItemsOnExit(!!request.details?.keptItemsOnExit);

@@ -76,8 +76,21 @@
     "Update Announcement",
     "Delete Announcement",
     "View Notification Triggering",
+    "View Departmental Notification Triggering",
+    "View Own Notification Triggering",
     "View Logs",
     "Create Log",
     "Update Log",
-    "Delete Log"
+    "Delete Log",
+    "View Audit Logs",
+    "View Server Monitoring",
+    "Create Server Monitoring",
+    "Update Server Monitoring",
+    "Delete Server Monitoring",
+    "Create Attendance",
+    "Update Attendance",
+    "Delete Attendance",
+    "View Departmental Attendance",
+    "View Self Attendance",
+    "View All Attendance"
 ]

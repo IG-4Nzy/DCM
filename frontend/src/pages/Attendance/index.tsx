@@ -39,6 +39,8 @@ interface AttendanceRecord {
     shiftName?: string;
     shiftStart?: string;
     shiftEnd?: string;
+    lateApprovalStatus?: string | null;
+    isLateAttempt?: boolean;
 }
 
 interface PeriodOption {
@@ -401,6 +403,40 @@ const Attendance: React.FC = () => {
         }
     };
 
+    const handleApproveLate = async (row: AttendanceRecord) => {
+        const isConfirmed = await confirm(`Are you sure you want to allow late login for ${row.username} on ${row.date}?`, 'Approve Late Login');
+        if (isConfirmed) {
+            setData(prev => prev.map(item => item.id === row.id ? { ...item, lateApprovalStatus: 'Approved' } : item));
+            try {
+                await request.post(`/api/attendance/approve-late/${row.id}`);
+                showToast('Late login approved successfully', 'success');
+                loadAttendance();
+                loadSummary();
+            } catch (e: any) {
+                loadAttendance();
+                showToast(e?.response?.data?.detail || 'Failed to approve late login', 'error');
+            }
+        }
+    };
+
+    const handleRejectLate = async (row: AttendanceRecord) => {
+        const isConfirmed = await confirm(`Are you sure you want to reject late login for ${row.username} on ${row.date}?`, 'Reject Late Login');
+        if (isConfirmed) {
+            setData(prev => prev.map(item => item.id === row.id ? { ...item, lateApprovalStatus: 'Rejected' } : item));
+            try {
+                await request.post(`/api/attendance/reject-late/${row.id}`, {
+                    remarks: "Late login rejected by Department Head"
+                });
+                showToast('Late login rejected', 'success');
+                loadAttendance();
+                loadSummary();
+            } catch (e: any) {
+                loadAttendance();
+                showToast(e?.response?.data?.detail || 'Failed to reject late login', 'error');
+            }
+        }
+    };
+
     const handleDelete = async (row: AttendanceRecord) => {
         const isConfirmed = await confirm(`Are you sure you want to delete attendance record for ${row.username} on ${row.date}?`, 'Delete Attendance Log');
         if (isConfirmed) {
@@ -439,10 +475,10 @@ const Attendance: React.FC = () => {
             const firstLoginIso = `${editDate}T${editLogin}:00`;
             const lastLogoutIso = `${editDate}T${editLogout}:00`;
             const workedHrs = parseFloat(editHours.toString()) || 0.0;
-            setData(prev => prev.map(item => item.id === editingRecord.id ? { 
-                ...item, 
-                firstLogin: firstLoginIso, 
-                lastLogout: lastLogoutIso, 
+            setData(prev => prev.map(item => item.id === editingRecord.id ? {
+                ...item,
+                firstLogin: firstLoginIso,
+                lastLogout: lastLogoutIso,
                 workedHours: workedHrs,
                 regularizeStatus: editStatus
             } : item));
@@ -544,6 +580,44 @@ const Attendance: React.FC = () => {
             render: (row) => {
                 if (!row.firstLogin) return '-';
                 const timeStr = dayjs(row.firstLogin).format('hh:mm A');
+
+                // If this is a late attempt, show approval status chip
+                if (row.isLateAttempt) {
+                    const lateStatus = row.lateApprovalStatus || 'Pending';
+                    let label = 'Late Login (Pending)';
+                    let chipColor = '#e65100';
+                    let chipBg = '#fff3e0';
+
+                    if (lateStatus === 'Approved') {
+                        label = 'Late Login (Approved)';
+                        chipColor = '#2e7d32';
+                        chipBg = '#e8f5e9';
+                    } else if (lateStatus === 'Rejected') {
+                        label = 'Late Login (Rejected)';
+                        chipColor = '#c62828';
+                        chipBg = '#ffebee';
+                    }
+
+                    return (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Typography sx={{ color: '#c62828', fontWeight: 600, fontSize: '0.875rem' }}>
+                                {timeStr}
+                            </Typography>
+                            <Chip
+                                label={label}
+                                size="small"
+                                sx={{
+                                    height: 18,
+                                    fontSize: '10px',
+                                    backgroundColor: chipBg,
+                                    color: chipColor,
+                                    fontWeight: 600,
+                                    alignSelf: 'flex-start'
+                                }}
+                            />
+                        </Box>
+                    );
+                }
 
                 // Determine if late using dynamic shift start timing
                 const loginTime = dayjs(row.firstLogin);
@@ -681,6 +755,7 @@ const Attendance: React.FC = () => {
             sortable: false,
             render: (row) => {
                 const isPending = row.regularizeStatus === 'Pending';
+                const isLatePending = row.isLateAttempt && row.lateApprovalStatus === 'Pending';
 
                 // Regularization can be approved by Department Head or Superuser
                 // Department head handles requests from their department
@@ -688,6 +763,20 @@ const Attendance: React.FC = () => {
 
                 return (
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                        {isLatePending && canApprove && (
+                            <>
+                                <Tooltip title="Approve Late Login">
+                                    <IconButton size="small" color="success" sx={{ backgroundColor: 'rgba(46, 125, 50, 0.06)' }} onClick={(e) => { e.stopPropagation(); handleApproveLate(row); }}>
+                                        <ApproveIcon fontSize="small" />
+                                    </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Reject Late Login">
+                                    <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(198, 40, 40, 0.06)' }} onClick={(e) => { e.stopPropagation(); handleRejectLate(row); }}>
+                                        <RejectIcon fontSize="small" />
+                                    </IconButton>
+                                </Tooltip>
+                            </>
+                        )}
                         {hasUpdate && (
                             <Tooltip title="Edit Attendance Log">
                                 <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.06)' }} onClick={(e) => { e.stopPropagation(); handleOpenEditModal(row); }}>
@@ -1349,10 +1438,10 @@ const Attendance: React.FC = () => {
                                                 fontWeight: 700,
                                                 backgroundColor:
                                                     viewingRecord.regularizeStatus === 'Approved' ? '#e8f5e9' :
-                                                    viewingRecord.regularizeStatus === 'Rejected' ? '#ffebee' : '#fff3e0',
+                                                        viewingRecord.regularizeStatus === 'Rejected' ? '#ffebee' : '#fff3e0',
                                                 color:
                                                     viewingRecord.regularizeStatus === 'Approved' ? '#2e7d32' :
-                                                    viewingRecord.regularizeStatus === 'Rejected' ? '#c62828' : '#e65100'
+                                                        viewingRecord.regularizeStatus === 'Rejected' ? '#c62828' : '#e65100'
                                             }}
                                         />
                                     </Box>

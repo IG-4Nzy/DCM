@@ -1014,6 +1014,8 @@ class AttendanceModel(BaseModel):
     shiftName: Optional[str] = None
     shiftStart: Optional[str] = None
     shiftEnd: Optional[str] = None
+    lateApprovalStatus: Optional[str] = None
+    isLateAttempt: Optional[bool] = None
 
     model_config = ConfigDict(
         populate_by_name=True,

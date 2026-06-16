@@ -2,6 +2,7 @@
 // Structured to allow easy swap to backend API later.
 
 import type { SavedChecklist, ChecklistConfig } from './config';
+import { getServerTime } from '../../helpers/time';
 
 const STORAGE_KEY = 'bms_checklists';
 
@@ -34,9 +35,9 @@ export function saveChecklist(checklist: SavedChecklist): void {
   const all = getAll();
   const idx = all.findIndex(c => c.id === checklist.id);
   if (idx >= 0) {
-    all[idx] = { ...checklist, updatedAt: new Date().toISOString() };
+    all[idx] = { ...checklist, updatedAt: getServerTime().toDate().toISOString() };
   } else {
-    all.push({ ...checklist, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    all.push({ ...checklist, createdAt: getServerTime().toDate().toISOString(), updatedAt: getServerTime().toDate().toISOString() });
   }
   saveAll(all);
 }
@@ -46,7 +47,7 @@ export function deleteChecklist(id: string): void {
 }
 
 export function createNewChecklist(preparedBy: string, config: ChecklistConfig, department: string, createdBy: string, customDate?: string): SavedChecklist {
-  const now = new Date();
+  const now = getServerTime().toDate();
   return {
     id: generateId(),
     date: customDate || now.toISOString().split('T')[0],

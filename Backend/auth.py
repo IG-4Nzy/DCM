@@ -4,7 +4,7 @@ from typing import Optional, Union, List
 import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
-from database import db
+from database import db, get_local_now
 from auth_utils import get_current_user
 
 router = APIRouter()
@@ -40,8 +40,7 @@ class ChangePasswordRequest(BaseModel):
 
 def create_access_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
+    # Permanent token: no "exp" claim added
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -112,7 +111,7 @@ async def login(credentials: LoginRequest):
     
     is_first_login_today = False
 
-    # Record first login of the day in attendance
+    # Record first login of the day in attendance — and block late logins
     try:
         config_collection = db.get_collection("attendance_config")
         config = await config_collection.find_one({}) or {}
@@ -123,7 +122,7 @@ async def login(credentials: LoginRequest):
             should_track = False
 
         if should_track:
-            now_local = datetime.now()
+            now_local = get_local_now()
             today_str = now_local.strftime("%Y-%m-%d")
             
             attendance_collection = db.get_collection("attendance")
@@ -131,12 +130,80 @@ async def login(credentials: LoginRequest):
                 "username": user["username"],
                 "date": today_str
             })
-            
-            if not existing_attendance:
+
+            if existing_attendance:
+                # If there's already a pending/rejected late attempt, keep blocking
+                late_status = existing_attendance.get("lateApprovalStatus")
+                if existing_attendance.get("isLateAttempt"):
+                    if late_status == "Pending":
+                        raise HTTPException(
+                            status_code=status.HTTP_403_FORBIDDEN,
+                            detail="You are late, you are not allowed to login, contact your department head"
+                        )
+                    elif late_status == "Rejected":
+                        raise HTTPException(
+                            status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Your late login request has been rejected, contact your department head"
+                        )
+                    # If "Approved", fall through and allow login
+            else:
+                # First login of the day — check if user is late
                 is_first_login_today = True
+
+                # Determine shift start from roster
+                from attendance import determine_shift_for_user
+                roaster_col = db.get_collection("roasters")
+                user_dept = user.get("department") or "Unassigned"
+                roaster = await roaster_col.find_one({
+                    "date": today_str,
+                    "department": user_dept,
+                    "assignees": user["username"]
+                })
+
+                config_shifts = config.get("shifts", [])
+                config_roster_rows = config.get("rosterRows", [])
+                default_start = config.get("shiftStart", "09:00")
+                grace_minutes = config.get("lateGracePeriod", 30)
+
+                shift_name, shift_start_str, shift_end_str = determine_shift_for_user(
+                    user["username"], roaster, config_shifts, config_roster_rows, default_start
+                )
+
+                # Calculate the late threshold
+                sh, sm = map(int, shift_start_str.split(":"))
+                threshold = now_local.replace(hour=sh, minute=sm, second=0, microsecond=0)
+                from datetime import timedelta as td
+                threshold += td(minutes=grace_minutes)
+
+                is_late = now_local > threshold
+
+                if is_late and not is_superuser:
+                    # Create a pending late attendance record and block login
+                    await attendance_collection.insert_one({
+                        "username": user["username"],
+                        "department": user_dept,
+                        "date": today_str,
+                        "firstLogin": now_local.isoformat(),
+                        "lastLogout": None,
+                        "workedHours": 0.0,
+                        "regularizeStatus": "None",
+                        "regularizeReason": None,
+                        "regularizeRemarks": None,
+                        "isLateAttempt": True,
+                        "lateApprovalStatus": "Pending",
+                        "shiftName": shift_name,
+                        "shiftStart": shift_start_str,
+                        "shiftEnd": shift_end_str
+                    })
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="You are late, you are not allowed to login, contact your department head"
+                    )
+
+                # Not late — normal attendance record
                 await attendance_collection.insert_one({
                     "username": user["username"],
-                    "department": user.get("department") or "Unassigned",
+                    "department": user_dept,
                     "date": today_str,
                     "firstLogin": now_local.isoformat(),
                     "lastLogout": None,
@@ -145,6 +212,8 @@ async def login(credentials: LoginRequest):
                     "regularizeReason": None,
                     "regularizeRemarks": None
                 })
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions (late login block)
     except Exception as e:
         print(f"Error auto-logging attendance: {e}")
     
@@ -154,7 +223,7 @@ async def login(credentials: LoginRequest):
         username=user["username"],
         privileges=privileges,
         isSuperuser=is_superuser,
-        showBirthdayWish=is_first_login_today and is_birthday_today(user.get("dob"), datetime.now()),
+        showBirthdayWish=is_first_login_today and is_birthday_today(user.get("dob"), get_local_now()),
         displayName=" ".join(
             part for part in [user.get("firstName", ""), user.get("lastName", "")] if part
         ) or user["username"]
@@ -184,7 +253,7 @@ async def logout(current_user: dict = Depends(get_current_user)):
             should_track = False
 
         if should_track:
-            now_local = datetime.now()
+            now_local = get_local_now()
             today_str = now_local.strftime("%Y-%m-%d")
             
             attendance_collection = db.get_collection("attendance")
@@ -206,7 +275,8 @@ async def logout(current_user: dict = Depends(get_current_user)):
                     {
                         "$set": {
                             "lastLogout": now_local.isoformat(),
-                            "workedHours": worked_hours
+                            "workedHours": worked_hours,
+                            "loggedOut": True
                         }
                     }
                 )
@@ -220,7 +290,8 @@ async def logout(current_user: dict = Depends(get_current_user)):
                     "workedHours": 0.0,
                     "regularizeStatus": "None",
                     "regularizeReason": None,
-                    "regularizeRemarks": None
+                    "regularizeRemarks": None,
+                    "loggedOut": True
                 })
     except Exception as e:
         print(f"Error auto-logging logout: {e}")

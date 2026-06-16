@@ -10,3 +10,10 @@ client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
 _parsed = urlparse(MONGO_URI)
 _db_name = _parsed.path.lstrip("/") if _parsed.path and _parsed.path != "/" else "dcm_database"
 db = client[_db_name]
+
+import zoneinfo
+from datetime import datetime
+
+def get_local_now() -> datetime:
+    tz = zoneinfo.ZoneInfo("Asia/Kolkata")
+    return datetime.now(tz).replace(tzinfo=None)

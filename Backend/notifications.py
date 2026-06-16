@@ -215,3 +215,79 @@ async def get_unread_flags(current_user: dict = Depends(get_current_user)):
         unread_flags[route] = is_unread
         
     return unread_flags
+
+
+from pydantic import BaseModel, Field
+
+class NotificationSettingsModel(BaseModel):
+    announcement_text: str = "new announcement published"
+    announcement_sound_type: str = "tts" # or "beep"
+    announcement_roles: List[str] = Field(default_factory=list)
+    work_text: str = "new work has been assigned"
+    work_sound_type: str = "tts"
+    work_roles: List[str] = Field(default_factory=list)
+    request_text: str = "New request has been assigned."
+    request_sound_type: str = "tts"
+    request_roles: List[str] = Field(default_factory=list)
+    periodic_text: str = "periodic activity alert"
+    periodic_sound_type: str = "tts"
+    periodic_roles: List[str] = Field(default_factory=list)
+
+
+@router.get("/settings", response_description="Get notification settings")
+async def get_notification_settings():
+    col = db.get_collection("notification_settings")
+    doc = await col.find_one({})
+    if not doc:
+        return {
+            "announcement_text": "new announcement published",
+            "announcement_sound_type": "tts",
+            "announcement_roles": [],
+            "work_text": "new work has been assigned",
+            "work_sound_type": "tts",
+            "work_roles": [],
+            "request_text": "New request has been assigned.",
+            "request_sound_type": "tts",
+            "request_roles": [],
+            "periodic_text": "periodic activity alert",
+            "periodic_sound_type": "tts",
+            "periodic_roles": []
+        }
+    return {
+        "announcement_text": doc.get("announcement_text", "new announcement published"),
+        "announcement_sound_type": doc.get("announcement_sound_type", "tts"),
+        "announcement_roles": doc.get("announcement_roles", []),
+        "work_text": doc.get("work_text", "new work has been assigned"),
+        "work_sound_type": doc.get("work_sound_type", "tts"),
+        "work_roles": doc.get("work_roles", []),
+        "request_text": doc.get("request_text", "New request has been assigned."),
+        "request_sound_type": doc.get("request_sound_type", "tts"),
+        "request_roles": doc.get("request_roles", []),
+        "periodic_text": doc.get("periodic_text", "periodic activity alert"),
+        "periodic_sound_type": doc.get("periodic_sound_type", "tts"),
+        "periodic_roles": doc.get("periodic_roles", [])
+    }
+
+
+@router.post("/settings", response_description="Update notification settings")
+async def update_notification_settings(payload: NotificationSettingsModel = Body(...)):
+    col = db.get_collection("notification_settings")
+    await col.update_one(
+        {},
+        {"$set": {
+            "announcement_text": payload.announcement_text,
+            "announcement_sound_type": payload.announcement_sound_type,
+            "announcement_roles": payload.announcement_roles,
+            "work_text": payload.work_text,
+            "work_sound_type": payload.work_sound_type,
+            "work_roles": payload.work_roles,
+            "request_text": payload.request_text,
+            "request_sound_type": payload.request_sound_type,
+            "request_roles": payload.request_roles,
+            "periodic_text": payload.periodic_text,
+            "periodic_sound_type": payload.periodic_sound_type,
+            "periodic_roles": payload.periodic_roles
+        }},
+        upsert=True
+    )
+    return {"status": "success"}

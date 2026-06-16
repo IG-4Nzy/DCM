@@ -9,6 +9,7 @@ import { FormControl, InputLabel, MenuItem, Select, Button, Box, IconButton, Too
 import { MdEdit as EditIcon, MdSend } from 'react-icons/md';
 import styles from './index.module.scss';
 import request from '../../services/request';
+import { getServerTime } from '../../helpers/time';
 
 interface ObservationFormModalProps {
   isModalOpen: boolean;
@@ -90,7 +91,7 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
     const newCommentObj = {
       text: newComment.trim(),
       user: currentUser,
-      timestamp: new Date().toISOString()
+      timestamp: getServerTime().toDate().toISOString()
     };
 
     const updatedComments = [...(formData.comments || []), newCommentObj];

@@ -15,6 +15,7 @@ import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { useTableState } from '../../hooks/useTableState';
+import { getServerTime } from '../../helpers/time';
 
 type Order = 'asc' | 'desc';
 
@@ -31,7 +32,7 @@ const ObservationList: React.FC = () => {
   const [orderBy, setOrderBy] = useTableState<string>('obs_orderBy', 'observationId');
   const [searchQuery, setSearchQuery] = useTableState('obs_search', '');
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getServerTime().toDate().toISOString().split('T')[0];
   const [statusFilter, setStatusFilter] = useTableState('obs_status', 'Not Resolved');
   const [dateFilter, setDateFilter] = useTableState('obs_date', '');
   const [categoryFilter, setCategoryFilter] = useTableState('obs_category', '');
@@ -112,7 +113,7 @@ const ObservationList: React.FC = () => {
     } else {
       setIsEditMode(true);
       setEditingObs(null);
-      const now = new Date();
+      const now = getServerTime().toDate();
       const localDate = now.toLocaleDateString('sv-SE'); // YYYY-MM-DD
       const localTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
       setFormData({

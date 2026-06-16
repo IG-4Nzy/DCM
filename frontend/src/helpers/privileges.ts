@@ -86,8 +86,11 @@ export const PRIVILEGES = {
     ANNOUNCEMENT_UPDATE: "Update Announcement",
     ANNOUNCEMENT_DELETE: "Delete Announcement",
     NOTIFICATION_TRIGGERING_VIEW: "View Notification Triggering",
+    NOTIFICATION_TRIGGERING_VIEW_DEPT: "View Departmental Notification Triggering",
+    NOTIFICATION_TRIGGERING_VIEW_OWN: "View Own Notification Triggering",
     LOGS_VIEW: "View Logs",
     LOGS_CREATE: "Create Log",
     LOGS_UPDATE: "Update Log",
     LOGS_DELETE: "Delete Log",
+    AUDIT_LOGS_VIEW: "View Audit Logs",
 }

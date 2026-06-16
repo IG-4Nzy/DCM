@@ -32,8 +32,9 @@ async def list_audit_logs(
     search: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    if not current_user.get("isSuperuser", False):
-        raise HTTPException(status_code=403, detail="Only superuser can access audit logs")
+    privileges = current_user.get("privileges", [])
+    if not current_user.get("isSuperuser", False) and "View Audit Logs" not in privileges:
+        raise HTTPException(status_code=403, detail="Not enough privileges to view audit logs")
 
     query = {}
     if search:

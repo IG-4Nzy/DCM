@@ -25,6 +25,7 @@ import type { AppDispatch, RootState } from "../../store";
 import type { UserData } from "./model";
 import UserFormModal from "./UserFormModal";
 import { hasPrivilege } from "../../helpers/authUtils";
+import { getServerTime } from "../../helpers/time";
 import styles from "./index.module.scss";
 import { PRIVILEGES } from "../../helpers/privileges";
 
@@ -277,7 +278,7 @@ const Users: React.FC = () => {
     if (!user.lastActive) return false;
     try {
       const lastActiveTime = new Date(user.lastActive).getTime();
-      const now = new Date().getTime();
+      const now = getServerTime().toDate().getTime();
       return now - lastActiveTime < 45000;
     } catch (e) {
       return false;

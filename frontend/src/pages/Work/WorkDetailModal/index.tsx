@@ -31,6 +31,7 @@ import type { WorkData } from "../model";
 import { hasPrivilege } from "../../../helpers/authUtils";
 import { PRIVILEGES } from "../../../helpers/privileges";
 import { useConfirm } from "../../../contexts/ConfirmContext";
+import { getServerTime } from "../../../helpers/time";
 import styles from "./index.module.scss";
 
 interface PropType {
@@ -82,6 +83,7 @@ const WorkDetailModal = ({
 
   const availableStatusOptions = [
     { label: "Pending", value: "Pending" },
+    { label: "In Progress", value: "In Progress" },
     { label: "On Hold", value: "On Hold" },
     { label: "Completed", value: "Completed" },
   ];
@@ -142,7 +144,7 @@ const WorkDetailModal = ({
     if (!user.lastActive) return false;
     try {
       const lastActiveTime = new Date(user.lastActive).getTime();
-      const now = new Date().getTime();
+      const now = getServerTime().toDate().getTime();
       return now - lastActiveTime < 45000;
     } catch (e) {
       return false;
@@ -163,6 +165,7 @@ const WorkDetailModal = ({
         return "#2e7d32";
       case "On Hold":
         return "#ed6c02";
+      case "In Progress":
       case "Assigned":
         return "#1976d2";
       case "Closed":
@@ -190,7 +193,7 @@ const WorkDetailModal = ({
           status: newVal,
         };
         if (newVal === "Completed" || newVal === "Closed") {
-          payload.completedAt = new Date().toISOString().split("T")[0];
+          payload.completedAt = getServerTime().toDate().toISOString().split("T")[0];
         } else {
           payload.completedAt = "";
         }
@@ -221,7 +224,7 @@ const WorkDetailModal = ({
     const newCommentObj = {
       text: newComment.trim(),
       user: currentUser,
-      timestamp: new Date().toISOString(),
+      timestamp: getServerTime().toDate().toISOString(),
     };
 
     const updatedComments = [...(work.comments || []), newCommentObj];
@@ -485,7 +488,7 @@ const WorkDetailModal = ({
 
           <div className={styles.commentsList}>
             {work.comments && work.comments.length > 0 ? (
-              work.comments.map((comment, index) => {
+              [...work.comments].reverse().map((comment, index) => {
                 const avatarLetter = (comment.user || "?")[0].toUpperCase();
                 return (
                   <div key={index} className={styles.commentRow}>
@@ -503,7 +506,14 @@ const WorkDetailModal = ({
                     <div className={styles.commentBubble}>
                       <div className={styles.commentHeader}>
                         <span className={styles.commentUser}>
-                          {comment.user}
+                          {(() => {
+                            const uObj = users.find((u: any) => u.username === comment.user);
+                            if (uObj) {
+                              const fullName = `${uObj.firstName || ""} ${uObj.lastName || ""}`.trim();
+                              return fullName || comment.user;
+                            }
+                            return comment.user;
+                          })()}
                         </span>
                         <span className={styles.commentTime}>
                           {new Date(comment.timestamp).toLocaleString(

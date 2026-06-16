@@ -23,43 +23,40 @@ async def is_department_head(user: dict, target_department: str) -> bool:
         return True
     return False
 
-def determine_shift_for_user(username: str, roaster: dict, config_shifts: list, default_start: str) -> tuple:
+def determine_shift_for_user(username: str, roaster: dict, config_shifts: list, config_roster_rows: list, default_start: str) -> tuple:
     if not roaster:
         return "Default", default_start, "17:00"
 
-    roster_shift = roaster.get("shift") or ""
-    assignees = roaster.get("assignees") or []
-
-    try:
-        user_index = assignees.index(username)
-    except ValueError:
-        user_index = -1
-
-    assigned_shift_name = "Default"
-    if roster_shift == "Shift-1":
-        # First assignee is Shift 1, second assignee is Shift 2
-        if user_index == 0:
-            assigned_shift_name = "Shift 1"
-        elif user_index == 1:
-            assigned_shift_name = "Shift 2"
-        else:
-            assigned_shift_name = "Shift 1"
-    elif roster_shift == "Shift-2":
-        # First and second assignee are both Shift 3
-        assigned_shift_name = "Shift 3"
-    elif roster_shift == "Shift-3":
-        # Remaining 2 in the roster shift 3 are in Shift 4
-        assigned_shift_name = "Shift 4"
-    else:
-        # Fallback to general mapping (e.g. Shift-4 -> Shift 4)
-        assigned_shift_name = roster_shift.replace("-", " ")
-
-    # Find the shift details in config_shifts
-    shift_info = next((s for s in config_shifts if s.get("name") == assigned_shift_name), None)
-    if shift_info:
-        return assigned_shift_name, shift_info.get("startTime", default_start), shift_info.get("endTime", "17:00")
+    roster_row_name = roaster.get("shift") or ""
     
-    return assigned_shift_name, default_start, "17:00"
+    def norm(s):
+        if not s:
+            return ""
+        return s.lower().replace(" ", "").replace("-", "").replace("_", "")
+
+    norm_row_name = norm(roster_row_name)
+
+    # 1. Look up the row/slot in rosterRows to find the mapped shift name
+    mapped_shift_name = None
+    if config_roster_rows:
+        row_info = next((r for r in config_roster_rows if norm(r.get("name")) == norm_row_name), None)
+        if row_info:
+            mapped_shift_name = row_info.get("mappedShift")
+            
+    # If not found in rosterRows, assume the roaster.shift itself might be the shift name
+    if not mapped_shift_name:
+        mapped_shift_name = roster_row_name
+
+    norm_mapped_shift = norm(mapped_shift_name)
+
+    # 2. Look up the mapped shift name in config_shifts
+    if config_shifts:
+        shift_info = next((s for s in config_shifts if norm(s.get("name")) == norm_mapped_shift), None)
+        if shift_info:
+            return shift_info.get("name") or mapped_shift_name, shift_info.get("startTime", default_start), shift_info.get("endTime", "17:00")
+
+    # Fallback to defaults
+    return mapped_shift_name or "Default", default_start, "17:00"
 
 @router.get("/", response_description="List attendance records", response_model=PaginatedAttendanceModel, response_model_by_alias=False)
 async def list_attendance(
@@ -138,6 +135,7 @@ async def list_attendance(
     roasters_col = db.get_collection("roasters")
     config = await config_collection.find_one({}) or {}
     config_shifts = config.get("shifts", [])
+    config_roster_rows = config.get("rosterRows", [])
     default_start = config.get("shiftStart", "09:00")
 
     enriched_items = []
@@ -154,12 +152,40 @@ async def list_attendance(
         else:
             enriched["fullName"] = item["username"]
 
+        # If user has not explicitly logged out, take the last active (API call) time
+        if not item.get("loggedOut", False) and user and user.get("lastActive"):
+            last_active_str = user.get("lastActive")
+            try:
+                if last_active_str.endswith("Z"):
+                    # Convert UTC to local timezone
+                    dt_utc = datetime.fromisoformat(last_active_str.replace("Z", "+00:00"))
+                    dt_local = dt_utc.astimezone()
+                    enriched["lastLogout"] = dt_local.isoformat()
+                else:
+                    enriched["lastLogout"] = last_active_str
+            except Exception:
+                enriched["lastLogout"] = last_active_str
+
+            # Recalculate workedHours based on firstLogin and lastActive fallback
+            first_login_str = enriched.get("firstLogin")
+            if first_login_str and enriched["lastLogout"]:
+                try:
+                    start_dt = datetime.fromisoformat(first_login_str)
+                    end_dt = datetime.fromisoformat(enriched["lastLogout"])
+                    if start_dt.tzinfo is not None and end_dt.tzinfo is None:
+                        start_dt = start_dt.replace(tzinfo=None)
+                    elif start_dt.tzinfo is None and end_dt.tzinfo is not None:
+                        end_dt = end_dt.replace(tzinfo=None)
+                    enriched["workedHours"] = round((end_dt - start_dt).total_seconds() / 3600.0, 2)
+                except Exception:
+                    pass
+
         # Roster shift lookup
         log_date = item.get("date")
         username = item.get("username")
         roaster = await roasters_col.find_one({"date": log_date, "assignees": username})
         
-        shift_name, start_time, end_time = determine_shift_for_user(username, roaster, config_shifts, default_start)
+        shift_name, start_time, end_time = determine_shift_for_user(username, roaster, config_shifts, config_roster_rows, default_start)
         enriched["shiftName"] = shift_name
         enriched["shiftStart"] = start_time
         enriched["shiftEnd"] = end_time
@@ -260,8 +286,8 @@ async def reject_regularize(
 
 @router.get("/server-time")
 async def get_server_time():
-    from datetime import datetime
-    return {"currentTime": datetime.now().isoformat()}
+    from database import get_local_now
+    return {"currentTime": get_local_now().isoformat()}
 
 @router.get("/config", response_model=AttendanceConfigModel, response_model_by_alias=False)
 async def get_attendance_config():
@@ -400,6 +426,12 @@ async def get_attendance_summary(
         }
         logs = await attendance_collection.find(att_query).to_list(length=None)
         
+        # Exclude unapproved late login attempts from summary
+        logs = [
+            log for log in logs
+            if not (log.get("isLateAttempt") and log.get("lateApprovalStatus") in ("Pending", "Rejected"))
+        ]
+        
         present_days = len(logs)
         late_days = 0
         
@@ -412,7 +444,8 @@ async def get_attendance_summary(
                     roasters_col = db.get_collection("roasters")
                     roaster = await roasters_col.find_one({"date": log_date, "assignees": username})
                     config_shifts = config.get("shifts", [])
-                    _, curr_shift_start, _ = determine_shift_for_user(username, roaster, config_shifts, shift_start)
+                    config_roster_rows = config.get("rosterRows", [])
+                    _, curr_shift_start, _ = determine_shift_for_user(username, roaster, config_shifts, config_roster_rows, shift_start)
 
                     sh, sm = map(int, curr_shift_start.split(":"))
                     threshold_mins = sh * 60 + sm + grace
@@ -499,3 +532,64 @@ async def delete_attendance(
     if delete_result.deleted_count == 1:
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     raise HTTPException(status_code=404, detail="Attendance log not found")
+
+# --- Late Login Approval Endpoints ---
+
+@router.post("/approve-late/{id}")
+async def approve_late_login(
+    id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    record = await attendance_collection.find_one({"_id": ObjectId(id)})
+    if not record:
+        raise HTTPException(status_code=404, detail="Attendance record not found")
+
+    target_dept = record.get("department", "")
+    if not await is_department_head(current_user, target_dept):
+        raise HTTPException(status_code=403, detail="Only the department head can approve late logins")
+
+    await attendance_collection.update_one(
+        {"_id": ObjectId(id)},
+        {
+            "$set": {
+                "lateApprovalStatus": "Approved",
+            }
+        }
+    )
+    from notification_helper import log_page_update
+    await log_page_update("attendance", department=target_dept, username=current_user.get("sub"))
+    return {"message": "Late login approved successfully"}
+
+@router.post("/reject-late/{id}")
+async def reject_late_login(
+    id: str,
+    current_user: dict = Depends(get_current_user),
+    body: dict = Body(default={})
+):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    record = await attendance_collection.find_one({"_id": ObjectId(id)})
+    if not record:
+        raise HTTPException(status_code=404, detail="Attendance record not found")
+
+    target_dept = record.get("department", "")
+    if not await is_department_head(current_user, target_dept):
+        raise HTTPException(status_code=403, detail="Only the department head can reject late logins")
+
+    remarks = body.get("remarks", "Rejected by Department Head")
+    await attendance_collection.update_one(
+        {"_id": ObjectId(id)},
+        {
+            "$set": {
+                "lateApprovalStatus": "Rejected",
+                "regularizeRemarks": remarks,
+            }
+        }
+    )
+    from notification_helper import log_page_update
+    await log_page_update("attendance", department=target_dept, username=current_user.get("sub"))
+    return {"message": "Late login rejected"}

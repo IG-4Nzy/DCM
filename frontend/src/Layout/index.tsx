@@ -34,6 +34,7 @@ import { SIDEBAR_OPTIONS } from './constants';
 import { hasAnyPrivilege } from '../helpers/authUtils';
 import { ROUTE_CONSTANTS } from '../router/constant';
 import request from '../services/request';
+import { NotificationPollerProvider } from '../contexts/NotificationPollerContext';
 
 const drawerWidth = 240;
 
@@ -215,7 +216,8 @@ const Layout: React.FC = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', textAlign: 'left', width: '100%', minHeight: '100vh' }}>
+    <NotificationPollerProvider>
+      <Box sx={{ display: 'flex', textAlign: 'left', width: '100%', minHeight: '100vh' }}>
       <CssBaseline />
       <AppBar position="fixed" open={open}>
         <Toolbar>
@@ -369,6 +371,7 @@ const Layout: React.FC = () => {
         <Outlet />
       </Box>
     </Box>
+    </NotificationPollerProvider>
   );
 }
 

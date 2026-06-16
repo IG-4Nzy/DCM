@@ -361,6 +361,32 @@ async def create_request_type(payload: dict = Body(...), current_user: dict = De
     return {"id": str(res.inserted_id), "name": name}
 
 
+@router.put("/types/{id}", response_description="Update a request type")
+async def update_request_type(id: str, payload: dict = Body(...), current_user: dict = Depends(get_current_user)):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    name = payload.get("name")
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    types_col = db.get_collection("request_types")
+    existing = await types_col.find_one({"name": {"$regex": f"^{name}$", "$options": "i"}, "_id": {"$ne": ObjectId(id)}})
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Request type '{name}' already exists")
+    await types_col.update_one({"_id": ObjectId(id)}, {"$set": {"name": name}})
+    return {"id": id, "name": name}
+
+
+@router.delete("/types/{id}", response_description="Delete a request type")
+async def delete_request_type(id: str, current_user: dict = Depends(get_current_user)):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    types_col = db.get_collection("request_types")
+    res = await types_col.delete_one({"_id": ObjectId(id)})
+    if res.deleted_count == 1:
+        return {"message": "Request type deleted successfully"}
+    raise HTTPException(status_code=404, detail="Request type not found")
+
+
 @router.get("/visitor-logs", response_description="List all visitor logs", dependencies=[Depends(require_privilege("View Request"))])
 async def list_visitor_logs(
     skip: int = Query(0, ge=0),

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Box, Paper, Tooltip, IconButton, Chip, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
+import { Box, Paper, Tooltip, IconButton, Chip, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Tabs, Tab } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';
@@ -51,12 +51,15 @@ const Requests: React.FC = () => {
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedViewRequest, setSelectedViewRequest] = useState<RequestData | null>(null);
 
-    const [requestTypes, setRequestTypes] = useState<string[]>([
-        'VM Creation',
-        'DC Entry',
-        'Hardware Issuance',
-        'Hardware Replacement'
+    const [activeTab, setActiveTab] = useState<'requests' | 'types'>('requests');
+    const [editingType, setEditingType] = useState<{id: string, name: string} | null>(null);
+    const [requestTypesObj, setRequestTypesObj] = useState<{id: string, name: string}[]>([
+        { id: '1', name: 'VM Creation' },
+        { id: '2', name: 'DC Entry' },
+        { id: '3', name: 'Hardware Issuance' },
+        { id: '4', name: 'Hardware Replacement' }
     ]);
+    const requestTypes = requestTypesObj.map(t => t.name);
     const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
     const [newTypeName, setNewTypeName] = useState('');
 
@@ -102,7 +105,7 @@ const Requests: React.FC = () => {
         try {
             const res = await request.get('/api/requests/types');
             if (res.data && Array.isArray(res.data)) {
-                setRequestTypes(res.data.map((t: any) => t.name));
+                setRequestTypesObj(res.data);
             }
         } catch (err) {
             console.error('Failed to fetch request types:', err);
@@ -124,22 +127,49 @@ const Requests: React.FC = () => {
         return () => clearInterval(interval);
     }, [loadData, hasViewPrivilege]);
 
-    const handleAddRequestType = async () => {
+    const handleSaveRequestType = async () => {
         if (!newTypeName.trim()) {
             showToast('Request type name cannot be empty', 'error');
             return;
         }
         try {
             setLoading(true);
-            await request.post('/api/requests/types', { name: newTypeName.trim() });
-            showToast('Request type created successfully', 'success');
+            if (editingType) {
+                await request.put(`/api/requests/types/${editingType.id}`, { name: newTypeName.trim() });
+                showToast('Request type updated successfully', 'success');
+            } else {
+                await request.post('/api/requests/types', { name: newTypeName.trim() });
+                showToast('Request type created successfully', 'success');
+            }
             setNewTypeName('');
+            setEditingType(null);
             setIsTypeModalOpen(false);
             await fetchRequestTypes();
         } catch (err: any) {
-            showToast(err.response?.data?.detail || err.message || 'Failed to create request type', 'error');
+            showToast(err.response?.data?.detail || err.message || 'Failed to save request type', 'error');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleEditRequestType = (typeObj: {id: string, name: string}) => {
+        setEditingType(typeObj);
+        setNewTypeName(typeObj.name);
+        setIsTypeModalOpen(true);
+    };
+
+    const handleDeleteRequestType = async (id: string) => {
+        if (await confirm("Are you sure you want to delete this request type?")) {
+            try {
+                setLoading(true);
+                await request.delete(`/api/requests/types/${id}`);
+                showToast('Request type deleted successfully', 'success');
+                await fetchRequestTypes();
+            } catch (err: any) {
+                showToast(err.response?.data?.detail || err.message || 'Failed to delete request type', 'error');
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
@@ -274,6 +304,38 @@ const Requests: React.FC = () => {
             default: return 'default';
         }
     };
+
+    const typeColumns: Column<{id: string, name: string}>[] = [
+        {
+            id: 'name',
+            label: 'Request Type Name',
+            sortable: false,
+            render: (row) => row.name
+        },
+        {
+            id: 'actions',
+            label: 'Actions',
+            align: 'right',
+            render: (row) => (
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                    {hasUpdatePrivilege && (
+                        <Tooltip title="Edit Request Type">
+                            <IconButton size="small" color="primary" onClick={(e) => { e.stopPropagation(); handleEditRequestType(row); }}>
+                                <EditIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                    {hasDeletePrivilege && (
+                        <Tooltip title="Delete Request Type">
+                            <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); handleDeleteRequestType(row.id); }}>
+                                <DeleteIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                </Box>
+            )
+        }
+    ];
 
     const columns: Column<RequestData>[] = [
         { 
@@ -416,80 +478,106 @@ const Requests: React.FC = () => {
                 <h2 style={{ margin: 0, color: '#333' }}>Requests</h2>
             </Box>
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <SearchBar value={searchQuery} onChange={(v) => { setSearchQuery(v); setPage(0); }} placeholder="Search requests..." />
-                    <ToggleButtonGroup
-                        value={statusFilter}
-                        exclusive
-                        onChange={(e, val) => {
-                            if (val) {
-                                setStatusFilter(val);
-                                setPage(0);
-                            }
-                        }}
-                        aria-label="status filter"
-                        size="small"
-                        sx={{ bgcolor: 'rgba(0,0,0,0.02)', p: 0.5, borderRadius: '8px' }}
-                    >
-                        <ToggleButton value="all" sx={{ border: 'none', borderRadius: '6px !important', px: 2, py: 0.5, fontSize: '0.8rem' }}>
-                            All
-                        </ToggleButton>
-                        <ToggleButton value="active" sx={{ border: 'none', borderRadius: '6px !important', px: 2, py: 0.5, fontSize: '0.8rem' }}>
-                            Non Completed
-                        </ToggleButton>
-                        <ToggleButton value="completed" sx={{ border: 'none', borderRadius: '6px !important', px: 2, py: 0.5, fontSize: '0.8rem' }}>
-                            Completed
-                        </ToggleButton>
-                    </ToggleButtonGroup>
-                    <FormControl size="small" sx={{ minWidth: 200 }}>
-                        <InputLabel id="request-type-filter-label">Request Type</InputLabel>
-                        <Select
-                            labelId="request-type-filter-label"
-                            value={requestTypeFilter}
-                            label="Request Type"
-                            onChange={(e) => {
-                                setRequestTypeFilter(e.target.value);
-                                setPage(0);
-                            }}
-                            sx={{ bgcolor: '#fff' }}
-                        >
-                            <MenuItem value="all">All Request Types</MenuItem>
-                            {requestTypes.map((type) => (
-                                <MenuItem key={type} value={type}>{type}</MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                </Box>
+            <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val as any)} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
+                <Tab label="Requests List" value="requests" />
+                <Tab label="Request Types" value="types" />
+            </Tabs>
 
-                {hasCreatePrivilege && (
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button variant="outlined" color="primary" startIcon={<AddIcon />} onClick={() => setIsTypeModalOpen(true)}>
-                            Add Request Type
-                        </Button>
-                        <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => handleOpenModal()}>
-                            Create Request
-                        </Button>
+            {activeTab === 'requests' ? (
+                <>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <SearchBar value={searchQuery} onChange={(v) => { setSearchQuery(v); setPage(0); }} placeholder="Search requests..." />
+                            <ToggleButtonGroup
+                                value={statusFilter}
+                                exclusive
+                                onChange={(e, val) => {
+                                    if (val) {
+                                        setStatusFilter(val);
+                                        setPage(0);
+                                    }
+                                }}
+                                aria-label="status filter"
+                                size="small"
+                                sx={{ bgcolor: 'rgba(0,0,0,0.02)', p: 0.5, borderRadius: '8px' }}
+                            >
+                                <ToggleButton value="all" sx={{ border: 'none', borderRadius: '6px !important', px: 2, py: 0.5, fontSize: '0.8rem' }}>
+                                    All
+                                </ToggleButton>
+                                <ToggleButton value="active" sx={{ border: 'none', borderRadius: '6px !important', px: 2, py: 0.5, fontSize: '0.8rem' }}>
+                                    Non Completed
+                                </ToggleButton>
+                                <ToggleButton value="completed" sx={{ border: 'none', borderRadius: '6px !important', px: 2, py: 0.5, fontSize: '0.8rem' }}>
+                                    Completed
+                                </ToggleButton>
+                            </ToggleButtonGroup>
+                            <FormControl size="small" sx={{ minWidth: 200 }}>
+                                <InputLabel id="request-type-filter-label">Request Type</InputLabel>
+                                <Select
+                                    labelId="request-type-filter-label"
+                                    value={requestTypeFilter}
+                                    label="Request Type"
+                                    onChange={(e) => {
+                                        setRequestTypeFilter(e.target.value);
+                                        setPage(0);
+                                    }}
+                                    sx={{ bgcolor: '#fff' }}
+                                >
+                                    <MenuItem value="all">All Request Types</MenuItem>
+                                    {requestTypes.map((type) => (
+                                        <MenuItem key={type} value={type}>{type}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Box>
+
+                        {hasCreatePrivilege && (
+                            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => handleOpenModal()}>
+                                Create Request
+                            </Button>
+                        )}
                     </Box>
-                )}
-            </Box>
 
-            <Paper sx={{ width: '100%', mb: 2, p: 0, boxShadow: 'none', background: 'transparent' }}>
-                <Table
-                    columns={columns}
-                    data={requests}
-                    loading={loading}
-                    orderBy={orderBy}
-                    order={order}
-                    onRequestSort={(prop) => handleRequestSort(prop as string)}
-                    page={page}
-                    rowsPerPage={rowsPerPage}
-                    onPageChange={handleChangePage}
-                    onRowsPerPageChange={handleChangeRowsPerPage}
-                    totalCount={totalCount}
-                    onRowClick={handleRowClick}
-                />
-            </Paper>
+                    <Paper sx={{ width: '100%', mb: 2, p: 0, boxShadow: 'none', background: 'transparent' }}>
+                        <Table
+                            columns={columns}
+                            data={requests}
+                            loading={loading}
+                            orderBy={orderBy}
+                            order={order}
+                            onRequestSort={(prop) => handleRequestSort(prop as string)}
+                            page={page}
+                            rowsPerPage={rowsPerPage}
+                            onPageChange={handleChangePage}
+                            onRowsPerPageChange={handleChangeRowsPerPage}
+                            totalCount={totalCount}
+                            onRowClick={handleRowClick}
+                        />
+                    </Paper>
+                </>
+            ) : (
+                <>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
+                        {hasCreatePrivilege && (
+                            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => { setEditingType(null); setNewTypeName(''); setIsTypeModalOpen(true); }}>
+                                Add Request Type
+                            </Button>
+                        )}
+                    </Box>
+                    <Paper sx={{ width: '100%', mb: 2, p: 0, boxShadow: 'none', background: 'transparent' }}>
+                        <Table
+                            columns={typeColumns}
+                            data={requestTypesObj}
+                            loading={loading}
+                            page={0}
+                            rowsPerPage={100}
+                            onPageChange={() => {}}
+                            onRowsPerPageChange={() => {}}
+                            totalCount={requestTypesObj.length}
+                        />
+                    </Paper>
+                </>
+            )}
 
             <RequestFormModal
                 isModalOpen={isModalOpen}
@@ -500,8 +588,10 @@ const Requests: React.FC = () => {
                 requestTypes={requestTypes}
             />
 
-            <Dialog open={isTypeModalOpen} onClose={() => setIsTypeModalOpen(false)} maxWidth="xs" fullWidth>
-                <DialogTitle sx={{ pb: 1, fontWeight: 'bold', fontSize: '1.25rem', color: '#333' }}>Add Request Type</DialogTitle>
+            <Dialog open={isTypeModalOpen} onClose={() => { setIsTypeModalOpen(false); setEditingType(null); setNewTypeName(''); }} maxWidth="xs" fullWidth>
+                <DialogTitle sx={{ pb: 1, fontWeight: 'bold', fontSize: '1.25rem', color: '#333' }}>
+                    {editingType ? 'Edit Request Type' : 'Add Request Type'}
+                </DialogTitle>
                 <DialogContent dividers>
                     <Box sx={{ pt: 1 }}>
                         <TextField
@@ -516,10 +606,10 @@ const Requests: React.FC = () => {
                     </Box>
                 </DialogContent>
                 <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={() => setIsTypeModalOpen(false)} variant="text" color="inherit">
+                    <Button onClick={() => { setIsTypeModalOpen(false); setEditingType(null); setNewTypeName(''); }} variant="text" color="inherit">
                         Cancel
                     </Button>
-                    <Button onClick={handleAddRequestType} variant="contained" color="primary" disabled={loading}>
+                    <Button onClick={handleSaveRequestType} variant="contained" color="primary" disabled={loading}>
                         Save
                     </Button>
                 </DialogActions>
