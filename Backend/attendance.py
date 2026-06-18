@@ -169,18 +169,68 @@ async def list_attendance(
             enriched["fullName"] = item["username"]
 
         # If user has not explicitly logged out, take the last active (API call) time
+        # ONLY if the last active time is on the same day as the attendance record (or next day for night shift)
         if not item.get("loggedOut", False) and user and user.get("lastActive"):
             last_active_str = user.get("lastActive")
             try:
                 if last_active_str.endswith("Z"):
                     # Convert UTC to local timezone
+                    import zoneinfo
+                    tz = zoneinfo.ZoneInfo("Asia/Kolkata")
                     dt_utc = datetime.fromisoformat(last_active_str.replace("Z", "+00:00"))
-                    dt_local = dt_utc.astimezone()
-                    enriched["lastLogout"] = dt_local.isoformat()
+                    dt_local = dt_utc.astimezone(tz)
                 else:
-                    enriched["lastLogout"] = last_active_str
+                    # Parse local datetime directly
+                    dt_local = datetime.fromisoformat(last_active_str)
+                
+                # Check if it's a night shift
+                is_record_night = False
+                shift_start = item.get("shiftStart")
+                shift_end = item.get("shiftEnd")
+                if shift_start and shift_end:
+                    try:
+                        sh, sm = map(int, shift_start.split(":"))
+                        eh, em = map(int, shift_end.split(":"))
+                        is_record_night = (sh > eh) or (sh == eh and sm >= em)
+                    except Exception:
+                        pass
+                
+                allowed_dates = [item.get("date")]
+                shift_end_dt = None
+                if is_record_night:
+                    try:
+                        rec_dt = datetime.strptime(item.get("date"), "%Y-%m-%d")
+                        next_day_str = (rec_dt + timedelta(days=1)).strftime("%Y-%m-%d")
+                        allowed_dates.append(next_day_str)
+                        
+                        # Calculate shift end datetime in local timezone
+                        if shift_end:
+                            eh, em = map(int, shift_end.split(":"))
+                            shift_end_dt = dt_local.replace(year=rec_dt.year, month=rec_dt.month, day=rec_dt.day, hour=eh, minute=em, second=0, microsecond=0) + timedelta(days=1)
+                            if dt_local.tzinfo:
+                                shift_end_dt = shift_end_dt.replace(tzinfo=dt_local.tzinfo)
+                    except Exception:
+                        pass
+                
+                if dt_local.strftime("%Y-%m-%d") in allowed_dates:
+                    # Cap at shift end time if shift is closed (past shift end time)
+                    if shift_end_dt and dt_local > shift_end_dt:
+                        enriched["lastLogout"] = shift_end_dt.isoformat()
+                    else:
+                        enriched["lastLogout"] = dt_local.isoformat()
             except Exception:
-                enriched["lastLogout"] = last_active_str
+                # Fallback to simple matching if parsing fails
+                try:
+                    if last_active_str.endswith("Z"):
+                        dt_utc = datetime.fromisoformat(last_active_str.replace("Z", "+00:00"))
+                        dt_local = dt_utc.astimezone()
+                        last_active_local_str = dt_local.isoformat()
+                    else:
+                        last_active_local_str = last_active_str
+                    if last_active_local_str[:10] == item.get("date"):
+                        enriched["lastLogout"] = last_active_local_str
+                except Exception:
+                    pass
 
             # Recalculate workedHours based on firstLogin and lastActive fallback
             first_login_str = enriched.get("firstLogin")

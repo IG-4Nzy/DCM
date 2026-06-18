@@ -25,4 +25,6 @@ export interface InventoryData {
   history: InventoryHistory[];
   isReturnable?: boolean;
   currentHolders?: HolderData[];
+  almiraNumber?: string;
+  rackNumber?: string;
 }

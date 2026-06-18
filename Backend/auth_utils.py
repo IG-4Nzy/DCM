@@ -35,46 +35,88 @@ async def update_attendance_on_request(username: str, user_dept: str, user_role:
             now_local = get_local_now()
             today_str = now_local.strftime("%Y-%m-%d")
             
+            # Close any past open attendance records (safety fallback)
+            try:
+                from attendance_helpers import close_past_open_attendances
+                await close_past_open_attendances(username, now_local, None)
+            except Exception as e:
+                print(f"Error closing past open attendances in request: {e}")
+            
+            from attendance_helpers import get_target_attendance_date_details
+            details = await get_target_attendance_date_details(username, now_local)
+            target_date = details["date"]
+            is_prev_day = details["is_prev_day"]
+            prev_shift_end_dt = details["prev_shift_end_dt"]
+            is_closed = details["is_closed"]
+            
             attendance_collection = db.get_collection("attendance")
             existing = await attendance_collection.find_one({
                 "username": username,
-                "date": today_str
+                "date": target_date
             })
             
             if not existing:
-                await attendance_collection.insert_one({
-                    "username": username,
-                    "department": user_dept or "Unassigned",
-                    "date": today_str,
-                    "firstLogin": now_local.isoformat(),
-                    "lastLogout": now_local.isoformat(),
-                    "workedHours": 0.0,
-                    "regularizeStatus": "None",
-                    "regularizeReason": None,
-                    "regularizeRemarks": None
-                })
+                # We only create a record for today_str. If target_date is prev_day_str,
+                # but no record exists, we should not create one.
+                if target_date == today_str:
+                    await attendance_collection.insert_one({
+                        "username": username,
+                        "department": user_dept or "Unassigned",
+                        "date": today_str,
+                        "firstLogin": now_local.isoformat(),
+                        "lastLogout": now_local.isoformat(),
+                        "workedHours": 0.0,
+                        "regularizeStatus": "None",
+                        "regularizeReason": None,
+                        "regularizeRemarks": None,
+                        "loggedOut": False
+                    })
             else:
                 if existing.get("regularizeStatus") != "Approved":
                     first_login_str = existing.get("firstLogin")
-                    worked_hours = 0.0
-                    if first_login_str:
-                        try:
-                            first_login_dt = datetime.fromisoformat(first_login_str)
-                            duration = now_local - first_login_dt
-                            worked_hours = round(duration.total_seconds() / 3600.0, 2)
-                        except Exception:
-                            pass
                     
-                    await attendance_collection.update_one(
-                        {"_id": existing["_id"]},
-                        {
-                            "$set": {
-                                "lastLogout": now_local.isoformat(),
-                                "workedHours": worked_hours,
-                                "loggedOut": False
+                    if is_prev_day and is_closed:
+                        # Close the shift at the shift end time
+                        if not existing.get("loggedOut", False):
+                            worked_hours = 0.0
+                            if first_login_str:
+                                try:
+                                    first_login_dt = datetime.fromisoformat(first_login_str)
+                                    duration = prev_shift_end_dt - first_login_dt
+                                    worked_hours = round(duration.total_seconds() / 3600.0, 2)
+                                except Exception:
+                                    pass
+                            
+                            await attendance_collection.update_one(
+                                {"_id": existing["_id"]},
+                                {
+                                    "$set": {
+                                        "lastLogout": prev_shift_end_dt.isoformat(),
+                                        "workedHours": worked_hours,
+                                        "loggedOut": True
+                                    }
+                                }
+                            )
+                    else:
+                        worked_hours = 0.0
+                        if first_login_str:
+                            try:
+                                    first_login_dt = datetime.fromisoformat(first_login_str)
+                                    duration = now_local - first_login_dt
+                                    worked_hours = round(duration.total_seconds() / 3600.0, 2)
+                            except Exception:
+                                pass
+                        
+                        await attendance_collection.update_one(
+                            {"_id": existing["_id"]},
+                            {
+                                "$set": {
+                                    "lastLogout": now_local.isoformat(),
+                                    "workedHours": worked_hours,
+                                    "loggedOut": False
+                                }
                             }
-                        }
-                    )
+                        )
     except Exception as e:
         print(f"Error auto-updating attendance on request: {e}")
 

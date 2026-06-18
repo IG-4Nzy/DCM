@@ -15,20 +15,18 @@ import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
 import { useTableState } from '../../hooks/useTableState';
 import { jwtDecode } from 'jwt-decode';
-import { flattenConfig, unflattenRows, DEFAULT_CONFIG } from '../BMSChecklist/config';
-import type { FlatRow } from '../BMSChecklist/config';
-import { fetchBMSChecklistConfig, saveBMSChecklistConfig } from '../BMSChecklist/action';
+import { flattenClusterConfig, unflattenClusterRows, DEFAULT_CLUSTER_CONFIG } from '../ClusterChecklist/config';
+import type { ClusterFlatRow } from '../ClusterChecklist/config';
+import { fetchClusterChecklistConfig, saveClusterChecklistConfig } from '../ClusterChecklist/action';
 
 type Order = 'asc' | 'desc';
 
 type ParameterUnitDraft = {
   parameter: string;
   unit: string;
-  ruleOperator: string;
-  ruleValue: string;
 };
 
-const EMPTY_FIELD: FlatRow = {
+const EMPTY_FIELD: ClusterFlatRow = {
   category: '',
   device: '',
   parameter: '',
@@ -41,11 +39,9 @@ const EMPTY_FIELD: FlatRow = {
 const EMPTY_PARAMETER_UNIT: ParameterUnitDraft = {
   parameter: '',
   unit: '',
-  ruleOperator: '',
-  ruleValue: '',
 };
 
-const BMSChecklistConfig = () => {
+const ClusterChecklistConfig = () => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { isSuperuser, token } = useSelector((state: RootState) => state.auth);
@@ -60,10 +56,10 @@ const BMSChecklistConfig = () => {
     }
   }, [token]);
 
-  const canView = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_VIEW) || hasPrivilege(PRIVILEGES.BMS_CHECKLIST_FIELD_EDIT);
-  const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.BMS_CHECKLIST_FIELD_EDIT);
-  const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.BMS_CHECKLIST_FIELD_EDIT);
-  const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.BMS_CHECKLIST_FIELD_EDIT);
+  const canView = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_VIEW) || hasPrivilege(PRIVILEGES.CLUSTER_CHECKLIST_FIELD_EDIT);
+  const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_CHECKLIST_FIELD_EDIT);
+  const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_CHECKLIST_FIELD_EDIT);
+  const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_CHECKLIST_FIELD_EDIT);
 
   if (!canView) {
     return (
@@ -78,35 +74,35 @@ const BMSChecklistConfig = () => {
     );
   }
 
-  const [rows, setRows] = useState<FlatRow[]>([]);
+  const [rows, setRows] = useState<ClusterFlatRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Edit parameter rule state
-  const [editingRow, setEditingRow] = useState<FlatRow | null>(null);
+  const [editingRow, setEditingRow] = useState<ClusterFlatRow | null>(null);
   const [editUnit, setEditUnit] = useState('');
   const [editRuleOperator, setEditRuleOperator] = useState('');
   const [editRuleValue, setEditRuleValue] = useState('');
 
-  const [newField, setNewField] = useState<FlatRow>(EMPTY_FIELD);
+  const [newField, setNewField] = useState<ClusterFlatRow>(EMPTY_FIELD);
   const [newParameterUnits, setNewParameterUnits] = useState<ParameterUnitDraft[]>([{ ...EMPTY_PARAMETER_UNIT }]);
 
-  const [searchQuery, setSearchQuery] = useTableState('bmsChecklistConfig_search', '');
-  const [page, setPage] = useTableState('bmsChecklistConfig_page', 0);
-  const [rowsPerPage, setRowsPerPage] = useTableState('bmsChecklistConfig_rowsPerPage', 10);
-  const [order, setOrder] = useTableState<Order>('bmsChecklistConfig_order', 'asc');
-  const [orderBy, setOrderBy] = useTableState<string>('bmsChecklistConfig_orderBy', 'category');
+  const [searchQuery, setSearchQuery] = useTableState('clusterChecklistConfig_search', '');
+  const [page, setPage] = useTableState('clusterChecklistConfig_page', 0);
+  const [rowsPerPage, setRowsPerPage] = useTableState('clusterChecklistConfig_rowsPerPage', 10);
+  const [order, setOrder] = useTableState<Order>('clusterChecklistConfig_order', 'asc');
+  const [orderBy, setOrderBy] = useTableState<string>('clusterChecklistConfig_orderBy', 'category');
 
   // Load existing template configuration
   const loadTemplateData = async () => {
     setLoading(true);
     try {
-      const res = await fetchBMSChecklistConfig({ department: userDepartment });
+      const res = await fetchClusterChecklistConfig({ department: userDepartment });
       if (res && res.template && Object.keys(res.template).length > 0) {
-        const flatRows = flattenConfig(res.template);
+        const flatRows = flattenClusterConfig(res.template);
         setRows(flatRows);
       } else {
-        const flatRows = flattenConfig(DEFAULT_CONFIG);
+        const flatRows = flattenClusterConfig(DEFAULT_CLUSTER_CONFIG);
         setRows(flatRows);
       }
     } catch (e) {
@@ -130,7 +126,7 @@ const BMSChecklistConfig = () => {
     setIsModalOpen(false);
   };
 
-  const handleOpenEditModal = (row: FlatRow) => {
+  const handleOpenEditModal = (row: ClusterFlatRow) => {
     setEditingRow(row);
     setEditUnit(row.unit || '');
     setEditRuleOperator(row.ruleOperator || '');
@@ -141,11 +137,11 @@ const BMSChecklistConfig = () => {
     setEditingRow(null);
   };
 
-  const saveTemplate = async (updatedRows: FlatRow[]) => {
+  const saveTemplate = async (updatedRows: ClusterFlatRow[]) => {
     try {
-      const nestedConfig = unflattenRows(updatedRows);
-      await saveBMSChecklistConfig({ department: userDepartment, template: nestedConfig });
-      showToast('BMS Checklist Template saved successfully!', 'success');
+      const nestedConfig = unflattenClusterRows(updatedRows);
+      await saveClusterChecklistConfig({ department: userDepartment, template: nestedConfig });
+      showToast('Cluster Checklist Template saved successfully!', 'success');
     } catch (e) {
       showToast('Failed to save configuration template', 'error');
     }
@@ -187,30 +183,27 @@ const BMSChecklistConfig = () => {
   };
 
   const handleAddField = async () => {
-    const category = newField.category.trim();
-    const devicesRaw = newField.device.trim();
-    const parameters = newParameterUnits
+    const category = newField.category.trim() || 'General';
+    const devicesRaw = newField.device.trim() || 'General';
+    let parameters = newParameterUnits
       .map(item => ({
         parameter: item.parameter.trim(),
         unit: item.unit.trim(),
-        ruleOperator: item.ruleOperator,
-        ruleValue: item.ruleValue.trim(),
       }))
       .filter(item => item.parameter);
 
-    if (!category || !devicesRaw || !parameters.length) {
-      showToast('Category, Device, and at least one Parameter must be filled!', 'warning');
-      return;
+    if (!parameters.length) {
+      parameters = [{ parameter: '', unit: '' }];
     }
 
     const devices = devicesRaw.split(',').map(d => d.trim()).filter(Boolean);
     if (!devices.length) {
-      showToast('At least one valid device must be specified!', 'warning');
+      showToast('At least one valid fields group must be specified!', 'warning');
       return;
     }
 
     // Uniqueness validation on added fields
-    const paramNames = parameters.map(p => p.parameter.toLowerCase());
+    const paramNames = parameters.map(p => p.parameter.toLowerCase()).filter(Boolean);
     const duplicates = paramNames.filter((item, index) => paramNames.indexOf(item) !== index);
     if (duplicates.length > 0) {
       showToast(`Duplicate parameters are not allowed: ${Array.from(new Set(duplicates)).join(', ')}`, 'error');
@@ -226,28 +219,28 @@ const BMSChecklistConfig = () => {
 
       const alreadyExist = paramNames.filter(name => existingParams.includes(name));
       if (alreadyExist.length > 0) {
-        alreadyExistErrors.push(`Device "${device}": ${alreadyExist.join(', ')}`);
+        alreadyExistErrors.push(`Fields Group "${device}": ${alreadyExist.join(', ')}`);
       }
     });
 
     if (alreadyExistErrors.length > 0) {
-      showToast(`Parameters already exist under Category "${category}":\n${alreadyExistErrors.join('\n')}`, 'error');
+      showToast(`Parameters already exist under Category Name "${category}":\n${alreadyExistErrors.join('\n')}`, 'error');
       return;
     }
 
-    const newRows: FlatRow[] = [];
+    const newRows: ClusterFlatRow[] = [];
     devices.forEach(device => {
-      parameters.forEach(({ parameter, unit, ruleOperator, ruleValue }) => {
+      parameters.forEach(({ parameter, unit }) => {
         newRows.push({
           category,
-          device,
+          device, // Fields group name
           parameter,
           value: '',
           bmsReading: '',
           unit,
           remarks: '',
-          ruleOperator,
-          ruleValue: ruleValue !== '' ? ruleValue : '',
+          ruleOperator: '',
+          ruleValue: '',
         });
       });
     });
@@ -259,8 +252,8 @@ const BMSChecklistConfig = () => {
     await saveTemplate(updated);
   };
 
-  const handleDelete = async (row: FlatRow) => {
-    const isConfirmed = await confirm(`Are you sure you want to delete parameter "${row.parameter}" from device "${row.device}"?`, 'Delete Template Parameter');
+  const handleDelete = async (row: ClusterFlatRow) => {
+    const isConfirmed = await confirm(`Are you sure you want to delete parameter "${row.parameter}" from fields group "${row.device}"?`, 'Delete Template Parameter');
     if (isConfirmed) {
       const updated = rows.filter(r => 
         !(r.category === row.category && r.device === row.device && r.parameter === row.parameter)
@@ -299,8 +292,8 @@ const BMSChecklistConfig = () => {
   const sortedRows = useMemo(() => {
     const sorted = [...filteredRows];
     sorted.sort((a, b) => {
-      const aVal = (a[orderBy as keyof FlatRow] || '').toString().toLowerCase();
-      const bVal = (b[orderBy as keyof FlatRow] || '').toString().toLowerCase();
+      const aVal = (a[orderBy as keyof ClusterFlatRow] || '').toString().toLowerCase();
+      const bVal = (b[orderBy as keyof ClusterFlatRow] || '').toString().toLowerCase();
       if (aVal < bVal) return order === 'asc' ? -1 : 1;
       if (aVal > bVal) return order === 'asc' ? 1 : -1;
       return 0;
@@ -313,16 +306,16 @@ const BMSChecklistConfig = () => {
     return sortedRows.slice(start, start + rowsPerPage);
   }, [sortedRows, page, rowsPerPage]);
 
-  const getRuleDisplay = (row: FlatRow) => {
+  const getRuleDisplay = (row: ClusterFlatRow) => {
     if (!row.ruleOperator || row.ruleValue === undefined || row.ruleValue === '') {
       return '-';
     }
     return `Value cannot be ${row.ruleOperator} ${row.ruleValue}`;
   };
 
-  const columns: Column<FlatRow>[] = [
-    { id: 'category', label: 'Category', sortable: true },
-    { id: 'device', label: 'Device', sortable: true },
+  const columns: Column<ClusterFlatRow>[] = [
+    { id: 'category', label: 'Category Name', sortable: true },
+    { id: 'device', label: 'Fields Group', sortable: true },
     { id: 'parameter', label: 'Parameter', sortable: true },
     { id: 'unit', label: 'Default Unit', sortable: true, render: (row) => row.unit || '-' },
     { id: 'ruleOperator', label: 'Failure Rule Threshold', sortable: false, render: (row) => getRuleDisplay(row) }
@@ -400,69 +393,41 @@ const BMSChecklistConfig = () => {
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
-              label="Category"
+              label="Category Name"
               fullWidth
-              required
-              placeholder="e.g. Server room PAC"
+              placeholder="e.g. VMware Cluster"
               value={newField.category}
               onChange={(e) => setNewField(prev => ({ ...prev, category: e.target.value }))}
             />
             <TextField
-              label="Device(s)"
+              label="Fields Group(s)"
               fullWidth
-              required
-              placeholder="e.g. PAC-1, PAC-2, PAC-3"
-              helperText="Enter multiple devices separated by commas to add them all at once"
+              placeholder="e.g. VDI Cluster, Production Cluster"
+              helperText="Enter multiple fields groups separated by commas to add them all at once"
               value={newField.device}
               onChange={(e) => setNewField(prev => ({ ...prev, device: e.target.value }))}
             />
           </Box>
 
           <Typography variant="subtitle2" sx={{ fontWeight: 600, mt: 2 }}>
-            Parameters, Units & Threshold Rules
+            Parameters & Units
           </Typography>
 
           {newParameterUnits.map((paramUnit, idx) => (
             <Box key={idx} sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap', p: 1.5, border: '1px solid #f1f5f9', borderRadius: '8px', bgcolor: '#fbfcfd' }}>
               <TextField
                 label={`Parameter ${idx + 1}`}
-                required
-                placeholder="e.g. Temperature"
+                placeholder="e.g. Host Nodes"
                 value={paramUnit.parameter}
                 onChange={(e) => updateParameterUnit(idx, 'parameter', e.target.value)}
-                sx={{ flex: 2, minWidth: '150px' }}
+                sx={{ flex: 3, minWidth: '150px' }}
               />
               <TextField
                 label="Unit"
-                placeholder="e.g. °C"
+                placeholder="e.g. Nodes"
                 value={paramUnit.unit}
                 onChange={(e) => updateParameterUnit(idx, 'unit', e.target.value)}
-                sx={{ flex: 1, minWidth: '80px' }}
-              />
-              
-              <FormControl sx={{ flex: 1.5, minWidth: '110px' }}>
-                <InputLabel>Rule Fail Condition</InputLabel>
-                <Select
-                  value={paramUnit.ruleOperator}
-                  label="Rule Fail Condition"
-                  onChange={(e) => updateParameterUnit(idx, 'ruleOperator', e.target.value)}
-                >
-                  <MenuItem value="">None</MenuItem>
-                  <MenuItem value=">">Value &gt;</MenuItem>
-                  <MenuItem value="<">Value &lt;</MenuItem>
-                  <MenuItem value=">=">Value &gt;=</MenuItem>
-                  <MenuItem value="<=">Value &lt;=</MenuItem>
-                </Select>
-              </FormControl>
-
-              <TextField
-                label="Rule Value"
-                type="number"
-                placeholder="Value threshold"
-                value={paramUnit.ruleValue}
-                onChange={(e) => updateParameterUnit(idx, 'ruleValue', e.target.value)}
-                disabled={!paramUnit.ruleOperator}
-                sx={{ flex: 1.2, minWidth: '100px' }}
+                sx={{ flex: 1.5, minWidth: '100px' }}
               />
 
               <IconButton
@@ -497,13 +462,13 @@ const BMSChecklistConfig = () => {
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
           <Typography variant="body2" color="textSecondary">
-            Edit Default Unit and trigger threshold rules under Category "{editingRow?.category}", Device "{editingRow?.device}".
+            Edit Default Unit and trigger threshold rules under Category Name "{editingRow?.category}", Fields Group "{editingRow?.device}".
           </Typography>
 
           <TextField
             label="Unit"
             fullWidth
-            placeholder="e.g. °C"
+            placeholder="e.g. Nodes"
             value={editUnit}
             onChange={(e) => setEditUnit(e.target.value)}
           />
@@ -544,4 +509,4 @@ const BMSChecklistConfig = () => {
   );
 };
 
-export default BMSChecklistConfig;
+export default ClusterChecklistConfig;

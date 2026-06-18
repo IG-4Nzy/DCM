@@ -87,7 +87,9 @@ async def create_inventory(item: CreateInventoryModel = Body(...), current_user:
         "lastUpdatedBy": username,
         "history": [history_entry],
         "isReturnable": item.isReturnable or False,
-        "currentHolders": []
+        "currentHolders": [],
+        "almiraNumber": item.almiraNumber,
+        "rackNumber": item.rackNumber
     }
     
     new_inv = await inventory_collection.insert_one(inv_dict)
@@ -212,6 +214,8 @@ async def bulk_create_inventory(file: UploadFile = File(...), current_user: dict
             name_idx = next((i for i, h in enumerate(headers) if "name" in h or "item" in h), -1)
             qty_idx = next((i for i, h in enumerate(headers) if "quant" in h or "qty" in h), -1)
             desc_idx = next((i for i, h in enumerate(headers) if "desc" in h or "remark" in h), -1)
+            almira_idx = next((i for i, h in enumerate(headers) if "almira" in h or "almirah" in h), -1)
+            rack_idx = next((i for i, h in enumerate(headers) if "rack" in h), -1)
             
             if name_idx == -1 or qty_idx == -1:
                 raise HTTPException(status_code=400, detail="Could not find 'Name' and 'Quantity' columns")
@@ -220,6 +224,8 @@ async def bulk_create_inventory(file: UploadFile = File(...), current_user: dict
                 name = row[name_idx]
                 qty = row[qty_idx]
                 desc = row[desc_idx] if desc_idx != -1 else ""
+                almira_val = str(row[almira_idx]) if almira_idx != -1 and row[almira_idx] is not None else ""
+                rack_val = str(row[rack_idx]) if rack_idx != -1 and row[rack_idx] is not None else ""
                 
                 if not name:
                     continue
@@ -243,7 +249,11 @@ async def bulk_create_inventory(file: UploadFile = File(...), current_user: dict
                         "remainingQuantity": qty_val,
                         "user": username,
                         "givenTo": None
-                    }]
+                    }],
+                    "isReturnable": False,
+                    "currentHolders": [],
+                    "almiraNumber": almira_val,
+                    "rackNumber": rack_val
                 })
         else:
             # CSV parsing
@@ -258,6 +268,8 @@ async def bulk_create_inventory(file: UploadFile = File(...), current_user: dict
             name_idx = next((i for i, h in enumerate(headers) if "name" in h or "item" in h), -1)
             qty_idx = next((i for i, h in enumerate(headers) if "quant" in h or "qty" in h), -1)
             desc_idx = next((i for i, h in enumerate(headers) if "desc" in h or "remark" in h), -1)
+            almira_idx = next((i for i, h in enumerate(headers) if "almira" in h or "almirah" in h), -1)
+            rack_idx = next((i for i, h in enumerate(headers) if "rack" in h), -1)
             
             if name_idx == -1 or qty_idx == -1:
                 raise HTTPException(status_code=400, detail="Could not find 'Name' and 'Quantity' columns")
@@ -268,6 +280,8 @@ async def bulk_create_inventory(file: UploadFile = File(...), current_user: dict
                 name = row[name_idx]
                 qty = row[qty_idx]
                 desc = row[desc_idx] if desc_idx != -1 and len(row) > desc_idx else ""
+                almira_val = str(row[almira_idx]) if almira_idx != -1 and len(row) > almira_idx and row[almira_idx] is not None else ""
+                rack_val = str(row[rack_idx]) if rack_idx != -1 and len(row) > rack_idx and row[rack_idx] is not None else ""
                 
                 if not name:
                     continue
@@ -291,7 +305,11 @@ async def bulk_create_inventory(file: UploadFile = File(...), current_user: dict
                         "remainingQuantity": qty_val,
                         "user": username,
                         "givenTo": None
-                    }]
+                    }],
+                    "isReturnable": False,
+                    "currentHolders": [],
+                    "almiraNumber": almira_val,
+                    "rackNumber": rack_val
                 })
                 
         if items_to_insert:

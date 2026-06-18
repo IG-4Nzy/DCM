@@ -28,6 +28,8 @@ from audit_logs import router as audit_logs_router
 from documentations import router as documentations_router
 from bms_checklists import router as bms_checklists_router
 from bms_checklist_config import router as bms_checklist_config_router
+from cluster_checklists import router as cluster_checklists_router
+from cluster_checklist_config import router as cluster_checklist_config_router
 from morning_checklists import router as morning_checklists_router
 from morning_checklist_config import router as morning_checklist_config_router
 from routers.vcenter_monitor import router as vcenter_monitor_router
@@ -101,6 +103,18 @@ def get_action_name(method: str, path: str) -> str:
     if "bms-checklist-config" in parts:
         if method == "POST": return "Save BMS Checklist Config"
         return "BMS Checklist Config Action"
+
+    # Check Cluster checklists
+    if "cluster-checklists" in parts:
+        if method == "POST": return "Create Cluster Checklist"
+        if method == "PUT": return "Update Cluster Checklist"
+        if method == "DELETE": return "Delete Cluster Checklist"
+        return "Cluster Checklist Action"
+
+    # Check Cluster checklist config
+    if "cluster-checklist-config" in parts:
+        if method == "POST": return "Save Cluster Checklist Config"
+        return "Cluster Checklist Config Action"
 
     # Check Morning checklists
     if "morning-checklists" in parts:
@@ -315,6 +329,17 @@ def get_audit_details(username: str, method: str, path: str, status_code: int, b
             chk_date = before.get("date") if before else "unknown date"
             return f'"{username}" deleted BMS checklist for {chk_date}'
 
+    if "cluster-checklists" in parts:
+        if method == "POST":
+            chk_date = body.get("date", "unknown date")
+            return f'"{username}" completed Cluster checklist for {chk_date}'
+        if method == "PUT":
+            chk_date = before.get("date") if before else body.get("date", "unknown date")
+            return f'"{username}" updated Cluster checklist for {chk_date}'
+        if method == "DELETE":
+            chk_date = before.get("date") if before else "unknown date"
+            return f'"{username}" deleted Cluster checklist for {chk_date}'
+
     if "morning-checklists" in parts:
         if method == "POST":
             chk_date = body.get("date", "unknown date")
@@ -393,6 +418,8 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             elif "documentations" in parts: collection_name = "documentations"
             elif "bms-checklists" in parts: collection_name = "bms_checklists"
             elif "bms-checklist-config" in parts: collection_name = "bms_checklist_config"
+            elif "cluster-checklists" in parts: collection_name = "cluster_checklists"
+            elif "cluster-checklist-config" in parts: collection_name = "cluster_checklist_config"
             elif "morning-checklists" in parts: collection_name = "morning_checklists"
             elif "periodic-activities" in parts: collection_name = "periodic_activities"
             elif "observations" in parts: collection_name = "observations"
@@ -512,6 +539,8 @@ app.include_router(audit_logs_router, tags=["audit_logs"], prefix="/api/logs")
 app.include_router(documentations_router, tags=["documentations"], prefix="/api/documentations")
 app.include_router(bms_checklists_router, tags=["bms_checklists"], prefix="/api/bms-checklists")
 app.include_router(bms_checklist_config_router, tags=["bms_checklist_config"], prefix="/api/bms-checklist-config")
+app.include_router(cluster_checklists_router, tags=["cluster_checklists"], prefix="/api/cluster-checklists")
+app.include_router(cluster_checklist_config_router, tags=["cluster_checklist_config"], prefix="/api/cluster-checklist-config")
 app.include_router(morning_checklists_router, tags=["morning_checklists"], prefix="/api/morning-checklists")
 app.include_router(morning_checklist_config_router, tags=["morning_checklist_config"], prefix="/api/morning-checklist-config")
 app.include_router(periodic_activities_router, tags=["periodic_activities"], prefix="/api/periodic-activities")

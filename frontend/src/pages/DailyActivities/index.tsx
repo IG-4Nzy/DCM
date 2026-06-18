@@ -8,18 +8,23 @@ import type { RootState } from '../../store';
 
 // Lazy-ish — we import directly since they are within the same app bundle
 import BMSChecklist from '../BMSChecklist';
+import ClusterChecklist from '../ClusterChecklist';
 import MorningChecklist from './MorningChecklist';
 
 const DailyActivities: React.FC = () => {
   const isSuperuser = useSelector((state: RootState) => state.auth.isSuperuser);
 
   const hasBMS = isSuperuser || hasPrivilege(PRIVILEGES.BMS_CHECKLIST_VIEW);
+  const hasCluster = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_CHECKLIST_VIEW);
   const hasMorning = isSuperuser || hasPrivilege(PRIVILEGES.MORNING_CHECKLIST_VIEW);
 
   // Build tab list dynamically based on privileges
   const tabs: { label: string; icon: React.ReactElement; component: React.ReactNode }[] = [];
   if (hasBMS) {
     tabs.push({ label: 'BMS Checklist', icon: <MdFactCheck />, component: <BMSChecklist /> });
+  }
+  if (hasCluster) {
+    tabs.push({ label: 'Cluster Checklist', icon: <MdFactCheck />, component: <ClusterChecklist /> });
   }
   if (hasMorning) {
     tabs.push({ label: 'Morning Checklist', icon: <MdWbSunny />, component: <MorningChecklist /> });

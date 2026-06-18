@@ -17,7 +17,6 @@ const Roaster = lazy(() => import("../pages/Roaster"));
 const Observations = lazy(() => import("../pages/Observations"));
 const Inventory = lazy(() => import("../pages/Inventory"));
 const Configurations = lazy(() => import("../pages/Configurations"));
-const Clusters = lazy(() => import("../pages/Clusters"));
 const ClusterDetails = lazy(() => import("../pages/Clusters/ClusterDetails"));
 const Requests = lazy(() => import("../pages/Requests"));
 const Search = lazy(() => import("../pages/Search"));
@@ -26,6 +25,7 @@ const Attendance = lazy(() => import("../pages/Attendance"));
 const AuditLogs = lazy(() => import("../pages/AuditLogs"));
 const Documentations = lazy(() => import("../pages/Documentations"));
 const BMSChecklist = lazy(() => import("../pages/BMSChecklist"));
+const ClusterChecklist = lazy(() => import("../pages/ClusterChecklist"));
 const VisitorLogs = lazy(() => import("../pages/Requests/VisitorLogs"));
 const DailyActivities = lazy(() => import("../pages/DailyActivities"));
 const PeriodicActivities = lazy(() => import("../pages/PeriodicActivities"));
@@ -69,6 +69,7 @@ const AppRouter: React.FC = () => {
             <Route path={ROUTE_CONSTANTS.AUDIT_LOGS} element={<AuditLogs />} />
             <Route path={ROUTE_CONSTANTS.DOCUMENTATIONS} element={<Documentations />} />
             <Route path={ROUTE_CONSTANTS.BMS_CHECKLIST} element={<BMSChecklist />} />
+            <Route path={ROUTE_CONSTANTS.CLUSTER_CHECKLIST} element={<ClusterChecklist />} />
             <Route path={ROUTE_CONSTANTS.VISITOR_LOGS} element={<VisitorLogs />} />
             <Route path={ROUTE_CONSTANTS.DAILY_ACTIVITIES} element={<DailyActivities />} />
             <Route path={ROUTE_CONSTANTS.PERIODIC_ACTIVITIES} element={<PeriodicActivities />} />

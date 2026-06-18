@@ -219,6 +219,18 @@ const InventoryDetailModal: React.FC<PropType> = ({
           </Typography>
           <Typography variant="body2">{item.description || 'N/A'}</Typography>
         </Box>
+        <Box sx={{ flex: 1, minWidth: '120px' }}>
+          <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", fontSize: "0.8rem" }}>
+            Almira Number
+          </Typography>
+          <Typography variant="body2" sx={{ fontWeight: "bold" }}>{item.almiraNumber || 'N/A'}</Typography>
+        </Box>
+        <Box sx={{ flex: 1, minWidth: '120px' }}>
+          <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", fontSize: "0.8rem" }}>
+            Rack Number
+          </Typography>
+          <Typography variant="body2" sx={{ fontWeight: "bold" }}>{item.rackNumber || 'N/A'}</Typography>
+        </Box>
         <Box sx={{ flex: 1.5, minWidth: '200px' }}>
           <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", fontSize: "0.8rem" }}>
             Last Updated

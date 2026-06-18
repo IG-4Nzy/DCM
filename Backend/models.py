@@ -475,6 +475,8 @@ class InventoryModel(BaseModel):
     history: List[InventoryHistoryModel] = []
     isReturnable: Optional[bool] = False
     currentHolders: List[HolderModel] = []
+    almiraNumber: Optional[str] = None
+    rackNumber: Optional[str] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -487,6 +489,8 @@ class CreateInventoryModel(BaseModel):
     description: Optional[str] = None
     date: str
     isReturnable: Optional[bool] = False
+    almiraNumber: Optional[str] = None
+    rackNumber: Optional[str] = None
 
 class UpdateInventoryModel(BaseModel):
     quantityChange: int

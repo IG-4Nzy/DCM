@@ -23,6 +23,8 @@ const Configurations = () => {
                 return hasPrivilege(PRIVILEGES.REQUEST_VIEW) || hasPrivilege(PRIVILEGES.CONFIGURATION_VIEW);
             case 'bmsChecklistFields':
                 return hasPrivilege(PRIVILEGES.BMS_CHECKLIST_VIEW) || hasPrivilege(PRIVILEGES.BMS_CHECKLIST_FIELD_EDIT) || hasPrivilege(PRIVILEGES.CONFIGURATION_VIEW);
+            case 'clusterChecklistFields':
+                return hasPrivilege(PRIVILEGES.CLUSTER_CHECKLIST_VIEW) || hasPrivilege(PRIVILEGES.CLUSTER_CHECKLIST_FIELD_EDIT) || hasPrivilege(PRIVILEGES.CONFIGURATION_VIEW);
             case 'morningChecklistFields':
                 return hasPrivilege(PRIVILEGES.MORNING_CHECKLIST_VIEW) || hasPrivilege(PRIVILEGES.MORNING_CHECKLIST_FIELD_EDIT) || hasPrivilege(PRIVILEGES.CONFIGURATION_VIEW);
             default:

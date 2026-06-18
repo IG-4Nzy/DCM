@@ -26,6 +26,8 @@ const InventoryFormModal: React.FC<PropType> = ({
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(getLocalDatetime());
   const [isReturnable, setIsReturnable] = useState(false);
+  const [almiraNumber, setAlmiraNumber] = useState('');
+  const [rackNumber, setRackNumber] = useState('');
 
   useEffect(() => {
     if (isModalOpen) {
@@ -34,12 +36,14 @@ const InventoryFormModal: React.FC<PropType> = ({
       setDescription('');
       setDate(getLocalDatetime());
       setIsReturnable(false);
+      setAlmiraNumber('');
+      setRackNumber('');
     }
   }, [isModalOpen]);
 
   const handleSubmit = () => {
     if (!itemName) return;
-    onSubmit({ itemName, quantity, description, date, isReturnable });
+    onSubmit({ itemName, quantity, description, date, isReturnable, almiraNumber, rackNumber });
     handleCloseModal();
   };
 
@@ -57,6 +61,20 @@ const InventoryFormModal: React.FC<PropType> = ({
         fullWidth
         style={{ marginBottom: '1rem' }}
       />
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+        <TextField
+          label="Almira Number"
+          value={almiraNumber}
+          onChange={(e) => setAlmiraNumber(e.target.value)}
+          fullWidth
+        />
+        <TextField
+          label="Rack Number"
+          value={rackNumber}
+          onChange={(e) => setRackNumber(e.target.value)}
+          fullWidth
+        />
+      </div>
       <TextField
         label="Quantity"
         type="number"

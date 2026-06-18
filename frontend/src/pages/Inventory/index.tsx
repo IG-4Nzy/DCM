@@ -123,6 +123,8 @@ const Inventory: React.FC = () => {
 
   const columns: Column<InventoryData>[] = [
     { id: 'itemName', label: 'Item Name', sortable: true },
+    { id: 'almiraNumber', label: 'Almira Number', sortable: true },
+    { id: 'rackNumber', label: 'Rack Number', sortable: true },
     { 
       id: 'quantity', 
       label: 'Quantity', 

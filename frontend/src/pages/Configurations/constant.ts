@@ -4,6 +4,7 @@ import ServerModels from "./ServerModels";
 import RequestRoutings from "./RequestRoutings";
 import AttendancePeriodConfig from "./AttendancePeriodConfig";
 import BMSChecklistConfig from "./BMSChecklistConfig";
+import ClusterChecklistConfig from "./ClusterChecklistConfig";
 import MorningChecklistConfig from "./MorningChecklistConfig";
 import NotificationSettings from "./NotificationSettings";
 
@@ -12,6 +13,7 @@ export const CONFIG_TABS = [
     { id: 'requestConfig', label: 'Request Configuration', value: 'requestConfig' },
     { id: 'attendanceConfig', label: 'Attendance', value: 'attendanceConfig' },
     { id: 'bmsChecklistConfig', label: 'BMS Checklist', value: 'bmsChecklistConfig' },
+    { id: 'clusterChecklistConfig', label: 'Cluster Checklist', value: 'clusterChecklistConfig' },
     { id: 'morningChecklistConfig', label: 'Morning Checklist', value: 'morningChecklistConfig' },
     { id: 'notificationConfig', label: 'Notifications', value: 'notificationConfig' },
 ];
@@ -34,6 +36,10 @@ export const BMS_CHECKLIST_CONFIGURATIONS = [
     { id: "bmsChecklistFields", label: "Checklist Fields", value: "bmsChecklistFields" },
 ]
 
+export const CLUSTER_CHECKLIST_CONFIGURATIONS = [
+    { id: "clusterChecklistFields", label: "Checklist Fields", value: "clusterChecklistFields" },
+]
+
 export const MORNING_CHECKLIST_CONFIGURATIONS = [
     { id: "morningChecklistFields", label: "Checklist Fields", value: "morningChecklistFields" },
 ]
@@ -47,6 +53,7 @@ export const CONFIG_SUBTABS = {
     requestConfig: REQUEST_CONFIGURATIONS,
     attendanceConfig: ATTENDANCE_CONFIGURATIONS,
     bmsChecklistConfig: BMS_CHECKLIST_CONFIGURATIONS,
+    clusterChecklistConfig: CLUSTER_CHECKLIST_CONFIGURATIONS,
     morningChecklistConfig: MORNING_CHECKLIST_CONFIGURATIONS,
     notificationConfig: NOTIFICATION_CONFIGURATIONS,
 }
@@ -58,6 +65,7 @@ export const CONFIG_TABS_PAGES = {
     requestRoutings: RequestRoutings,
     attendancePeriod: AttendancePeriodConfig,
     bmsChecklistFields: BMSChecklistConfig,
+    clusterChecklistFields: ClusterChecklistConfig,
     morningChecklistFields: MorningChecklistConfig,
     notificationSettings: NotificationSettings,
 }
