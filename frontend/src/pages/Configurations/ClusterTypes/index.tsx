@@ -29,9 +29,9 @@ const ClusterTypes = () => {
     const { confirm } = useConfirm();
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
-    const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_CREATE);
-    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_UPDATE);
-    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_DELETE);
+    const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_CREATE) || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_UPDATE) || hasPrivilege(PRIVILEGES.SERVER_DETAILS_UPDATE);
+    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_DELETE) || hasPrivilege(PRIVILEGES.SERVER_DETAILS_DELETE);
 
     const [searchQuery, setSearchQuery] = useTableState('clusterTypes_search', '');
     const [page, setPage] = useTableState('clusterTypes_page', 0);

@@ -41,9 +41,9 @@ const Nodes = () => {
     const { confirm } = useConfirm();
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
-    const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_CREATE);
-    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_UPDATE);
-    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_DELETE);
+    const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
 
     const [searchQuery, setSearchQuery] = useTableState('Nodes_search', '');
     const [page, setPage] = useTableState('Nodes_page', 0);
@@ -160,23 +160,25 @@ const Nodes = () => {
         { id: 'node', label: 'Node', sortable: true },
         { id: 'serverModel', label: 'Server Model', sortable: true, render: (row) => row.serverModel || '-' },
         { id: 'serialNumber', label: 'Serial Number', sortable: true, render: (row) => row.serialNumber || '-' },
+        { id: 'assetNumber', label: 'Asset Number', sortable: true, render: (row) => row.assetNumber || '-' },
+        { id: 'custodian', label: 'Custodian', sortable: true, render: (row) => row.custodian || '-' },
         { 
             id: 'totalRam', 
-            label: 'Total / Available RAM', 
-            sortable: false,
-            render: (row) => row.totalRam !== undefined && row.totalRam !== null ? `${row.totalRam} GB / ${row.availableRam ?? 0} GB` : '-'
+            label: 'Total RAM', 
+            sortable: true,
+            render: (row) => row.totalRam !== undefined && row.totalRam !== null ? `${row.totalRam} GB` : '-'
         },
         { 
             id: 'totalHardisk', 
-            label: 'Total / Available HDD', 
-            sortable: false,
-            render: (row) => row.totalHardisk !== undefined && row.totalHardisk !== null ? `${row.totalHardisk} GB / ${row.availableHardisk ?? 0} GB` : '-'
+            label: 'Total HDD', 
+            sortable: true,
+            render: (row) => row.totalHardisk !== undefined && row.totalHardisk !== null ? `${row.totalHardisk} GB` : '-'
         },
         { 
             id: 'totalCpu', 
-            label: 'Total / Available CPU', 
-            sortable: false,
-            render: (row) => row.totalCpu !== undefined && row.totalCpu !== null ? `${row.totalCpu} Cores / ${row.availableCpu ?? 0} Cores` : '-'
+            label: 'Total CPU', 
+            sortable: true,
+            render: (row) => row.totalCpu !== undefined && row.totalCpu !== null ? `${row.totalCpu} Cores` : '-'
         },
         { 
             id: 'rack', 

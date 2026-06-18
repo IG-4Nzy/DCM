@@ -14,7 +14,7 @@ import {
 
 export interface Column<T> {
   id: string;
-  label: string;
+  label: React.ReactNode;
   minWidth?: number;
   align?: 'right' | 'left' | 'center';
   sortable?: boolean;

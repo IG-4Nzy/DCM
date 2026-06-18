@@ -25,7 +25,7 @@ def parse_sl_number(value) -> int:
         digits = "".join(c for c in value_str if c.isdigit())
         return int(digits) if digits else 0
 
-@router.get("/", response_description="List all clusters", response_model=PaginatedClustersModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Cluster"))])
+@router.get("/", response_description="List all clusters", response_model=PaginatedClustersModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def list_items(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),
@@ -81,7 +81,7 @@ async def list_items(
 
     return {"data": items, "total": total}
 
-@router.post("/", response_description="Create cluster", response_model=ClusterModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Cluster"))])
+@router.post("/", response_description="Create cluster", response_model=ClusterModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def create_item(
     payload: CreateClusterModel = Body(...),
     current_user: dict = Depends(get_current_user)
@@ -106,7 +106,7 @@ async def create_item(
     created = await collection.find_one({"_id": new_item.inserted_id})
     return created
 
-@router.put("/{id}", response_description="Update cluster", response_model=ClusterModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Cluster"))])
+@router.put("/{id}", response_description="Update cluster", response_model=ClusterModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def update_item(id: str, payload: UpdateClusterModel = Body(...)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -137,7 +137,7 @@ async def update_item(id: str, payload: UpdateClusterModel = Body(...)):
 
     raise HTTPException(status_code=404, detail="Cluster not found")
 
-@router.delete("/{id}", response_description="Delete cluster", dependencies=[Depends(require_privilege("Delete Cluster"))])
+@router.delete("/{id}", response_description="Delete cluster", dependencies=[Depends(require_privilege("Create Server Details"))])
 async def delete_item(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -149,7 +149,7 @@ async def delete_item(id: str):
 
     raise HTTPException(status_code=404, detail="Cluster not found")
 
-@router.post("/bulk", response_description="Bulk create clusters", dependencies=[Depends(require_privilege("Create Cluster"))])
+@router.post("/bulk", response_description="Bulk create clusters", dependencies=[Depends(require_privilege("Create Server Details"))])
 async def bulk_create_clusters(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
     username = current_user.get("sub", "Unknown")
     

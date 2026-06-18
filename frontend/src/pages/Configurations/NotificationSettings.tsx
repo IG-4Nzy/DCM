@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Paper, Typography, TextField, Radio, RadioGroup, FormControlLabel, FormControl, FormLabel, Divider, Autocomplete } from '@mui/material';
+import { useSelector } from 'react-redux';
+import { type RootState } from '../../store';
+import { hasPrivilege } from '../../helpers/authUtils';
+import { PRIVILEGES } from '../../helpers/privileges';
 import Button from '../../components/Button';
 import { useToast } from '../../contexts/ToastContext';
 import request from '../../services/request';
@@ -12,6 +16,8 @@ interface RoleOption {
 
 const NotificationSettings: React.FC = () => {
     const { showToast } = useToast();
+    const { isSuperuser } = useSelector((state: RootState) => state.auth);
+    const canUpdate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_UPDATE);
     
     const [rolesList, setRolesList] = useState<RoleOption[]>([]);
 
@@ -113,6 +119,14 @@ const NotificationSettings: React.FC = () => {
                     Configure the text-to-speech (TTS) readouts, sound alerts, and assignee role filters for each system module.
                 </Typography>
 
+                {!canUpdate && (
+                    <Box sx={{ mb: 4, p: 2, bgcolor: '#fff5f5', border: '1px solid #feb2b2', borderRadius: 2, color: '#c53030' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            Read-Only Access: You do not have permissions to modify notification configurations.
+                        </Typography>
+                    </Box>
+                )}
+
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     
                     {/* Announcement Section */}
@@ -129,8 +143,9 @@ const NotificationSettings: React.FC = () => {
                                 onChange={(e) => setAnnouncementText(e.target.value)}
                                 placeholder="e.g. new announcement published"
                                 helperText="Text to speak when a new announcement is posted"
+                                disabled={!canUpdate}
                             />
-                            <FormControl>
+                            <FormControl disabled={!canUpdate}>
                                 <FormLabel sx={{ fontWeight: 600, fontSize: '0.85rem', color: '#475569', mb: 0.5 }}>
                                     Sound Option
                                 </FormLabel>
@@ -149,6 +164,7 @@ const NotificationSettings: React.FC = () => {
                                 options={roleNames}
                                 value={announcementRoles}
                                 onChange={(_, newValue) => setAnnouncementRoles(newValue)}
+                                disabled={!canUpdate}
                                 renderInput={(params) => (
                                     <TextField
                                         {...params}
@@ -177,8 +193,9 @@ const NotificationSettings: React.FC = () => {
                                 onChange={(e) => setWorkText(e.target.value)}
                                 placeholder="e.g. new work has been assigned"
                                 helperText="Text to speak when a new work is assigned"
+                                disabled={!canUpdate}
                             />
-                            <FormControl>
+                            <FormControl disabled={!canUpdate}>
                                 <FormLabel sx={{ fontWeight: 600, fontSize: '0.85rem', color: '#475569', mb: 0.5 }}>
                                     Sound Option
                                 </FormLabel>
@@ -197,6 +214,7 @@ const NotificationSettings: React.FC = () => {
                                 options={roleNames}
                                 value={workRoles}
                                 onChange={(_, newValue) => setWorkRoles(newValue)}
+                                disabled={!canUpdate}
                                 renderInput={(params) => (
                                     <TextField
                                         {...params}
@@ -225,8 +243,9 @@ const NotificationSettings: React.FC = () => {
                                 onChange={(e) => setRequestText(e.target.value)}
                                 placeholder="e.g. New request has been assigned."
                                 helperText="Text to speak when a new request is assigned"
+                                disabled={!canUpdate}
                             />
-                            <FormControl>
+                            <FormControl disabled={!canUpdate}>
                                 <FormLabel sx={{ fontWeight: 600, fontSize: '0.85rem', color: '#475569', mb: 0.5 }}>
                                     Sound Option
                                 </FormLabel>
@@ -245,6 +264,7 @@ const NotificationSettings: React.FC = () => {
                                 options={roleNames}
                                 value={requestRoles}
                                 onChange={(_, newValue) => setRequestRoles(newValue)}
+                                disabled={!canUpdate}
                                 renderInput={(params) => (
                                     <TextField
                                         {...params}
@@ -273,8 +293,9 @@ const NotificationSettings: React.FC = () => {
                                 onChange={(e) => setPeriodicText(e.target.value)}
                                 placeholder="e.g. periodic activity alert"
                                 helperText="Text to speak when a periodic activity alert triggers"
+                                disabled={!canUpdate}
                             />
-                            <FormControl>
+                            <FormControl disabled={!canUpdate}>
                                 <FormLabel sx={{ fontWeight: 600, fontSize: '0.85rem', color: '#475569', mb: 0.5 }}>
                                     Sound Option
                                 </FormLabel>
@@ -293,6 +314,7 @@ const NotificationSettings: React.FC = () => {
                                 options={roleNames}
                                 value={periodicRoles}
                                 onChange={(_, newValue) => setPeriodicRoles(newValue)}
+                                disabled={!canUpdate}
                                 renderInput={(params) => (
                                     <TextField
                                         {...params}
@@ -310,7 +332,7 @@ const NotificationSettings: React.FC = () => {
                             variant="contained" 
                             color="primary" 
                             onClick={handleSave}
-                            disabled={loading}
+                            disabled={loading || !canUpdate}
                         >
                             Save Configuration
                         </Button>

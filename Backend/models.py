@@ -498,6 +498,14 @@ class UpdateInventoryModel(BaseModel):
     givenTo: Optional[str] = None
     date: str
 
+class EditInventoryModel(BaseModel):
+    itemName: str
+    quantity: int
+    description: Optional[str] = ""
+    isReturnable: Optional[bool] = False
+    almiraNumber: Optional[str] = ""
+    rackNumber: Optional[str] = ""
+
 class InventoryGiveModel(BaseModel):
     givenTo: str
     date: str
@@ -584,6 +592,7 @@ class NodeModel(BaseModel):
     serialNumber: Optional[str] = None
     custodian: Optional[str] = None
     admin: Optional[str] = None
+    assetNumber: Optional[str] = None
     raidConfiguration: List[str] = Field(default_factory=list)
     createdBy: Optional[str] = None
     updatedAt: Optional[str] = None
@@ -607,6 +616,7 @@ class CreateNodeModel(BaseModel):
     serialNumber: Optional[str] = None
     custodian: Optional[str] = None
     admin: Optional[str] = None
+    assetNumber: Optional[str] = None
     raidConfiguration: Optional[List[str]] = Field(default_factory=list)
 
 class UpdateNodeModel(BaseModel):
@@ -623,6 +633,7 @@ class UpdateNodeModel(BaseModel):
     serialNumber: Optional[str] = None
     custodian: Optional[str] = None
     admin: Optional[str] = None
+    assetNumber: Optional[str] = None
     raidConfiguration: Optional[List[str]] = None
     
     model_config = ConfigDict(
@@ -642,6 +653,8 @@ class ServerRackModel(BaseModel):
     temperature: Optional[float] = None
     fanAvailable: Optional[bool] = False
     sparePowerAvailability: Optional[bool] = False
+    sparePowerC30: Optional[str] = None
+    sparePowerC90: Optional[str] = None
     remarks: Optional[str] = None
     createdBy: Optional[str] = None
     updatedAt: Optional[str] = None
@@ -658,6 +671,8 @@ class CreateServerRackModel(BaseModel):
     temperature: Optional[float] = None
     fanAvailable: Optional[bool] = False
     sparePowerAvailability: Optional[bool] = False
+    sparePowerC30: Optional[str] = None
+    sparePowerC90: Optional[str] = None
     remarks: Optional[str] = None
 
 class UpdateServerRackModel(BaseModel):
@@ -667,6 +682,8 @@ class UpdateServerRackModel(BaseModel):
     temperature: Optional[float] = None
     fanAvailable: Optional[bool] = None
     sparePowerAvailability: Optional[bool] = None
+    sparePowerC30: Optional[str] = None
+    sparePowerC90: Optional[str] = None
     remarks: Optional[str] = None
     
     model_config = ConfigDict(
@@ -950,6 +967,8 @@ class VMDetailsModel(BaseModel):
     cpu: Optional[str] = None
     backupLocation: Optional[str] = ""
     addedToMonitoring: Optional[bool] = False
+    adminName: Optional[str] = None
+    adminContact: Optional[str] = None
     
     model_config = ConfigDict(
         populate_by_name=True,
@@ -967,6 +986,8 @@ class CreateVMDetailsModel(BaseModel):
     cpu: Optional[str] = None
     backupLocation: Optional[str] = ""
     addedToMonitoring: Optional[bool] = False
+    adminName: Optional[str] = None
+    adminContact: Optional[str] = None
 
 class UpdateVMDetailsModel(BaseModel):
     ipAddress: Optional[str] = None
@@ -978,6 +999,8 @@ class UpdateVMDetailsModel(BaseModel):
     cpu: Optional[str] = None
     backupLocation: Optional[str] = None
     addedToMonitoring: Optional[bool] = None
+    adminName: Optional[str] = None
+    adminContact: Optional[str] = None
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

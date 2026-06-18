@@ -47,6 +47,7 @@ const Users: React.FC = () => {
   const [searchQuery, setSearchQuery] = useTableState("users_search", "");
   const [selectedDepartment, setSelectedDepartment] = useTableState("users_filter_dept", "All Departments");
   const [selectedRole, setSelectedRole] = useTableState("users_filter_role", "All Roles");
+  const [selectedStatus, setSelectedStatus] = useTableState("users_filter_status", "active");
   const [page, setPage] = useTableState("users_page", 0);
   const [rowsPerPage, setRowsPerPage] = useTableState("users_rowsPerPage", 5);
   const [order, setOrder] = useTableState<Order>("users_order", "asc");
@@ -88,14 +89,15 @@ const Users: React.FC = () => {
         search: searchQuery,
         department: selectedDepartment === "All Departments" ? "" : selectedDepartment,
         role: selectedRole === "All Roles" ? "" : selectedRole,
+        status: selectedStatus,
         showToast,
       }),
     );
-  }, [dispatch, showToast, page, rowsPerPage, orderBy, order, searchQuery, selectedDepartment, selectedRole]);
+  }, [dispatch, showToast, page, rowsPerPage, orderBy, order, searchQuery, selectedDepartment, selectedRole, selectedStatus]);
 
   useEffect(() => {
     setPage(0);
-  }, [selectedDepartment, selectedRole, searchQuery]);
+  }, [selectedDepartment, selectedRole, selectedStatus, searchQuery]);
 
   useEffect(() => {
     loadData();
@@ -434,6 +436,18 @@ const Users: React.FC = () => {
                   {role.name}
                 </MenuItem>
               ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 160, bgcolor: '#fff' }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={selectedStatus}
+              label="Status"
+              onChange={(e) => setSelectedStatus(e.target.value)}
+            >
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="inactive">Inactive</MenuItem>
+              <MenuItem value="all">All</MenuItem>
             </Select>
           </FormControl>
           {hasPrivilege(PRIVILEGES.USER_CREATE) && (

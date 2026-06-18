@@ -70,7 +70,7 @@ async def sync_node_resources(node_name: str):
             }}
         )
 
-@router.get("/", response_description="List all physical servers", response_model=PaginatedPhysicalServersModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Cluster"))])
+@router.get("/", response_description="List all physical servers", response_model=PaginatedPhysicalServersModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def list_items(
     clusterId: Optional[str] = Query(None, description="The ID of the cluster"),
     skip: int = Query(0, ge=0),
@@ -106,7 +106,7 @@ async def list_items(
 
     return {"data": items, "total": total}
 
-@router.post("/", response_description="Create physical server details", response_model=PhysicalServerModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Cluster"))])
+@router.post("/", response_description="Create physical server details", response_model=PhysicalServerModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def create_item(
     payload: CreatePhysicalServerModel = Body(...),
     current_user: dict = Depends(get_current_user)
@@ -122,7 +122,7 @@ async def create_item(
         await sync_node_resources(created["node"])
     return created
 
-@router.put("/{id}", response_description="Update physical server details", response_model=PhysicalServerModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Cluster"))])
+@router.put("/{id}", response_description="Update physical server details", response_model=PhysicalServerModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def update_item(id: str, payload: UpdatePhysicalServerModel = Body(...)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -153,7 +153,7 @@ async def update_item(id: str, payload: UpdatePhysicalServerModel = Body(...)):
 
     raise HTTPException(status_code=404, detail="Physical server details not found")
 
-@router.delete("/{id}", response_description="Delete physical server details", dependencies=[Depends(require_privilege("Delete Cluster"))])
+@router.delete("/{id}", response_description="Delete physical server details", dependencies=[Depends(require_privilege("Create Server Details"))])
 async def delete_item(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")

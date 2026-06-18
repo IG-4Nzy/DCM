@@ -28,7 +28,7 @@ async def compute_remaining_capacity(rack_doc: dict):
         rack_doc["remainingCapacity"] = None
     return rack_doc
 
-@router.get("/", response_description="List all server racks", response_model=PaginatedServerRacksModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Configurations"))])
+@router.get("/", response_description="List all server racks", response_model=PaginatedServerRacksModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def list_items(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),
@@ -61,7 +61,7 @@ async def list_items(
 
     return {"data": items, "total": total}
 
-@router.post("/", response_description="Create a serverRack", response_model=ServerRackModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Configuration"))])
+@router.post("/", response_description="Create a serverRack", response_model=ServerRackModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def create_item(
     payload: CreateServerRackModel = Body(...),
     current_user: dict = Depends(get_current_user)
@@ -78,7 +78,7 @@ async def create_item(
     created = await collection.find_one({"_id": new_item.inserted_id})
     return await compute_remaining_capacity(created)
 
-@router.put("/{id}", response_description="Update a serverRack", response_model=ServerRackModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Configurations"))])
+@router.put("/{id}", response_description="Update a serverRack", response_model=ServerRackModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def update_item(id: str, payload: UpdateServerRackModel = Body(...)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -109,7 +109,7 @@ async def update_item(id: str, payload: UpdateServerRackModel = Body(...)):
 
     raise HTTPException(status_code=404, detail=f"Server Rack {id} not found")
 
-@router.delete("/{id}", response_description="Delete a serverRack", dependencies=[Depends(require_privilege("Delete Configurations"))])
+@router.delete("/{id}", response_description="Delete a serverRack", dependencies=[Depends(require_privilege("Create Server Details"))])
 async def delete_item(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -121,7 +121,7 @@ async def delete_item(id: str):
 
     raise HTTPException(status_code=404, detail=f"Server Rack {id} not found")
 
-@router.post("/bulk", response_description="Bulk create server racks", dependencies=[Depends(require_privilege("Create Configuration"))])
+@router.post("/bulk", response_description="Bulk create server racks", dependencies=[Depends(require_privilege("Create Server Details"))])
 async def bulk_create_server_racks(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
     username = current_user.get("sub", "Unknown")
     

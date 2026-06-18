@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Paper, Tooltip, IconButton, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Box, Paper, Tooltip, IconButton, FormControl, InputLabel, Select, MenuItem, Checkbox, ListItemText, OutlinedInput } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';
@@ -27,8 +27,10 @@ type Order = 'asc' | 'desc';
 const Works: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { users } = useSelector((state: RootState) => state?.users || { users: [] });
-  const currentUser = useSelector((state: RootState) => state?.auth?.username);
+  const { username: currentUser, isSuperuser } = useSelector((state: RootState) => state?.auth || { username: '', isSuperuser: false });
   const { showToast } = useToast();
+
+  const canFilterByAssignee = isSuperuser || hasPrivilege(PRIVILEGES.WORK_VIEW);
 
   const filteredUsersForAssignee = React.useMemo(() => {
     if (!currentUser || !users) return [];
@@ -40,23 +42,35 @@ const Works: React.FC = () => {
   }, [users, currentUser]);
 
   const [searchQuery, setSearchQuery] = useTableState('work_search', '');
-  const [statusFilter, setStatusFilter] = useTableState('work_statusFilter', 'All Statuses');
+  
+  // Support legacy string values safely
+  const [statusFilterVal, setStatusFilter] = useTableState<any>('work_statusFilter', ['Pending', 'On Hold', 'Completed']);
+  const statusFilter = React.useMemo(() => {
+    if (typeof statusFilterVal === 'string') {
+      if (statusFilterVal === 'All Statuses' || statusFilterVal === 'All') {
+        return ['Pending', 'On Hold', 'Completed', 'Closed'];
+      }
+      return [statusFilterVal];
+    }
+    if (Array.isArray(statusFilterVal)) {
+      return statusFilterVal;
+    }
+    return ['Pending', 'On Hold', 'Completed'];
+  }, [statusFilterVal]);
+
+  const [selectedAssignee, setSelectedAssignee] = useTableState('work_selectedAssignee', 'All');
+
   const [page, setPage] = useTableState('work_page', 0);
   const [rowsPerPage, setRowsPerPage] = useTableState('work_rowsPerPage', 5);
   const [order, setOrder] = useTableState<Order>('work_order', 'asc');
   const [orderBy, setOrderBy] = useTableState<string>('work_orderBy', 'workName');
-
-  const handleStatusFilterChange = (val: string) => {
-    setStatusFilter(val);
-    setPage(0);
-  };
 
   const { works, totalCount } = useSelector((state: RootState) => state?.works || { works: [], totalCount: 0 });
 
   // Modal and Form state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingWork, setEditingWork] = useState<any | null>(null);
-  
+
   // Detail Modal state
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [viewingWork, setViewingWork] = useState<WorkData | null>(null);
@@ -82,10 +96,11 @@ const Works: React.FC = () => {
       sortBy: orderBy,
       order,
       search: searchQuery,
-      status: statusFilter,
+      status: statusFilter.join(','),
+      assignee: selectedAssignee === 'All' ? undefined : selectedAssignee,
       showToast: silent ? undefined : showToast
     }));
-  }, [dispatch, page, rowsPerPage, orderBy, order, searchQuery, statusFilter, showToast]);
+  }, [dispatch, page, rowsPerPage, orderBy, order, searchQuery, statusFilter, selectedAssignee, showToast]);
 
   useEffect(() => {
     loadWorks();
@@ -147,14 +162,7 @@ const Works: React.FC = () => {
     try {
       const updatedWork = await dispatch(transferWork({ id, newAssigneeId, reason, showToast })).unwrap();
       setViewingWork(updatedWork);
-      dispatch(fetchWorks({
-        skip: page * rowsPerPage,
-        limit: rowsPerPage,
-        sortBy: orderBy,
-        order,
-        search: searchQuery,
-        status: statusFilter
-      }));
+      loadWorks();
     } catch (err: any) {
       // Handled in thunk
     }
@@ -164,23 +172,23 @@ const Works: React.FC = () => {
     e.preventDefault();
     try {
       let finalAttachments: { name: string, url: string }[] = [];
-      
+
       // Differentiate between actual new files and existing string-mapped pseudo-files
       const newFiles = attachments.filter(f => f.size !== undefined);
       const existingFiles = attachments.filter(f => f.size === undefined);
-      
+
       // Preserve the URLs of existing files that weren't removed
       if (editingWork && editingWork.attachments) {
-         finalAttachments = editingWork.attachments.filter((a: any) => 
-            existingFiles.some(ef => ef.name === (a.name || a))
-         );
+        finalAttachments = editingWork.attachments.filter((a: any) =>
+          existingFiles.some(ef => ef.name === (a.name || a))
+        );
       }
 
       // Upload new files
       if (newFiles.length > 0) {
         const formData = new FormData();
         newFiles.forEach(f => formData.append('files', f));
-        
+
         // request is from services/request.ts
         const res = await request.post('/api/works/upload', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
@@ -194,7 +202,7 @@ const Works: React.FC = () => {
         priority,
         dueDate,
         description,
-        attachments: finalAttachments 
+        attachments: finalAttachments
       };
 
       if (editingWork) {
@@ -204,16 +212,9 @@ const Works: React.FC = () => {
         await dispatch(createWork({ payload, showToast })).unwrap();
       }
       handleCloseModal();
-      
+
       // Optionally re-fetch to ensure pagination is perfectly synced
-      dispatch(fetchWorks({
-        skip: page * rowsPerPage,
-        limit: rowsPerPage,
-        sortBy: orderBy,
-        order,
-        search: searchQuery,
-        status: statusFilter
-      }));
+      loadWorks();
     } catch (err: any) {
       console.error("Error submitting work:", err);
       if (err.name === 'ReferenceError' || err.isAxiosError) {
@@ -229,15 +230,8 @@ const Works: React.FC = () => {
       try {
         await dispatch(deleteWork({ id, showToast })).unwrap();
         // Re-fetch
-        dispatch(fetchWorks({
-          skip: page * rowsPerPage,
-          limit: rowsPerPage,
-          sortBy: orderBy,
-          order,
-          search: searchQuery,
-          status: statusFilter
-        }));
-      } catch (err: any) {}
+        loadWorks();
+      } catch (err: any) { }
     }
   }
 
@@ -258,9 +252,9 @@ const Works: React.FC = () => {
 
   const columns: Column<WorkData>[] = [
     { id: 'workName', label: 'Work Name', sortable: true },
-    { 
-      id: 'assignee', 
-      label: 'Assignees', 
+    {
+      id: 'assignee',
+      label: 'Assignees',
       sortable: false,
       render: (row) => {
         const rowAssignees = row.assignees || (row.assignee ? [row.assignee] : []);
@@ -275,9 +269,9 @@ const Works: React.FC = () => {
         return names.join(', ');
       }
     },
-    { 
-      id: 'priority', 
-      label: 'Priority', 
+    {
+      id: 'priority',
+      label: 'Priority',
       sortable: true,
       render: (row) => (
         <label
@@ -291,28 +285,28 @@ const Works: React.FC = () => {
         </label>
       )
     },
-    { 
-      id: 'dueDate', 
-      label: 'Due Date', 
+    {
+      id: 'dueDate',
+      label: 'Due Date',
       sortable: true,
       render: (row) => {
         if (!row.dueDate) return '-';
-        
+
         const today = getServerTime().toDate();
         today.setHours(0, 0, 0, 0);
-        
+
         const due = new Date(row.dueDate);
         due.setHours(0, 0, 0, 0);
-        
+
         const diffTime = due.getTime() - today.getTime();
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-        
+
         let color = 'inherit';
         let text = row.dueDate;
         let fontWeight = 'normal';
-        
+
         const isCompleted = row.status === 'Completed' || row.status === 'Closed';
-        
+
         let showRed = false;
         if (isCompleted && row.completedAt) {
           const completedDate = new Date(row.completedAt);
@@ -323,28 +317,28 @@ const Works: React.FC = () => {
             showRed = true;
           }
         }
-        
+
         if (!isCompleted) {
           if (diffDays === 1 || diffDays === 0) { // 1 day to go or due today
-             color = '#ed6c02'; // orange/yellow
-             fontWeight = 'bold';
+            color = '#ed6c02'; // orange/yellow
+            fontWeight = 'bold';
           } else if (diffDays < 0) {
-             color = '#d32f2f'; // red
-             fontWeight = 'bold';
-             const pastDays = Math.abs(diffDays);
-             text = `${row.dueDate} (due ${pastDays} day${pastDays > 1 ? 's' : ''})`;
+            color = '#d32f2f'; // red
+            fontWeight = 'bold';
+            const pastDays = Math.abs(diffDays);
+            text = `${row.dueDate} (due ${pastDays} day${pastDays > 1 ? 's' : ''})`;
           }
         } else if (showRed) {
           color = '#d32f2f'; // red
           fontWeight = 'bold';
         }
-        
+
         return <span style={{ color, fontWeight }}>{text}</span>;
       }
     },
-    { 
-      id: 'status', 
-      label: 'Status', 
+    {
+      id: 'status',
+      label: 'Status',
       sortable: true,
       render: (row) => {
         const s = row.status || 'Pending';
@@ -394,18 +388,43 @@ const Works: React.FC = () => {
             onChange={setSearchQuery}
             placeholder="Search works..."
           />
-          <FormControl size="small" sx={{ minWidth: 160, bgcolor: '#fff' }}>
+          {canFilterByAssignee && (
+            <FormControl size="small" sx={{ minWidth: 160, bgcolor: '#fff' }}>
+              <InputLabel>Assignee</InputLabel>
+              <Select
+                value={selectedAssignee}
+                label="Assignee"
+                onChange={(e) => { setSelectedAssignee(e.target.value as string); setPage(0); }}
+              >
+                <MenuItem value="All">All Assignees</MenuItem>
+                {users.map((u: any) => (
+                  <MenuItem key={u.id || u._id} value={u.id || u._id}>
+                    {u.displayName || u.username}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+          <FormControl size="small" sx={{ minWidth: 180, bgcolor: '#fff' }}>
             <InputLabel>Status</InputLabel>
             <Select
+              multiple
               value={statusFilter}
-              label="Status"
-              onChange={(e) => handleStatusFilterChange(e.target.value as string)}
+              onChange={(e) => {
+                const value = e.target.value;
+                const nextVal = typeof value === 'string' ? value.split(',') : value;
+                setStatusFilter(nextVal);
+                setPage(0);
+              }}
+              input={<OutlinedInput label="Status" />}
+              renderValue={(selected) => selected.join(', ')}
             >
-              <MenuItem value="All Statuses">All Statuses</MenuItem>
-              <MenuItem value="Pending">Pending</MenuItem>
-              <MenuItem value="On Hold">On Hold</MenuItem>
-              <MenuItem value="Completed">Completed</MenuItem>
-              <MenuItem value="Closed">Closed</MenuItem>
+              {['Pending', 'On Hold', 'Completed', 'Closed'].map((name) => (
+                <MenuItem key={name} value={name}>
+                  <Checkbox checked={statusFilter.indexOf(name) > -1} />
+                  <ListItemText primary={name} />
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
           {hasPrivilege(PRIVILEGES.WORK_CREATE) && (
@@ -436,7 +455,7 @@ const Works: React.FC = () => {
           onRowClick={canClickRow ? (row) => handleOpenDetailModal(row as WorkData) : undefined}
         />
       </Paper>
-      
+
       <WorkFormModal
         isModalOpen={isModalOpen}
         handleCloseModal={handleCloseModal}

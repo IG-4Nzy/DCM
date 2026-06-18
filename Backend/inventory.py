@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from typing import Optional
 from database import db
 from models import (
-    InventoryModel, CreateInventoryModel, UpdateInventoryModel, PaginatedInventoryModel, InventoryHistoryModel,
+    InventoryModel, CreateInventoryModel, UpdateInventoryModel, EditInventoryModel, PaginatedInventoryModel, InventoryHistoryModel,
     InventoryGiveModel, InventoryReturnModel
 )
 from bson import ObjectId
@@ -163,6 +163,66 @@ async def update_inventory(id: str, update_data: UpdateInventoryModel = Body(...
 
     updated_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
     
+    from notification_helper import log_page_update
+    await log_page_update("inventory", department=updated_inv.get("department"), username=current_user.get("sub"))
+
+    return updated_inv
+
+@router.put("/{id}/edit", response_description="Edit general inventory item details", response_model=InventoryModel, response_model_by_alias=False)
+async def edit_inventory_item(id: str, edit_data: EditInventoryModel = Body(...), current_user: dict = Depends(require_privilege("Update Inventory"))):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    existing_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
+    if existing_inv is None:
+        raise HTTPException(status_code=404, detail=f"Item {id} not found")
+
+    is_superuser = current_user.get("isSuperuser", False)
+    user_dept = current_user.get("department", "")
+    if not is_superuser and user_dept and existing_inv.get("department") != user_dept:
+        raise HTTPException(status_code=403, detail="Cannot edit another department's inventory item")
+
+    if edit_data.quantity < 0:
+        raise HTTPException(status_code=400, detail="Quantity cannot be negative")
+
+    current_holders = existing_inv.get("currentHolders", [])
+    if edit_data.quantity < len(current_holders):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Quantity cannot be less than the number of checked out items ({len(current_holders)})"
+        )
+
+    username = current_user.get("sub", "Unknown")
+    quantity_diff = edit_data.quantity - existing_inv.get("quantity", 0)
+    current_time = datetime.utcnow().isoformat() + "Z"
+
+    update_fields = {
+        "itemName": edit_data.itemName,
+        "quantity": edit_data.quantity,
+        "description": edit_data.description,
+        "isReturnable": edit_data.isReturnable,
+        "almiraNumber": edit_data.almiraNumber,
+        "rackNumber": edit_data.rackNumber,
+        "lastUpdatedDate": current_time,
+        "lastUpdatedBy": username
+    }
+
+    update_query = {"$set": update_fields}
+
+    if quantity_diff != 0:
+        history_entry = {
+            "date": current_time,
+            "action": "add" if quantity_diff > 0 else "subtract",
+            "quantityChange": quantity_diff,
+            "remainingQuantity": edit_data.quantity,
+            "user": username,
+            "givenTo": None
+        }
+        update_query["$push"] = {"history": history_entry}
+
+    await inventory_collection.update_one({"_id": ObjectId(id)}, update_query)
+    updated_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
+
     from notification_helper import log_page_update
     await log_page_update("inventory", department=updated_inv.get("department"), username=current_user.get("sub"))
 

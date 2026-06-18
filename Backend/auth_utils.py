@@ -72,7 +72,7 @@ async def update_attendance_on_request(username: str, user_dept: str, user_role:
                         "loggedOut": False
                     })
             else:
-                if existing.get("regularizeStatus") != "Approved":
+                if existing.get("regularizeStatus") != "Approved" and not existing.get("loggedOut", False):
                     first_login_str = existing.get("firstLogin")
                     
                     if is_prev_day and is_closed:

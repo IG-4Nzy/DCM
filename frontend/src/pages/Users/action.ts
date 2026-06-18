@@ -14,16 +14,17 @@ interface FetchUsersParams {
   search?: string;
   department?: string;
   role?: string;
+  status?: string;
   pagination?: boolean;
   showToast?: ToastFunction;
 }
 
 export const fetchUsers = createAsyncThunk(
   'users/fetchUsers',
-  async ({ skip = 0, limit = 10, sortBy = 'firstName', order = 'asc', search = '', department, role, pagination = true, showToast }: FetchUsersParams, { rejectWithValue }) => {
+  async ({ skip = 0, limit = 10, sortBy = 'firstName', order = 'asc', search = '', department, role, status, pagination = true, showToast }: FetchUsersParams, { rejectWithValue }) => {
     try {
       const response = await request.get(USERS_ENDPOINT, {
-        params: { skip, limit, sort_by: sortBy, order, search, department, role, pagination }
+        params: { skip, limit, sort_by: sortBy, order, search, department, role, status, pagination }
       });
       return response.data;
     } catch (error: any) {

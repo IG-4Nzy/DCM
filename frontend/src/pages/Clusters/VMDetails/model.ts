@@ -10,6 +10,8 @@ export interface VMDetailsData {
     cpu?: string;
     backupLocation?: string;
     addedToMonitoring?: boolean;
+    adminName?: string;
+    adminContact?: string;
     createdAt?: string;
     updatedAt?: string;
     createdBy?: string;
@@ -26,6 +28,8 @@ export interface CreateVMDetailsPayload {
     cpu?: string;
     backupLocation?: string;
     addedToMonitoring?: boolean;
+    adminName?: string;
+    adminContact?: string;
 }
 
 export interface UpdateVMDetailsPayload extends Partial<CreateVMDetailsPayload> {}

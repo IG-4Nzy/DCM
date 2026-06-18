@@ -23,30 +23,46 @@ async def list_works(
     order: str = Query("asc"),
     search: Optional[str] = None,
     status: Optional[str] = None,
+    assignee: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     query = {}
     is_superuser = current_user.get("isSuperuser", False)
     privileges = current_user.get("privileges", [])
     
-    if not is_superuser and "View All Work" not in privileges:
-        if "View Assigned Work" not in privileges:
-            raise HTTPException(status_code=403, detail="Not enough permissions to view works")
+    if not is_superuser and "View All Work" not in privileges and "View Assigned Work" not in privileges:
+        raise HTTPException(status_code=403, detail="Not enough permissions to view works")
             
-        users_collection = db.get_collection("users")
-        user_record = await users_collection.find_one({"username": current_user["sub"]})
-        if user_record:
-            user_id = str(user_record["_id"])
-            query["$or"] = [
-                {"assignee": user_id},
-                {"assignees": user_id}
-            ]
-            query["status"] = {"$ne": "Closed"}
-        else:
+    users_collection = db.get_collection("users")
+    user_record = await users_collection.find_one({"username": current_user["sub"]})
+    user_id = str(user_record["_id"]) if user_record else None
+
+    if not is_superuser and "View All Work" not in privileges:
+        if not user_id:
             raise HTTPException(status_code=403, detail="User record not found")
+        
+        if assignee and assignee != "All" and assignee != "All Assignees" and assignee != user_id:
+            raise HTTPException(status_code=403, detail="Access Denied: Non-privileged users can only query their own assigned works.")
+            
+        query["$or"] = [
+            {"assignee": user_id},
+            {"assignees": user_id}
+        ]
+        if not status or status == "All" or status == "All Statuses":
+            query["status"] = {"$ne": "Closed"}
+    else:
+        if assignee and assignee != "All" and assignee != "All Assignees":
+            query["$or"] = [
+                {"assignee": assignee},
+                {"assignees": assignee}
+            ]
 
     if status and status != "All" and status != "All Statuses":
-        query["status"] = status
+        if "," in status:
+            status_list = [s.strip() for s in status.split(",") if s.strip()]
+            query["status"] = {"$in": status_list}
+        else:
+            query["status"] = status
 
     if search:
         search_query = {

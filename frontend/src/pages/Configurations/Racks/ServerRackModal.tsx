@@ -19,17 +19,21 @@ const ServerRackModal: React.FC<ServerRackModalProps> = ({ open, onClose, onSubm
     const [temperature, setTemperature] = useState('');
     const [fanAvailable, setFanAvailable] = useState(false);
     const [sparePowerAvailability, setSparePowerAvailability] = useState(false);
+    const [sparePowerC30, setSparePowerC30] = useState('');
+    const [sparePowerC90, setSparePowerC90] = useState('');
     const [remarks, setRemarks] = useState('');
 
     useEffect(() => {
         if (open) {
             if (editingItem) {
-                setField(editingItem.serverRack);
+                setField(editingItem.serverRack || '');
                 setNetworksAvailable(editingItem.networksAvailable || []);
                 setRackCapacity(editingItem.rackCapacity !== undefined && editingItem.rackCapacity !== null ? String(editingItem.rackCapacity) : '');
                 setTemperature(editingItem.temperature !== undefined && editingItem.temperature !== null ? String(editingItem.temperature) : '');
                 setFanAvailable(!!editingItem.fanAvailable);
                 setSparePowerAvailability(!!editingItem.sparePowerAvailability);
+                setSparePowerC30(editingItem.sparePowerC30 || '');
+                setSparePowerC90(editingItem.sparePowerC90 || '');
                 setRemarks(editingItem.remarks || '');
             } else {
                 setField('');
@@ -38,6 +42,8 @@ const ServerRackModal: React.FC<ServerRackModalProps> = ({ open, onClose, onSubm
                 setTemperature('');
                 setFanAvailable(false);
                 setSparePowerAvailability(false);
+                setSparePowerC30('');
+                setSparePowerC90('');
                 setRemarks('');
             }
         }
@@ -64,6 +70,8 @@ const ServerRackModal: React.FC<ServerRackModalProps> = ({ open, onClose, onSubm
             temperature: parsedTemperature,
             fanAvailable,
             sparePowerAvailability,
+            sparePowerC30: sparePowerC30.trim() ? sparePowerC30 : undefined,
+            sparePowerC90: sparePowerC90.trim() ? sparePowerC90 : undefined,
             remarks
         };
 
@@ -158,6 +166,27 @@ const ServerRackModal: React.FC<ServerRackModalProps> = ({ open, onClose, onSubm
                                     />
                                 }
                                 label="Spare Power Available?"
+                            />
+                        </Grid>
+                    </Grid>
+
+                    <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                            <TextField
+                                fullWidth
+                                label="Spare Power C-30"
+                                placeholder="e.g. 16 A"
+                                value={sparePowerC30}
+                                onChange={(e) => setSparePowerC30(e.target.value)}
+                            />
+                        </Grid>
+                        <Grid item xs={6}>
+                            <TextField
+                                fullWidth
+                                label="Spare Power C-90"
+                                placeholder="e.g. 16 A"
+                                value={sparePowerC90}
+                                onChange={(e) => setSparePowerC90(e.target.value)}
                             />
                         </Grid>
                     </Grid>

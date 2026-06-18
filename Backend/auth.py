@@ -144,12 +144,13 @@ async def login(credentials: LoginRequest):
             })
 
             if existing_attendance:
-                # If they logged in again during their active previous day's shift, mark it as active
-                if is_prev_day and not details["is_closed"] and existing_attendance.get("loggedOut", False):
-                    await attendance_collection.update_one(
-                        {"_id": existing_attendance["_id"]},
-                        {"$set": {"loggedOut": False}}
-                    )
+                # If they logged in again during their active shift (same day or active previous night shift), reactivate it
+                if existing_attendance.get("loggedOut", False):
+                    if not is_prev_day or not details.get("is_closed", False):
+                        await attendance_collection.update_one(
+                            {"_id": existing_attendance["_id"]},
+                            {"$set": {"loggedOut": False}}
+                        )
                 # If there's already a pending/rejected late attempt, keep blocking
                 late_status = existing_attendance.get("lateApprovalStatus")
                 if existing_attendance.get("isLateAttempt"):

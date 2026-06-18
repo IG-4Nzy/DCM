@@ -32,9 +32,9 @@ const Clusters = () => {
     const { confirm } = useConfirm();
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
-    const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_CREATE);
-    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_UPDATE);
-    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_DELETE);
+    const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
 
     const [searchQuery, setSearchQuery] = useTableState('cluster_search', '');
     const [page, setPage] = useTableState('cluster_page', 0);

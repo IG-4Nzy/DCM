@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Box, Paper, Typography, Button as MuiButton, IconButton, Tooltip,
+  Box, Paper, Typography, Button as MuiButton, IconButton, Tooltip, Checkbox,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Select, FormControl, InputLabel
 } from '@mui/material';
 import { MdAdd as AddIcon, MdDelete as DeleteIcon, MdRemove as RemoveIcon, MdSave as SaveIcon, MdEdit as EditIcon } from 'react-icons/md';
@@ -81,7 +81,7 @@ const BMSChecklistConfig = () => {
   const [rows, setRows] = useState<FlatRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   // Edit parameter rule state
   const [editingRow, setEditingRow] = useState<FlatRow | null>(null);
   const [editUnit, setEditUnit] = useState('');
@@ -96,6 +96,13 @@ const BMSChecklistConfig = () => {
   const [rowsPerPage, setRowsPerPage] = useTableState('bmsChecklistConfig_rowsPerPage', 10);
   const [order, setOrder] = useTableState<Order>('bmsChecklistConfig_order', 'asc');
   const [orderBy, setOrderBy] = useTableState<string>('bmsChecklistConfig_orderBy', 'category');
+
+  const getRowKey = (row: FlatRow) => `${row.category}|${row.device}|${row.parameter}`;
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setSelectedRows(new Set());
+  }, [searchQuery, page, rowsPerPage, userDepartment]);
 
   // Load existing template configuration
   const loadTemplateData = async () => {
@@ -262,11 +269,22 @@ const BMSChecklistConfig = () => {
   const handleDelete = async (row: FlatRow) => {
     const isConfirmed = await confirm(`Are you sure you want to delete parameter "${row.parameter}" from device "${row.device}"?`, 'Delete Template Parameter');
     if (isConfirmed) {
-      const updated = rows.filter(r => 
+      const updated = rows.filter(r =>
         !(r.category === row.category && r.device === row.device && r.parameter === row.parameter)
       );
       setRows(updated);
       showToast('Parameter removed from template', 'success');
+      await saveTemplate(updated);
+    }
+  };
+
+  const handleGroupDelete = async () => {
+    const isConfirmed = await confirm(`Are you sure you want to delete the ${selectedRows.size} selected parameter(s)?`, 'Group Delete Parameters');
+    if (isConfirmed) {
+      const updated = rows.filter(r => !selectedRows.has(getRowKey(r)));
+      setRows(updated);
+      setSelectedRows(new Set());
+      showToast('Selected parameters removed from template', 'success');
       await saveTemplate(updated);
     }
   };
@@ -289,7 +307,7 @@ const BMSChecklistConfig = () => {
   const filteredRows = useMemo(() => {
     if (!searchQuery) return rows;
     const q = searchQuery.toLowerCase();
-    return rows.filter(r => 
+    return rows.filter(r =>
       r.category.toLowerCase().includes(q) ||
       r.device.toLowerCase().includes(q) ||
       r.parameter.toLowerCase().includes(q)
@@ -313,6 +331,30 @@ const BMSChecklistConfig = () => {
     return sortedRows.slice(start, start + rowsPerPage);
   }, [sortedRows, page, rowsPerPage]);
 
+  const isAllSelected = paginatedRows.length > 0 && paginatedRows.every(r => selectedRows.has(getRowKey(r)));
+  const isSomeSelected = paginatedRows.some(r => selectedRows.has(getRowKey(r))) && !isAllSelected;
+
+  const handleSelectAllChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const next = new Set(selectedRows);
+    if (event.target.checked) {
+      paginatedRows.forEach(r => next.add(getRowKey(r)));
+    } else {
+      paginatedRows.forEach(r => next.delete(getRowKey(r)));
+    }
+    setSelectedRows(next);
+  };
+
+  const handleRowSelectChange = (row: FlatRow, checked: boolean) => {
+    const next = new Set(selectedRows);
+    const key = getRowKey(row);
+    if (checked) {
+      next.add(key);
+    } else {
+      next.delete(key);
+    }
+    setSelectedRows(next);
+  };
+
   const getRuleDisplay = (row: FlatRow) => {
     if (!row.ruleOperator || row.ruleValue === undefined || row.ruleValue === '') {
       return '-';
@@ -320,13 +362,38 @@ const BMSChecklistConfig = () => {
     return `Value cannot be ${row.ruleOperator} ${row.ruleValue}`;
   };
 
-  const columns: Column<FlatRow>[] = [
+  const columns: Column<FlatRow>[] = [];
+
+  if (hasDelete) {
+    columns.push({
+      id: 'select',
+      label: (
+        <Checkbox
+          indeterminate={isSomeSelected}
+          checked={isAllSelected}
+          onChange={handleSelectAllChange}
+          size="small"
+        />
+      ),
+      sortable: false,
+      render: (row) => (
+        <Checkbox
+          checked={selectedRows.has(getRowKey(row))}
+          onChange={(e) => handleRowSelectChange(row, e.target.checked)}
+          onClick={(e) => e.stopPropagation()}
+          size="small"
+        />
+      )
+    });
+  }
+
+  columns.push(
     { id: 'category', label: 'Category', sortable: true },
     { id: 'device', label: 'Device', sortable: true },
     { id: 'parameter', label: 'Parameter', sortable: true },
     { id: 'unit', label: 'Default Unit', sortable: true, render: (row) => row.unit || '-' },
     { id: 'ruleOperator', label: 'Failure Rule Threshold', sortable: false, render: (row) => getRuleDisplay(row) }
-  ];
+  );
 
   if (hasUpdate || hasDelete) {
     columns.push({
@@ -366,6 +433,15 @@ const BMSChecklistConfig = () => {
           />
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
+          {hasDelete && selectedRows.size > 0 && (
+            <Button
+              variant="contained"
+              color="error"
+              onClick={handleGroupDelete}
+            >
+              Delete Selected ({selectedRows.size})
+            </Button>
+          )}
           {hasCreate && (
             <Button
               variant="contained"
@@ -439,7 +515,7 @@ const BMSChecklistConfig = () => {
                 onChange={(e) => updateParameterUnit(idx, 'unit', e.target.value)}
                 sx={{ flex: 1, minWidth: '80px' }}
               />
-              
+
               <FormControl sx={{ flex: 1.5, minWidth: '110px' }}>
                 <InputLabel>Rule Fail Condition</InputLabel>
                 <Select

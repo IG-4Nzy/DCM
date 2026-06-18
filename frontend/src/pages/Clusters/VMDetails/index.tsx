@@ -34,9 +34,9 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
     const { confirm } = useConfirm();
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
-    const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_CREATE);
-    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_UPDATE);
-    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_DELETE);
+    const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
 
     const [clusters, setClusters] = useState<any[]>([]);
 
@@ -162,6 +162,8 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Node</TableCell>
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>OS and Expiry</TableCell>
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Backup Location</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Admin Name</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Admin Contact</TableCell>
                                 <TableCell colSpan={3} align="center" className={styles.tableWrapper__headerCell}>Resource Allotter</TableCell>
                                 {(hasUpdate || hasDelete) && (
                                     <TableCell rowSpan={2} align="right" className={styles.tableWrapper__headerCellLast}>Actions</TableCell>
@@ -176,11 +178,11 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                         <TableBody>
                             {loading && data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 9 : 10} align="center" sx={{ py: 3 }}>Loading...</TableCell>
+                                    <TableCell colSpan={clusterId ? 11 : 12} align="center" sx={{ py: 3 }}>Loading...</TableCell>
                                 </TableRow>
                             ) : data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 9 : 10} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
+                                    <TableCell colSpan={clusterId ? 11 : 12} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
                                 </TableRow>
                             ) : (
                                 data.map((row) => (
@@ -193,6 +195,8 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                                         <TableCell className={styles.tableWrapper__cell}>{row.node || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.osAndExpiry || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.backupLocation || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.adminName || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.adminContact || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.hdd || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.ram || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.cpu || '--'}</TableCell>

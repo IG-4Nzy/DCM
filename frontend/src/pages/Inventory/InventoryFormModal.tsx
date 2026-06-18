@@ -3,17 +3,20 @@ import Modal from '../../components/Modal';
 import TextField from '../../components/TextField';
 import { Button, FormControlLabel, Checkbox } from '@mui/material';
 import { getServerTime } from '../../helpers/time';
+import type { InventoryData } from './model';
 
 interface PropType {
   isModalOpen: boolean;
   handleCloseModal: () => void;
   onSubmit: (data: any) => void;
+  editingItem?: InventoryData | null;
 }
 
 const InventoryFormModal: React.FC<PropType> = ({
   isModalOpen,
   handleCloseModal,
   onSubmit,
+  editingItem
 }) => {
   const getLocalDatetime = () => {
     const now = getServerTime().toDate();
@@ -31,15 +34,25 @@ const InventoryFormModal: React.FC<PropType> = ({
 
   useEffect(() => {
     if (isModalOpen) {
-      setItemName('');
-      setQuantity(1);
-      setDescription('');
-      setDate(getLocalDatetime());
-      setIsReturnable(false);
-      setAlmiraNumber('');
-      setRackNumber('');
+      if (editingItem) {
+        setItemName(editingItem.itemName || '');
+        setQuantity(editingItem.quantity || 0);
+        setDescription(editingItem.description || '');
+        setDate(editingItem.lastUpdatedDate ? editingItem.lastUpdatedDate.slice(0, 16) : getLocalDatetime());
+        setIsReturnable(!!editingItem.isReturnable);
+        setAlmiraNumber(editingItem.almiraNumber || '');
+        setRackNumber(editingItem.rackNumber || '');
+      } else {
+        setItemName('');
+        setQuantity(1);
+        setDescription('');
+        setDate(getLocalDatetime());
+        setIsReturnable(false);
+        setAlmiraNumber('');
+        setRackNumber('');
+      }
     }
-  }, [isModalOpen]);
+  }, [isModalOpen, editingItem]);
 
   const handleSubmit = () => {
     if (!itemName) return;
@@ -51,7 +64,7 @@ const InventoryFormModal: React.FC<PropType> = ({
     <Modal
       open={isModalOpen}
       handleClose={handleCloseModal}
-      title="Create New Item"
+      title={editingItem ? "Edit Item" : "Create New Item"}
     >
       <TextField
         label="Item Name"
@@ -126,7 +139,7 @@ const InventoryFormModal: React.FC<PropType> = ({
           color="primary"
           disabled={!itemName || quantity <= 0 || !date}
         >
-          Create
+          {editingItem ? "Save" : "Create"}
         </Button>
       </div>
     </Modal>

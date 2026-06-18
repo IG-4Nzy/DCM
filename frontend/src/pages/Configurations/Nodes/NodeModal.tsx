@@ -30,6 +30,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
     const [serialNumber, setSerialNumber] = useState('');
     const [custodian, setCustodian] = useState('');
     const [admin, setAdmin] = useState('');
+    const [assetNumber, setAssetNumber] = useState('');
     const [raidConfiguration, setRaidConfiguration] = useState<string[]>([]);
     
     const [racks, setRacks] = useState<any[]>([]);
@@ -66,6 +67,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setSerialNumber(editingItem.serialNumber || '');
                 setCustodian(editingItem.custodian || '');
                 setAdmin(editingItem.admin || '');
+                setAssetNumber(editingItem.assetNumber || '');
                 setRaidConfiguration(editingItem.raidConfiguration || []);
             } else {
                 setField('');
@@ -81,6 +83,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setSerialNumber('');
                 setCustodian('');
                 setAdmin('');
+                setAssetNumber('');
                 setRaidConfiguration([]);
             }
         }
@@ -111,6 +114,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
             serialNumber: serialNumber || undefined,
             custodian: custodian || undefined,
             admin: admin || undefined,
+            assetNumber: assetNumber || undefined,
             raidConfiguration: raidConfiguration
         };
 
@@ -168,7 +172,16 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                     </Grid>
 
                     <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} sm={4}>
+                            <TextField
+                                fullWidth
+                                label="Asset Number"
+                                placeholder="e.g. AST-12345"
+                                value={assetNumber}
+                                onChange={(e) => setAssetNumber(e.target.value)}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
                             <TextField
                                 fullWidth
                                 label="Custodian"
@@ -177,7 +190,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 onChange={(e) => setCustodian(e.target.value)}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} sm={4}>
                             <TextField
                                 fullWidth
                                 label="Admin"

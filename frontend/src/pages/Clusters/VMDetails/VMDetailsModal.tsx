@@ -28,7 +28,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         ram: '',
         cpu: '',
         backupLocation: '',
-        addedToMonitoring: false
+        addedToMonitoring: false,
+        adminName: '',
+        adminContact: ''
     });
 
     const [nodes, setNodes] = useState<any[]>([]);
@@ -60,7 +62,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     ram: editingItem.ram || '',
                     cpu: editingItem.cpu || '',
                     backupLocation: editingItem.backupLocation || '',
-                    addedToMonitoring: editingItem.addedToMonitoring || false
+                    addedToMonitoring: editingItem.addedToMonitoring || false,
+                    adminName: editingItem.adminName || '',
+                    adminContact: editingItem.adminContact || ''
                 });
             } else {
                 setFormData({
@@ -73,7 +77,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     ram: '',
                     cpu: '',
                     backupLocation: '',
-                    addedToMonitoring: false
+                    addedToMonitoring: false,
+                    adminName: '',
+                    adminContact: ''
                 });
             }
         }
@@ -101,6 +107,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
             if (formData.cpu !== editingItem.cpu) changedData.cpu = formData.cpu;
             if (formData.backupLocation !== editingItem.backupLocation) changedData.backupLocation = formData.backupLocation;
             if (formData.addedToMonitoring !== editingItem.addedToMonitoring) changedData.addedToMonitoring = formData.addedToMonitoring;
+            if (formData.adminName !== editingItem.adminName) changedData.adminName = formData.adminName;
+            if (formData.adminContact !== editingItem.adminContact) changedData.adminContact = formData.adminContact;
             onSubmit(changedData);
         } else {
             onSubmit(formData);
@@ -173,6 +181,21 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         }
                         label="VM added to monitoring confirmation"
                         className={styles.formGrid__field}
+                    />
+
+                    <TextField 
+                        label="Admin Name" 
+                        size="small"
+                        className={styles.formGrid__field}
+                        value={formData.adminName} 
+                        onChange={(e) => handleChange('adminName', e.target.value)} 
+                    />
+                    <TextField 
+                        label="Admin Contact Number" 
+                        size="small"
+                        className={styles.formGrid__field}
+                        value={formData.adminContact} 
+                        onChange={(e) => handleChange('adminContact', e.target.value)} 
                     />
                     
                     <Typography variant="subtitle1" className={styles.formGrid__title}>

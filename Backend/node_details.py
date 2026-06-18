@@ -62,7 +62,7 @@ async def compute_node_details_available_resources(doc: dict):
     
     return doc
 
-@router.get("/", response_description="List all node details", response_model=PaginatedNodeDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Cluster"))])
+@router.get("/", response_description="List all node details", response_model=PaginatedNodeDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def list_items(
     clusterId: Optional[str] = Query(None, description="The ID of the cluster"),
     skip: int = Query(0, ge=0),
@@ -123,7 +123,7 @@ async def list_items(
 
     return {"data": items, "total": total}
 
-@router.post("/", response_description="Create node details", response_model=NodeDetailsModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Cluster"))])
+@router.post("/", response_description="Create node details", response_model=NodeDetailsModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def create_item(
     payload: CreateNodeDetailsModel = Body(...),
     current_user: dict = Depends(get_current_user)
@@ -177,7 +177,7 @@ async def create_item(
 
     return await compute_node_details_available_resources(created)
 
-@router.put("/{id}", response_description="Update node details", response_model=NodeDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Cluster"))])
+@router.put("/{id}", response_description="Update node details", response_model=NodeDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def update_item(id: str, payload: UpdateNodeDetailsModel = Body(...)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -236,7 +236,7 @@ async def update_item(id: str, payload: UpdateNodeDetailsModel = Body(...)):
 
     raise HTTPException(status_code=404, detail="Node details not found")
 
-@router.delete("/{id}", response_description="Delete node details", dependencies=[Depends(require_privilege("Delete Cluster"))])
+@router.delete("/{id}", response_description="Delete node details", dependencies=[Depends(require_privilege("Create Server Details"))])
 async def delete_item(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -248,7 +248,7 @@ async def delete_item(id: str):
 
     raise HTTPException(status_code=404, detail="Node details not found")
 
-@router.post("/bulk", response_description="Bulk create node details", dependencies=[Depends(require_privilege("Create Cluster"))])
+@router.post("/bulk", response_description="Bulk create node details", dependencies=[Depends(require_privilege("Create Server Details"))])
 async def bulk_create_node_details(
     clusterId: str = Query(..., description="The ID of the cluster"),
     file: UploadFile = File(...),

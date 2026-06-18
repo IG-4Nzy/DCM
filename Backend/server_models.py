@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response, UploadFile, File
-from auth_utils import require_privilege, get_current_user
+from auth_utils import require_privilege, require_any_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional, List
 from database import db
@@ -44,7 +44,7 @@ async def list_items(
 
     return {"data": items, "total": total}
 
-@router.post("/", response_description="Create a serverModel", response_model=ServerModelModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Configuration"))])
+@router.post("/", response_description="Create a serverModel", response_model=ServerModelModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Configuration", "Create Server Details"]))])
 async def create_item(
     payload: CreateServerModelModel = Body(...),
     current_user: dict = Depends(get_current_user)
@@ -61,7 +61,7 @@ async def create_item(
     created = await collection.find_one({"_id": new_item.inserted_id})
     return created
 
-@router.put("/{id}", response_description="Update a serverModel", response_model=ServerModelModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Configurations"))])
+@router.put("/{id}", response_description="Update a serverModel", response_model=ServerModelModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Update Configurations", "Update Server Details"]))])
 async def update_item(id: str, payload: UpdateServerModelModel = Body(...)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -104,7 +104,7 @@ async def delete_item(id: str):
 
     raise HTTPException(status_code=404, detail=f"Server Model {id} not found")
 
-@router.post("/bulk", response_description="Bulk create server models", dependencies=[Depends(require_privilege("Create Configuration"))])
+@router.post("/bulk", response_description="Bulk create server models", dependencies=[Depends(require_any_privilege(["Create Configuration", "Create Server Details"]))])
 async def bulk_create_server_models(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
     username = current_user.get("sub", "Unknown")
     

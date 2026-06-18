@@ -26,41 +26,7 @@ import {
 } from '@mui/material';
 import { MdNotificationsActive as ActiveIcon, MdVolumeUp as VolumeUpIcon, MdVolumeMute as VolumeMuteIcon, MdPlayArrow as PlayIcon } from 'react-icons/md';
 import { useToast } from '../../contexts/ToastContext';
-import { useNotificationPoller } from '../../contexts/NotificationPollerContext';
-
-interface WorkItem {
-  id?: string;
-  _id?: string;
-  workName: string;
-  assignee: string;
-  status: string;
-  priority: string;
-  createdAt: string;
-}
-
-const playBeep = (volume: number = 0.5) => {
-  try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-
-    gain.gain.setValueAtTime(volume, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.15);
-  } catch (e) {
-    console.error('Failed to play beep sound:', e);
-  }
-};
+import { useNotificationPoller, playBeep } from '../../contexts/NotificationPollerContext';
 
 const NotificationTriggering: React.FC = () => {
   const { isSuperuser } = useSelector((state: RootState) => state.auth);

@@ -39,11 +39,39 @@ interface NotificationPollerContextType {
 const NotificationPollerContext = createContext<NotificationPollerContextType | undefined>(undefined);
 
 // Audio and TTS helpers
-const playBeep = (volume: number = 0.5) => {
-  try {
+let sharedAudioContext: AudioContext | null = null;
+
+const getAudioContext = (): AudioContext | null => {
+  if (!sharedAudioContext) {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
+    if (AudioContextClass) {
+      sharedAudioContext = new AudioContextClass();
+    }
+  }
+  return sharedAudioContext;
+};
+
+// Automatic resume listener on click or keydown to satisfy browser autoplay policies
+if (typeof window !== 'undefined') {
+  const resumeAudio = () => {
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().catch(err => console.error("Failed to resume AudioContext:", err));
+    }
+  };
+  window.addEventListener('click', resumeAudio, { capture: true, passive: true });
+  window.addEventListener('keydown', resumeAudio, { capture: true, passive: true });
+}
+
+export const playBeep = (volume: number = 0.5) => {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
@@ -63,12 +91,30 @@ const playBeep = (volume: number = 0.5) => {
   }
 };
 
-const playTTS = (text: string, volume: number = 0.5) => {
+export const playTTS = (text: string, volume: number = 0.5) => {
   try {
     if (!window.speechSynthesis) return;
+
+    // Cancel any ongoing speech and force resume to clear any stuck state
     window.speechSynthesis.cancel();
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.volume = volume;
+
+    // Try assigning a valid English voice to improve browser compatibility (especially Chrome/Safari)
+    if (window.speechSynthesis.getVoices) {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length > 0) {
+        const enVoice = voices.find(v => v.lang.startsWith('en') || v.lang.includes('en'));
+        if (enVoice) {
+          utterance.voice = enVoice;
+        }
+      }
+    }
+
     window.speechSynthesis.speak(utterance);
   } catch (e) {
     console.error('Failed to play text to speech:', e);

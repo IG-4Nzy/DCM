@@ -29,10 +29,10 @@ const Racks = () => {
     const { confirm } = useConfirm();
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
-    const hasView = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_VIEW);
-    const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_CREATE);
-    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_UPDATE);
-    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_DELETE);
+    const hasView = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
 
     const [searchQuery, setSearchQuery] = useTableState('Racks_search', '');
     const [page, setPage] = useTableState('Racks_page', 0);
@@ -175,7 +175,13 @@ const Racks = () => {
             id: 'sparePowerAvailability', 
             label: 'Spare Power', 
             sortable: true,
-            render: (row) => row.sparePowerAvailability ? 'Yes' : 'No'
+            render: (row) => {
+                const parts: string[] = [];
+                if (row.sparePowerAvailability) parts.push('Yes');
+                if (row.sparePowerC30) parts.push(`C-30: ${row.sparePowerC30}`);
+                if (row.sparePowerC90) parts.push(`C-90: ${row.sparePowerC90}`);
+                return parts.length > 0 ? parts.join(' | ') : 'No';
+            }
         },
         { id: 'remarks', label: 'Remarks', sortable: false }
     ];

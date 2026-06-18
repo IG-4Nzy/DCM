@@ -16,6 +16,7 @@ export interface NodeData {
     serialNumber?: string;
     custodian?: string;
     admin?: string;
+    assetNumber?: string;
     raidConfiguration?: string[];
     createdBy?: string;
     updatedAt?: string;
@@ -35,6 +36,7 @@ export interface CreateNodePayload {
     serialNumber?: string;
     custodian?: string;
     admin?: string;
+    assetNumber?: string;
     raidConfiguration?: string[];
 }
 
@@ -53,5 +55,6 @@ export interface UpdateNodePayload {
     serialNumber?: string;
     custodian?: string;
     admin?: string;
+    assetNumber?: string;
     raidConfiguration?: string[];
 }

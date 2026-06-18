@@ -7,6 +7,8 @@ export interface ServerRackData {
     temperature?: number | null;
     fanAvailable?: boolean;
     sparePowerAvailability?: boolean;
+    sparePowerC30?: string;
+    sparePowerC90?: string;
     remarks?: string;
     createdBy?: string;
     updatedAt?: string;
@@ -19,6 +21,8 @@ export interface CreateServerRackPayload {
     temperature?: number | null;
     fanAvailable?: boolean;
     sparePowerAvailability?: boolean;
+    sparePowerC30?: string;
+    sparePowerC90?: string;
     remarks?: string;
 }
 
@@ -30,5 +34,7 @@ export interface UpdateServerRackPayload {
     temperature?: number | null;
     fanAvailable?: boolean;
     sparePowerAvailability?: boolean;
+    sparePowerC30?: string;
+    sparePowerC90?: string;
     remarks?: string;
 }

@@ -47,7 +47,7 @@ async def compute_available_resources(node_doc: dict):
     
     return node_doc
 
-@router.get("/", response_description="List all nodes", response_model=PaginatedNodesModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Configurations"))])
+@router.get("/", response_description="List all nodes", response_model=PaginatedNodesModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def list_items(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),
@@ -61,7 +61,13 @@ async def list_items(
     
     if search:
         query = {
-            "node": {"$regex": search, "$options": "i"}
+            "$or": [
+                {"node": {"$regex": search, "$options": "i"}},
+                {"custodian": {"$regex": search, "$options": "i"}},
+                {"admin": {"$regex": search, "$options": "i"}},
+                {"assetNumber": {"$regex": search, "$options": "i"}},
+                {"serialNumber": {"$regex": search, "$options": "i"}}
+            ]
         }
 
     actual_sort_by = sortBy or sort_by or "node"
@@ -80,7 +86,7 @@ async def list_items(
 
     return {"data": items, "total": total}
 
-@router.post("/", response_description="Create a node", response_model=NodeModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Configuration"))])
+@router.post("/", response_description="Create a node", response_model=NodeModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def create_item(
     payload: CreateNodeModel = Body(...),
     current_user: dict = Depends(get_current_user)
@@ -98,7 +104,7 @@ async def create_item(
     created = await collection.find_one({"_id": new_item.inserted_id})
     return await compute_available_resources(created)
 
-@router.put("/{id}", response_description="Update a node", response_model=NodeModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Configurations"))])
+@router.put("/{id}", response_description="Update a node", response_model=NodeModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def update_item(id: str, payload: UpdateNodeModel = Body(...)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -129,7 +135,7 @@ async def update_item(id: str, payload: UpdateNodeModel = Body(...)):
 
     raise HTTPException(status_code=404, detail=f"Node {id} not found")
 
-@router.delete("/{id}", response_description="Delete a node", dependencies=[Depends(require_privilege("Delete Configurations"))])
+@router.delete("/{id}", response_description="Delete a node", dependencies=[Depends(require_privilege("Create Server Details"))])
 async def delete_item(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")

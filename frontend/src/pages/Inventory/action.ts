@@ -86,3 +86,15 @@ export const returnInventoryItem = createAsyncThunk(
     }
   }
 );
+
+export const editInventoryItem = createAsyncThunk(
+  'inventory/editInventoryItem',
+  async ({ id, data }: { id: string; data: { itemName: string; quantity: number; description?: string; isReturnable?: boolean; almiraNumber?: string; rackNumber?: string } }, { rejectWithValue }) => {
+    try {
+      const response = await request.put(`/api/inventory/${id}/edit`, data);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to edit item');
+    }
+  }
+);

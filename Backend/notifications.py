@@ -235,7 +235,7 @@ class NotificationSettingsModel(BaseModel):
 
 
 @router.get("/settings", response_description="Get notification settings")
-async def get_notification_settings():
+async def get_notification_settings(current_user: dict = Depends(get_current_user)):
     col = db.get_collection("notification_settings")
     doc = await col.find_one({})
     if not doc:
@@ -270,7 +270,15 @@ async def get_notification_settings():
 
 
 @router.post("/settings", response_description="Update notification settings")
-async def update_notification_settings(payload: NotificationSettingsModel = Body(...)):
+async def update_notification_settings(
+    payload: NotificationSettingsModel = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    is_superuser = current_user.get("isSuperuser", False)
+    privileges = current_user.get("privileges", [])
+    if not is_superuser and "Update Configurations" not in privileges:
+        raise HTTPException(status_code=403, detail="Not enough permissions to update configuration")
+
     col = db.get_collection("notification_settings")
     await col.update_one(
         {},

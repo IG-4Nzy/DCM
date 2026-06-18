@@ -14,20 +14,13 @@ import { PRIVILEGES } from '../../helpers/privileges';
 const ServerDetails = () => {
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
 
-    const hasConfigView = isSuperuser || hasPrivilege(PRIVILEGES.CONFIGURATION_VIEW);
-    const hasClusterView = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_VIEW);
+    const hasServerDetailsCreate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
 
     const tabs: TabItem[] = [];
-    if (hasConfigView) {
+    if (hasServerDetailsCreate) {
         tabs.push({ id: 'racks', label: 'Racks', value: 'racks' });
-    }
-    if (hasClusterView) {
         tabs.push({ id: 'clusters', label: 'Clusters', value: 'clusters' });
-    }
-    if (hasConfigView || hasClusterView) {
         tabs.push({ id: 'nodes', label: 'Nodes', value: 'nodes' });
-    }
-    if (hasClusterView) {
         tabs.push({ id: 'vms', label: 'VMs', value: 'vms' });
         tabs.push({ id: 'physical_servers', label: 'Physical Servers', value: 'physical_servers' });
     }

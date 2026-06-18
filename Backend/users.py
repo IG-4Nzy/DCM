@@ -89,9 +89,15 @@ async def list_users(
     search: Optional[str] = None,
     department: Optional[str] = None,
     role: Optional[str] = None,
+    status: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
     query = {}
+    if status == "active":
+        query["status"] = {"$ne": False}
+    elif status == "inactive":
+        query["status"] = False
+        
     is_superuser = current_user.get("isSuperuser", False)
     user_privileges = current_user.get("privileges", [])
     

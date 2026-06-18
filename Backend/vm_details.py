@@ -72,7 +72,7 @@ async def sync_node_resources(node_name: str):
             }}
         )
 
-@router.get("/", response_description="List all VM details", response_model=PaginatedVMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Cluster"))])
+@router.get("/", response_description="List all VM details", response_model=PaginatedVMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def list_items(
     clusterId: Optional[str] = Query(None, description="The ID of the cluster"),
     skip: int = Query(0, ge=0),
@@ -91,7 +91,9 @@ async def list_items(
         query["$or"] = [
             {"ipAddress": {"$regex": search, "$options": "i"}},
             {"applications": {"$regex": search, "$options": "i"}},
-            {"node": {"$regex": search, "$options": "i"}}
+            {"node": {"$regex": search, "$options": "i"}},
+            {"adminName": {"$regex": search, "$options": "i"}},
+            {"adminContact": {"$regex": search, "$options": "i"}}
         ]
 
     actual_sort_by = sortBy or sort_by or "createdAt"
@@ -108,7 +110,7 @@ async def list_items(
 
     return {"data": items, "total": total}
 
-@router.post("/", response_description="Create VM Details", response_model=VMDetailsModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Cluster"))])
+@router.post("/", response_description="Create VM Details", response_model=VMDetailsModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def create_item(
     payload: CreateVMDetailsModel = Body(...),
     current_user: dict = Depends(get_current_user)
@@ -124,7 +126,7 @@ async def create_item(
         await sync_node_resources(created["node"])
     return created
 
-@router.put("/{id}", response_description="Update VM details", response_model=VMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Cluster"))])
+@router.put("/{id}", response_description="Update VM details", response_model=VMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def update_item(id: str, payload: UpdateVMDetailsModel = Body(...)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -155,7 +157,7 @@ async def update_item(id: str, payload: UpdateVMDetailsModel = Body(...)):
 
     raise HTTPException(status_code=404, detail="VM Details not found")
 
-@router.delete("/{id}", response_description="Delete VM details", dependencies=[Depends(require_privilege("Delete Cluster"))])
+@router.delete("/{id}", response_description="Delete VM details", dependencies=[Depends(require_privilege("Create Server Details"))])
 async def delete_item(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")

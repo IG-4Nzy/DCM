@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, Paper, Tooltip, IconButton, Button, Tabs, Tab, Chip } from '@mui/material';
-import { MdAdd as AddIcon, MdDelete as DeleteIcon, MdUploadFile as UploadIcon } from 'react-icons/md';
+import { MdAdd as AddIcon, MdDelete as DeleteIcon, MdUploadFile as UploadIcon, MdEdit as EditIcon } from 'react-icons/md';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';
 import { useToast } from '../../contexts/ToastContext';
-import { fetchInventory, createInventory, updateInventory, deleteInventory, bulkCreateInventory } from './action';
+import { fetchInventory, createInventory, updateInventory, editInventoryItem, deleteInventory, bulkCreateInventory } from './action';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import type { AppDispatch, RootState } from '../../store';
 import type { InventoryData } from './model';
@@ -84,9 +84,22 @@ const Inventory: React.FC = () => {
     }
   };
 
-  const handleCreateSubmit = async (data: any) => {
-    await dispatch(createInventory(data));
-    showToast('Item created successfully', 'success');
+  const handleFormSubmit = async (data: any) => {
+    if (selectedItem) {
+      const result = await dispatch(editInventoryItem({ id: selectedItem.id || (selectedItem as any)._id, data }));
+      if (editInventoryItem.fulfilled.match(result)) {
+        showToast('Item updated successfully', 'success');
+      } else {
+        showToast((result.payload as string) || 'Failed to update item', 'error');
+      }
+    } else {
+      const result = await dispatch(createInventory(data));
+      if (createInventory.fulfilled.match(result)) {
+        showToast('Item created successfully', 'success');
+      } else {
+        showToast((result.payload as string) || 'Failed to create item', 'error');
+      }
+    }
     dispatch(fetchInventory({ skip: page * rowsPerPage, limit: rowsPerPage, search: searchQuery, sort_by: orderBy, order, isReturnable: activeTab === 'returnable' }));
   };
 
@@ -212,18 +225,27 @@ const Inventory: React.FC = () => {
     { id: 'lastUpdatedBy', label: 'Last Updated By', sortable: true }
   );
 
-  if (hasDelete) {
+  if (hasUpdate || hasDelete) {
     columns.push({
       id: 'actions',
       label: 'Actions',
       align: 'right',
       render: (row: any) => (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          <Tooltip title="Delete Item">
-            <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }} onClick={(e) => { e.stopPropagation(); handleDelete(row.id || row._id); }}>
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+          {hasUpdate && (
+            <Tooltip title="Edit Item">
+              <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }} onClick={(e) => { e.stopPropagation(); setSelectedItem(row); setIsFormModalOpen(true); }}>
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {hasDelete && (
+            <Tooltip title="Delete Item">
+              <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }} onClick={(e) => { e.stopPropagation(); handleDelete(row.id || row._id); }}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
         </Box>
       ),
     });
@@ -263,7 +285,7 @@ const Inventory: React.FC = () => {
                 onChange={handleBulkUpload}
               />
             </Button>
-            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setIsFormModalOpen(true)}>
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => { setSelectedItem(null); setIsFormModalOpen(true); }}>
               Add Item
             </Button>
           </Box>
@@ -288,8 +310,9 @@ const Inventory: React.FC = () => {
 
       <InventoryFormModal
         isModalOpen={isFormModalOpen}
-        handleCloseModal={() => setIsFormModalOpen(false)}
-        onSubmit={handleCreateSubmit}
+        handleCloseModal={() => { setIsFormModalOpen(false); setSelectedItem(null); }}
+        onSubmit={handleFormSubmit}
+        editingItem={selectedItem}
       />
 
       <InventoryDetailModal

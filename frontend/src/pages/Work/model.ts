@@ -39,5 +39,6 @@ export interface FetchWorksParams {
   order: string;
   search: string;
   status?: string;
+  assignee?: string;
   showToast?: (msg: string, severity?: 'error' | 'success') => void;
 }
