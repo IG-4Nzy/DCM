@@ -34,7 +34,7 @@ import {
 import request from '../../services/request';
 
 interface SearchResultItem {
-  type: 'node' | 'vm';
+  type: 'node' | 'vm' | 'cluster' | 'rack' | 'physical_server' | 'inventory';
   id: string;
   clusterName: string;
   name: string;
@@ -42,14 +42,80 @@ interface SearchResultItem {
   data: any;
 }
 
+const getItemIcon = (type: string) => {
+  switch (type) {
+    case 'node':
+      return <NodeIcon style={{ color: '#1976d2', fontSize: '1.5rem' }} />;
+    case 'vm':
+      return <VmIcon style={{ color: '#2e7d32', fontSize: '1.5rem' }} />;
+    case 'cluster':
+      return <ClusterIcon style={{ color: '#ed6c02', fontSize: '1.5rem' }} />;
+    case 'rack':
+      return <HddIcon style={{ color: '#9c27b0', fontSize: '1.5rem' }} />;
+    case 'physical_server':
+      return <NodeIcon style={{ color: '#0288d1', fontSize: '1.5rem' }} />;
+    case 'inventory':
+      return <TagIcon style={{ color: '#e91e63', fontSize: '1.5rem' }} />;
+    default:
+      return <InfoIcon style={{ color: '#757575', fontSize: '1.5rem' }} />;
+  }
+};
+
+const getDetailedIcon = (type: string) => {
+  switch (type) {
+    case 'node':
+      return <NodeIcon style={{ fontSize: '2.5rem', color: '#1976d2' }} />;
+    case 'vm':
+      return <VmIcon style={{ fontSize: '2.5rem', color: '#2e7d32' }} />;
+    case 'cluster':
+      return <ClusterIcon style={{ fontSize: '2.5rem', color: '#ed6c02' }} />;
+    case 'rack':
+      return <HddIcon style={{ fontSize: '2.5rem', color: '#9c27b0' }} />;
+    case 'physical_server':
+      return <NodeIcon style={{ fontSize: '2.5rem', color: '#0288d1' }} />;
+    case 'inventory':
+      return <TagIcon style={{ fontSize: '2.5rem', color: '#e91e63' }} />;
+    default:
+      return <InfoIcon style={{ fontSize: '2.5rem', color: '#757575' }} />;
+  }
+};
+
+const getChipColor = (type: string): "primary" | "success" | "warning" | "secondary" | "info" | "error" | "default" => {
+  switch (type) {
+    case 'node': return 'primary';
+    case 'vm': return 'success';
+    case 'cluster': return 'warning';
+    case 'rack': return 'secondary';
+    case 'physical_server': return 'info';
+    case 'inventory': return 'error';
+    default: return 'default';
+  }
+};
+
+const getChipLabel = (type: string) => {
+  switch (type) {
+    case 'node': return 'Node';
+    case 'vm': return 'VM';
+    case 'cluster': return 'Cluster';
+    case 'rack': return 'Rack';
+    case 'physical_server': return 'Physical Server';
+    case 'inventory': return 'Inventory';
+    default: return type;
+  }
+};
+
 const Search: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'node' | 'vm'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'node' | 'vm' | 'cluster' | 'rack' | 'physical_server' | 'inventory'>('all');
   
   const [nodes, setNodes] = useState<any[]>([]);
   const [vms, setVms] = useState<any[]>([]);
   const [clusters, setClusters] = useState<any[]>([]);
+  const [searchedClusters, setSearchedClusters] = useState<any[]>([]);
+  const [racks, setRacks] = useState<any[]>([]);
+  const [physicalServers, setPhysicalServers] = useState<any[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<SearchResultItem | null>(null);
 
@@ -74,25 +140,37 @@ const Search: React.FC = () => {
     loadClusters();
   }, []);
 
-  // Fetch Node and VM details based on debounced search query
+  // Fetch all entity types based on debounced search query
   useEffect(() => {
     const performSearch = async () => {
       if (!debouncedQuery.trim()) {
         setNodes([]);
         setVms([]);
+        setSearchedClusters([]);
+        setRacks([]);
+        setPhysicalServers([]);
+        setInventoryItems([]);
         setSelectedItem(null);
         return;
       }
 
       setLoading(true);
       try {
-        const [nodeRes, vmRes] = await Promise.all([
+        const results = await Promise.allSettled([
           request.get('/api/node-details', { params: { pagination: false, search: debouncedQuery } }),
-          request.get('/api/vm-details', { params: { pagination: false, search: debouncedQuery } })
+          request.get('/api/vm-details', { params: { pagination: false, search: debouncedQuery } }),
+          request.get('/api/clusters/', { params: { pagination: false, search: debouncedQuery } }),
+          request.get('/api/server-racks/', { params: { pagination: false, search: debouncedQuery } }),
+          request.get('/api/physical-servers/', { params: { pagination: false, search: debouncedQuery } }),
+          request.get('/api/inventory/', { params: { pagination: false, search: debouncedQuery } }),
         ]);
 
-        setNodes(nodeRes.data.data || []);
-        setVms(vmRes.data.data || []);
+        setNodes(results[0].status === 'fulfilled' ? results[0].value.data.data || [] : []);
+        setVms(results[1].status === 'fulfilled' ? results[1].value.data.data || [] : []);
+        setSearchedClusters(results[2].status === 'fulfilled' ? results[2].value.data.data || [] : []);
+        setRacks(results[3].status === 'fulfilled' ? results[3].value.data.data || [] : []);
+        setPhysicalServers(results[4].status === 'fulfilled' ? results[4].value.data.data || [] : []);
+        setInventoryItems(results[5].status === 'fulfilled' ? results[5].value.data.data || [] : []);
       } catch (err) {
         console.error('Search failed:', err);
       } finally {
@@ -135,8 +213,56 @@ const Search: React.FC = () => {
       });
     });
 
+    // Map Clusters
+    searchedClusters.forEach(cluster => {
+      items.push({
+        type: 'cluster',
+        id: cluster.id || cluster._id,
+        clusterName: cluster.clusterName || 'Unknown',
+        name: cluster.clusterName || 'Unnamed Cluster',
+        subtitle: `IP: ${cluster.ipAddress || 'No IP'}`,
+        data: cluster
+      });
+    });
+
+    // Map Racks
+    racks.forEach(rack => {
+      items.push({
+        type: 'rack',
+        id: rack.id || rack._id,
+        clusterName: '',
+        name: rack.serverRack || 'Unnamed Rack',
+        subtitle: `Capacity: ${rack.rackCapacity || '--'} U | Temp: ${rack.temperature ?? '--'} °C`,
+        data: rack
+      });
+    });
+
+    // Map Physical Servers
+    physicalServers.forEach(ps => {
+      items.push({
+        type: 'physical_server',
+        id: ps.id || ps._id,
+        clusterName: clusterMap.get(ps.clusterId) || 'Unknown Cluster',
+        name: ps.ipAddress || ps.applications || 'Unnamed Server',
+        subtitle: `Node: ${ps.node || 'Unknown'} | App: ${ps.applications || 'General'}`,
+        data: ps
+      });
+    });
+
+    // Map Inventory
+    inventoryItems.forEach(inv => {
+      items.push({
+        type: 'inventory',
+        id: inv.id || inv._id,
+        clusterName: inv.department || '',
+        name: inv.itemName || 'Unnamed Item',
+        subtitle: `Qty: ${inv.quantity ?? 0} | ${inv.isReturnable ? 'Returnable' : 'Consumable'}`,
+        data: inv
+      });
+    });
+
     return items;
-  }, [nodes, vms, clusterMap]);
+  }, [nodes, vms, searchedClusters, racks, physicalServers, inventoryItems, clusterMap]);
 
   // Filtered results
   const filteredResults = React.useMemo(() => {
@@ -162,11 +288,11 @@ const Search: React.FC = () => {
       {/* Search Header */}
       <Paper sx={{ p: 2.5, borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={4}>
             <TextField
               fullWidth
               variant="outlined"
-              placeholder="Search nodes or VMs by IP, Hostname, App, Rack, CPU, OS..."
+              placeholder="Search by IP, name, rack, node, app, tag, inventory..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               InputProps={{
@@ -179,23 +305,35 @@ const Search: React.FC = () => {
               }}
             />
           </Grid>
-          <Grid item xs={12} md={6} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
+          <Grid item xs={12} md={8} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
             <ToggleButtonGroup
               value={filterType}
               exclusive
               onChange={(e, val) => val && setFilterType(val)}
               aria-label="filter type"
-              size="medium"
-              sx={{ bgcolor: 'rgba(0,0,0,0.02)', p: 0.5, borderRadius: '12px' }}
+              size="small"
+              sx={{ bgcolor: 'rgba(0,0,0,0.02)', p: 0.5, borderRadius: '12px', flexWrap: 'wrap', gap: 0.5 }}
             >
-              <ToggleButton value="all" sx={{ border: 'none', borderRadius: '8px !important', px: 3 }}>
+              <ToggleButton value="all" sx={{ border: 'none', borderRadius: '8px !important', px: 2 }}>
                 All ({allResults.length})
               </ToggleButton>
-              <ToggleButton value="node" sx={{ border: 'none', borderRadius: '8px !important', px: 3 }}>
+              <ToggleButton value="node" sx={{ border: 'none', borderRadius: '8px !important', px: 2 }}>
                 Nodes ({allResults.filter(r => r.type === 'node').length})
               </ToggleButton>
-              <ToggleButton value="vm" sx={{ border: 'none', borderRadius: '8px !important', px: 3 }}>
+              <ToggleButton value="vm" sx={{ border: 'none', borderRadius: '8px !important', px: 2 }}>
                 VMs ({allResults.filter(r => r.type === 'vm').length})
+              </ToggleButton>
+              <ToggleButton value="cluster" sx={{ border: 'none', borderRadius: '8px !important', px: 2 }}>
+                Clusters ({allResults.filter(r => r.type === 'cluster').length})
+              </ToggleButton>
+              <ToggleButton value="rack" sx={{ border: 'none', borderRadius: '8px !important', px: 2 }}>
+                Racks ({allResults.filter(r => r.type === 'rack').length})
+              </ToggleButton>
+              <ToggleButton value="physical_server" sx={{ border: 'none', borderRadius: '8px !important', px: 2 }}>
+                Phys Servers ({allResults.filter(r => r.type === 'physical_server').length})
+              </ToggleButton>
+              <ToggleButton value="inventory" sx={{ border: 'none', borderRadius: '8px !important', px: 2 }}>
+                Inventory ({allResults.filter(r => r.type === 'inventory').length})
               </ToggleButton>
             </ToggleButtonGroup>
           </Grid>
@@ -232,7 +370,7 @@ const Search: React.FC = () => {
             ) : filteredResults.length === 0 && !loading ? (
               <Box sx={{ p: 4, textAlign: 'center' }}>
                 <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic' }}>
-                  No nodes or VMs found matching "{searchQuery}"
+                  No items found matching "{searchQuery}"
                 </Typography>
               </Box>
             ) : (
@@ -247,19 +385,22 @@ const Search: React.FC = () => {
                         sx={{ 
                           py: 1.5, 
                           px: 2,
-                          borderLeft: isSelected ? '4px solid #1976d2' : '4px solid transparent',
+                          borderLeft: isSelected ? `4px solid ${
+                            item.type === 'node' ? '#1976d2' :
+                            item.type === 'vm' ? '#2e7d32' :
+                            item.type === 'cluster' ? '#ed6c02' :
+                            item.type === 'rack' ? '#9c27b0' :
+                            item.type === 'physical_server' ? '#0288d1' :
+                            '#e91e63'
+                          }` : '4px solid transparent',
                           '&.Mui-selected': {
-                            bgcolor: 'rgba(25, 118, 210, 0.08)',
-                            '&:hover': { bgcolor: 'rgba(25, 118, 210, 0.12)' }
+                            bgcolor: 'rgba(0, 0, 0, 0.04)',
+                            '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.08)' }
                           }
                         }}
                       >
                         <ListItemIcon sx={{ minWidth: 40 }}>
-                          {item.type === 'node' ? (
-                            <NodeIcon style={{ color: '#1976d2', fontSize: '1.5rem' }} />
-                          ) : (
-                            <VmIcon style={{ color: '#2e7d32', fontSize: '1.5rem' }} />
-                          )}
+                          {getItemIcon(item.type)}
                         </ListItemIcon>
                         <ListItemText
                           primary={
@@ -268,9 +409,9 @@ const Search: React.FC = () => {
                                 {item.name}
                               </Typography>
                               <Chip 
-                                label={item.type === 'node' ? 'Node' : 'VM'} 
+                                label={getChipLabel(item.type)} 
                                 size="small" 
-                                color={item.type === 'node' ? 'primary' : 'success'}
+                                color={getChipColor(item.type)}
                                 variant="outlined"
                                 sx={{ height: 18, fontSize: '0.65rem', fontWeight: 'bold' }}
                               />
@@ -314,29 +455,33 @@ const Search: React.FC = () => {
               <Box 
                 sx={{ 
                   p: 3, 
-                  bgcolor: selectedItem.type === 'node' ? 'rgba(25, 118, 210, 0.04)' : 'rgba(46, 125, 50, 0.04)',
+                  bgcolor: 
+                    selectedItem.type === 'node' ? 'rgba(25, 118, 210, 0.04)' :
+                    selectedItem.type === 'vm' ? 'rgba(46, 125, 50, 0.04)' :
+                    selectedItem.type === 'cluster' ? 'rgba(237, 108, 2, 0.04)' :
+                    selectedItem.type === 'rack' ? 'rgba(156, 39, 176, 0.04)' :
+                    selectedItem.type === 'physical_server' ? 'rgba(2, 136, 209, 0.04)' :
+                    'rgba(233, 30, 99, 0.04)',
                   borderBottom: '1px solid rgba(0,0,0,0.08)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 2
                 }}
               >
-                {selectedItem.type === 'node' ? (
-                  <NodeIcon style={{ fontSize: '2.5rem', color: '#1976d2' }} />
-                ) : (
-                  <VmIcon style={{ fontSize: '2.5rem', color: '#2e7d32' }} />
-                )}
+                {getDetailedIcon(selectedItem.type)}
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
                     {selectedItem.name}
                   </Typography>
-                  <Typography variant="subtitle2" color="textSecondary">
-                    Cluster: {selectedItem.clusterName}
-                  </Typography>
+                  {selectedItem.clusterName && (
+                    <Typography variant="subtitle2" color="textSecondary">
+                      Cluster/Department: {selectedItem.clusterName}
+                    </Typography>
+                  )}
                 </Box>
                 <Chip 
-                  label={selectedItem.type === 'node' ? 'Physical Node' : 'Virtual Machine'}
-                  color={selectedItem.type === 'node' ? 'primary' : 'success'}
+                  label={getChipLabel(selectedItem.type)}
+                  color={getChipColor(selectedItem.type)}
                   sx={{ fontWeight: 'bold', px: 1 }}
                 />
               </Box>
@@ -486,7 +631,7 @@ const Search: React.FC = () => {
                       </Paper>
                     </Grid>
                   </Grid>
-                ) : (
+                ) : selectedItem.type === 'vm' ? (
                   // VM Detailed Fields
                   <Grid container spacing={3}>
                     {/* Resource Allocation */}
@@ -580,6 +725,291 @@ const Search: React.FC = () => {
                       </Paper>
                     </Grid>
                   </Grid>
+                ) : selectedItem.type === 'cluster' ? (
+                  // Cluster Detailed Fields
+                  <Grid container spacing={3}>
+                    <Grid item xs={12}>
+                      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <ClusterIcon color="#ed6c02" /> Cluster Information
+                        </Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Cluster Name</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.clusterName || '--'}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">IP Address / Range</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.ipAddress || '--'}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Serial Number (SL)</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.slNumber || '--'}</Typography>
+                          </Grid>
+                        </Grid>
+                      </Paper>
+                    </Grid>
+                    {/* Metadata */}
+                    <Grid item xs={12}>
+                      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <TagIcon color="#ed6c02" /> Metadata
+                        </Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Created By</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.createdBy || 'System'}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Last Updated</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <DateIcon /> {selectedItem.data.updatedAt ? new Date(selectedItem.data.updatedAt).toLocaleDateString() : '--'}
+                            </Typography>
+                          </Grid>
+                        </Grid>
+                      </Paper>
+                    </Grid>
+                  </Grid>
+                ) : selectedItem.type === 'rack' ? (
+                  // Rack Detailed Fields
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <HddIcon color="#9c27b0" /> Rack Specifications
+                        </Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Rack Name</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.serverRack || '--'}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Capacity (U)</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.rackCapacity ? `${selectedItem.data.rackCapacity} U` : '--'}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Remaining Capacity (U)</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600, color: 'success.main' }}>
+                              {selectedItem.data.remainingCapacity !== undefined ? `${selectedItem.data.remainingCapacity} U` : '--'}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Temperature</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                              {selectedItem.data.temperature !== undefined ? `${selectedItem.data.temperature} °C` : '--'}
+                            </Typography>
+                          </Grid>
+                        </Grid>
+                      </Paper>
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <CpuIcon color="#9c27b0" /> Features & Power
+                        </Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Fan Available</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                              {selectedItem.data.fanAvailable ? 'Yes' : 'No'}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Spare Power</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                              {selectedItem.data.sparePowerAvailability ? 'Yes' : 'No'}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Spare Power C-30</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                              {selectedItem.data.sparePowerC30 || '--'}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Spare Power C-90</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                              {selectedItem.data.sparePowerC90 || '--'}
+                            </Typography>
+                          </Grid>
+                        </Grid>
+                      </Paper>
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <AppIcon color="#9c27b0" /> Networks Available
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                          {selectedItem.data.networksAvailable && selectedItem.data.networksAvailable.length > 0 ? (
+                            selectedItem.data.networksAvailable.map((net: string) => (
+                              <Chip key={net} label={net} size="small" variant="outlined" color="secondary" />
+                            ))
+                          ) : (
+                            <Typography variant="body2" color="textSecondary">No networks registered.</Typography>
+                          )}
+                        </Box>
+                      </Paper>
+                    </Grid>
+
+                    {selectedItem.data.remarks && (
+                      <Grid item xs={12}>
+                        <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>Remarks</Typography>
+                        <Typography variant="body1" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                          "{selectedItem.data.remarks}"
+                        </Typography>
+                      </Grid>
+                    )}
+                  </Grid>
+                ) : selectedItem.type === 'physical_server' ? (
+                  // Physical Server Detailed Fields
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <NodeIcon color="#0288d1" /> System Resources
+                        </Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={4}>
+                            <Typography variant="caption" color="textSecondary">RAM</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.ram || '--'}</Typography>
+                          </Grid>
+                          <Grid item xs={4}>
+                            <Typography variant="caption" color="textSecondary">HDD</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.hdd || '--'}</Typography>
+                          </Grid>
+                          <Grid item xs={4}>
+                            <Typography variant="caption" color="textSecondary">CPU</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.cpu || '--'}</Typography>
+                          </Grid>
+                        </Grid>
+                      </Paper>
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <ClusterIcon color="#0288d1" /> Environment Details
+                        </Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Host Node</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.node || '--'}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">IP Address</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.ipAddress || '--'}</Typography>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Typography variant="caption" color="textSecondary">OS and Expiry Details</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.osAndExpiry || '--'}</Typography>
+                          </Grid>
+                        </Grid>
+                      </Paper>
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <AppIcon color="#0288d1" /> Application and Backup
+                        </Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={12}>
+                            <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>Applications Running</Typography>
+                            <Typography variant="body1" sx={{ bgcolor: 'rgba(0,0,0,0.02)', p: 1.5, borderRadius: 1.5, border: '1px solid rgba(0,0,0,0.05)', fontWeight: 500 }}>
+                              {selectedItem.data.applications || 'No applications registered.'}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>Backup Location</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.backupLocation || '--'}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Added to Monitoring</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.addedToMonitoring ? 'Yes' : 'No'}</Typography>
+                          </Grid>
+                        </Grid>
+                      </Paper>
+                    </Grid>
+                  </Grid>
+                ) : (
+                  // Inventory Detailed Fields
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <TagIcon color="#e91e63" /> Item Details
+                        </Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Item Name</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.itemName || '--'}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Quantity Available</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600, color: 'primary.main' }}>{selectedItem.data.quantity ?? 0}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Type</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                              {selectedItem.data.isReturnable ? 'Returnable' : 'Consumable'}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Department</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.department || '--'}</Typography>
+                          </Grid>
+                        </Grid>
+                      </Paper>
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <InfoIcon color="#e91e63" /> Storage Location
+                        </Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Almira Number</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.almiraNumber || '--'}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Rack Number</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.rackNumber || '--'}</Typography>
+                          </Grid>
+                        </Grid>
+                      </Paper>
+                    </Grid>
+
+                    {selectedItem.data.description && (
+                      <Grid item xs={12}>
+                        <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                          <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>Description</Typography>
+                          <Typography variant="body1">{selectedItem.data.description}</Typography>
+                        </Paper>
+                      </Grid>
+                    )}
+
+                    {/* Meta info */}
+                    <Grid item xs={12}>
+                      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                        <Grid container spacing={2}>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Last Updated By</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.lastUpdatedBy || '--'}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">Last Updated Date</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                              {selectedItem.data.lastUpdatedDate ? new Date(selectedItem.data.lastUpdatedDate).toLocaleDateString() : '--'}
+                            </Typography>
+                          </Grid>
+                        </Grid>
+                      </Paper>
+                    </Grid>
+                  </Grid>
                 )}
               </Box>
             </Box>
@@ -590,7 +1020,7 @@ const Search: React.FC = () => {
                 No Item Selected
               </Typography>
               <Typography variant="body2" color="textSecondary" sx={{ mt: 1, maxWidth: '300px' }}>
-                Select any Node or VM from the search results on the left panel to view its full details.
+                Select any item from the search results on the left panel to view its full details.
               </Typography>
             </Box>
           )}
