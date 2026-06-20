@@ -130,6 +130,43 @@ const mergePreviousClusterData = (template: any, prevData: any) => {
   return cloned;
 };
 
+interface AutoGrowingTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  value: string;
+}
+
+const AutoGrowingTextarea: React.FC<AutoGrowingTextareaProps> = ({ value, onChange, style, ...props }) => {
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+  const adjustHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  };
+
+  React.useEffect(() => {
+    adjustHeight();
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={(e) => {
+        onChange?.(e);
+        adjustHeight();
+      }}
+      style={{
+        resize: 'none',
+        overflowY: 'hidden',
+        ...style,
+      }}
+      {...props}
+    />
+  );
+};
+
 const ClusterChecklist: React.FC = () => {
   const { showToast } = useToast();
   const token = useSelector((state: RootState) => state.auth.token);
@@ -817,10 +854,10 @@ const ClusterChecklist: React.FC = () => {
                         sx={{ height: 20, fontSize: 10, fontWeight: 600 }}
                       />
                       
-                      <textarea
+                      <AutoGrowingTextarea
                         placeholder="warnings or any remarks if any"
                         value={remarksMap[catGroup.category] || ''}
-                        onChange={(e) => {
+                        onChange={(e: any) => {
                           const val = e.target.value;
                           if (onUpdate) {
                             setCategoryRemarks(prev => ({ ...prev, [catGroup.category]: val }));
@@ -828,7 +865,7 @@ const ClusterChecklist: React.FC = () => {
                             setViewCategoryRemarks(prev => ({ ...prev, [catGroup.category]: val }));
                           }
                         }}
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e: any) => e.stopPropagation()}
                         style={{
                           marginLeft: 'auto',
                           padding: '4px 10px',
@@ -840,9 +877,7 @@ const ClusterChecklist: React.FC = () => {
                           color: '#334155',
                           backgroundColor: '#ffffff',
                           minHeight: '40px',
-                          maxHeight: '120px',
                           fontFamily: 'inherit',
-                          resize: 'vertical',
                           outline: 'none',
                         }}
                         disabled={!canEditValues}
@@ -906,14 +941,13 @@ const ClusterChecklist: React.FC = () => {
                             </td>
                             <td>
                               {canEditValues ? (
-                                <input
-                                  type="text"
+                               <AutoGrowingTextarea
                                   value={row.remarks}
-                                  onChange={(e) => onUpdate?.(row.filteredIdx, 'remarks', e.target.value)}
+                                  onChange={(e: any) => onUpdate?.(row.filteredIdx, 'remarks', e.target.value)}
                                   placeholder="Add remark..."
                                 />
                               ) : (
-                                <span>{row.remarks || '—'}</span>
+                                <span style={{ whiteSpace: 'pre-wrap' }}>{row.remarks || '—'}</span>
                               )}
                             </td>
                             {allowDelete && (
@@ -974,10 +1008,10 @@ const ClusterChecklist: React.FC = () => {
                   sx={{ ml: 1, height: 20, fontSize: 10, fontWeight: 600 }}
                 />
 
-                <textarea
+                <AutoGrowingTextarea
                   placeholder="warnings or any remarks if any"
                   value={remarksMap[catGroup.category] || ''}
-                  onChange={(e) => {
+                  onChange={(e: any) => {
                     const val = e.target.value;
                     if (onUpdate) {
                       setCategoryRemarks(prev => ({ ...prev, [catGroup.category]: val }));
@@ -985,7 +1019,7 @@ const ClusterChecklist: React.FC = () => {
                       setViewCategoryRemarks(prev => ({ ...prev, [catGroup.category]: val }));
                     }
                   }}
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e: any) => e.stopPropagation()}
                   style={{
                     marginLeft: 'auto',
                     padding: '4px 10px',
@@ -997,9 +1031,7 @@ const ClusterChecklist: React.FC = () => {
                     color: '#334155',
                     backgroundColor: '#ffffff',
                     minHeight: '40px',
-                    maxHeight: '120px',
                     fontFamily: 'inherit',
-                    resize: 'vertical',
                     outline: 'none',
                   }}
                   disabled={!canEditValues}
@@ -1066,14 +1098,13 @@ const ClusterChecklist: React.FC = () => {
                                 <label>
                                   Remarks
                                   {canEditValues ? (
-                                    <input
-                                      type="text"
+                                    <AutoGrowingTextarea
                                       value={row.remarks}
-                                      onChange={(e) => onUpdate?.(row.filteredIdx, 'remarks', e.target.value)}
+                                      onChange={(e: any) => onUpdate?.(row.filteredIdx, 'remarks', e.target.value)}
                                       placeholder="Add remark..."
                                     />
                                   ) : (
-                                    <strong>{row.remarks || '-'}</strong>
+                                    <strong style={{ whiteSpace: 'pre-wrap' }}>{row.remarks || '-'}</strong>
                                   )}
                                 </label>
                               </div>

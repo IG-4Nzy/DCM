@@ -135,6 +135,43 @@ const mergePreviousBMSData = (template: any, prevData: any) => {
   return cloned;
 };
 
+interface AutoGrowingTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  value: string;
+}
+
+const AutoGrowingTextarea: React.FC<AutoGrowingTextareaProps> = ({ value, onChange, style, ...props }) => {
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+  const adjustHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  };
+
+  React.useEffect(() => {
+    adjustHeight();
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={(e) => {
+        onChange?.(e);
+        adjustHeight();
+      }}
+      style={{
+        resize: 'none',
+        overflowY: 'hidden',
+        ...style,
+      }}
+      {...props}
+    />
+  );
+};
+
 const BMSChecklist: React.FC = () => {
   const { showToast } = useToast();
   const token = useSelector((state: RootState) => state.auth.token);
@@ -876,14 +913,13 @@ const BMSChecklist: React.FC = () => {
                             </td>
                             <td>
                               {canEditValues ? (
-                                <input
-                                  type="text"
+                               <AutoGrowingTextarea
                                   value={row.remarks}
-                                  onChange={(e) => onUpdate?.(row.filteredIdx, 'remarks', e.target.value)}
+                                  onChange={(e: any) => onUpdate?.(row.filteredIdx, 'remarks', e.target.value)}
                                   placeholder="Add remark..."
                                 />
                               ) : (
-                                <span>{row.remarks || '—'}</span>
+                                <span style={{ whiteSpace: 'pre-wrap' }}>{row.remarks || '—'}</span>
                               )}
                             </td>
                             {allowDelete && (
@@ -1017,14 +1053,13 @@ const BMSChecklist: React.FC = () => {
                                 <label>
                                   Remarks
                                   {canEditValues ? (
-                                    <input
-                                      type="text"
+                                    <AutoGrowingTextarea
                                       value={row.remarks}
-                                      onChange={(e) => onUpdate?.(row.filteredIdx, 'remarks', e.target.value)}
+                                      onChange={(e: any) => onUpdate?.(row.filteredIdx, 'remarks', e.target.value)}
                                       placeholder="Add remark..."
                                     />
                                   ) : (
-                                    <strong>{row.remarks || '-'}</strong>
+                                    <strong style={{ whiteSpace: 'pre-wrap' }}>{row.remarks || '-'}</strong>
                                   )}
                                 </label>
                               </div>
