@@ -93,10 +93,12 @@ async def list_users(
     current_user: dict = Depends(get_current_user)
 ):
     query = {}
-    if status == "active":
+    if status == "active" or status is None:
+        # Default: exclude inactive users unless explicitly asked
         query["status"] = {"$ne": False}
     elif status == "inactive":
         query["status"] = False
+    # status == "all" → no status filter, show everyone
         
     is_superuser = current_user.get("isSuperuser", False)
     user_privileges = current_user.get("privileges", [])

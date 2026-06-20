@@ -289,7 +289,7 @@ async def logout(current_user: dict = Depends(get_current_user)):
                 if first_login_str:
                     first_login_dt = datetime.fromisoformat(first_login_str)
                     duration = now_local - first_login_dt
-                    worked_hours = round(duration.total_seconds() / 3600.0, 2)
+                    worked_hours = round(duration.total_seconds() / 3600.0, 1)
                     
                 # Apply the logout update rule: only update if now_local > existing lastLogout
                 existing_logout_str = existing_attendance.get("lastLogout")
@@ -311,7 +311,7 @@ async def logout(current_user: dict = Depends(get_current_user)):
                         try:
                             first_login_dt = datetime.fromisoformat(first_login_str)
                             existing_logout_dt = datetime.fromisoformat(existing_logout_str)
-                            update_fields["workedHours"] = round((existing_logout_dt - first_login_dt).total_seconds() / 3600.0, 2)
+                            update_fields["workedHours"] = round((existing_logout_dt - first_login_dt).total_seconds() / 3600.0, 1)
                         except Exception:
                             pass
 

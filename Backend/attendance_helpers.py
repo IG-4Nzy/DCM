@@ -185,7 +185,7 @@ async def close_past_open_attendances(username: str, now_local: datetime, last_a
                 except Exception:
                     logout_dt = first_login_dt + timedelta(hours=8)
                     
-            worked_hours = round((logout_dt - first_login_dt).total_seconds() / 3600.0, 2)
+            worked_hours = round((logout_dt - first_login_dt).total_seconds() / 3600.0, 1)
             
             await attendance_collection.update_one(
                 {"_id": rec["_id"]},

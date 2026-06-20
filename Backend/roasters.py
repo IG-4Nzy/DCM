@@ -410,7 +410,7 @@ async def get_duty_summary(
     # Get all users of this department with the tracked role
     users_collection = db.get_collection("users")
     tracked_role = config.get("trackedRole", "All Roles")
-    user_query = {"department": department}
+    user_query = {"department": department, "status": {"$ne": False}}
     user_query["$or"] = [
         {"isSuperuser": {"$ne": True}},
         {"is_superuser": {"$ne": True}}

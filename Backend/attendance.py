@@ -262,7 +262,7 @@ async def list_attendance(
                         start_dt = start_dt.replace(tzinfo=None)
                     elif start_dt.tzinfo is None and end_dt.tzinfo is not None:
                         end_dt = end_dt.replace(tzinfo=None)
-                    enriched["workedHours"] = round((end_dt - start_dt).total_seconds() / 3600.0, 2)
+                    enriched["workedHours"] = round((end_dt - start_dt).total_seconds() / 3600.0, 1)
                 except Exception:
                     pass
 
@@ -587,7 +587,7 @@ async def edit_attendance(
         try:
             start_dt = datetime.fromisoformat(first_login)
             end_dt = datetime.fromisoformat(last_logout)
-            update_dict["workedHours"] = round((end_dt - start_dt).total_seconds() / 3600.0, 2)
+            update_dict["workedHours"] = round((end_dt - start_dt).total_seconds() / 3600.0, 1)
         except Exception:
             pass
             

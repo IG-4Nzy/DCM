@@ -2,7 +2,7 @@ import os
 import motor.motor_asyncio
 from urllib.parse import urlparse
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/dcm_database")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://admin:password@localhost:27017/dcm_database?authSource=admin")
 
 client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
 

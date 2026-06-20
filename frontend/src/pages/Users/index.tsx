@@ -105,7 +105,7 @@ const Users: React.FC = () => {
 
   const loadSystemUsers = async () => {
     try {
-      const res = await request.get("/api/users", { params: { pagination: false } });
+      const res = await request.get("/api/users", { params: { pagination: false, status: "all" } });
       setAllSystemUsers(res.data.data || []);
     } catch (err) {
       console.error("Failed to load system users", err);

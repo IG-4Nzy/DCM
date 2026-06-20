@@ -93,7 +93,7 @@ async def update_attendance_on_request(username: str, user_dept: str, user_role:
                             try:
                                 first_login_dt = datetime.fromisoformat(first_login_str)
                                 duration = now_local - first_login_dt
-                                worked_hours = round(duration.total_seconds() / 3600.0, 2)
+                                worked_hours = round(duration.total_seconds() / 3600.0, 1)
                             except Exception:
                                 pass
                         
