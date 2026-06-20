@@ -6,7 +6,7 @@ from models import (
     AttendanceModel, CreateAttendanceModel, UpdateAttendanceModel, PaginatedAttendanceModel, AttendanceConfigModel
 )
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta
 
 router = APIRouter()
 attendance_collection = db.get_collection("attendance")
@@ -184,39 +184,59 @@ async def list_attendance(
                     dt_local = datetime.fromisoformat(last_active_str)
                 
                 # Check if it's a night shift
-                is_record_night = False
-                shift_start = item.get("shiftStart")
-                shift_end = item.get("shiftEnd")
-                if shift_start and shift_end:
-                    try:
-                        sh, sm = map(int, shift_start.split(":"))
-                        eh, em = map(int, shift_end.split(":"))
-                        is_record_night = (sh > eh) or (sh == eh and sm >= em)
-                    except Exception:
-                        pass
+                shift_start = item.get("shiftStart") or "09:00"
+                shift_end = item.get("shiftEnd") or "17:00"
+                sh, sm = 9, 0
+                eh, em = 17, 0
+                try:
+                    sh, sm = map(int, shift_start.split(":"))
+                except Exception:
+                    pass
+                try:
+                    eh, em = map(int, shift_end.split(":"))
+                except Exception:
+                    pass
                 
-                allowed_dates = [item.get("date")]
-                shift_end_dt = None
+                is_record_night = (sh > eh) or (sh == eh and sm >= em)
+                
+                rec_dt = datetime.strptime(item.get("date"), "%Y-%m-%d")
+                shift_start_dt = rec_dt.replace(hour=sh, minute=sm, second=0, microsecond=0)
                 if is_record_night:
-                    try:
-                        rec_dt = datetime.strptime(item.get("date"), "%Y-%m-%d")
-                        next_day_str = (rec_dt + timedelta(days=1)).strftime("%Y-%m-%d")
-                        allowed_dates.append(next_day_str)
-                        
-                        # Calculate shift end datetime in local timezone
-                        if shift_end:
-                            eh, em = map(int, shift_end.split(":"))
-                            shift_end_dt = dt_local.replace(year=rec_dt.year, month=rec_dt.month, day=rec_dt.day, hour=eh, minute=em, second=0, microsecond=0) + timedelta(days=1)
-                            if dt_local.tzinfo:
-                                shift_end_dt = shift_end_dt.replace(tzinfo=dt_local.tzinfo)
-                    except Exception:
-                        pass
+                    shift_end_dt = rec_dt.replace(hour=eh, minute=em, second=0, microsecond=0) + timedelta(days=1)
+                else:
+                    shift_end_dt = rec_dt.replace(hour=eh, minute=em, second=0, microsecond=0)
                 
-                if dt_local.strftime("%Y-%m-%d") in allowed_dates:
-                    # Cap at shift end time if shift is closed (past shift end time)
-                    if shift_end_dt and dt_local > shift_end_dt:
-                        enriched["lastLogout"] = shift_end_dt.isoformat()
-                    else:
+                # Align timezones
+                if dt_local.tzinfo:
+                    shift_start_dt = shift_start_dt.replace(tzinfo=dt_local.tzinfo)
+                    shift_end_dt = shift_end_dt.replace(tzinfo=dt_local.tzinfo)
+                
+                # Active window is from [Shift Start - 3 hours] to [Shift End + 3 hours]
+                window_start = shift_start_dt - timedelta(hours=3)
+                window_end = shift_end_dt + timedelta(hours=3)
+                
+                if window_start <= dt_local <= window_end:
+                    # Only enrich if dt_local is strictly later than existing db lastLogout
+                    db_logout_str = item.get("lastLogout")
+                    should_enrich = True
+                    if db_logout_str:
+                        try:
+                            db_logout_dt = datetime.fromisoformat(db_logout_str)
+                            # Align timezones for comparison
+                            if db_logout_dt.tzinfo is not None and dt_local.tzinfo is None:
+                                db_logout_dt = db_logout_dt.replace(tzinfo=None)
+                            elif db_logout_dt.tzinfo is None and dt_local.tzinfo is not None:
+                                dt_local = dt_local.replace(tzinfo=None)
+                                
+                            if dt_local <= db_logout_dt:
+                                should_enrich = False
+                        except Exception:
+                            pass
+                    
+                    if should_enrich:
+                        # Align timezone for output
+                        if dt_local.tzinfo is not None and item.get("firstLogin") and datetime.fromisoformat(item["firstLogin"]).tzinfo is None:
+                            dt_local = dt_local.replace(tzinfo=None)
                         enriched["lastLogout"] = dt_local.isoformat()
             except Exception:
                 # Fallback to simple matching if parsing fails

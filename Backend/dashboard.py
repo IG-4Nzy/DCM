@@ -191,7 +191,7 @@ async def get_dashboard_summary(
 
     
     # 9. Fetch today's attendance logs for this department
-    att_logs_col = db.get_collection("attendance_logs")
+    att_logs_col = db.get_collection("attendance")
     att_query = {"date": date}
     if not is_superuser:
         dept_users_for_att = await users_col.find({"department": active_dept}).to_list(length=None)

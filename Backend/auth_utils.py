@@ -45,9 +45,6 @@ async def update_attendance_on_request(username: str, user_dept: str, user_role:
             from attendance_helpers import get_target_attendance_date_details
             details = await get_target_attendance_date_details(username, now_local)
             target_date = details["date"]
-            is_prev_day = details["is_prev_day"]
-            prev_shift_end_dt = details["prev_shift_end_dt"]
-            is_closed = details["is_closed"]
             
             attendance_collection = db.get_collection("attendance")
             existing = await attendance_collection.find_one({
@@ -56,54 +53,47 @@ async def update_attendance_on_request(username: str, user_dept: str, user_role:
             })
             
             if not existing:
-                # We only create a record for today_str. If target_date is prev_day_str,
-                # but no record exists, we should not create one.
-                if target_date == today_str:
-                    await attendance_collection.insert_one({
-                        "username": username,
-                        "department": user_dept or "Unassigned",
-                        "date": today_str,
-                        "firstLogin": now_local.isoformat(),
-                        "lastLogout": now_local.isoformat(),
-                        "workedHours": 0.0,
-                        "regularizeStatus": "None",
-                        "regularizeReason": None,
-                        "regularizeRemarks": None,
-                        "loggedOut": False
-                    })
+                from attendance_helpers import get_shift_details_for_date
+                shift_name, shift_start_str, shift_end_str = await get_shift_details_for_date(
+                    username, target_date
+                )
+                await attendance_collection.insert_one({
+                    "username": username,
+                    "department": user_dept or "Unassigned",
+                    "date": target_date,
+                    "firstLogin": now_local.isoformat(),
+                    "lastLogout": now_local.isoformat(),
+                    "workedHours": 0.0,
+                    "regularizeStatus": "None",
+                    "regularizeReason": None,
+                    "regularizeRemarks": None,
+                    "loggedOut": False,
+                    "shiftName": shift_name,
+                    "shiftStart": shift_start_str,
+                    "shiftEnd": shift_end_str
+                })
             else:
                 if existing.get("regularizeStatus") != "Approved" and not existing.get("loggedOut", False):
                     first_login_str = existing.get("firstLogin")
                     
-                    if is_prev_day and is_closed:
-                        # Close the shift at the shift end time
-                        if not existing.get("loggedOut", False):
-                            worked_hours = 0.0
-                            if first_login_str:
-                                try:
-                                    first_login_dt = datetime.fromisoformat(first_login_str)
-                                    duration = prev_shift_end_dt - first_login_dt
-                                    worked_hours = round(duration.total_seconds() / 3600.0, 2)
-                                except Exception:
-                                    pass
-                            
-                            await attendance_collection.update_one(
-                                {"_id": existing["_id"]},
-                                {
-                                    "$set": {
-                                        "lastLogout": prev_shift_end_dt.isoformat(),
-                                        "workedHours": worked_hours,
-                                        "loggedOut": True
-                                    }
-                                }
-                            )
-                    else:
+                    # Apply Logout Update Rule
+                    existing_logout_str = existing.get("lastLogout")
+                    should_update_logout = True
+                    if existing_logout_str:
+                        try:
+                            existing_logout_dt = datetime.fromisoformat(existing_logout_str)
+                            if now_local <= existing_logout_dt:
+                                should_update_logout = False
+                        except Exception:
+                            pass
+                    
+                    if should_update_logout:
                         worked_hours = 0.0
                         if first_login_str:
                             try:
-                                    first_login_dt = datetime.fromisoformat(first_login_str)
-                                    duration = now_local - first_login_dt
-                                    worked_hours = round(duration.total_seconds() / 3600.0, 2)
+                                first_login_dt = datetime.fromisoformat(first_login_str)
+                                duration = now_local - first_login_dt
+                                worked_hours = round(duration.total_seconds() / 3600.0, 2)
                             except Exception:
                                 pass
                         

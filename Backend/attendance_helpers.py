@@ -11,6 +11,24 @@ def is_night_shift(start_time: str, end_time: str) -> bool:
     except Exception:
         return False
 
+async def get_shift_details_for_date(username: str, target_date: str) -> tuple:
+    roaster_col = db.get_collection("roasters")
+    roaster = await roaster_col.find_one({
+        "date": target_date,
+        "assignees": username
+    })
+    config_collection = db.get_collection("attendance_config")
+    config = await config_collection.find_one({}) or {}
+    config_shifts = config.get("shifts", [])
+    config_roster_rows = config.get("rosterRows", [])
+    default_start = config.get("shiftStart", "09:00")
+
+    from attendance import determine_shift_for_user
+    shift_name, shift_start_str, shift_end_str = determine_shift_for_user(
+        username, roaster, config_shifts, config_roster_rows, default_start
+    )
+    return shift_name, shift_start_str, shift_end_str
+
 async def get_target_attendance_date_details(username: str, now_local: datetime) -> dict:
     """
     Returns a dictionary with details about which date the current request/logout belongs to.
@@ -24,74 +42,35 @@ async def get_target_attendance_date_details(username: str, now_local: datetime)
     prev_day_dt = now_local - timedelta(days=1)
     prev_day_str = prev_day_dt.strftime("%Y-%m-%d")
     
-    # Fetch configurations
-    config_collection = db.get_collection("attendance_config")
-    config = await config_collection.find_one({}) or {}
-    config_shifts = config.get("shifts", [])
-    config_roster_rows = config.get("rosterRows", [])
-    default_start = config.get("shiftStart", "09:00")
-    
     # Check if user had a shift on the previous day
-    roaster_col = db.get_collection("roasters")
-    roaster_prev = await roaster_col.find_one({
-        "date": prev_day_str,
-        "assignees": username
-    })
+    shift_name, prev_start, prev_end = await get_shift_details_for_date(username, prev_day_str)
     
-    from attendance import determine_shift_for_user
-    prev_shift_name, prev_start, prev_end = determine_shift_for_user(
-        username, roaster_prev, config_shifts, config_roster_rows, default_start
-    )
-    
-    if is_night_shift(prev_start, prev_end):
-        try:
-            eh, em = map(int, prev_end.split(":"))
-            prev_shift_end_dt = now_local.replace(hour=eh, minute=em, second=0, microsecond=0)
-            
-            # Check if today has a shift
-            roaster_curr = await roaster_col.find_one({
-                "date": today_str,
-                "assignees": username
-            })
-            curr_shift_name, curr_start, curr_end = determine_shift_for_user(
-                username, roaster_curr, config_shifts, config_roster_rows, default_start
-            )
-            
-            has_today_shift = True
-            if not curr_start or curr_start.lower() in ("leave", "off", "none", "default"):
-                has_today_shift = False
+    if prev_start and prev_start.lower() not in ("leave", "off", "none", "default"):
+        if is_night_shift(prev_start, prev_end):
+            try:
+                eh, em = map(int, prev_end.split(":"))
+                # Shift end is on today_str (next day)
+                prev_shift_end_dt = now_local.replace(hour=eh, minute=em, second=0, microsecond=0)
                 
-            if has_today_shift:
-                try:
-                    csh, csm = map(int, curr_start.split(":"))
-                    curr_shift_start_dt = now_local.replace(hour=csh, minute=csm, second=0, microsecond=0)
-                    # For night shift users, next day login starts only 1 hour before next shift start
-                    cutoff_dt = curr_shift_start_dt - timedelta(hours=1)
-                except Exception:
-                    try:
-                        dsh, dsm = map(int, default_start.split(":"))
-                        cutoff_dt = now_local.replace(hour=dsh, minute=dsm, second=0, microsecond=0) - timedelta(hours=1)
-                    except Exception:
-                        cutoff_dt = prev_shift_end_dt + timedelta(hours=12)
-            else:
-                cutoff_dt = prev_shift_end_dt + timedelta(hours=12)
+                # Shift start is on prev_day_str
+                ps_h, ps_m = map(int, prev_start.split(":"))
+                prev_shift_start_dt = now_local.replace(
+                    year=prev_day_dt.year, month=prev_day_dt.month, day=prev_day_dt.day,
+                    hour=ps_h, minute=ps_m, second=0, microsecond=0
+                )
                 
-            attendance_collection = db.get_collection("attendance")
-            existing_prev = await attendance_collection.find_one({
-                "username": username,
-                "date": prev_day_str
-            })
-            
-            # If there is a record for the previous day, and the current time is before the cutoff
-            if existing_prev and now_local < cutoff_dt:
-                return {
-                    "date": prev_day_str,
-                    "is_prev_day": True,
-                    "prev_shift_end_dt": prev_shift_end_dt,
-                    "is_closed": False
-                }
-        except Exception as e:
-            print(f"Error evaluating night shift boundary: {e}")
+                # Active window is Shift Start -> Shift End + 3 Hours Grace Period
+                prev_window_end_dt = prev_shift_end_dt + timedelta(hours=3)
+                
+                if prev_shift_start_dt - timedelta(hours=3) <= now_local <= prev_window_end_dt:
+                    return {
+                        "date": prev_day_str,
+                        "is_prev_day": True,
+                        "prev_shift_end_dt": prev_shift_end_dt,
+                        "is_closed": False
+                    }
+            except Exception as e:
+                print(f"Error evaluating night shift boundary: {e}")
             
     return {
         "date": today_str,
@@ -111,12 +90,13 @@ async def close_past_open_attendances(username: str, now_local: datetime, last_a
         config_collection = db.get_collection("attendance_config")
         roaster_col = db.get_collection("roasters")
         
-        today_str = now_local.strftime("%Y-%m-%d")
+        details = await get_target_attendance_date_details(username, now_local)
+        target_date = details["date"]
         
         open_records = await attendance_collection.find({
             "username": username,
-            "loggedOut": False,
-            "date": {"$lt": today_str}
+            "loggedOut": {"$ne": True},
+            "date": {"$lt": target_date}
         }).to_list(length=None)
         
         if not open_records:
@@ -147,7 +127,25 @@ async def close_past_open_attendances(username: str, now_local: datetime, last_a
             )
             
             logout_dt = None
-            if last_active_str:
+            
+            # 1. Try to use the existing lastLogout on the record if it is valid
+            existing_logout_str = rec.get("lastLogout")
+            if existing_logout_str:
+                try:
+                    dt_logout = datetime.fromisoformat(existing_logout_str)
+                    # Align timezones
+                    if dt_logout.tzinfo is not None and first_login_dt.tzinfo is None:
+                        dt_logout = dt_logout.replace(tzinfo=None)
+                    elif dt_logout.tzinfo is None and first_login_dt.tzinfo is not None:
+                        first_login_dt = first_login_dt.replace(tzinfo=None)
+                        
+                    if dt_logout > first_login_dt:
+                        logout_dt = dt_logout
+                except Exception:
+                    pass
+            
+            # 2. Try to use last_active_str if no valid logout_dt yet
+            if not logout_dt and last_active_str:
                 try:
                     if last_active_str.endswith("Z"):
                         import zoneinfo
@@ -169,6 +167,7 @@ async def close_past_open_attendances(username: str, now_local: datetime, last_a
                 except Exception:
                     pass
                     
+            # 3. Fallback to shift end or firstLogin + 8 hours
             if not logout_dt:
                 try:
                     eh, em = map(int, shift_end.split(":"))

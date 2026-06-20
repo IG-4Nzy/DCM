@@ -732,7 +732,9 @@ const RoasterPage: React.FC = () => {
                                   const deptHeads = departmentsList.map((d: any) => d.departmentHead).filter(Boolean);
                                   const isSuper = u.is_superuser || u.isSuperuser;
                                   const isDeptHead = deptHeads.includes(u.username) || deptHeads.includes(u.id) || deptHeads.includes(u._id);
-                                  return !isSuper && !isDeptHead && u.department === userDepartment && !otherShiftsAssignees.includes(u.username);
+                                  const trackedRole = dutySummary?.trackedRole || "All Roles";
+                                  const isCorrectRole = trackedRole === "All Roles" || u.role === trackedRole;
+                                  return !isSuper && !isDeptHead && u.department === userDepartment && isCorrectRole && !otherShiftsAssignees.includes(u.username);
                                 })
                                 .map((u) => u.username)
                               }
@@ -824,7 +826,9 @@ const RoasterPage: React.FC = () => {
                                       const deptHeads = departmentsList.map((d: any) => d.departmentHead).filter(Boolean);
                                       const isSuper = u.is_superuser || u.isSuperuser;
                                       const isDeptHead = deptHeads.includes(u.username) || deptHeads.includes(u.id) || deptHeads.includes(u._id);
-                                      return !isSuper && !isDeptHead && u.department === userDepartment && !excludedUsernames.includes(u.username);
+                                      const trackedRole = dutySummary?.trackedRole || "All Roles";
+                                      const isCorrectRole = trackedRole === "All Roles" || u.role === trackedRole;
+                                      return !isSuper && !isDeptHead && u.department === userDepartment && isCorrectRole && !excludedUsernames.includes(u.username);
                                     })
                                     .map((u) => u.username)
                                   }
