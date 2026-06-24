@@ -22,6 +22,7 @@ export default {
   requests: "Requests",
   search: "Search",
   serverMonitoring: "Server Monitoring",
+  serverPingMonitoring: "Server Ping Monitoring",
   attendance: "Attendance",
   auditLogs: "Audit Logs",
   documentations: "Documentations",

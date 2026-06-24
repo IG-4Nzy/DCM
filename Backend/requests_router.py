@@ -1,17 +1,38 @@
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends
 from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from database import db
 from models import RequestModel, CreateRequestModel, UpdateRequestModel, PaginatedRequestsModel
 from bson import ObjectId
 from datetime import datetime, timezone
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 collection = db.get_collection("requests")
 routings_collection = db.get_collection("request_routings")
 departments_collection = db.get_collection("departments")
 users_collection = db.get_collection("users")
+
+class VisitorLogCreate(BaseModel):
+    visitorName: str = Field(..., min_length=1)
+    division: str = Field(..., min_length=1)
+    purpose: str = Field(..., min_length=1)
+    entryTime: str = Field(..., min_length=1)
+    exitTime: Optional[str] = ""
+    itemsToBring: Optional[str] = ""
+    keptItemsOnExit: bool = False
+    requestId: Optional[str] = ""
+
+class VisitorLogUpdate(BaseModel):
+    visitorName: Optional[str] = None
+    division: Optional[str] = None
+    purpose: Optional[str] = None
+    entryTime: Optional[str] = None
+    exitTime: Optional[str] = None
+    itemsToBring: Optional[str] = None
+    keptItemsOnExit: Optional[bool] = None
+    requestId: Optional[str] = None
 
 
 async def log_request_action(request_id: str, action: str, details: str, username: str, remarks: Optional[str] = None):
@@ -387,7 +408,7 @@ async def delete_request_type(id: str, current_user: dict = Depends(get_current_
     raise HTTPException(status_code=404, detail="Request type not found")
 
 
-@router.get("/visitor-logs", response_description="List all visitor logs", dependencies=[Depends(require_privilege("View Request"))])
+@router.get("/visitor-logs", response_description="List all visitor logs", dependencies=[Depends(require_privilege("View Visitor Logs"))])
 async def list_visitor_logs(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),
@@ -409,6 +430,69 @@ async def list_visitor_logs(
     for item in items:
         item["_id"] = str(item["_id"])
     return {"data": items, "total": total}
+
+@router.post("/visitor-logs", response_description="Create a new visitor log", status_code=status.HTTP_201_CREATED)
+async def create_visitor_log(
+    payload: VisitorLogCreate = Body(...),
+    current_user: dict = Depends(get_current_user),
+    _auth = Depends(require_privilege("Create Visitor Logs"))
+):
+    col = db.get_collection("visitor_logs")
+    log_dict = payload.model_dump()
+    log_dict["loggedBy"] = current_user.get("sub", "system")
+    log_dict["createdAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    
+    res = await col.insert_one(log_dict)
+    log_dict["_id"] = str(res.inserted_id)
+    
+    from notification_helper import log_page_update
+    await log_page_update("visitor-logs", username=current_user.get("sub", ""))
+    return log_dict
+
+@router.put("/visitor-logs/{id}", response_description="Update a visitor log")
+async def update_visitor_log(
+    id: str,
+    payload: VisitorLogUpdate = Body(...),
+    current_user: dict = Depends(get_current_user),
+    _auth = Depends(require_privilege("Update Visitor Logs"))
+):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+    col = db.get_collection("visitor_logs")
+    existing = await col.find_one({"_id": ObjectId(id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Visitor log not found")
+        
+    update_data = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if update_data:
+        await col.update_one({"_id": ObjectId(id)}, {"$set": update_data})
+        
+    refreshed = await col.find_one({"_id": ObjectId(id)})
+    refreshed["_id"] = str(refreshed["_id"])
+    
+    from notification_helper import log_page_update
+    await log_page_update("visitor-logs", username=current_user.get("sub", ""))
+    return refreshed
+
+@router.delete("/visitor-logs/{id}", response_description="Delete a visitor log")
+async def delete_visitor_log(
+    id: str,
+    current_user: dict = Depends(get_current_user),
+    _auth = Depends(require_privilege("Delete Visitor Logs"))
+):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+        
+    col = db.get_collection("visitor_logs")
+    res = await col.delete_one({"_id": ObjectId(id)})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Visitor log not found")
+        
+    from notification_helper import log_page_update
+    await log_page_update("visitor-logs", username=current_user.get("sub", ""))
+    return {"message": "Visitor log deleted successfully"}
+
 
 
 @router.get("/{id}/logs", response_description="Get history logs for a request", dependencies=[Depends(require_privilege("View Request"))])

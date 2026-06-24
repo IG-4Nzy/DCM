@@ -21,6 +21,7 @@ const ClusterDetails = lazy(() => import("../pages/Clusters/ClusterDetails"));
 const Requests = lazy(() => import("../pages/Requests"));
 const Search = lazy(() => import("../pages/Search"));
 const ServerMonitoring = lazy(() => import("../pages/ServerMonitoring"));
+const ServerPingMonitoring = lazy(() => import("../pages/ServerPingMonitoring"));
 const Attendance = lazy(() => import("../pages/Attendance"));
 const AuditLogs = lazy(() => import("../pages/AuditLogs"));
 const Documentations = lazy(() => import("../pages/Documentations"));
@@ -65,6 +66,7 @@ const AppRouter: React.FC = () => {
             <Route path={ROUTE_CONSTANTS.REQUESTS} element={<Requests />} />
             <Route path={ROUTE_CONSTANTS.SEARCH} element={<Search />} />
             <Route path={ROUTE_CONSTANTS.SERVER_MONITORING} element={<ServerMonitoring />} />
+            <Route path={ROUTE_CONSTANTS.SERVER_PING_MONITORING} element={<ServerPingMonitoring />} />
             <Route path={ROUTE_CONSTANTS.ATTENDANCE} element={<Attendance />} />
             <Route path={ROUTE_CONSTANTS.AUDIT_LOGS} element={<AuditLogs />} />
             <Route path={ROUTE_CONSTANTS.DOCUMENTATIONS} element={<Documentations />} />

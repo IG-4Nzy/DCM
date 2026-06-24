@@ -92,10 +92,18 @@
     "Create Server Monitoring",
     "Update Server Monitoring",
     "Delete Server Monitoring",
+    "View Server Ping Monitoring",
+    "Create Server Ping Monitoring",
+    "Update Server Ping Monitoring",
+    "Delete Server Ping Monitoring",
     "Create Attendance",
     "Update Attendance",
     "Delete Attendance",
     "View Departmental Attendance",
     "View Self Attendance",
-    "View All Attendance"
+    "View All Attendance",
+    "View Visitor Logs",
+    "Create Visitor Logs",
+    "Update Visitor Logs",
+    "Delete Visitor Logs"
 ]

@@ -25,7 +25,11 @@ const PRIVILEGE_GROUPS: { [category: string]: string[] } = {
     "View Server Monitoring",
     "Create Server Monitoring",
     "Update Server Monitoring",
-    "Delete Server Monitoring"
+    "Delete Server Monitoring",
+    "View Server Ping Monitoring",
+    "Create Server Ping Monitoring",
+    "Update Server Ping Monitoring",
+    "Delete Server Ping Monitoring"
   ],
   "Users & Roles": [
     "View All Users",

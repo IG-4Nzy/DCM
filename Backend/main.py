@@ -33,6 +33,7 @@ from cluster_checklist_config import router as cluster_checklist_config_router
 from morning_checklists import router as morning_checklists_router
 from morning_checklist_config import router as morning_checklist_config_router
 from routers.vcenter_monitor import router as vcenter_monitor_router
+from routers.server_ping_monitoring import router as server_ping_monitoring_router, server_ping_scheduler
 from dashboard import router as dashboard_router
 from notifications import router as notifications_router
 from periodic_activities import router as periodic_activities_router
@@ -548,6 +549,7 @@ app.include_router(announcements_router, tags=["announcements"], prefix="/api/an
 app.include_router(operation_logs_router, tags=["operation_logs"], prefix="/api/operation-logs")
 app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")
 app.include_router(notifications_router, tags=["notifications"], prefix="/api/notifications")
+app.include_router(server_ping_monitoring_router, tags=["server_ping_monitoring"], prefix="/api/server-ping-monitoring")
 
 # Mount the new split telemetry monitor endpoints under same prefix for backwards compatibility
 app.include_router(vcenter_monitor_router, tags=["vcenter_telemetry"], prefix="/api/vcenter-details")
@@ -574,9 +576,11 @@ from services.vcenter.client import vcenter_http_client
 async def on_startup():
     """Start background telemetry scheduler on app boot."""
     vcenter_telemetry_scheduler.start()
+    server_ping_scheduler.start()
 
 @app.on_event("shutdown")
 async def on_shutdown():
     """Gracefully stop scheduler and close shared HTTPX client pool."""
     await vcenter_telemetry_scheduler.stop()
+    await server_ping_scheduler.stop()
     await vcenter_http_client.close_client()

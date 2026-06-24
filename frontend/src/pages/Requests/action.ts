@@ -54,3 +54,18 @@ export const sendBackwardRequest = async (id: string, reason: string): Promise<R
   const response = await request.post(`/api/requests/${id}/backward`, { reason });
   return response.data;
 };
+
+export const createVisitorLog = async (data: any): Promise<any> => {
+  const response = await request.post('/api/requests/visitor-logs', data);
+  return response.data;
+};
+
+export const updateVisitorLog = async (id: string, data: any): Promise<any> => {
+  const response = await request.put(`/api/requests/visitor-logs/${id}`, data);
+  return response.data;
+};
+
+export const deleteVisitorLog = async (id: string): Promise<any> => {
+  const response = await request.delete(`/api/requests/visitor-logs/${id}`);
+  return response.data;
+};
