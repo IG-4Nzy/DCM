@@ -578,12 +578,12 @@ class NodeModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     node: Optional[str] = None
     remarks: Optional[str] = None
-    totalRam: Optional[int] = None
-    totalHardisk: Optional[int] = None
-    totalCpu: Optional[int] = None
-    availableRam: Optional[int] = None
-    availableHardisk: Optional[int] = None
-    availableCpu: Optional[int] = None
+    totalRam: Optional[Union[int, str]] = None
+    totalHardisk: Optional[Union[int, str]] = None
+    totalCpu: Optional[Union[int, str]] = None
+    availableRam: Optional[Union[int, str]] = None
+    availableHardisk: Optional[Union[int, str]] = None
+    availableCpu: Optional[Union[int, str]] = None
     rack: Optional[str] = None
     rackPosition: Optional[str] = None
     rackUnits: Optional[int] = None
@@ -605,9 +605,9 @@ class NodeModel(BaseModel):
 class CreateNodeModel(BaseModel):
     node: Optional[str] = None
     remarks: Optional[str] = None
-    totalRam: Optional[int] = None
-    totalHardisk: Optional[int] = None
-    totalCpu: Optional[int] = None
+    totalRam: Optional[Union[int, str]] = None
+    totalHardisk: Optional[Union[int, str]] = None
+    totalCpu: Optional[Union[int, str]] = None
     rack: Optional[str] = None
     rackPosition: Optional[str] = None
     rackUnits: Optional[int] = None
@@ -622,9 +622,9 @@ class CreateNodeModel(BaseModel):
 class UpdateNodeModel(BaseModel):
     node: Optional[str] = None
     remarks: Optional[str] = None
-    totalRam: Optional[int] = None
-    totalHardisk: Optional[int] = None
-    totalCpu: Optional[int] = None
+    totalRam: Optional[Union[int, str]] = None
+    totalHardisk: Optional[Union[int, str]] = None
+    totalCpu: Optional[Union[int, str]] = None
     rack: Optional[str] = None
     rackPosition: Optional[str] = None
     rackUnits: Optional[int] = None
@@ -741,12 +741,12 @@ class NodeDetailsModel(BaseModel):
     assetNum: str
     custodian: str
     redundancyPower: str
-    totalRam: Optional[int] = None
-    totalHardisk: Optional[int] = None
-    totalCpu: Optional[int] = None
-    availableRam: Optional[int] = None
-    availableHardisk: Optional[int] = None
-    availableCpu: Optional[int] = None
+    totalRam: Optional[Union[int, str]] = None
+    totalHardisk: Optional[Union[int, str]] = None
+    totalCpu: Optional[Union[int, str]] = None
+    availableRam: Optional[Union[int, str]] = None
+    availableHardisk: Optional[Union[int, str]] = None
+    availableCpu: Optional[Union[int, str]] = None
     remarks: Optional[str] = None
     createdBy: Optional[str] = None
     updatedAt: Optional[str] = None
@@ -774,9 +774,9 @@ class CreateNodeDetailsModel(BaseModel):
     assetNum: str
     custodian: str
     redundancyPower: str
-    totalRam: Optional[int] = None
-    totalHardisk: Optional[int] = None
-    totalCpu: Optional[int] = None
+    totalRam: Optional[Union[int, str]] = None
+    totalHardisk: Optional[Union[int, str]] = None
+    totalCpu: Optional[Union[int, str]] = None
     remarks: Optional[str] = None
 
 class UpdateNodeDetailsModel(BaseModel):
@@ -796,9 +796,9 @@ class UpdateNodeDetailsModel(BaseModel):
     assetNum: Optional[str] = None
     custodian: Optional[str] = None
     redundancyPower: Optional[str] = None
-    totalRam: Optional[int] = None
-    totalHardisk: Optional[int] = None
-    totalCpu: Optional[int] = None
+    totalRam: Optional[Union[int, str]] = None
+    totalHardisk: Optional[Union[int, str]] = None
+    totalCpu: Optional[Union[int, str]] = None
     remarks: Optional[str] = None
     
     model_config = ConfigDict(

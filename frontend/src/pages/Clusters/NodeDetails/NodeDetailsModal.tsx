@@ -244,22 +244,19 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                         <Box className={styles.formGrid__resourceGrid}>
                             <TextField 
                                 fullWidth
-                                type="number" 
-                                label="Total RAM (GB)" 
+                                label="Total RAM" 
                                 value={formData.totalRam ?? ''} 
                                 onChange={(e) => handleChange('totalRam', e.target.value)} 
                             />
                             <TextField 
                                 fullWidth
-                                type="number" 
-                                label="Total HDD (GB)" 
+                                label="Total HDD" 
                                 value={formData.totalHardisk ?? ''} 
                                 onChange={(e) => handleChange('totalHardisk', e.target.value)} 
                             />
                             <TextField 
                                 fullWidth
-                                type="number" 
-                                label="Total CPU (Cores)" 
+                                label="Total CPU" 
                                 value={formData.totalCpu ?? ''} 
                                 onChange={(e) => handleChange('totalCpu', e.target.value)} 
                             />

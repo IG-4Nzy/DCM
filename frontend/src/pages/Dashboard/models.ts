@@ -26,4 +26,5 @@ export interface DashboardData {
   todayAttendance: any[];
   periodicActivities?: any[];
   announcements?: any[];
+  openOperationLogs?: any[];
 }

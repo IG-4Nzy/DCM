@@ -48,14 +48,22 @@ const worksSlice = createSlice({
       })
       // updateWork
       .addCase(updateWork.fulfilled, (state, action) => {
-        const index = state.works.findIndex((work) => work.id === action.payload.id || work._id === action.payload._id);
+        const index = state.works.findIndex((work) => {
+          const workId = work.id || work._id;
+          const payloadId = action.payload.id || action.payload._id;
+          return workId && payloadId && workId === payloadId;
+        });
         if (index !== -1) {
           state.works[index] = action.payload;
         }
       })
       // transferWork
       .addCase(transferWork.fulfilled, (state, action) => {
-        const index = state.works.findIndex((work) => work.id === action.payload.id || work._id === action.payload._id);
+        const index = state.works.findIndex((work) => {
+          const workId = work.id || work._id;
+          const payloadId = action.payload.id || action.payload._id;
+          return workId && payloadId && workId === payloadId;
+        });
         if (index !== -1) {
           state.works[index] = action.payload;
         }

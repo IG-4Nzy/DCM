@@ -119,6 +119,31 @@ const Layout: React.FC = () => {
   const [userInitials, setUserInitials] = useState('');
   const [userFullName, setUserFullName] = useState(username);
   const [unreadRoutes, setUnreadRoutes] = useState<Record<string, boolean>>({});
+  const [serverTime, setServerTime] = useState('');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const options: Intl.DateTimeFormatOptions = {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      };
+      try {
+        const formatter = new Intl.DateTimeFormat('en-GB', options);
+        setServerTime(formatter.format(new Date()));
+      } catch (e) {
+        setServerTime(new Date().toLocaleString());
+      }
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchUnreadNotifications = async () => {
     try {
@@ -237,6 +262,25 @@ const Layout: React.FC = () => {
             {wordings.dataCentreManagement}
           </label>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box
+              sx={{
+                bgcolor: 'rgba(25, 118, 210, 0.05)',
+                px: 1.5,
+                py: 0.6,
+                borderRadius: '8px',
+                border: '1.5px solid rgba(25, 118, 210, 0.12)',
+                display: { xs: 'none', sm: 'flex' },
+                alignItems: 'center',
+                gap: 1
+              }}
+            >
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#1976d2', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Server Time (IST)
+              </span>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#333', fontFamily: 'monospace' }}>
+                {serverTime}
+              </span>
+            </Box>
             <label style={{ fontWeight: 'bold', color: '#666', fontSize: '0.875rem' }}>
               {wordings.welcome}, {userFullName} ({role})
             </label>

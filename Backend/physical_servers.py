@@ -86,11 +86,41 @@ async def list_items(
         query["clusterId"] = clusterId
     
     if search:
-        query["$or"] = [
-            {"ipAddress": {"$regex": search, "$options": "i"}},
-            {"applications": {"$regex": search, "$options": "i"}},
-            {"node": {"$regex": search, "$options": "i"}}
-        ]
+        terms = search.strip().split()
+        if terms:
+            # Cross-entity lookup: find clusters matching any search term
+            cluster_queries = []
+            for term in terms:
+                cluster_queries.append({"clusterName": {"$regex": term.replace('\\', '\\\\'), "$options": "i"}})
+            clusters_col = db.get_collection("clusters")
+            matching_clusters = await clusters_col.find({"$or": cluster_queries}, {"_id": 1}).to_list(length=None)
+            matching_cluster_ids = [str(doc["_id"]) for doc in matching_clusters]
+
+            term_queries = []
+            for term in terms:
+                escaped_term = term.replace('\\', '\\\\')
+                
+                or_conditions = [
+                    {"ipAddress": {"$regex": escaped_term, "$options": "i"}},
+                    {"applications": {"$regex": escaped_term, "$options": "i"}},
+                    {"node": {"$regex": escaped_term, "$options": "i"}},
+                    {"ram": {"$regex": escaped_term, "$options": "i"}},
+                    {"hdd": {"$regex": escaped_term, "$options": "i"}},
+                    {"cpu": {"$regex": escaped_term, "$options": "i"}},
+                    {"backupLocation": {"$regex": escaped_term, "$options": "i"}},
+                    {"adminName": {"$regex": escaped_term, "$options": "i"}},
+                    {"adminContact": {"$regex": escaped_term, "$options": "i"}},
+                    {"remarks": {"$regex": escaped_term, "$options": "i"}},
+                    {"createdBy": {"$regex": escaped_term, "$options": "i"}},
+                    {"createdAt": {"$regex": escaped_term, "$options": "i"}},
+                    {"updatedAt": {"$regex": escaped_term, "$options": "i"}},
+                ]
+
+                if matching_cluster_ids:
+                    or_conditions.append({"clusterId": {"$in": matching_cluster_ids}})
+
+                term_queries.append({"$or": or_conditions})
+            query["$and"] = term_queries
 
     actual_sort_by = sortBy or sort_by or "createdAt"
     sort_order = 1 if order == "asc" else -1

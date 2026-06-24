@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Resp
 from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional, List
-from database import db
+from database import db, get_local_now
 from models import RoasterModel, CreateRoasterModel, UpdateRoasterModel, PaginatedRoastersModel, RoasterStatusModel, CreateRoasterStatusModel
 from bson import ObjectId
 from datetime import datetime, timezone, date, timedelta
@@ -297,6 +297,79 @@ async def delete_roaster(id: str, current_user: dict = Depends(get_current_user)
 
     raise HTTPException(status_code=404, detail=f"Roster {id} not found")
 
+async def reconcile_roster_leaves(department: str, now_local: datetime):
+    today_str = now_local.strftime("%Y-%m-%d")
+    start_check_date = (now_local - timedelta(days=45)).strftime("%Y-%m-%d")
+    
+    roasters = await roasters_collection.find({
+        "department": department,
+        "date": {"$gte": start_check_date, "$lt": today_str},
+        "shift": {"$ne": "Leave"},
+        "assignees": {"$exists": True, "$ne": []}
+    }).to_list(length=None)
+    
+    if not roasters:
+        return
+
+    attendance_col = db.get_collection("attendance")
+    
+    for roster in roasters:
+        roster_date = roster["date"]
+        assignees = list(roster.get("assignees", []))
+        changed_roster = False
+        
+        for username in assignees:
+            att = await attendance_col.find_one({
+                "username": username,
+                "date": roster_date
+            })
+            did_login = False
+            if att and att.get("firstLogin"):
+                did_login = True
+                
+            if not did_login:
+                roster["assignees"] = [u for u in roster["assignees"] if u != username]
+                changed_roster = True
+                
+                leave_roster = await roasters_collection.find_one({
+                    "date": roster_date,
+                    "shift": "Leave",
+                    "department": department
+                })
+                
+                if leave_roster:
+                    leave_assignees = list(leave_roster.get("assignees", []))
+                    if username not in leave_assignees:
+                        leave_assignees.append(username)
+                        await roasters_collection.update_one(
+                            {"_id": leave_roster["_id"]},
+                            {"$set": {
+                                "assignees": leave_assignees,
+                                "updatedAt": datetime.now(timezone.utc).isoformat()
+                            }}
+                        )
+                else:
+                    new_leave_roster = {
+                        "date": roster_date,
+                        "shift": "Leave",
+                        "department": department,
+                        "assignees": [username],
+                        "notes": "Auto-marked Leave (No login)",
+                        "createdBy": "system",
+                        "updatedAt": datetime.now(timezone.utc).isoformat(),
+                        "updatedByFullName": "System Auto-Reconciliation"
+                    }
+                    await roasters_collection.insert_one(new_leave_roster)
+        
+        if changed_roster:
+            await roasters_collection.update_one(
+                {"_id": roster["_id"]},
+                {"$set": {
+                    "assignees": roster["assignees"],
+                    "updatedAt": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+
 @router.get("/duty-summary", response_description="Get duty day counts per staff for the configured monthly cycle and current week")
 async def get_duty_summary(
     department: str = Query(...),
@@ -307,6 +380,9 @@ async def get_duty_summary(
     privileges = current_user.get("privileges", [])
     if not is_superuser and "View Roaster" not in privileges:
         raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    # Reconcile roster leaves for the past dates in this department
+    await reconcile_roster_leaves(department, get_local_now())
 
     # Get attendance config for cycle start/end days
     config_collection = db.get_collection("attendance_config")

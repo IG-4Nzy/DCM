@@ -45,17 +45,33 @@ const Inventory: React.FC = () => {
   const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.INVENTORY_DELETE);
   const canClickRow = hasUpdate || hasPrivilege(PRIVILEGES.INVENTORY_VIEW_ALL) || hasPrivilege(PRIVILEGES.INVENTORY_VIEW_DEPT);
 
-  useEffect(() => {
-    dispatch(fetchUsers({ pagination: false }));
-    dispatch(fetchInventory({
+  const getFetchParams = () => {
+    const params: any = {
       skip: page * rowsPerPage,
       limit: rowsPerPage,
       search: searchQuery,
       sort_by: orderBy,
       order: order,
-      isReturnable: activeTab === 'returnable'
-    }));
+    };
+    if (!searchQuery.trim()) {
+      params.isReturnable = activeTab === 'returnable';
+    }
+    return params;
+  };
+
+  useEffect(() => {
+    dispatch(fetchUsers({ pagination: false }));
+    dispatch(fetchInventory(getFetchParams()));
   }, [dispatch, page, rowsPerPage, searchQuery, orderBy, order, activeTab]);
+
+  useEffect(() => {
+    if (searchQuery.trim() && activeTab === 'general' && inventory && inventory.length > 0) {
+      const hasReturnable = inventory.some(item => item.isReturnable === true);
+      if (hasReturnable) {
+        setActiveTab('returnable');
+      }
+    }
+  }, [inventory, searchQuery, activeTab, setActiveTab]);
 
   const handleRequestSort = (property: string) => {
     const isAsc = orderBy === property && order === 'asc';
@@ -80,7 +96,7 @@ const Inventory: React.FC = () => {
       } else {
         showToast((result.payload as string) || 'Failed to delete item', 'error');
       }
-      dispatch(fetchInventory({ skip: page * rowsPerPage, limit: rowsPerPage, search: searchQuery, sort_by: orderBy, order, isReturnable: activeTab === 'returnable' }));
+      dispatch(fetchInventory(getFetchParams()));
     }
   };
 
@@ -100,7 +116,7 @@ const Inventory: React.FC = () => {
         showToast((result.payload as string) || 'Failed to create item', 'error');
       }
     }
-    dispatch(fetchInventory({ skip: page * rowsPerPage, limit: rowsPerPage, search: searchQuery, sort_by: orderBy, order, isReturnable: activeTab === 'returnable' }));
+    dispatch(fetchInventory(getFetchParams()));
   };
 
   const handleUpdateItem = async (id: string, data: any) => {
@@ -116,7 +132,7 @@ const Inventory: React.FC = () => {
     const resultAction = await dispatch(bulkCreateInventory(file));
     if (bulkCreateInventory.fulfilled.match(resultAction)) {
       showToast('Bulk upload successful', 'success');
-      dispatch(fetchInventory({ skip: page * rowsPerPage, limit: rowsPerPage, search: searchQuery, sort_by: orderBy, order, isReturnable: activeTab === 'returnable' }));
+      dispatch(fetchInventory(getFetchParams()));
     } else {
       showToast(resultAction.payload as string || 'Bulk upload failed', 'error');
     }
@@ -258,7 +274,7 @@ const Inventory: React.FC = () => {
       </Box>
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs value={activeTab} onChange={(e, val) => { setActiveTab(val); setPage(0); }} aria-label="inventory tabs">
+        <Tabs value={activeTab} onChange={(e, val) => { setSearchQuery(''); setActiveTab(val); setPage(0); }} aria-label="inventory tabs">
           <Tab label="General Inventory" value="general" sx={{ textTransform: 'none', fontWeight: 'bold' }} />
           <Tab label="Returnable Items" value="returnable" sx={{ textTransform: 'none', fontWeight: 'bold' }} />
         </Tabs>

@@ -26,7 +26,8 @@ import {
   PendingWorksCard,
   ChecklistStatusCard,
   RecentObservationsCard,
-  OpenRequestsCard
+  OpenRequestsCard,
+  RecentOperationLogsCard
 } from './components';
 
 const Dashboard: React.FC = () => {
@@ -321,6 +322,10 @@ const Dashboard: React.FC = () => {
           <RecentObservationsCard
             latestObservations={latestObservations}
             onViewAllClick={() => navigate(ROUTE_CONSTANTS.OBSERVATIONS)}
+          />
+          <RecentOperationLogsCard
+            openOperationLogs={data.openOperationLogs || []}
+            onViewAllClick={() => navigate(ROUTE_CONSTANTS.OPERATION_LOGS)}
           />
         </Box>
       </Box>

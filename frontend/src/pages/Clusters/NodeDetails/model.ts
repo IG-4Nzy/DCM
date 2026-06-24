@@ -17,12 +17,12 @@ export interface NodeDetailsData {
     assetNum: string;
     custodian: string;
     redundancyPower: string;
-    totalRam?: number;
-    totalHardisk?: number;
-    totalCpu?: number;
-    availableRam?: number;
-    availableHardisk?: number;
-    availableCpu?: number;
+    totalRam?: number | string;
+    totalHardisk?: number | string;
+    totalCpu?: number | string;
+    availableRam?: number | string;
+    availableHardisk?: number | string;
+    availableCpu?: number | string;
     remarks?: string;
     createdBy?: string;
     updatedAt?: string;

@@ -44,18 +44,18 @@ const Works: React.FC = () => {
   const [searchQuery, setSearchQuery] = useTableState('work_search', '');
   
   // Support legacy string values safely
-  const [statusFilterVal, setStatusFilter] = useTableState<any>('work_statusFilter', ['Pending', 'On Hold', 'Completed']);
+  const [statusFilterVal, setStatusFilter] = useTableState<any>('work_statusFilter', ['Pending', 'In Progress', 'On Hold', 'Completed']);
   const statusFilter = React.useMemo(() => {
     if (typeof statusFilterVal === 'string') {
       if (statusFilterVal === 'All Statuses' || statusFilterVal === 'All') {
-        return ['Pending', 'On Hold', 'Completed', 'Closed'];
+        return ['Pending', 'In Progress', 'On Hold', 'Completed', 'Closed'];
       }
       return [statusFilterVal];
     }
     if (Array.isArray(statusFilterVal)) {
       return statusFilterVal;
     }
-    return ['Pending', 'On Hold', 'Completed'];
+    return ['Pending', 'In Progress', 'On Hold', 'Completed'];
   }, [statusFilterVal]);
 
   const [selectedAssignee, setSelectedAssignee] = useTableState('work_selectedAssignee', 'All');
@@ -419,7 +419,7 @@ const Works: React.FC = () => {
               input={<OutlinedInput label="Status" />}
               renderValue={(selected) => selected.join(', ')}
             >
-              {['Pending', 'On Hold', 'Completed', 'Closed'].map((name) => (
+              {['Pending', 'In Progress', 'On Hold', 'Completed', 'Closed'].map((name) => (
                 <MenuItem key={name} value={name}>
                   <Checkbox checked={statusFilter.indexOf(name) > -1} />
                   <ListItemText primary={name} />

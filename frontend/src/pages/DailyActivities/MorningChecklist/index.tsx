@@ -8,7 +8,7 @@ import {
   Paper, Divider, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TablePagination
 } from '@mui/material';
-import { MdSave, MdCheckCircle, MdHistory, MdSearch, MdVisibility } from 'react-icons/md';
+import { MdSave, MdCheckCircle, MdHistory, MdSearch, MdVisibility, MdEdit } from 'react-icons/md';
 import dayjs from 'dayjs';
 import { getServerTime } from '../../../helpers/time';
 import { hasPrivilege } from '../../../helpers/authUtils';
@@ -41,7 +41,8 @@ interface ChecklistItem {
 }
 
 interface MorningChecklistData {
-  _id: string;
+  id?: string;
+  _id?: string;
   date: string;
   department: string;
   preparedBy: string;
@@ -78,6 +79,8 @@ const MorningChecklist: React.FC = () => {
   // Sub-tabs: 0 = Active Checklist, 1 = History
   const [activeTab, setActiveTab] = useState(0);
 
+  const [selectedDate, setSelectedDate] = useState<string>(getServerTime().format('YYYY-MM-DD'));
+
   // Active checklist data
   const [checklist, setChecklist] = useState<MorningChecklistData | null>(null);
   const [items, setItems] = useState<ChecklistItem[]>([]);
@@ -95,6 +98,34 @@ const MorningChecklist: React.FC = () => {
   const [historyTotal, setHistoryTotal] = useState(0);
   const [viewingChecklist, setViewingChecklist] = useState<MorningChecklistData | null>(null);
 
+  const checkCanEdit = useCallback((chk: MorningChecklistData): boolean => {
+    const todayStr = getServerTime().format('YYYY-MM-DD');
+    const isToday = chk.date === todayStr;
+    const isFuture = dayjs(chk.date).isAfter(todayStr, 'day');
+    const isCompleted = chk.status === 'Completed';
+
+    if (isSuperuser) {
+      return !isFuture;
+    }
+
+    if (isCompleted) {
+      const completer = chk.completedBy || chk.createdBy;
+      return completer === username && isToday;
+    }
+
+    if (isToday) {
+      return true;
+    }
+    return false;
+  }, [isSuperuser, username]);
+
+  const handleOpenChecklist = (item: MorningChecklistData) => {
+    setChecklist(item);
+    setItems(item.items || []);
+    setSelectedDate(item.date);
+    setActiveTab(0);
+  };
+
   // Load config fields
   const loadConfig = useCallback(async () => {
     try {
@@ -105,12 +136,12 @@ const MorningChecklist: React.FC = () => {
     }
   }, []);
 
-  // Load today's checklist
+  // Load checklist for selected date
   const loadTodayChecklist = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetchMorningChecklists({
-        date: todayStr,
+        date: selectedDate,
         department: userDepartment,
         limit: 1,
       });
@@ -138,7 +169,7 @@ const MorningChecklist: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [todayStr, userDepartment, configFields, showToast]);
+  }, [selectedDate, userDepartment, configFields, showToast]);
 
   // Load history
   const loadHistory = useCallback(async () => {
@@ -204,29 +235,32 @@ const MorningChecklist: React.FC = () => {
 
   // Save / Create
   const handleSave = async (markComplete = false) => {
+    const isPast = dayjs(selectedDate).isBefore(getServerTime().format('YYYY-MM-DD'), 'day');
+    const isFuture = dayjs(selectedDate).isAfter(getServerTime().format('YYYY-MM-DD'), 'day');
     const isCompleted = checklist?.status === 'Completed';
     const completer = checklist?.completedBy || checklist?.createdBy;
-    const isReadOnly = isSuperuser ? false : (isCompleted ? completer !== username : false);
+    const isReadOnly = isSuperuser
+      ? isFuture
+      : (isPast || isFuture || (isCompleted ? completer !== username : false));
     if (isReadOnly) {
       showToast('You do not have permission to edit this checklist.', 'error');
       return;
     }
 
-    const actionText = markComplete ? 'mark this checklist as completed' : 'save this checklist as draft';
-    const confirmed = window.confirm(`Are you sure you want to ${actionText}?`);
-    if (!confirmed) return;
+
 
     setSaving(true);
     try {
       const payload: any = {
-        date: todayStr,
+        date: selectedDate,
         department: userDepartment,
         preparedBy: displayName,
         status: markComplete ? 'Completed' : 'Draft',
         items,
       };
 
-      if (checklist?._id) {
+      const clId = checklist?.id || checklist?._id;
+      if (clId) {
         if (markComplete) {
           payload.completedBy = username;
         } else if (checklist.status === 'Completed') {
@@ -234,7 +268,7 @@ const MorningChecklist: React.FC = () => {
         } else {
           payload.completedBy = checklist.completedBy;
         }
-        await updateMorningChecklist(checklist._id, payload);
+        await updateMorningChecklist(clId, payload);
         showToast(markComplete ? 'Checklist completed!' : 'Checklist saved!', 'success');
       } else {
         if (markComplete) {
@@ -317,9 +351,13 @@ const MorningChecklist: React.FC = () => {
 
   // ─── ACTIVE CHECKLIST TAB ───
   const renderActiveChecklist = () => {
+    const isPast = dayjs(selectedDate).isBefore(getServerTime().format('YYYY-MM-DD'), 'day');
+    const isFuture = dayjs(selectedDate).isAfter(getServerTime().format('YYYY-MM-DD'), 'day');
     const isCompleted = checklist?.status === 'Completed';
     const completer = checklist?.completedBy || checklist?.createdBy;
-    const readOnly = isSuperuser ? false : (isCompleted ? completer !== username : false);
+    const readOnly = isSuperuser
+      ? isFuture
+      : (isPast || isFuture || (isCompleted ? completer !== username : false));
 
     return (
       <Box>
@@ -327,7 +365,7 @@ const MorningChecklist: React.FC = () => {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
-              {dayjs(todayStr).format('dddd, MMMM D, YYYY')}
+              {dayjs(selectedDate).format('dddd, MMMM D, YYYY')}
             </Typography>
             <Typography variant="caption" color="textSecondary">
               Server Time: {getServerTime().format('hh:mm:ss A')}
@@ -488,7 +526,7 @@ const MorningChecklist: React.FC = () => {
                 </TableHead>
                 <TableBody>
                   {historyList.map((item, idx) => (
-                    <TableRow key={item._id} hover>
+                    <TableRow key={item.id || item._id} hover>
                       <TableCell>{historyPage * historyRowsPerPage + idx + 1}</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>{item.date}</TableCell>
                       <TableCell>{item.preparedBy}</TableCell>
@@ -507,6 +545,13 @@ const MorningChecklist: React.FC = () => {
                             <MdVisibility />
                           </IconButton>
                         </Tooltip>
+                        {checkCanEdit(item) && (
+                          <Tooltip title="Edit Checklist">
+                            <IconButton size="small" color="primary" onClick={() => handleOpenChecklist(item)}>
+                              <MdEdit />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

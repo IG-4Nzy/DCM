@@ -235,14 +235,15 @@ const BMSChecklist: React.FC = () => {
     const isFuture = dayjs(chk.date).isAfter(todayStr, 'day');
     const isCompleted = chk.status === 'Completed';
 
+    if (isSuperuser) {
+      return !isFuture;
+    }
+
     if (isCompleted) {
       const completer = chk.completedBy || chk.createdBy;
       return completer === username;
     }
 
-    if (isSuperuser) {
-      return !isFuture;
-    }
     if (isToday) {
       return true;
     }
@@ -251,12 +252,15 @@ const BMSChecklist: React.FC = () => {
 
   const isViewOnlyMode = useMemo(() => {
     if (!checklist) return false;
+    if (isSuperuser) {
+      return isFutureDaySelected;
+    }
     if (checklist.status === 'Completed') {
       const completer = checklist.completedBy || checklist.createdBy;
       return completer !== username;
     }
     if (isFutureDaySelected) return true;
-    if (isPastDaySelected) return !isSuperuser;
+    if (isPastDaySelected) return true;
 
     return false;
   }, [checklist, isFutureDaySelected, isPastDaySelected, isSuperuser, username]);
@@ -509,9 +513,7 @@ const BMSChecklist: React.FC = () => {
       return;
     }
 
-    const actionText = status === 'Completed' ? 'mark this checklist as completed' : 'save this checklist as draft';
-    const confirmed = window.confirm(`Are you sure you want to ${actionText}?`);
-    if (!confirmed) return;
+
 
     const updatedConfig = unflattenRows(rows);
     const updated: SavedChecklist = {
@@ -531,7 +533,7 @@ const BMSChecklist: React.FC = () => {
     try {
       let savedCl: SavedChecklist;
       const clId = checklist.id || (checklist as any)._id;
-      const exists = history.some(c => c.id === clId || (c as any)._id === clId);
+      const exists = clId && !clId.startsWith('bms_');
       if (exists) {
         savedCl = await updateBMSChecklist(clId, updated);
       } else {
@@ -1410,16 +1412,17 @@ const BMSChecklist: React.FC = () => {
                   >
                     View
                   </Button>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    color="primary"
-                    onClick={() => handleOpenChecklist(cl.id)}
-                    disabled={!canOpenForEdit}
-                    sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '6px' }}
-                  >
-                    Edit
-                  </Button>
+                  {canOpenForEdit && checkCanEdit(cl) && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="primary"
+                      onClick={() => handleOpenChecklist(cl.id)}
+                      sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '6px' }}
+                    >
+                      Edit
+                    </Button>
+                  )}
                   {canDelete && (
                     <IconButton
                       size="small"

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from auth_utils import get_current_user
-from database import db
+from database import db, get_local_now
+from roasters import reconcile_roster_leaves
 from datetime import datetime, timedelta
 from bson import ObjectId
 from typing import List, Optional
@@ -36,6 +37,9 @@ async def get_dashboard_summary(
     dept_head_doc = await depts_col.find_one({"departmentHead": username})
     is_dept_head = dept_head_doc is not None
     active_dept = dept_head_doc["name"] if is_dept_head else user_dept
+    
+    # Reconcile roster leaves for past dates in this department
+    await reconcile_roster_leaves(active_dept, get_local_now())
     
     # 2. Fetch roaster shifts for today
     roaster_query = {"date": date}
@@ -359,6 +363,17 @@ async def get_dashboard_summary(
             
         enriched_announcements.append(ann_dict)
 
+    # 13. Fetch top 5 open operational logs
+    op_logs_col = db.get_collection("operation_logs")
+    op_logs_cursor = op_logs_col.find({"status": "open"}).sort("createdAt", -1).limit(5)
+    op_logs_list = await op_logs_cursor.to_list(length=5)
+    
+    enriched_op_logs = []
+    for l in op_logs_list:
+        l_dict = dict(l)
+        l_dict["_id"] = str(l["_id"])
+        enriched_op_logs.append(l_dict)
+
     return {
         "roasterShifts": enriched_roasters,
         "roasterStatus": roaster_status,
@@ -376,6 +391,7 @@ async def get_dashboard_summary(
         "shiftConfig": shift_config,
         "todayAttendance": enriched_attendance,
         "periodicActivities": alert_activities,
-        "announcements": enriched_announcements
+        "announcements": enriched_announcements,
+        "openOperationLogs": enriched_op_logs
     }
 

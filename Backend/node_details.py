@@ -78,12 +78,69 @@ async def list_items(
         query["clusterId"] = clusterId
     
     if search:
-        query["$or"] = [
-            {"hostName": {"$regex": search, "$options": "i"}},
-            {"ipAddress": {"$regex": search, "$options": "i"}},
-            {"rack": {"$regex": search, "$options": "i"}},
-            {"serverModel": {"$regex": search, "$options": "i"}}
-        ]
+        terms = search.strip().split()
+        if terms:
+            # Cross-entity lookup: find clusters matching any search term
+            cluster_queries = []
+            for term in terms:
+                cluster_queries.append({"clusterName": {"$regex": term.replace('\\', '\\\\'), "$options": "i"}})
+            clusters_col = db.get_collection("clusters")
+            matching_clusters = await clusters_col.find({"$or": cluster_queries}, {"_id": 1}).to_list(length=None)
+            matching_cluster_ids = [str(doc["_id"]) for doc in matching_clusters]
+
+            term_queries = []
+            for term in terms:
+                escaped_term = term.replace('\\', '\\\\')
+                numeric_match = []
+                try:
+                    num_val = int(term)
+                    numeric_match = [
+                        {"totalRam": num_val},
+                        {"totalHardisk": num_val},
+                        {"totalCpu": num_val},
+                        {"availableRam": num_val},
+                        {"availableHardisk": num_val},
+                        {"availableCpu": num_val},
+                    ]
+                except ValueError:
+                    pass
+                
+                resource_str_queries = [
+                    {"totalRam": {"$regex": escaped_term, "$options": "i"}},
+                    {"totalHardisk": {"$regex": escaped_term, "$options": "i"}},
+                    {"totalCpu": {"$regex": escaped_term, "$options": "i"}},
+                    {"availableRam": {"$regex": escaped_term, "$options": "i"}},
+                    {"availableHardisk": {"$regex": escaped_term, "$options": "i"}},
+                    {"availableCpu": {"$regex": escaped_term, "$options": "i"}},
+                ]
+
+                or_conditions = [
+                    {"hostName": {"$regex": escaped_term, "$options": "i"}},
+                    {"ipAddress": {"$regex": escaped_term, "$options": "i"}},
+                    {"rack": {"$regex": escaped_term, "$options": "i"}},
+                    {"serverModel": {"$regex": escaped_term, "$options": "i"}},
+                    {"serialNumber": {"$regex": escaped_term, "$options": "i"}},
+                    {"admin": {"$regex": escaped_term, "$options": "i"}},
+                    {"adminCode": {"$regex": escaped_term, "$options": "i"}},
+                    {"hypervisor": {"$regex": escaped_term, "$options": "i"}},
+                    {"applications": {"$regex": escaped_term, "$options": "i"}},
+                    {"clusterType": {"$regex": escaped_term, "$options": "i"}},
+                    {"indentor": {"$regex": escaped_term, "$options": "i"}},
+                    {"poNum": {"$regex": escaped_term, "$options": "i"}},
+                    {"assetNum": {"$regex": escaped_term, "$options": "i"}},
+                    {"custodian": {"$regex": escaped_term, "$options": "i"}},
+                    {"redundancyPower": {"$regex": escaped_term, "$options": "i"}},
+                    {"remarks": {"$regex": escaped_term, "$options": "i"}},
+                    {"slNumber": {"$regex": escaped_term, "$options": "i"}},
+                    {"createdBy": {"$regex": escaped_term, "$options": "i"}},
+                    {"updatedAt": {"$regex": escaped_term, "$options": "i"}},
+                ] + numeric_match + resource_str_queries
+
+                if matching_cluster_ids:
+                    or_conditions.append({"clusterId": {"$in": matching_cluster_ids}})
+
+                term_queries.append({"$or": or_conditions})
+            query["$and"] = term_queries
 
     actual_sort_by = sortBy or sort_by or "slNumber"
     sort_order = 1 if order == "asc" else -1

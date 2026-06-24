@@ -38,12 +38,22 @@ async def list_items(
     query = {}
     
     if search:
-        query = {
-            "$or": [
-                {"clusterName": {"$regex": search, "$options": "i"}},
-                {"ipAddress": {"$regex": search, "$options": "i"}}
-            ]
-        }
+        terms = search.strip().split()
+        if terms:
+            term_queries = []
+            for term in terms:
+                escaped_term = term.replace('\\', '\\\\')
+                term_queries.append({
+                    "$or": [
+                        {"clusterName": {"$regex": escaped_term, "$options": "i"}},
+                        {"ipAddress": {"$regex": escaped_term, "$options": "i"}},
+                        {"slNumber": {"$regex": escaped_term, "$options": "i"}},
+                        {"remarks": {"$regex": escaped_term, "$options": "i"}},
+                        {"createdBy": {"$regex": escaped_term, "$options": "i"}},
+                        {"updatedAt": {"$regex": escaped_term, "$options": "i"}},
+                    ]
+                })
+            query["$and"] = term_queries
 
     actual_sort_by = sortBy or sort_by or "slNumber"
     sort_order = 1 if order == "asc" else -1

@@ -60,7 +60,11 @@ const inventorySlice = createSlice({
       })
       .addCase(updateInventory.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.inventory.findIndex((item) => item.id === action.payload.id || (item as any)._id === (action.payload as any)._id);
+        const index = state.inventory.findIndex((item) => {
+          const itemId = item.id || (item as any)._id;
+          const payloadId = action.payload.id || (action.payload as any)._id;
+          return itemId && payloadId && itemId === payloadId;
+        });
         if (index !== -1) {
           state.inventory[index] = action.payload;
         }
@@ -77,7 +81,11 @@ const inventorySlice = createSlice({
       })
       .addCase(editInventoryItem.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.inventory.findIndex((item) => item.id === action.payload.id || (item as any)._id === (action.payload as any)._id);
+        const index = state.inventory.findIndex((item) => {
+          const itemId = item.id || (item as any)._id;
+          const payloadId = action.payload.id || (action.payload as any)._id;
+          return itemId && payloadId && itemId === payloadId;
+        });
         if (index !== -1) {
           state.inventory[index] = action.payload;
         }
@@ -94,7 +102,11 @@ const inventorySlice = createSlice({
       })
       .addCase(giveInventoryItem.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.inventory.findIndex((item) => item.id === action.payload.id || (item as any)._id === (action.payload as any)._id);
+        const index = state.inventory.findIndex((item) => {
+          const itemId = item.id || (item as any)._id;
+          const payloadId = action.payload.id || (action.payload as any)._id;
+          return itemId && payloadId && itemId === payloadId;
+        });
         if (index !== -1) {
           state.inventory[index] = action.payload;
         }
@@ -111,7 +123,11 @@ const inventorySlice = createSlice({
       })
       .addCase(returnInventoryItem.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.inventory.findIndex((item) => item.id === action.payload.id || (item as any)._id === (action.payload as any)._id);
+        const index = state.inventory.findIndex((item) => {
+          const itemId = item.id || (item as any)._id;
+          const payloadId = action.payload.id || (action.payload as any)._id;
+          return itemId && payloadId && itemId === payloadId;
+        });
         if (index !== -1) {
           state.inventory[index] = action.payload;
         }

@@ -37,7 +37,11 @@ const departmentsSlice = createSlice({
       
       // Update Department
       .addCase(updateDepartment.fulfilled, (state, action) => {
-        const index = state.departments.findIndex(d => d.id === action.payload.id || (d as any)._id === action.payload._id);
+        const index = state.departments.findIndex(d => {
+          const deptId = d.id || (d as any)._id;
+          const payloadId = action.payload.id || action.payload._id;
+          return deptId && payloadId && deptId === payloadId;
+        });
         if (index !== -1) {
           state.departments[index] = { ...state.departments[index], ...action.payload };
         }

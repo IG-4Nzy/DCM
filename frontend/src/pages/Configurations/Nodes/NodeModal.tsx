@@ -103,9 +103,9 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         const payload: any = {
             node: node.trim() ? node : undefined,
             remarks,
-            totalRam: totalRam.trim() !== '' ? Number(totalRam) : undefined,
-            totalHardisk: totalHardisk.trim() !== '' ? Number(totalHardisk) : undefined,
-            totalCpu: totalCpu.trim() !== '' ? Number(totalCpu) : undefined,
+            totalRam: totalRam.trim() !== '' ? totalRam.trim() : undefined,
+            totalHardisk: totalHardisk.trim() !== '' ? totalHardisk.trim() : undefined,
+            totalCpu: totalCpu.trim() !== '' ? totalCpu.trim() : undefined,
             rack: rack || undefined,
             rackPosition: rackPosition || undefined,
             rackUnits: rackUnits.trim() !== '' ? Number(rackUnits) : undefined,
@@ -225,8 +225,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                         <Grid item xs={12} sm={4}>
                             <TextField
                                 fullWidth
-                                type="number"
-                                label="Total RAM (GB)"
+                                label="Total RAM"
                                 placeholder="e.g. 128"
                                 value={totalRam}
                                 onChange={(e) => setTotalRam(e.target.value)}
@@ -235,8 +234,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                         <Grid item xs={12} sm={4}>
                             <TextField
                                 fullWidth
-                                type="number"
-                                label="Total HDD (GB)"
+                                label="Total HDD"
                                 placeholder="e.g. 1000"
                                 value={totalHardisk}
                                 onChange={(e) => setTotalHardisk(e.target.value)}
@@ -245,8 +243,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                         <Grid item xs={12} sm={4}>
                             <TextField
                                 fullWidth
-                                type="number"
-                                label="Total CPU (Cores)"
+                                label="Total CPU"
                                 placeholder="e.g. 32"
                                 value={totalCpu}
                                 onChange={(e) => setTotalCpu(e.target.value)}

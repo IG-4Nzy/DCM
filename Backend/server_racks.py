@@ -41,9 +41,30 @@ async def list_items(
     query = {}
     
     if search:
-        query = {
-            "serverRack": {"$regex": search, "$options": "i"}
-        }
+        terms = search.strip().split()
+        if terms:
+            term_queries = []
+            for term in terms:
+                escaped_term = term.replace('\\', '\\\\')
+                numeric_match = []
+                try:
+                    # If term is numeric, allow exact match on numeric fields
+                    num_val = int(term)
+                    numeric_match = [
+                        {"rackCapacity": num_val},
+                        {"temperature": num_val}
+                    ]
+                except ValueError:
+                    pass
+                term_queries.append({
+                    "$or": [
+                        {"serverRack": {"$regex": escaped_term, "$options": "i"}},
+                        {"remarks": {"$regex": escaped_term, "$options": "i"}},
+                        {"createdBy": {"$regex": escaped_term, "$options": "i"}},
+                        {"updatedAt": {"$regex": escaped_term, "$options": "i"}},
+                    ] + numeric_match
+                })
+            query["$and"] = term_queries
 
     actual_sort_by = sortBy or sort_by or "serverRack"
     sort_order = 1 if order == "asc" else -1

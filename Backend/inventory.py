@@ -45,11 +45,24 @@ async def list_inventory(
             query["isReturnable"] = {"$ne": True}
 
     if search:
-        query["$or"] = [
-            {"itemName": {"$regex": search, "$options": "i"}},
-            {"description": {"$regex": search, "$options": "i"}},
-            {"lastUpdatedBy": {"$regex": search, "$options": "i"}},
-        ]
+        terms = search.strip().split()
+        if terms:
+            term_queries = []
+            for term in terms:
+                escaped_term = term.replace('\\', '\\\\')
+                term_queries.append({
+                    "$or": [
+                        {"itemName": {"$regex": escaped_term, "$options": "i"}},
+                        {"description": {"$regex": escaped_term, "$options": "i"}},
+                        {"lastUpdatedBy": {"$regex": escaped_term, "$options": "i"}},
+                        {"department": {"$regex": escaped_term, "$options": "i"}},
+                        {"almiraNumber": {"$regex": escaped_term, "$options": "i"}},
+                        {"rackNumber": {"$regex": escaped_term, "$options": "i"}},
+                        {"history.givenTo": {"$regex": escaped_term, "$options": "i"}},
+                        {"history.user": {"$regex": escaped_term, "$options": "i"}},
+                    ]
+                })
+            query["$and"] = term_queries
         
     actual_sort_by = sortBy or sort_by or "lastUpdatedDate"
     sort_order = 1 if order == "asc" else -1
