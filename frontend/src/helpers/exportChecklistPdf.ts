@@ -49,17 +49,7 @@ export async function exportChecklistPdf(options: ChecklistPdfOptions) {
   doc.setFont('helvetica', 'bold');
   doc.text(title, 14, 14);
 
-  // Status badge
-  const statusColor = status === 'Completed' ? [22, 163, 74] : [202, 138, 4]; // green-600 / yellow-600
-  const statusBg = status === 'Completed' ? [220, 252, 231] : [254, 243, 199];
-  const statusText = status;
-  const statusWidth = doc.getTextWidth(statusText) + 10;
-  doc.setFillColor(statusBg[0], statusBg[1], statusBg[2]);
-  doc.roundedRect(pageWidth - statusWidth - 14, 7, statusWidth, 8, 2, 2, 'F');
-  doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text(statusText, pageWidth - statusWidth / 2 - 14 + 5, 12.5);
+  // (Status badge removed as requested)
 
   // ─── Meta info ───
   let metaY = 28;
@@ -110,7 +100,6 @@ export async function exportChecklistPdf(options: ChecklistPdfOptions) {
     },
     styles: {
       overflow: 'linebreak',
-      cellWidth: 'wrap',
     },
     margin: { left: 14, right: 14 },
     didDrawPage: (data: any) => {
@@ -163,7 +152,7 @@ export async function exportChecklistPdf(options: ChecklistPdfOptions) {
       doc.setFont('helvetica', 'bold');
       doc.text(`${category}:`, 14, remarkY);
       doc.setFont('helvetica', 'normal');
-      const textLines = doc.splitTextToSize(remark, pageWidth - 60);
+      const textLines = doc.splitTextToSize(remark, pageWidth - 60 - 14);
       doc.text(textLines, 60, remarkY);
       remarkY += textLines.length * 4 + 3;
     });
@@ -206,6 +195,7 @@ export async function exportChecklistPdf(options: ChecklistPdfOptions) {
         headStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold', fontSize: 8 },
         bodyStyles: { fontSize: 7.5, textColor: [51, 65, 85] },
         alternateRowStyles: { fillColor: [248, 250, 252] },
+        styles: { overflow: 'linebreak' },
         margin: { left: 14, right: 14 }
       });
       summaryY = (doc as any).lastAutoTable?.finalY || summaryY + 10;
@@ -241,6 +231,7 @@ export async function exportChecklistPdf(options: ChecklistPdfOptions) {
         headStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold', fontSize: 8 },
         bodyStyles: { fontSize: 7.5, textColor: [51, 65, 85] },
         alternateRowStyles: { fillColor: [248, 250, 252] },
+        styles: { overflow: 'linebreak' },
         margin: { left: 14, right: 14 }
       });
     }

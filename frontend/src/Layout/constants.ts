@@ -118,7 +118,7 @@ export const SIDEBAR_OPTIONS = [
         label: wordings.visitorLogs,
         icon: Icons.VisitorLogsIcon,
         route: ROUTE_CONSTANTS.VISITOR_LOGS,
-        privileges: [PRIVILEGES.REQUEST_VIEW]
+        privileges: [PRIVILEGES.VISITOR_LOGS_VIEW, PRIVILEGES.VISITOR_LOGS_CREATE, PRIVILEGES.VISITOR_LOGS_UPDATE, PRIVILEGES.VISITOR_LOGS_DELETE   ]
     },
     {
         label: wordings.periodicActivities,
