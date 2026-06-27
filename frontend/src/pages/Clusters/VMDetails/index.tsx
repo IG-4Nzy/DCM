@@ -164,6 +164,7 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Backup Location</TableCell>
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Admin Name</TableCell>
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Admin Contact</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Power Status</TableCell>
                                 <TableCell colSpan={3} align="center" className={styles.tableWrapper__headerCell}>Resource Allotter</TableCell>
                                 {(hasUpdate || hasDelete) && (
                                     <TableCell rowSpan={2} align="right" className={styles.tableWrapper__headerCellLast}>Actions</TableCell>
@@ -178,11 +179,11 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                         <TableBody>
                             {loading && data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 11 : 12} align="center" sx={{ py: 3 }}>Loading...</TableCell>
+                                    <TableCell colSpan={clusterId ? 12 : 13} align="center" sx={{ py: 3 }}>Loading...</TableCell>
                                 </TableRow>
                             ) : data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 11 : 12} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
+                                    <TableCell colSpan={clusterId ? 12 : 13} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
                                 </TableRow>
                             ) : (
                                 data.map((row) => (
@@ -197,6 +198,15 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                                         <TableCell className={styles.tableWrapper__cell}>{row.backupLocation || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.adminName || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.adminContact || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>
+                                            <span style={{
+                                                textTransform: 'uppercase',
+                                                fontWeight: 'bold',
+                                                color: (row.powerStatus || 'on') === 'on' ? '#2e7d32' : '#d32f2f'
+                                            }}>
+                                                {row.powerStatus || 'on'}
+                                            </span>
+                                        </TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.hdd || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.ram || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.cpu || '--'}</TableCell>

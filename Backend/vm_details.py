@@ -113,6 +113,7 @@ async def list_items(
                     {"ram": {"$regex": escaped_term, "$options": "i"}},
                     {"cpu": {"$regex": escaped_term, "$options": "i"}},
                     {"backupLocation": {"$regex": escaped_term, "$options": "i"}},
+                    {"powerStatus": {"$regex": escaped_term, "$options": "i"}},
                     {"createdBy": {"$regex": escaped_term, "$options": "i"}},
                     {"createdAt": {"$regex": escaped_term, "$options": "i"}},
                     {"updatedAt": {"$regex": escaped_term, "$options": "i"}},

@@ -38,9 +38,13 @@ class ChangePasswordRequest(BaseModel):
     currentPassword: str
     newPassword: str
 
-def create_access_token(data: dict):
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
-    # Permanent token: no "exp" claim added
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(hours=8)
+    to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -100,13 +104,21 @@ async def login(credentials: LoginRequest):
     
     is_superuser = user.get("is_superuser", False)
     
+    import uuid
+    session_key = str(uuid.uuid4())
+    await users_collection.update_one(
+        {"username": user["username"]},
+        {"$set": {"session_key": session_key}}
+    )
+    
     # Generate the JWT
     access_token = create_access_token(data={
         "sub": user["username"], 
         "role": role, 
         "privileges": privileges, 
         "isSuperuser": is_superuser,
-        "department": user.get("department", "")
+        "department": user.get("department", ""),
+        "session_key": session_key
     })
     
     is_first_login_today = False
@@ -116,6 +128,7 @@ async def login(credentials: LoginRequest):
         config_collection = db.get_collection("attendance_config")
         config = await config_collection.find_one({}) or {}
         tracked_role = config.get("trackedRole")
+        late_login_restriction = config.get("lateLoginRestriction", True)
 
         should_track = True
         if tracked_role and tracked_role != "All Roles" and role != tracked_role:
@@ -151,9 +164,9 @@ async def login(credentials: LoginRequest):
                             {"_id": existing_attendance["_id"]},
                             {"$set": {"loggedOut": False}}
                         )
-                # If there's already a pending/rejected late attempt, keep blocking
+                # If there's already a pending/rejected late attempt, keep blocking only if restriction is enabled
                 late_status = existing_attendance.get("lateApprovalStatus")
-                if existing_attendance.get("isLateAttempt"):
+                if existing_attendance.get("isLateAttempt") and late_login_restriction:
                     if late_status == "Pending":
                         raise HTTPException(
                             status_code=status.HTTP_403_FORBIDDEN,
@@ -190,7 +203,50 @@ async def login(credentials: LoginRequest):
                 is_late = now_local > threshold
 
                 if is_late and not is_superuser:
-                    # Create a pending late attendance record and block login
+                    if late_login_restriction:
+                        # Create a pending late attendance record and block login
+                        await attendance_collection.insert_one({
+                            "username": user["username"],
+                            "department": user_dept,
+                            "date": target_date,
+                            "firstLogin": now_local.isoformat(),
+                            "lastLogout": None,
+                            "workedHours": 0.0,
+                            "regularizeStatus": "None",
+                            "regularizeReason": None,
+                            "regularizeRemarks": None,
+                            "isLateAttempt": True,
+                            "lateApprovalStatus": "Pending",
+                            "loggedOut": False,
+                            "shiftName": shift_name,
+                            "shiftStart": shift_start_str,
+                            "shiftEnd": shift_end_str
+                        })
+                        raise HTTPException(
+                            status_code=status.HTTP_403_FORBIDDEN,
+                            detail="You are late, you are not allowed to login, contact your department head"
+                        )
+                    else:
+                        # Create an approved late attendance record and allow login
+                        await attendance_collection.insert_one({
+                            "username": user["username"],
+                            "department": user_dept,
+                            "date": target_date,
+                            "firstLogin": now_local.isoformat(),
+                            "lastLogout": None,
+                            "workedHours": 0.0,
+                            "regularizeStatus": "None",
+                            "regularizeReason": None,
+                            "regularizeRemarks": None,
+                            "isLateAttempt": True,
+                            "lateApprovalStatus": "Approved",
+                            "loggedOut": False,
+                            "shiftName": shift_name,
+                            "shiftStart": shift_start_str,
+                            "shiftEnd": shift_end_str
+                        })
+                else:
+                    # Not late — normal attendance record
                     await attendance_collection.insert_one({
                         "username": user["username"],
                         "department": user_dept,
@@ -201,34 +257,11 @@ async def login(credentials: LoginRequest):
                         "regularizeStatus": "None",
                         "regularizeReason": None,
                         "regularizeRemarks": None,
-                        "isLateAttempt": True,
-                        "lateApprovalStatus": "Pending",
                         "loggedOut": False,
                         "shiftName": shift_name,
                         "shiftStart": shift_start_str,
                         "shiftEnd": shift_end_str
                     })
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="You are late, you are not allowed to login, contact your department head"
-                    )
-
-                # Not late — normal attendance record
-                await attendance_collection.insert_one({
-                    "username": user["username"],
-                    "department": user_dept,
-                    "date": target_date,
-                    "firstLogin": now_local.isoformat(),
-                    "lastLogout": None,
-                    "workedHours": 0.0,
-                    "regularizeStatus": "None",
-                    "regularizeReason": None,
-                    "regularizeRemarks": None,
-                    "loggedOut": False,
-                    "shiftName": shift_name,
-                    "shiftStart": shift_start_str,
-                    "shiftEnd": shift_end_str
-                })
     except HTTPException:
         raise  # Re-raise HTTP exceptions (late login block)
     except Exception as e:

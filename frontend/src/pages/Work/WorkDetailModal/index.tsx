@@ -69,7 +69,35 @@ const WorkDetailModal = ({
     (state: RootState) => !!(state?.auth as any)?.user?.isSuperuser || !!state?.auth?.isSuperuser
   );
 
-  const canUpdateWork = hasPrivilege(PRIVILEGES.WORK_UPDATE);
+  const departments = useSelector((state: RootState) => state?.departments?.departments || []);
+
+  const isDeptHeadOfWork = React.useMemo(() => {
+    if (!work || !currentUser || !departments || departments.length === 0) return false;
+    const headDepts = departments.filter((d: any) => d.departmentHead === currentUser).map((d: any) => d.name);
+    if (headDepts.length === 0) return false;
+
+    if (work.createdBy) {
+      const creatorUser = users.find((u: any) => u.username === work.createdBy);
+      if (creatorUser && headDepts.includes(creatorUser.department)) {
+        return true;
+      }
+    }
+
+    const workAssignees = work.assignees || (work.assignee ? [work.assignee] : []);
+    for (const assigneeId of workAssignees) {
+      const assigneeUser = users.find((u: any) => u.username === assigneeId || u.id === assigneeId || u._id === assigneeId);
+      if (assigneeUser && headDepts.includes(assigneeUser.department)) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [work, currentUser, departments, users]);
+
+  const isEmergency = !!work?.isEmergency;
+  const canUpdateWork = isEmergency 
+    ? (hasPrivilege(PRIVILEGES.WORK_UPDATE) || hasPrivilege(PRIVILEGES.EMERGENCY_WORK_UPDATE) || isDeptHeadOfWork)
+    : hasPrivilege(PRIVILEGES.WORK_UPDATE);
   const isCompletedOrClosed = currentStatus === "Completed" || currentStatus === "Closed";
   const isLocked = isCompletedOrClosed && !isSuperuser;
   
@@ -79,7 +107,9 @@ const WorkDetailModal = ({
   );
   
   const isAssignee = assigneeUsers.some((u) => u.username === currentUser);
-  const hasStatusUpdate = canUpdateWork || (hasPrivilege(PRIVILEGES.WORK_VIEW_ASSIGNED) && isAssignee);
+  const hasStatusUpdate = canUpdateWork || 
+    (hasPrivilege(PRIVILEGES.WORK_VIEW_ASSIGNED) && isAssignee) ||
+    (isEmergency && hasPrivilege(PRIVILEGES.EMERGENCY_WORK_VIEW) && isAssignee);
   const canUpdateStatus = hasStatusUpdate && !isLocked;
 
   const availableStatusOptions = [
@@ -100,6 +130,24 @@ const WorkDetailModal = ({
   }, [work]);
 
   const canTransfer = (isAssignee || canUpdateWork) && currentStatus !== "Completed" && currentStatus !== "Closed";
+
+  const handleApprove = async () => {
+    if (!work) return;
+    try {
+      const commentPayload = {
+        text: `This emergency work ticket was approved by ${currentUser}.`,
+        user: "System",
+        timestamp: new Date().toISOString()
+      };
+      await onUpdate({
+        id: work.id || work._id,
+        approved: true,
+        comments: [...(work.comments || []), commentPayload]
+      });
+    } catch (err) {
+      // Handled
+    }
+  };
 
   const handleConfirmTransfer = async () => {
     if (!work || !transferAssignee || !transferReason.trim()) return;
@@ -264,6 +312,13 @@ const WorkDetailModal = ({
               marginBottom: "1rem",
             }}
           >
+            {work.isEmergency && (
+              <Chip
+                label={work.approved ? "Emergency Work (Approved)" : "Emergency Work (Pending Approval)"}
+                color={work.approved ? "success" : "error"}
+                sx={{ borderRadius: "8px", fontWeight: "bold" }}
+              />
+            )}
             <Chip
               icon={<MdPerson />}
               label={`Assignee: ${assigneeName}`}
@@ -294,6 +349,28 @@ const WorkDetailModal = ({
                 }}
               >
                 Transfer Work
+              </Button>
+            )}
+            {work.isEmergency && !work.approved && (isSuperuser || hasPrivilege(PRIVILEGES.WORK_UPDATE) || hasPrivilege(PRIVILEGES.EMERGENCY_WORK_APPROVE)) && (
+              <Button
+                variant="contained"
+                size="small"
+                color="success"
+                onClick={handleApprove}
+                sx={{
+                  borderRadius: "8px",
+                  textTransform: "none",
+                  fontWeight: "bold",
+                  px: 2,
+                  height: 32,
+                  fontSize: "0.85rem",
+                  backgroundColor: "#2e7d32",
+                  "&:hover": {
+                    backgroundColor: "#1b5e20"
+                  }
+                }}
+              >
+                Approve Emergency Work
               </Button>
             )}
             <Chip

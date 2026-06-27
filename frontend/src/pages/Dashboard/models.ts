@@ -10,6 +10,7 @@ export interface DashboardData {
   checklists: {
     bms: string;
     morning: string;
+    cluster: string;
   };
   showRoasterReminder: boolean;
   pendingWorks: any[];

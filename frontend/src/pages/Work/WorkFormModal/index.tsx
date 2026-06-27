@@ -3,10 +3,12 @@ import Modal from "../../../components/Modal";
 import TextField from "../../../components/TextField";
 import DatePicker from "../../../components/DatePicker";
 import Dropdown from "../../../components/Dropdown";
-import { Button, IconButton } from "@mui/material";
+import { Button, IconButton, FormControlLabel, Checkbox } from "@mui/material";
 import { MdClose } from "react-icons/md";
 import { PRIORITY_OPTIONS } from "../constant";
 import { getServerTime } from "../../../helpers/time";
+import { hasPrivilege } from "../../../helpers/authUtils";
+import { PRIVILEGES } from "../../../helpers/privileges";
 import styles from "./index.module.scss";
 
 interface PropType {
@@ -27,6 +29,8 @@ interface PropType {
   setAttachments: (value: File[]) => void;
   users: any[];
   handleSubmit: (e: React.FormEvent) => void;
+  isEmergency: boolean;
+  setIsEmergency: (value: boolean) => void;
 }
 
 const WorkFormModal = ({
@@ -47,6 +51,8 @@ const WorkFormModal = ({
   setAttachments,
   users,
   handleSubmit,
+  isEmergency,
+  setIsEmergency,
 }: PropType) => {
   const isUserOnline = (user: any) => {
     if (!user.lastActive) return false;
@@ -168,6 +174,20 @@ const WorkFormModal = ({
               <div className={styles.fileInfo}>No files selected</div>
             )}
           </div>
+        </div>
+
+        <div className={styles.row}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={isEmergency}
+                onChange={(e) => setIsEmergency(e.target.checked)}
+                color="error"
+                disabled={!!editingWork || !hasPrivilege(PRIVILEGES.WORK_CREATE)}
+              />
+            }
+            label={<span style={{ fontWeight: 'bold', color: '#d32f2f' }}>Mark as Emergency Work (Requires Admin Approval)</span>}
+          />
         </div>
 
         <div className={styles.actions}>

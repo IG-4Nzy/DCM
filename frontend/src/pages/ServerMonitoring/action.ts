@@ -23,7 +23,7 @@ export const createVCenter = async (payload: any) => {
 };
 
 export const fetchNodes = async () => {
-  const response = await request.get('/api/node-details', { params: { pagination: false } });
+  const response = await request.get('/api/node-details/', { params: { pagination: false } });
   return response.data.data || [];
 };
 

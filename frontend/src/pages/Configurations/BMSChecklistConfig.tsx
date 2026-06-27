@@ -16,7 +16,7 @@ import { PRIVILEGES } from '../../helpers/privileges';
 import { useTableState } from '../../hooks/useTableState';
 import { jwtDecode } from 'jwt-decode';
 import { flattenConfig, unflattenRows, DEFAULT_CONFIG } from '../BMSChecklist/config';
-import type { FlatRow } from '../BMSChecklist/config';
+import type { FlatRow, Rule } from '../BMSChecklist/config';
 import { fetchBMSChecklistConfig, saveBMSChecklistConfig } from '../BMSChecklist/action';
 
 type Order = 'asc' | 'desc';
@@ -26,6 +26,11 @@ type ParameterUnitDraft = {
   unit: string;
   ruleOperator: string;
   ruleValue: string;
+  maxValue: string;
+  warningOperator: string;
+  warningValue: string;
+  warningLabel: string;
+  rules?: Rule[];
 };
 
 const EMPTY_FIELD: FlatRow = {
@@ -43,6 +48,11 @@ const EMPTY_PARAMETER_UNIT: ParameterUnitDraft = {
   unit: '',
   ruleOperator: '',
   ruleValue: '',
+  maxValue: '',
+  warningOperator: '',
+  warningValue: '',
+  warningLabel: '',
+  rules: [],
 };
 
 const BMSChecklistConfig = () => {
@@ -87,6 +97,11 @@ const BMSChecklistConfig = () => {
   const [editUnit, setEditUnit] = useState('');
   const [editRuleOperator, setEditRuleOperator] = useState('');
   const [editRuleValue, setEditRuleValue] = useState('');
+  const [editMaxValue, setEditMaxValue] = useState('');
+  const [editWarningOperator, setEditWarningOperator] = useState('');
+  const [editWarningValue, setEditWarningValue] = useState('');
+  const [editWarningLabel, setEditWarningLabel] = useState('');
+  const [editRules, setEditRules] = useState<Rule[]>([]);
 
   const [newField, setNewField] = useState<FlatRow>(EMPTY_FIELD);
   const [newParameterUnits, setNewParameterUnits] = useState<ParameterUnitDraft[]>([{ ...EMPTY_PARAMETER_UNIT }]);
@@ -140,8 +155,27 @@ const BMSChecklistConfig = () => {
   const handleOpenEditModal = (row: FlatRow) => {
     setEditingRow(row);
     setEditUnit(row.unit || '');
-    setEditRuleOperator(row.ruleOperator || '');
-    setEditRuleValue(row.ruleValue !== undefined ? row.ruleValue.toString() : '');
+    setEditMaxValue(row.maxValue !== undefined ? row.maxValue.toString() : '');
+    
+    let initialRules = row.rules ? [...row.rules] : [];
+    if (initialRules.length === 0) {
+      if (row.ruleOperator && row.ruleValue !== undefined && row.ruleValue !== '') {
+        initialRules.push({
+          type: 'fail',
+          operator: row.ruleOperator,
+          value: row.ruleValue,
+        });
+      }
+      if (row.warningOperator && row.warningValue !== undefined && row.warningValue !== '') {
+        initialRules.push({
+          type: 'warning',
+          operator: row.warningOperator,
+          value: row.warningValue,
+          label: row.warningLabel,
+        });
+      }
+    }
+    setEditRules(initialRules);
   };
 
   const handleCloseEditModal = () => {
@@ -161,13 +195,21 @@ const BMSChecklistConfig = () => {
   const handleSaveEditRow = async () => {
     if (!editingRow) return;
 
+    const firstFail = editRules.find(ru => ru.type === 'fail');
+    const firstWarning = editRules.find(ru => ru.type === 'warning');
+
     const updated = rows.map(r => {
       if (r.category === editingRow.category && r.device === editingRow.device && r.parameter === editingRow.parameter) {
         return {
           ...r,
           unit: editUnit.trim(),
-          ruleOperator: editRuleOperator,
-          ruleValue: editRuleValue.trim() !== '' ? editRuleValue.trim() : '',
+          ruleOperator: firstFail?.operator || '',
+          ruleValue: firstFail?.value !== undefined && firstFail.value !== '' ? firstFail.value : '',
+          maxValue: editMaxValue.trim() !== '' ? editMaxValue.trim() : '',
+          warningOperator: firstWarning?.operator || '',
+          warningValue: firstWarning?.value !== undefined && firstWarning.value !== '' ? firstWarning.value : '',
+          warningLabel: firstWarning?.label || '',
+          rules: editRules,
         };
       }
       return r;
@@ -177,6 +219,51 @@ const BMSChecklistConfig = () => {
     showToast(`Parameter rule updated for ${editingRow.parameter}`, 'success');
     handleCloseEditModal();
     await saveTemplate(updated);
+  };
+
+  const addEditRule = () => {
+    setEditRules(prev => [...prev, { type: 'fail', operator: '>', value: '', label: '' }]);
+  };
+
+  const updateEditRule = (index: number, field: keyof Rule, val: any) => {
+    setEditRules(prev => prev.map((ru, idx) => idx === index ? { ...ru, [field]: val } : ru));
+  };
+
+  const removeEditRule = (index: number) => {
+    setEditRules(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const addFieldRule = (paramIdx: number) => {
+    setNewParameterUnits(prev => prev.map((pu, idx) => {
+      if (idx === paramIdx) {
+        const rules = pu.rules ? [...pu.rules] : [];
+        return {
+          ...pu,
+          rules: [...rules, { type: 'fail', operator: '>', value: '', label: '' }]
+        };
+      }
+      return pu;
+    }));
+  };
+
+  const updateFieldRule = (paramIdx: number, ruleIdx: number, field: keyof Rule, val: any) => {
+    setNewParameterUnits(prev => prev.map((pu, idx) => {
+      if (idx === paramIdx) {
+        const rules = pu.rules ? pu.rules.map((ru, rIdx) => rIdx === ruleIdx ? { ...ru, [field]: val } : ru) : [];
+        return { ...pu, rules };
+      }
+      return pu;
+    }));
+  };
+
+  const removeFieldRule = (paramIdx: number, ruleIdx: number) => {
+    setNewParameterUnits(prev => prev.map((pu, idx) => {
+      if (idx === paramIdx) {
+        const rules = pu.rules ? pu.rules.filter((_, rIdx) => rIdx !== ruleIdx) : [];
+        return { ...pu, rules };
+      }
+      return pu;
+    }));
   };
 
   const updateParameterUnit = (index: number, field: keyof ParameterUnitDraft, value: string) => {
@@ -202,6 +289,11 @@ const BMSChecklistConfig = () => {
         unit: item.unit.trim(),
         ruleOperator: item.ruleOperator,
         ruleValue: item.ruleValue.trim(),
+        maxValue: item.maxValue.trim(),
+        warningOperator: item.warningOperator,
+        warningValue: item.warningValue.trim(),
+        warningLabel: item.warningLabel.trim(),
+        rules: item.rules || [],
       }))
       .filter(item => item.parameter);
 
@@ -244,7 +336,9 @@ const BMSChecklistConfig = () => {
 
     const newRows: FlatRow[] = [];
     devices.forEach(device => {
-      parameters.forEach(({ parameter, unit, ruleOperator, ruleValue }) => {
+      parameters.forEach(({ parameter, unit, ruleOperator, ruleValue, maxValue, warningOperator, warningValue, warningLabel, rules }) => {
+        const firstFail = rules.find(r => r.type === 'fail');
+        const firstWarning = rules.find(r => r.type === 'warning');
         newRows.push({
           category,
           device,
@@ -253,8 +347,13 @@ const BMSChecklistConfig = () => {
           bmsReading: '',
           unit,
           remarks: '',
-          ruleOperator,
-          ruleValue: ruleValue !== '' ? ruleValue : '',
+          ruleOperator: firstFail?.operator || ruleOperator || '',
+          ruleValue: firstFail?.value !== undefined && firstFail.value !== '' ? firstFail.value : (ruleValue !== '' ? ruleValue : ''),
+          maxValue: maxValue !== '' ? maxValue : '',
+          warningOperator: firstWarning?.operator || warningOperator || '',
+          warningValue: firstWarning?.value !== undefined && firstWarning.value !== '' ? firstWarning.value : (warningValue !== '' ? warningValue : ''),
+          warningLabel: firstWarning?.label || warningLabel || '',
+          rules,
         });
       });
     });
@@ -356,10 +455,29 @@ const BMSChecklistConfig = () => {
   };
 
   const getRuleDisplay = (row: FlatRow) => {
-    if (!row.ruleOperator || row.ruleValue === undefined || row.ruleValue === '') {
-      return '-';
+    const rulesList = row.rules || [];
+    const rules: string[] = [];
+    if (row.maxValue !== undefined && row.maxValue !== '') {
+      rules.push(`Max: ${row.maxValue}`);
     }
-    return `Value cannot be ${row.ruleOperator} ${row.ruleValue}`;
+
+    if (rulesList.length > 0) {
+      rulesList.forEach(r => {
+        if (r.type === 'fail') {
+          rules.push(`Fail: ${r.operator} ${r.value}`);
+        } else {
+          rules.push(`Warn: ${r.operator} ${r.value}${r.label ? ` (${r.label})` : ''}`);
+        }
+      });
+    } else {
+      if (row.ruleOperator && row.ruleValue !== undefined && row.ruleValue !== '') {
+        rules.push(`Fail: ${row.ruleOperator} ${row.ruleValue}`);
+      }
+      if (row.warningOperator && row.warningValue !== undefined && row.warningValue !== '') {
+        rules.push(`Warn: ${row.warningOperator} ${row.warningValue}${row.warningLabel ? ` (${row.warningLabel})` : ''}`);
+      }
+    }
+    return rules.length > 0 ? rules.join(' | ') : '-';
   };
 
   const columns: Column<FlatRow>[] = [];
@@ -392,7 +510,7 @@ const BMSChecklistConfig = () => {
     { id: 'device', label: 'Device', sortable: true },
     { id: 'parameter', label: 'Parameter', sortable: true },
     { id: 'unit', label: 'Default Unit', sortable: true, render: (row) => row.unit || '-' },
-    { id: 'ruleOperator', label: 'Failure Rule Threshold', sortable: false, render: (row) => getRuleDisplay(row) }
+    { id: 'ruleOperator', label: 'Validation/Warning Rules', sortable: false, render: (row) => getRuleDisplay(row) }
   );
 
   if (hasUpdate || hasDelete) {
@@ -500,54 +618,121 @@ const BMSChecklistConfig = () => {
 
           {newParameterUnits.map((paramUnit, idx) => (
             <Box key={idx} sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap', p: 1.5, border: '1px solid #f1f5f9', borderRadius: '8px', bgcolor: '#fbfcfd' }}>
-              <TextField
-                label={`Parameter ${idx + 1}`}
-                required
-                placeholder="e.g. Temperature"
-                value={paramUnit.parameter}
-                onChange={(e) => updateParameterUnit(idx, 'parameter', e.target.value)}
-                sx={{ flex: 2, minWidth: '150px' }}
-              />
-              <TextField
-                label="Unit"
-                placeholder="e.g. °C"
-                value={paramUnit.unit}
-                onChange={(e) => updateParameterUnit(idx, 'unit', e.target.value)}
-                sx={{ flex: 1, minWidth: '80px' }}
-              />
-
-              <FormControl sx={{ flex: 1.5, minWidth: '110px' }}>
-                <InputLabel>Rule Fail Condition</InputLabel>
-                <Select
-                  value={paramUnit.ruleOperator}
-                  label="Rule Fail Condition"
-                  onChange={(e) => updateParameterUnit(idx, 'ruleOperator', e.target.value)}
+              {/* Parameter Row */}
+              <Box sx={{ display: 'flex', gap: 1.5, width: '100%', alignItems: 'center' }}>
+                <TextField
+                  label={`Parameter ${idx + 1}`}
+                  required
+                  placeholder="e.g. Temperature"
+                  value={paramUnit.parameter}
+                  onChange={(e) => updateParameterUnit(idx, 'parameter', e.target.value)}
+                  sx={{ flex: 2 }}
+                />
+                <TextField
+                  label="Unit"
+                  placeholder="e.g. °C"
+                  value={paramUnit.unit}
+                  onChange={(e) => updateParameterUnit(idx, 'unit', e.target.value)}
+                  sx={{ flex: 1 }}
+                />
+                <TextField
+                  label="Max Value"
+                  type="number"
+                  placeholder="Max allowed"
+                  value={paramUnit.maxValue}
+                  onChange={(e) => updateParameterUnit(idx, 'maxValue', e.target.value)}
+                  sx={{ flex: 1.2 }}
+                />
+                <IconButton
+                  color="error"
+                  disabled={newParameterUnits.length === 1}
+                  onClick={() => removeParameterUnit(idx)}
                 >
-                  <MenuItem value="">None</MenuItem>
-                  <MenuItem value=">">Value &gt;</MenuItem>
-                  <MenuItem value="<">Value &lt;</MenuItem>
-                  <MenuItem value=">=">Value &gt;=</MenuItem>
-                  <MenuItem value="<=">Value &lt;=</MenuItem>
-                </Select>
-              </FormControl>
+                  <RemoveIcon />
+                </IconButton>
+              </Box>
 
-              <TextField
-                label="Rule Value"
-                type="number"
-                placeholder="Value threshold"
-                value={paramUnit.ruleValue}
-                onChange={(e) => updateParameterUnit(idx, 'ruleValue', e.target.value)}
-                disabled={!paramUnit.ruleOperator}
-                sx={{ flex: 1.2, minWidth: '100px' }}
-              />
+              {/* Dynamic Rules Section */}
+              <Box sx={{ width: '100%', pl: 2, borderLeft: '3px solid #cbd5e1', mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#475569' }}>
+                    Rules (Fail/Warning Conditions)
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<AddIcon />}
+                    onClick={() => addFieldRule(idx)}
+                    sx={{ py: 0.5, fontSize: '0.75rem', textTransform: 'none' }}
+                  >
+                    Add Rule
+                  </Button>
+                </Box>
 
-              <IconButton
-                color="error"
-                disabled={newParameterUnits.length === 1}
-                onClick={() => removeParameterUnit(idx)}
-              >
-                <RemoveIcon />
-              </IconButton>
+                {(!paramUnit.rules || paramUnit.rules.length === 0) ? (
+                  <Typography variant="caption" color="textSecondary" sx={{ fontStyle: 'italic' }}>
+                    No rules added yet. Parameter will only check for input values.
+                  </Typography>
+                ) : (
+                  paramUnit.rules.map((rule, ruleIdx) => (
+                    <Box key={ruleIdx} sx={{ display: 'flex', gap: 1.5, alignItems: 'center', p: 1, border: '1px solid #e2e8f0', borderRadius: '6px', bgcolor: '#fff' }}>
+                      <FormControl size="small" sx={{ width: 100 }}>
+                        <InputLabel>Type</InputLabel>
+                        <Select
+                          value={rule.type}
+                          label="Type"
+                          onChange={(e) => updateFieldRule(idx, ruleIdx, 'type', e.target.value)}
+                        >
+                          <MenuItem value="fail">Fail</MenuItem>
+                          <MenuItem value="warning">Warning</MenuItem>
+                        </Select>
+                      </FormControl>
+
+                      <FormControl size="small" sx={{ width: 120 }}>
+                        <InputLabel>Condition</InputLabel>
+                        <Select
+                          value={rule.operator}
+                          label="Condition"
+                          onChange={(e) => updateFieldRule(idx, ruleIdx, 'operator', e.target.value)}
+                        >
+                          <MenuItem value=">">Value &gt;</MenuItem>
+                          <MenuItem value="<">Value &lt;</MenuItem>
+                          <MenuItem value=">=">Value &gt;=</MenuItem>
+                          <MenuItem value="<=">Value &lt;=</MenuItem>
+                        </Select>
+                      </FormControl>
+
+                      <TextField
+                        label="Value"
+                        type="number"
+                        size="small"
+                        value={rule.value}
+                        onChange={(e) => updateFieldRule(idx, ruleIdx, 'value', e.target.value)}
+                        sx={{ width: 90 }}
+                      />
+
+                      {rule.type === 'warning' && (
+                        <TextField
+                          label="Warning Label"
+                          size="small"
+                          placeholder="e.g. Temperature high"
+                          value={rule.label || ''}
+                          onChange={(e) => updateFieldRule(idx, ruleIdx, 'label', e.target.value)}
+                          sx={{ flex: 1 }}
+                        />
+                      )}
+
+                      <IconButton
+                        color="error"
+                        onClick={() => removeFieldRule(idx, ruleIdx)}
+                        size="small"
+                      >
+                        <RemoveIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ))
+                )}
+              </Box>
             </Box>
           ))}
 
@@ -573,7 +758,7 @@ const BMSChecklistConfig = () => {
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
           <Typography variant="body2" color="textSecondary">
-            Edit Default Unit and trigger threshold rules under Category "{editingRow?.category}", Device "{editingRow?.device}".
+            Edit Default Unit and validation/warning rules under Category "{editingRow?.category}", Device "{editingRow?.device}".
           </Typography>
 
           <TextField
@@ -584,32 +769,95 @@ const BMSChecklistConfig = () => {
             onChange={(e) => setEditUnit(e.target.value)}
           />
 
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel>Rule Fail Condition</InputLabel>
-              <Select
-                value={editRuleOperator}
-                label="Rule Fail Condition"
-                onChange={(e) => setEditRuleOperator(e.target.value)}
-              >
-                <MenuItem value="">None</MenuItem>
-                <MenuItem value=">">Value &gt;</MenuItem>
-                <MenuItem value="<">Value &lt;</MenuItem>
-                <MenuItem value=">=">Value &gt;=</MenuItem>
-                <MenuItem value="<=">Value &lt;=</MenuItem>
-              </Select>
-            </FormControl>
+          <TextField
+            label="Max Value (for validation)"
+            type="number"
+            fullWidth
+            placeholder="e.g. 100"
+            value={editMaxValue}
+            onChange={(e) => setEditMaxValue(e.target.value)}
+          />
 
-            <TextField
-              label="Threshold Value"
-              type="number"
-              fullWidth
-              placeholder="e.g. 50"
-              value={editRuleValue}
-              onChange={(e) => setEditRuleValue(e.target.value)}
-              disabled={!editRuleOperator}
-            />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#334155' }}>
+              Validation & Warning Rules
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={addEditRule}
+              sx={{ textTransform: 'none' }}
+            >
+              Add Rule
+            </Button>
           </Box>
+
+          {(!editRules || editRules.length === 0) ? (
+            <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic', pl: 1 }}>
+              No rules added yet. Parameter will only check for input values.
+            </Typography>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {editRules.map((rule, idx) => (
+                <Box key={idx} sx={{ display: 'flex', gap: 1.5, alignItems: 'center', p: 1.5, border: '1px solid #e2e8f0', borderRadius: '6px', bgcolor: '#f8fafc' }}>
+                  <FormControl size="small" sx={{ width: 100 }}>
+                    <InputLabel>Type</InputLabel>
+                    <Select
+                      value={rule.type}
+                      label="Type"
+                      onChange={(e) => updateEditRule(idx, 'type', e.target.value)}
+                    >
+                      <MenuItem value="fail">Fail</MenuItem>
+                      <MenuItem value="warning">Warning</MenuItem>
+                    </Select>
+                  </FormControl>
+
+                  <FormControl size="small" sx={{ width: 110 }}>
+                    <InputLabel>Condition</InputLabel>
+                    <Select
+                      value={rule.operator}
+                      label="Condition"
+                      onChange={(e) => updateEditRule(idx, 'operator', e.target.value)}
+                    >
+                      <MenuItem value=">">Value &gt;</MenuItem>
+                      <MenuItem value="<">Value &lt;</MenuItem>
+                      <MenuItem value=">=">Value &gt;=</MenuItem>
+                      <MenuItem value="<=">Value &lt;=</MenuItem>
+                    </Select>
+                  </FormControl>
+
+                  <TextField
+                    label="Value"
+                    type="number"
+                    size="small"
+                    value={rule.value}
+                    onChange={(e) => updateEditRule(idx, 'value', e.target.value)}
+                    sx={{ width: 90 }}
+                  />
+
+                  {rule.type === 'warning' && (
+                    <TextField
+                      label="Label"
+                      size="small"
+                      placeholder="Warning Label"
+                      value={rule.label || ''}
+                      onChange={(e) => updateEditRule(idx, 'label', e.target.value)}
+                      sx={{ flex: 1 }}
+                    />
+                  )}
+
+                  <IconButton
+                    color="error"
+                    onClick={() => removeEditRule(idx)}
+                    size="small"
+                  >
+                    <RemoveIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              ))}
+            </Box>
+          )}
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
           <MuiButton onClick={handleCloseEditModal} sx={{ textTransform: 'none' }}>Cancel</MuiButton>

@@ -35,6 +35,7 @@ import { hasAnyPrivilege } from '../helpers/authUtils';
 import { ROUTE_CONSTANTS } from '../router/constant';
 import request from '../services/request';
 import { NotificationPollerProvider } from '../contexts/NotificationPollerContext';
+import { getServerTime } from '../helpers/time';
 
 const drawerWidth = 240;
 
@@ -135,9 +136,9 @@ const Layout: React.FC = () => {
       };
       try {
         const formatter = new Intl.DateTimeFormat('en-GB', options);
-        setServerTime(formatter.format(new Date()));
+        setServerTime(formatter.format(getServerTime().toDate()));
       } catch (e) {
-        setServerTime(new Date().toLocaleString());
+        setServerTime(getServerTime().toDate().toLocaleString());
       }
     };
     updateTime();

@@ -30,7 +30,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         backupLocation: '',
         addedToMonitoring: false,
         adminName: '',
-        adminContact: ''
+        adminContact: '',
+        powerStatus: 'on'
     });
 
     const [nodes, setNodes] = useState<any[]>([]);
@@ -64,7 +65,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     backupLocation: editingItem.backupLocation || '',
                     addedToMonitoring: editingItem.addedToMonitoring || false,
                     adminName: editingItem.adminName || '',
-                    adminContact: editingItem.adminContact || ''
+                    adminContact: editingItem.adminContact || '',
+                    powerStatus: editingItem.powerStatus || 'on'
                 });
             } else {
                 setFormData({
@@ -79,7 +81,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     backupLocation: '',
                     addedToMonitoring: false,
                     adminName: '',
-                    adminContact: ''
+                    adminContact: '',
+                    powerStatus: 'on'
                 });
             }
         }
@@ -109,6 +112,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
             if (formData.addedToMonitoring !== editingItem.addedToMonitoring) changedData.addedToMonitoring = formData.addedToMonitoring;
             if (formData.adminName !== editingItem.adminName) changedData.adminName = formData.adminName;
             if (formData.adminContact !== editingItem.adminContact) changedData.adminContact = formData.adminContact;
+            if (formData.powerStatus !== editingItem.powerStatus) changedData.powerStatus = formData.powerStatus;
             onSubmit(changedData);
         } else {
             onSubmit(formData);
@@ -170,6 +174,17 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         className={styles.formGrid__field}
                         value={formData.backupLocation} 
                         onChange={(e) => handleChange('backupLocation', e.target.value)} 
+                    />
+                    <Dropdown 
+                        label="Power Status" 
+                        size="small"
+                        fullWidth
+                        value={formData.powerStatus || 'on'} 
+                        onChange={(val) => handleChange('powerStatus', val)} 
+                        options={[
+                            { label: 'On', value: 'on' },
+                            { label: 'Off', value: 'off' }
+                        ]}
                     />
                     <FormControlLabel
                         control={

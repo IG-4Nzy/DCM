@@ -10,9 +10,10 @@ interface ChecklistStatusCardProps {
   data: DashboardData;
   onMorningClick: () => void;
   onBmsClick: () => void;
+  onClusterClick: () => void;
 }
 
-export const ChecklistStatusCard: React.FC<ChecklistStatusCardProps> = ({ data, onMorningClick, onBmsClick }) => {
+export const ChecklistStatusCard: React.FC<ChecklistStatusCardProps> = ({ data, onMorningClick, onBmsClick, onClusterClick }) => {
   return (
     <Card sx={cardSx}>
       <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
@@ -29,6 +30,12 @@ export const ChecklistStatusCard: React.FC<ChecklistStatusCardProps> = ({ data, 
             status={data.checklists.bms}
             icon={<Icons.BMSChecklistIcon />}
             onClick={onBmsClick}
+          />
+          <ChecklistCard
+            title="Cluster Checklist"
+            status={data.checklists.cluster}
+            icon={<Icons.ClusterIcon />}
+            onClick={onClusterClick}
           />
         </Box>
       </CardContent>

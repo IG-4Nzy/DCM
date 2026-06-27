@@ -184,19 +184,19 @@ const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
             id: 'totalRam', 
             label: 'Total / Available RAM', 
             sortable: false,
-            render: (row) => row.totalRam !== undefined && row.totalRam !== null ? `${row.totalRam} GB / ${row.availableRam ?? 0} GB` : '-'
+            render: (row) => row.totalRam !== undefined && row.totalRam !== null ? `${row.totalRam} / ${row.availableRam ?? 0}` : '-'
         },
         { 
             id: 'totalHardisk', 
             label: 'Total / Available HDD', 
             sortable: false,
-            render: (row) => row.totalHardisk !== undefined && row.totalHardisk !== null ? `${row.totalHardisk} GB / ${row.availableHardisk ?? 0} GB` : '-'
+            render: (row) => row.totalHardisk !== undefined && row.totalHardisk !== null ? `${row.totalHardisk} / ${row.availableHardisk ?? 0}` : '-'
         },
         { 
             id: 'totalCpu', 
             label: 'Total / Available CPU', 
             sortable: false,
-            render: (row) => row.totalCpu !== undefined && row.totalCpu !== null ? `${row.totalCpu} Cores / ${row.availableCpu ?? 0} Cores` : '-'
+            render: (row) => row.totalCpu !== undefined && row.totalCpu !== null ? `${row.totalCpu} / ${row.availableCpu ?? 0}` : '-'
         },
         { id: 'serverModel', label: 'Server Model', sortable: true },
         { id: 'serialNumber', label: 'Serial Number', sortable: true },

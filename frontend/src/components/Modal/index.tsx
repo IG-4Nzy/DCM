@@ -14,11 +14,7 @@ const Modal: React.FC<ModalProps> = ({ open, handleClose, children, title, maxWi
   return (
     <Dialog 
       open={open} 
-      onClose={(event, reason) => {
-        if (reason === 'backdropClick') return;
-        handleClose();
-      }} 
-      disableEscapeKeyDown
+      onClose={handleClose} 
       maxWidth={maxWidth} 
       fullWidth
       sx={{

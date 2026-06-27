@@ -106,4 +106,9 @@ export const PRIVILEGES = {
     VISITOR_LOGS_CREATE: "Create Visitor Logs",
     VISITOR_LOGS_UPDATE: "Update Visitor Logs",
     VISITOR_LOGS_DELETE: "Delete Visitor Logs",
+    EMERGENCY_WORK_CREATE: "Create Emergency Work",
+    EMERGENCY_WORK_UPDATE: "Update Emergency Work",
+    EMERGENCY_WORK_DELETE: "Delete Emergency Work",
+    EMERGENCY_WORK_VIEW: "View Emergency Work",
+    EMERGENCY_WORK_APPROVE: "Approve Emergency Work",
 }

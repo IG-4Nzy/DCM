@@ -166,19 +166,19 @@ const Nodes = () => {
             id: 'totalRam', 
             label: 'Total RAM', 
             sortable: true,
-            render: (row) => row.totalRam !== undefined && row.totalRam !== null ? `${row.totalRam} GB` : '-'
+            render: (row) => row.totalRam !== undefined && row.totalRam !== null ? row.totalRam : '-'
         },
         { 
             id: 'totalHardisk', 
             label: 'Total HDD', 
             sortable: true,
-            render: (row) => row.totalHardisk !== undefined && row.totalHardisk !== null ? `${row.totalHardisk} GB` : '-'
+            render: (row) => row.totalHardisk !== undefined && row.totalHardisk !== null ? row.totalHardisk : '-'
         },
         { 
             id: 'totalCpu', 
             label: 'Total CPU', 
             sortable: true,
-            render: (row) => row.totalCpu !== undefined && row.totalCpu !== null ? `${row.totalCpu} Cores` : '-'
+            render: (row) => row.totalCpu !== undefined && row.totalCpu !== null ? row.totalCpu : '-'
         },
         { 
             id: 'rack', 

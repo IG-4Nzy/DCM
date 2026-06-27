@@ -19,7 +19,7 @@ import {
   flattenClusterConfig, unflattenClusterRows,
   DEFAULT_CLUSTER_CONFIG
 } from './config';
-import type { ClusterFlatRow, SavedClusterChecklist } from './config';
+import type { ClusterFlatRow, SavedClusterChecklist, Rule } from './config';
 import { createNewClusterChecklist } from './storage';
 import {
   fetchClusterChecklists, createClusterChecklist, updateClusterChecklist, deleteClusterChecklist,
@@ -29,6 +29,7 @@ import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
 import { useToast } from '../../contexts/ToastContext';
 import DatePicker from '../../components/DatePicker';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 // ─── Tolerance Check ───
 function hasDeviation(value: string, bmsReading: string): boolean {
@@ -39,31 +40,103 @@ function hasDeviation(value: string, bmsReading: string): boolean {
 }
 
 // ─── Parameter Rule Check ───
-function checkRuleFailure(value: string, operator?: string, threshold?: number | string): { failed: boolean; message: string } {
-  if (!value || !operator || threshold === undefined || threshold === '') {
-    return { failed: false, message: '' };
+function checkRuleFailure(
+  value: string,
+  operator?: string,
+  threshold?: number | string,
+  maxValue?: number | string,
+  warningOperator?: string,
+  warningValue?: number | string,
+  warningLabel?: string,
+  rules?: Rule[]
+): { failed: boolean; warning: boolean; message: string } {
+  if (!value) {
+    return { failed: false, warning: false, message: '' };
   }
   const numVal = parseFloat(value);
-  const numThreshold = parseFloat(threshold.toString());
-  if (isNaN(numVal) || isNaN(numThreshold)) {
-    return { failed: false, message: '' };
-  }
-  
-  let failed = false;
-  if (operator === '>') {
-    failed = numVal > numThreshold;
-  } else if (operator === '<') {
-    failed = numVal < numThreshold;
-  } else if (operator === '>=') {
-    failed = numVal >= numThreshold;
-  } else if (operator === '<=') {
-    failed = numVal <= numThreshold;
+  if (isNaN(numVal)) {
+    return { failed: false, warning: false, message: '' };
   }
 
-  if (failed) {
-    return { failed: true, message: `Value cannot be ${operator} ${threshold}` };
+  // 1. Max Value check (Validation)
+  if (maxValue !== undefined && maxValue !== '') {
+    const numMax = parseFloat(maxValue.toString());
+    if (!isNaN(numMax) && numVal > numMax) {
+      return { failed: true, warning: false, message: `Value cannot exceed ${maxValue}` };
+    }
   }
-  return { failed: false, message: '' };
+
+  // If dynamic rules array is provided and not empty, check all rules.
+  if (rules && rules.length > 0) {
+    let activeWarning: { message: string } | null = null;
+
+    for (const rule of rules) {
+      if (!rule.operator || rule.value === undefined || rule.value === '') continue;
+      const numThreshold = parseFloat(rule.value.toString());
+      if (isNaN(numThreshold)) continue;
+
+      let matched = false;
+      if (rule.operator === '>') matched = numVal > numThreshold;
+      else if (rule.operator === '<') matched = numVal < numThreshold;
+      else if (rule.operator === '>=') matched = numVal >= numThreshold;
+      else if (rule.operator === '<=') matched = numVal <= numThreshold;
+
+      if (matched) {
+        if (rule.type === 'fail') {
+          return { failed: true, warning: false, message: `Value cannot be ${rule.operator} ${rule.value}` };
+        } else if (rule.type === 'warning' && !activeWarning) {
+          activeWarning = {
+            message: rule.label ? `Warning: ${rule.label}` : `Warning: Value is ${rule.operator} ${rule.value}`
+          };
+        }
+      }
+    }
+
+    if (activeWarning) {
+      return { failed: false, warning: true, message: activeWarning.message };
+    }
+
+    return { failed: false, warning: false, message: '' };
+  }
+
+  // Fallback to legacy fields:
+  // 2. Failure check
+  if (operator && threshold !== undefined && threshold !== '') {
+    const numThreshold = parseFloat(threshold.toString());
+    if (!isNaN(numThreshold)) {
+      let failed = false;
+      if (operator === '>') failed = numVal > numThreshold;
+      else if (operator === '<') failed = numVal < numThreshold;
+      else if (operator === '>=') failed = numVal >= numThreshold;
+      else if (operator === '<=') failed = numVal <= numThreshold;
+
+      if (failed) {
+        return { failed: true, warning: false, message: `Value cannot be ${operator} ${threshold}` };
+      }
+    }
+  }
+
+  // 3. Warning check
+  if (warningOperator && warningValue !== undefined && warningValue !== '') {
+    const numWarning = parseFloat(warningValue.toString());
+    if (!isNaN(numWarning)) {
+      let warned = false;
+      if (warningOperator === '>') warned = numVal > numWarning;
+      else if (warningOperator === '<') warned = numVal < numWarning;
+      else if (warningOperator === '>=') warned = numVal >= numWarning;
+      else if (warningOperator === '<=') warned = numVal <= numWarning;
+
+      if (warned) {
+        return {
+          failed: false,
+          warning: true,
+          message: warningLabel ? `Warning: ${warningLabel}` : `Warning: Value is ${warningOperator} ${warningValue}`
+        };
+      }
+    }
+  }
+
+  return { failed: false, warning: false, message: '' };
 }
 
 type EditableRowField = keyof Pick<ClusterFlatRow, 'category' | 'device' | 'parameter' | 'value' | 'bmsReading' | 'unit' | 'remarks'>;
@@ -169,6 +242,7 @@ const AutoGrowingTextarea: React.FC<AutoGrowingTextareaProps> = ({ value, onChan
 
 const ClusterChecklist: React.FC = () => {
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const token = useSelector((state: RootState) => state.auth.token);
   const isSuperuser = useSelector((state: RootState) => state.auth.isSuperuser);
   const username = useSelector((state: RootState) => state.auth.username) || 'system';
@@ -516,7 +590,36 @@ const ClusterChecklist: React.FC = () => {
       return;
     }
 
+    if (status === 'Completed') {
+      let hasErrors = false;
+      const errorsList: string[] = [];
+      const warningsList: string[] = [];
 
+      rows.forEach(row => {
+        const checkRes = checkRuleFailure(row.value, row.ruleOperator, row.ruleValue, row.maxValue, row.warningOperator, row.warningValue, row.warningLabel, row.rules);
+        if (checkRes.failed) {
+          hasErrors = true;
+          errorsList.push(`${row.device} -> ${row.parameter}: ${checkRes.message}`);
+        } else if (checkRes.warning) {
+          warningsList.push(`${row.device} -> ${row.parameter}: ${checkRes.message}`);
+        }
+      });
+
+      if (hasErrors) {
+        showToast(`Cannot submit checklist due to validation errors:\n${errorsList.join('\n')}`, 'error');
+        return;
+      }
+
+      if (warningsList.length > 0) {
+        const confirmed = await confirm(
+          `There are validation warnings:\n${warningsList.join('\n')}\n\nDo you want to proceed and submit anyway?`,
+          'Validation Warnings'
+        );
+        if (!confirmed) {
+          return;
+        }
+      }
+    }
 
     const updatedConfig = unflattenClusterRows(rows);
     if (Object.keys(categoryRemarks).length > 0) {
@@ -910,6 +1013,23 @@ const ClusterChecklist: React.FC = () => {
                         if (row.parameter === '') return null;
                         slNo++;
                         const deviation = false;
+                        const checkRes = checkRuleFailure(row.value, row.ruleOperator, row.ruleValue, row.maxValue, row.warningOperator, row.warningValue, row.warningLabel, row.rules);
+                        const tdStyle = checkRes.failed
+                          ? { backgroundColor: '#fee2e2' }
+                          : checkRes.warning
+                            ? { backgroundColor: '#fffbeb' }
+                            : {};
+                        const inputStyle = checkRes.failed
+                          ? { color: '#dc2626', fontWeight: 'bold', border: '1px solid #dc2626', backgroundColor: '#fee2e2' }
+                          : checkRes.warning
+                            ? { color: '#b45309', fontWeight: 'bold', border: '1px solid #d97706', backgroundColor: '#fffbeb' }
+                            : {};
+                        const spanStyle = checkRes.failed
+                          ? { color: '#dc2626', fontWeight: 'bold' }
+                          : checkRes.warning
+                            ? { color: '#b45309', fontWeight: 'bold' }
+                            : {};
+
                         return (
                           <tr
                             key={`${row.category}-${row.device}-${row.parameter}`}
@@ -923,21 +1043,21 @@ const ClusterChecklist: React.FC = () => {
                               {row.parameter}
                               {row.unit && <span className={styles['container__table--unit']}>{row.unit}</span>}
                             </td>
-                            <td style={checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).failed ? { backgroundColor: '#fee2e2' } : {}}>
+                            <td style={tdStyle}>
                               {canEditValues ? (
                                 <input
                                   type="text"
                                   value={row.value}
                                   onChange={(e) => onUpdate?.(row.filteredIdx, 'value', e.target.value)}
                                   placeholder="—"
-                                  style={checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).failed ? { color: '#dc2626', fontWeight: 'bold', border: '1px solid #dc2626', backgroundColor: '#fee2e2' } : {}}
+                                  style={inputStyle}
                                 />
                               ) : (
-                                <span style={checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).failed ? { color: '#dc2626', fontWeight: 'bold' } : {}}>{row.value || '—'}</span>
+                                <span style={spanStyle}>{row.value || '—'}</span>
                               )}
-                              {checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).failed && (
-                                <Tooltip title={checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).message}>
-                                  <span style={{ color: '#ef4444', fontWeight: 'bold', marginLeft: '6px', cursor: 'pointer' }}>⚠</span>
+                              {(checkRes.failed || checkRes.warning) && (
+                                <Tooltip title={checkRes.message}>
+                                  <span style={{ color: checkRes.failed ? '#ef4444' : '#d97706', fontWeight: 'bold', marginLeft: '6px', cursor: 'pointer' }}>⚠</span>
                                 </Tooltip>
                               )}
                             </td>
@@ -1064,17 +1184,34 @@ const ClusterChecklist: React.FC = () => {
                           slNo++;
                           const deviation = false;
 
+                          const checkRes = checkRuleFailure(row.value, row.ruleOperator, row.ruleValue, row.maxValue, row.warningOperator, row.warningValue, row.warningLabel, row.rules);
+                          const cardStyle = checkRes.failed
+                            ? { borderColor: '#ef4444', backgroundColor: '#fef2f2' }
+                            : checkRes.warning
+                              ? { borderColor: '#f59e0b', backgroundColor: '#fffbeb' }
+                              : {};
+                          const inputStyle = checkRes.failed
+                            ? { color: '#dc2626', fontWeight: 'bold', border: '1px solid #dc2626', backgroundColor: '#fee2e2' }
+                            : checkRes.warning
+                              ? { color: '#b45309', fontWeight: 'bold', border: '1px solid #d97706', backgroundColor: '#fffbeb' }
+                              : {};
+                          const strongStyle = checkRes.failed
+                            ? { color: '#dc2626' }
+                            : checkRes.warning
+                              ? { color: '#b45309' }
+                              : {};
+
                           return (
                             <article
                               key={`${row.category}-${row.device}-${row.parameter}`}
                               className={`${styles.container__paramCard} ${deviation ? styles.deviation : ''}`}
-                              style={checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).failed ? { borderColor: '#ef4444', backgroundColor: '#fef2f2' } : {}}
+                              style={cardStyle}
                             >
                               <div className={styles['container__paramCard--top']}>
                                 <span>#{slNo}</span>
-                                {checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).failed && (
-                                  <Tooltip title={checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).message}>
-                                    <span style={{ color: '#ef4444', fontWeight: 'bold', cursor: 'pointer', marginRight: '6px' }}>⚠</span>
+                                {(checkRes.failed || checkRes.warning) && (
+                                  <Tooltip title={checkRes.message}>
+                                    <span style={{ color: checkRes.failed ? '#ef4444' : '#d97706', fontWeight: 'bold', cursor: 'pointer', marginRight: '6px' }}>⚠</span>
                                   </Tooltip>
                                 )}
                               </div>
@@ -1091,10 +1228,10 @@ const ClusterChecklist: React.FC = () => {
                                       value={row.value}
                                       onChange={(e) => onUpdate?.(row.filteredIdx, 'value', e.target.value)}
                                       placeholder="-"
-                                      style={checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).failed ? { color: '#dc2626', fontWeight: 'bold', border: '1px solid #dc2626', backgroundColor: '#fee2e2' } : {}}
+                                      style={inputStyle}
                                     />
                                   ) : (
-                                    <strong style={checkRuleFailure(row.value, row.ruleOperator, row.ruleValue).failed ? { color: '#dc2626' } : {}}>{row.value || '-'}</strong>
+                                    <strong style={strongStyle}>{row.value || '-'}</strong>
                                   )}
                                 </label>
                                 <label>

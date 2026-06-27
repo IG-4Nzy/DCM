@@ -22,6 +22,8 @@ services:
       - MONGO_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-password}@mongodb:27017/dcm_database?authSource=admin
     volumes:
       - backend_uploads:/app/uploads
+    cap_add:
+      - NET_RAW
     depends_on:
       - mongodb
     restart: unless-stopped

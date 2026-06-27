@@ -13,6 +13,56 @@ from bson import ObjectId
 router = APIRouter()
 works_collection = db.get_collection("works")
 
+async def is_department_head_of_assignees(current_user_username: str, work: dict) -> bool:
+    departments_collection = db.get_collection("departments")
+    depts_where_head = await departments_collection.find({"departmentHead": current_user_username}).to_list(length=None)
+    if not depts_where_head:
+        return False
+        
+    head_dept_names = {d["name"] for d in depts_where_head if d.get("name")}
+    if not head_dept_names:
+        return False
+        
+    assignees_list = list(work.get("assignees") or [])
+    if work.get("assignee") and work.get("assignee") not in assignees_list:
+        assignees_list.append(work.get("assignee"))
+        
+    creator_username = work.get("createdBy")
+    if creator_username:
+        users_collection = db.get_collection("users")
+        creator_user = await users_collection.find_one({"username": creator_username})
+        if creator_user and creator_user.get("department") in head_dept_names:
+            return True
+            
+    if not assignees_list:
+        return False
+        
+    users_collection = db.get_collection("users")
+    object_ids = []
+    usernames = []
+    for a in assignees_list:
+        if ObjectId.is_valid(a):
+            object_ids.append(ObjectId(a))
+        else:
+            usernames.append(a)
+            
+    query = {"$or": []}
+    if object_ids:
+        query["$or"].append({"_id": {"$in": object_ids}})
+    if usernames:
+        query["$or"].append({"username": {"$in": usernames}})
+        
+    if not query["$or"]:
+        return False
+        
+    assignee_users = await users_collection.find(query).to_list(length=None)
+    for u in assignee_users:
+        u_dept = u.get("department")
+        if u_dept in head_dept_names:
+            return True
+            
+    return False
+
 @router.get("/", response_description="List all works", response_model=PaginatedWorksModel, response_model_by_alias=False)
 async def list_works(
     skip: int = Query(0, ge=0),
@@ -24,30 +74,42 @@ async def list_works(
     search: Optional[str] = None,
     status: Optional[str] = None,
     assignee: Optional[str] = None,
+    tab: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
     query = {}
     is_superuser = current_user.get("isSuperuser", False)
     privileges = current_user.get("privileges", [])
     
-    if not is_superuser and "View All Work" not in privileges and "View Assigned Work" not in privileges:
+    has_view_all = "View All Work" in privileges
+    has_view_assigned = "View Assigned Work" in privileges
+    has_view_emergency = "View Emergency Work" in privileges
+    
+    if not is_superuser and not has_view_all and not has_view_assigned and not has_view_emergency:
         raise HTTPException(status_code=403, detail="Not enough permissions to view works")
             
     users_collection = db.get_collection("users")
     user_record = await users_collection.find_one({"username": current_user["sub"]})
     user_id = str(user_record["_id"]) if user_record else None
 
-    if not is_superuser and "View All Work" not in privileges:
-        if not user_id:
-            raise HTTPException(status_code=403, detail="User record not found")
-        
-        if assignee and assignee != "All" and assignee != "All Assignees" and assignee != user_id:
-            raise HTTPException(status_code=403, detail="Access Denied: Non-privileged users can only query their own assigned works.")
+    if not is_superuser and not has_view_all:
+        or_conditions = []
+        if has_view_assigned:
+            if not user_id:
+                raise HTTPException(status_code=403, detail="User record not found")
+            or_conditions.append({"assignee": user_id})
+            or_conditions.append({"assignees": user_id})
+        if has_view_emergency:
+            or_conditions.append({"isEmergency": True})
             
-        query["$or"] = [
-            {"assignee": user_id},
-            {"assignees": user_id}
-        ]
+        if not or_conditions:
+            raise HTTPException(status_code=403, detail="Not enough privileges")
+            
+        if assignee and assignee != "All" and assignee != "All Assignees" and assignee != user_id:
+            if not has_view_emergency:
+                raise HTTPException(status_code=403, detail="Access Denied: Non-privileged users can only query their own assigned works.")
+            
+        query["$or"] = or_conditions
         if not status or status == "All" or status == "All Statuses":
             query["status"] = {"$ne": "Closed"}
     else:
@@ -77,6 +139,23 @@ async def list_works(
             query = {"$and": [query, search_query]}
         else:
             query = search_query
+
+    # Apply tab filtering
+    tab_query = {}
+    if tab == "emergency":
+        tab_query = {"isEmergency": True, "approved": False}
+    else:
+        tab_query = {
+            "$or": [
+                {"isEmergency": {"$ne": True}},
+                {"approved": True}
+            ]
+        }
+    
+    if query:
+        query = {"$and": [query, tab_query]}
+    else:
+        query = tab_query
         
     actual_sort_by = sortBy or sort_by or "workName"
     sort_order = 1 if order == "asc" else -1
@@ -139,9 +218,27 @@ async def upload_attachments(files: list[UploadFile] = File(...)):
         
     return uploaded_files
 
-@router.post("/", response_description="Create a new work", response_model=WorkModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Work"))])
+@router.post("/", response_description="Create a new work", response_model=WorkModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False)
 async def create_work(work: CreateWorkModel = Body(...), current_user: dict = Depends(get_current_user)):
     work_dict = work.model_dump()
+    is_superuser = current_user.get("isSuperuser", False)
+    privileges = current_user.get("privileges", [])
+    is_emergency = work_dict.get("isEmergency", False)
+    
+    if not is_superuser:
+        if is_emergency:
+            if "Create Work" not in privileges and "Create Emergency Work" not in privileges:
+                raise HTTPException(status_code=403, detail="Not enough permissions to create emergency work")
+        else:
+            if "Create Work" not in privileges:
+                raise HTTPException(status_code=403, detail="Not enough permissions to create work")
+                
+    work_dict["createdBy"] = current_user.get("sub")
+    if is_emergency:
+        work_dict["approved"] = False
+    else:
+        work_dict["approved"] = True
+
     if not work_dict.get("createdAt"):
         work_dict["createdAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     new_work = await works_collection.insert_one(work_dict)
@@ -168,23 +265,30 @@ async def show_work(id: str, current_user: dict = Depends(get_current_user)):
     is_superuser = current_user.get("isSuperuser", False)
     privileges = current_user.get("privileges", [])
     
-    if not is_superuser and "View All Work" not in privileges:
-        if "View Assigned Work" not in privileges:
+    has_view_all = "View All Work" in privileges
+    has_view_assigned = "View Assigned Work" in privileges
+    has_view_emergency = "View Emergency Work" in privileges
+    
+    if not is_superuser and not has_view_all:
+        allowed = False
+        if has_view_emergency and work.get("isEmergency"):
+            allowed = True
+        elif has_view_assigned:
+            users_collection = db.get_collection("users")
+            user_record = await users_collection.find_one({"username": current_user["sub"]})
+            user_id = str(user_record["_id"]) if user_record else None
+            
+            assignees_list = work.get("assignees") or []
+            if work.get("assignee"):
+                assignees_list.append(work.get("assignee"))
+                
+            if user_record and user_id in assignees_list:
+                allowed = True
+                if work.get("status") == "Closed":
+                    raise HTTPException(status_code=403, detail="You cannot view closed tickets")
+                    
+        if not allowed:
             raise HTTPException(status_code=403, detail="Not enough permissions to view work")
-        
-        users_collection = db.get_collection("users")
-        user_record = await users_collection.find_one({"username": current_user["sub"]})
-        user_id = str(user_record["_id"]) if user_record else None
-        
-        assignees_list = work.get("assignees") or []
-        if work.get("assignee"):
-            assignees_list.append(work.get("assignee"))
-            
-        if not user_record or user_id not in assignees_list:
-            raise HTTPException(status_code=403, detail="You are not assigned to this work")
-            
-        if work.get("status") == "Closed":
-            raise HTTPException(status_code=403, detail="You cannot view closed tickets")
 
     return work
 
@@ -203,18 +307,27 @@ async def update_work(id: str, work: UpdateWorkModel = Body(...), current_user: 
         if not existing_work:
             raise HTTPException(status_code=404, detail=f"Work {id} not found")
             
-        if existing_work.get("status") == "Completed" and "Update Work" not in privileges:
-            raise HTTPException(status_code=403, detail="Cannot modify a completed work without Update Work privilege")
+        is_emergency = existing_work.get("isEmergency", False)
+        is_dept_head = await is_department_head_of_assignees(current_user.get("sub"), existing_work)
+        has_update = "Update Work" in privileges or (is_emergency and ("Update Emergency Work" in privileges or is_dept_head))
+            
+        if work_dict.get("approved") is True:
+            if not ("Update Work" in privileges or (is_emergency and "Approve Emergency Work" in privileges)):
+                raise HTTPException(status_code=403, detail="Approving emergency work requires update/approval privileges")
 
+        if existing_work.get("status") == "Completed" and not has_update:
+            raise HTTPException(status_code=403, detail="Cannot modify a completed work without update privilege")
+ 
         update_keys = set(work_dict.keys())
-        status_only = update_keys.issubset({"status", "comments", "completedAt", "id", "_id"})
+        status_only = update_keys.issubset({"status", "comments", "completedAt", "id", "_id", "approved"})
         
         if status_only:
-            has_status_update = "Update Work" in privileges
-            has_view_assigned = "View Assigned Work" in privileges
-            
-            if not has_status_update:
-                if has_view_assigned:
+            if not has_update:
+                has_view_assigned = "View Assigned Work" in privileges
+                has_view_emergency = "View Emergency Work" in privileges
+                has_view_permission = has_view_assigned or (is_emergency and has_view_emergency)
+                
+                if has_view_permission:
                     users_collection = db.get_collection("users")
                     user_record = await users_collection.find_one({"username": current_user["sub"]})
                     user_id = str(user_record["_id"]) if user_record else None
@@ -226,10 +339,10 @@ async def update_work(id: str, work: UpdateWorkModel = Body(...), current_user: 
                     if not user_record or user_id not in assignees_list:
                         raise HTTPException(status_code=403, detail="You can only update status for works assigned to you")
                 else:
-                    raise HTTPException(status_code=403, detail="Need Update Work privilege")
+                    raise HTTPException(status_code=403, detail="Need update privilege")
         else:
-            if "Update Work" not in privileges:
-                raise HTTPException(status_code=403, detail="Need Update Work privilege")
+            if not has_update:
+                raise HTTPException(status_code=403, detail="Need update privilege")
 
     if len(work_dict) >= 1:
         update_result = await works_collection.update_one(
@@ -297,7 +410,8 @@ async def transfer_work(
         assignees_list.append(existing_work.get("assignee"))
         
     is_assignee = user_id in assignees_list
-    has_update_privilege = is_superuser or "Update Work" in privileges
+    is_dept_head = await is_department_head_of_assignees(current_user.get("sub"), existing_work)
+    has_update_privilege = is_superuser or "Update Work" in privileges or (existing_work.get("isEmergency") and ("Update Emergency Work" in privileges or is_dept_head))
     
     if not (is_assignee or has_update_privilege):
         raise HTTPException(status_code=403, detail="You do not have permission to transfer this work")
@@ -332,10 +446,27 @@ async def transfer_work(
     
     return updated_work
 
-@router.delete("/{id}", response_description="Delete a work", dependencies=[Depends(require_privilege("Delete Work"))])
-async def delete_work(id: str):
+@router.delete("/{id}", response_description="Delete a work")
+async def delete_work(id: str, current_user: dict = Depends(get_current_user)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    is_superuser = current_user.get("isSuperuser", False)
+    privileges = current_user.get("privileges", [])
+
+    if not is_superuser:
+        existing_work = await works_collection.find_one({"_id": ObjectId(id)})
+        if not existing_work:
+            raise HTTPException(status_code=404, detail=f"Work {id} not found")
+        
+        is_emergency = existing_work.get("isEmergency", False)
+        if is_emergency:
+            is_dept_head = await is_department_head_of_assignees(current_user.get("sub"), existing_work)
+            if "Delete Work" not in privileges and "Delete Emergency Work" not in privileges and not is_dept_head:
+                raise HTTPException(status_code=403, detail="Need Delete Emergency Work privilege")
+        else:
+            if "Delete Work" not in privileges:
+                raise HTTPException(status_code=403, detail="Need Delete Work privilege")
 
     delete_result = await works_collection.delete_one({"_id": ObjectId(id)})
 

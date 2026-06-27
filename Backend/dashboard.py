@@ -21,6 +21,7 @@ async def get_dashboard_summary(
     roasters_col = db.get_collection("roasters")
     bms_col = db.get_collection("bms_checklists")
     morning_col = db.get_collection("morning_checklists")
+    cluster_col = db.get_collection("cluster_checklists")
     works_col = db.get_collection("works")
     obs_col = db.get_collection("observations")
     roaster_status_col = db.get_collection("roaster_status")
@@ -87,12 +88,15 @@ async def get_dashboard_summary(
     status_doc = await roaster_status_col.find_one({"weekStartDate": week_start_str, "department": active_dept})
     roaster_status = status_doc.get("status", "Pending") if status_doc else "Pending"
         
-    # 3. Check checklists status for today (BMS and Morning)
+    # 3. Check checklists status for today (BMS, Morning, and Cluster)
     bms_doc = await bms_col.find_one({"date": date, "department": active_dept})
     bms_status = bms_doc.get("status", "Pending") if bms_doc else "Pending"
     
     morning_doc = await morning_col.find_one({"date": date, "department": active_dept})
     morning_status = morning_doc.get("status", "Pending") if morning_doc else "Pending"
+    
+    cluster_doc = await cluster_col.find_one({"date": date, "department": active_dept})
+    cluster_status = cluster_doc.get("status", "Pending") if cluster_doc else "Pending"
     
     # 4. Determine Friday roaster reminder
     show_roaster_reminder = False
@@ -379,7 +383,8 @@ async def get_dashboard_summary(
         "roasterStatus": roaster_status,
         "checklists": {
             "bms": bms_status,
-            "morning": morning_status
+            "morning": morning_status,
+            "cluster": cluster_status
         },
         "showRoasterReminder": show_roaster_reminder,
         "pendingWorks": enriched_works,

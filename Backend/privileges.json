@@ -105,5 +105,10 @@
     "View Visitor Logs",
     "Create Visitor Logs",
     "Update Visitor Logs",
-    "Delete Visitor Logs"
+    "Delete Visitor Logs",
+    "Create Emergency Work",
+    "Update Emergency Work",
+    "Delete Emergency Work",
+    "View Emergency Work",
+    "Approve Emergency Work"
 ]

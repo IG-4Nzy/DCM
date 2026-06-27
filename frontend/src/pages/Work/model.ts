@@ -12,6 +12,9 @@ export interface WorkData {
   comments: { text: string; user: string; timestamp: string }[];
   completedAt?: string;
   createdAt?: string;
+  isEmergency?: boolean;
+  approved?: boolean;
+  createdBy?: string;
 }
 
 export interface CreateWorkPayload {
@@ -26,6 +29,9 @@ export interface CreateWorkPayload {
   comments?: { text: string; user: string; timestamp: string }[];
   completedAt?: string;
   createdAt?: string;
+  isEmergency?: boolean;
+  approved?: boolean;
+  createdBy?: string;
 }
 
 export interface UpdateWorkPayload extends Partial<CreateWorkPayload> {
@@ -40,5 +46,6 @@ export interface FetchWorksParams {
   search: string;
   status?: string;
   assignee?: string;
+  tab?: string;
   showToast?: (msg: string, severity?: 'error' | 'success') => void;
 }

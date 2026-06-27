@@ -53,6 +53,20 @@ def serialize_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
         del doc["_id"]
     return doc
 
+def clean_ip_address(ip: str) -> str:
+    cleaned = ip.strip()
+    if "://" in cleaned:
+        cleaned = cleaned.split("://", 1)[1]
+    if "/" in cleaned:
+        cleaned = cleaned.split("/", 1)[0]
+    if ":" in cleaned:
+        parts = cleaned.rsplit(":", 1)
+        if parts[-1].isdigit():
+            cleaned = parts[0]
+            if cleaned.startswith("[") and cleaned.endswith("]"):
+                cleaned = cleaned[1:-1]
+    return cleaned.strip()
+
 # ----------------------------------------------------------------------
 # Async Check Executors (Agentless & Lightweight)
 # ----------------------------------------------------------------------
@@ -190,49 +204,55 @@ class ServerPingScheduler:
         ports_ok = True
         final_responseTime = 0.0
         ports_status_map = {}
+        clean_ip = clean_ip_address(ip)
 
         # Run checks up to retry_count times sequentially if they fail
         for attempt in range(retry_count):
-            check_ok = True
+            curr_ping_ok = True
+            curr_ports_ok = True
             durations = []
 
             # 1. ICMP Ping check
             if mon_type in ("ping", "both"):
-                p_ok, p_dur = await exec_ping(ip, timeout)
-                ping_ok = p_ok
+                curr_ping_ok, p_dur = await exec_ping(clean_ip, timeout)
                 durations.append(p_dur)
-                if not p_ok:
-                    check_ok = False
 
             # 2. TCP Port checks
             if mon_type in ("port", "both") and ports:
                 port_failures = 0
                 for port in ports:
-                    pt_ok, pt_dur = await exec_tcp_port(ip, port, timeout)
+                    pt_ok, pt_dur = await exec_tcp_port(clean_ip, port, timeout)
                     ports_status_map[str(port)] = "UP" if pt_ok else "DOWN"
                     durations.append(pt_dur)
                     if not pt_ok:
                         port_failures += 1
                 
-                if port_failures == len(ports):
-                    ports_ok = False
-                    check_ok = False
-                elif port_failures > 0:
-                    # Partial port reachability -> degraded
-                    ports_ok = True # Reachable but degraded
+                if ports and port_failures == len(ports):
+                    curr_ports_ok = False
             
-            # Combine overall check status
-            if check_ok:
+            # Combine based on type
+            if mon_type == "both":
+                attempt_ok = curr_ping_ok or curr_ports_ok
+            elif mon_type == "ping":
+                attempt_ok = curr_ping_ok
+            else:
+                attempt_ok = curr_ports_ok
+
+            if attempt_ok:
                 success = True
+                ping_ok = curr_ping_ok
+                ports_ok = curr_ports_ok
                 final_responseTime = sum(durations) / len(durations) if durations else 0.0
                 break
             else:
+                ping_ok = curr_ping_ok
+                ports_ok = curr_ports_ok
                 if attempt < retry_count - 1:
                     await asyncio.sleep(1.0) # short gap before retry
 
         # Determine target state
         if mon_type == "both":
-            target_status = "UP" if (ping_ok and ports_ok) else "DOWN"
+            target_status = "UP" if (ping_ok or ports_ok) else "DOWN"
         elif mon_type == "ping":
             target_status = "UP" if ping_ok else "DOWN"
         else: # port only
@@ -302,6 +322,67 @@ class ServerPingScheduler:
             {"$set": updated_status},
             upsert=True
         )
+
+        # Log individual port failure transitions and trigger alarms/incidents
+        prev_ports_status = curr_status.get("portsStatus", {})
+        if mon_type in ("port", "both"):
+            for p, curr_p_status in ports_status_map.items():
+                prev_p_status = prev_ports_status.get(p, "UP")
+                if curr_p_status != prev_p_status:
+                    if curr_p_status == "DOWN":
+                        # Log port failure
+                        logs_col = db.get_collection("ping_drop_logs")
+                        log_doc = {
+                            "serverId": server_id,
+                            "name": name,
+                            "ipAddress": ip,
+                            "adminName": server.get("adminName", ""),
+                            "timestamp": now_str,
+                            "pingStatus": "UP" if ping_ok else "DOWN",
+                            "portsStatus": ports_status_map,
+                            "reason": f"Port {p} check failed (Offline)"
+                        }
+                        await logs_col.insert_one(log_doc)
+
+                        # Trigger incident alert
+                        alert_msg = f"Server {name} ({ip}) Port {p} check failed (Offline)"
+                        alert_history_col = db.get_collection("alert_history")
+                        alert_doc = {
+                            "serverId": server_id,
+                            "name": name,
+                            "ipAddress": ip,
+                            "transition": f"PORT_{p}_DOWN",
+                            "fromStatus": "UP",
+                            "toStatus": "DOWN",
+                            "message": alert_msg,
+                            "timestamp": now_str,
+                            "isAcknowledged": False,
+                            "acknowledgedBy": None,
+                            "acknowledgedAt": None,
+                            "resolvedAt": None
+                        }
+                        await alert_history_col.insert_one(alert_doc)
+                        await self._dispatch_notifications(name, ip, "UP", "DOWN", alert_msg)
+                    elif curr_p_status == "UP":
+                        # Port recovered
+                        alert_msg = f"Server {name} ({ip}) Port {p} recovered (Online)"
+                        alert_history_col = db.get_collection("alert_history")
+                        alert_doc = {
+                            "serverId": server_id,
+                            "name": name,
+                            "ipAddress": ip,
+                            "transition": f"PORT_{p}_UP",
+                            "fromStatus": "DOWN",
+                            "toStatus": "UP",
+                            "message": alert_msg,
+                            "timestamp": now_str,
+                            "isAcknowledged": False,
+                            "acknowledgedBy": None,
+                            "acknowledgedAt": None,
+                            "resolvedAt": now_str
+                        }
+                        await alert_history_col.insert_one(alert_doc)
+                        await self._dispatch_notifications(name, ip, "DOWN", "UP", alert_msg)
 
         # Log drop details to database if DOWN
         if target_status == "DOWN" and prev_state != "DOWN":

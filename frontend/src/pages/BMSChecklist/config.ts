@@ -2,6 +2,13 @@
 // This structure drives the entire checklist UI dynamically.
 // To add new categories, devices, or parameters, simply extend this JSON.
 
+export interface Rule {
+  type: 'fail' | 'warning';
+  operator: string;
+  value: number | string;
+  label?: string;
+}
+
 export interface ParamConfig {
   value: string;
   BMS_Reading: string;
@@ -10,6 +17,11 @@ export interface ParamConfig {
   timestamp?: string;
   ruleOperator?: string;
   ruleValue?: number;
+  maxValue?: number;
+  warningOperator?: string;
+  warningValue?: number;
+  warningLabel?: string;
+  rules?: Rule[];
 }
 
 export interface DeviceConfig {
@@ -48,7 +60,12 @@ export function normalizeParam(val: ParamConfig | string): ParamConfig {
     ...val, 
     remarks: val.remarks || '',
     ruleOperator: val.ruleOperator || '',
-    ruleValue: val.ruleValue
+    ruleValue: val.ruleValue,
+    maxValue: val.maxValue,
+    warningOperator: val.warningOperator || '',
+    warningValue: val.warningValue,
+    warningLabel: val.warningLabel || '',
+    rules: val.rules || [],
   };
 }
 
@@ -65,6 +82,11 @@ export interface FlatRow {
   timestamp?: string;
   ruleOperator?: string;
   ruleValue?: string | number;
+  maxValue?: string | number;
+  warningOperator?: string;
+  warningValue?: string | number;
+  warningLabel?: string;
+  rules?: Rule[];
 }
 
 export function flattenConfig(config: ChecklistConfig): FlatRow[] {
@@ -73,6 +95,24 @@ export function flattenConfig(config: ChecklistConfig): FlatRow[] {
     Object.entries(devices).forEach(([device, params]) => {
       Object.entries(params).forEach(([param, raw]) => {
         const p = normalizeParam(raw);
+        let rulesList = p.rules || [];
+        if (rulesList.length === 0) {
+          if (p.ruleOperator && p.ruleValue !== undefined) {
+            rulesList.push({
+              type: 'fail',
+              operator: p.ruleOperator,
+              value: p.ruleValue,
+            });
+          }
+          if (p.warningOperator && p.warningValue !== undefined) {
+            rulesList.push({
+              type: 'warning',
+              operator: p.warningOperator,
+              value: p.warningValue,
+              label: p.warningLabel,
+            });
+          }
+        }
         rows.push({
           id: `${category}-${device}-${param}`,
           category,
@@ -85,6 +125,11 @@ export function flattenConfig(config: ChecklistConfig): FlatRow[] {
           timestamp: p.timestamp,
           ruleOperator: p.ruleOperator || '',
           ruleValue: p.ruleValue !== undefined ? p.ruleValue : '',
+          maxValue: p.maxValue !== undefined ? p.maxValue : '',
+          warningOperator: p.warningOperator || '',
+          warningValue: p.warningValue !== undefined ? p.warningValue : '',
+          warningLabel: p.warningLabel || '',
+          rules: rulesList,
         });
       });
     });
@@ -105,10 +150,30 @@ export function unflattenRows(rows: FlatRow[]): ChecklistConfig {
       timestamp: row.timestamp,
     };
     if (row.unit) paramObj.unit = row.unit;
-    if (row.ruleOperator) paramObj.ruleOperator = row.ruleOperator;
-    if (row.ruleValue !== undefined && row.ruleValue !== '') {
-      paramObj.ruleValue = typeof row.ruleValue === 'string' ? parseFloat(row.ruleValue) : row.ruleValue;
+    if (row.maxValue !== undefined && row.maxValue !== '') {
+      paramObj.maxValue = typeof row.maxValue === 'string' ? parseFloat(row.maxValue) : row.maxValue;
     }
+
+    const rulesList = row.rules || [];
+    const firstFail = rulesList.find(r => r.type === 'fail');
+    const firstWarning = rulesList.find(r => r.type === 'warning');
+
+    if (firstFail) {
+      paramObj.ruleOperator = firstFail.operator;
+      paramObj.ruleValue = typeof firstFail.value === 'string' ? parseFloat(firstFail.value) : firstFail.value;
+    }
+    if (firstWarning) {
+      paramObj.warningOperator = firstWarning.operator;
+      paramObj.warningValue = typeof firstWarning.value === 'string' ? parseFloat(firstWarning.value) : firstWarning.value;
+      paramObj.warningLabel = firstWarning.label;
+    }
+    if (rulesList.length > 0) {
+      paramObj.rules = rulesList.map(r => ({
+        ...r,
+        value: typeof r.value === 'string' ? parseFloat(r.value) : r.value
+      }));
+    }
+
     config[row.category][row.device][row.parameter] = paramObj;
   });
   return config;

@@ -399,11 +399,13 @@ async def get_attendance_config():
                 {"name": "Shift 3 Row 1", "mappedShift": "Shift-3"},
                 {"name": "Shift 3 Row 2", "mappedShift": "Shift-3"},
                 {"name": "Leave", "mappedShift": "Leave"}
-            ]
+            ],
+            "lateLoginRestriction": True
         }
         await config_collection.insert_one(default_config)
         config = await config_collection.find_one({})
     # Backward compatibility for existing configs
+    updates = {}
     if "rosterRows" not in config:
         config["rosterRows"] = [
             {"name": "Shift 1 Row 1", "mappedShift": "Shift-1"},
@@ -414,7 +416,12 @@ async def get_attendance_config():
             {"name": "Shift 3 Row 2", "mappedShift": "Shift-3"},
             {"name": "Leave", "mappedShift": "Leave"}
         ]
-        await config_collection.update_one({"_id": config["_id"]}, {"$set": {"rosterRows": config["rosterRows"]}})
+        updates["rosterRows"] = config["rosterRows"]
+    if "lateLoginRestriction" not in config:
+        config["lateLoginRestriction"] = True
+        updates["lateLoginRestriction"] = True
+    if updates:
+        await config_collection.update_one({"_id": config["_id"]}, {"$set": updates})
     return config
 
 @router.post("/config", response_model=AttendanceConfigModel, response_model_by_alias=False)
@@ -436,7 +443,8 @@ async def update_attendance_config(
         "maxAllowedDays": payload.maxAllowedDays,
         "shifts": [dict(s) for s in payload.shifts],
         "trackedRole": payload.trackedRole or "All Roles",
-        "rosterRows": [dict(r) for r in payload.rosterRows]
+        "rosterRows": [dict(r) for r in payload.rosterRows],
+        "lateLoginRestriction": payload.lateLoginRestriction
     }
     if config:
         await config_collection.update_one({"_id": config["_id"]}, {"$set": update_data})

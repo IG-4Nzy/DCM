@@ -145,7 +145,13 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
   };
 
   return (
-    <Dialog open={isModalOpen} onClose={handleCloseModal} maxWidth="sm" fullWidth>
+    <Dialog 
+      open={isModalOpen} 
+      onClose={handleCloseModal} 
+      disableEnforceFocus
+      maxWidth="sm" 
+      fullWidth
+    >
       <DialogTitle sx={{ pb: 1, fontWeight: 'bold', fontSize: '1.25rem',color:"#333"}}>{editingRequest ? 'Edit Request' : 'Create Request'}</DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent dividers>
@@ -160,6 +166,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                   setDetails({});
                 }}
                 disabled={!!editingRequest}
+                MenuProps={{ disablePortal: true }}
               >
                 {requestTypes.map(type => (
                   <MenuItem key={type} value={type}>{type}</MenuItem>
@@ -243,6 +250,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                     value={details.hardwareId || ''}
                     label="Hardware (from Inventory)"
                     onChange={(e) => handleDetailChange('hardwareId', e.target.value)}
+                    MenuProps={{ disablePortal: true }}
                   >
                     {inventory.map((item: any) => (
                       <MenuItem key={item.id || item._id} value={item.id || item._id}>
@@ -280,6 +288,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                     value={status}
                     label="Status"
                     onChange={(e) => setStatus(e.target.value)}
+                    MenuProps={{ disablePortal: true }}
                   >
                     {configuredStages.length > 0 ? (
                       configuredStages.map((stage) => (
@@ -304,6 +313,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                         value={details.cluster || ''}
                         label="Cluster"
                         onChange={(e) => handleDetailChange('cluster', e.target.value)}
+                        MenuProps={{ disablePortal: true }}
                       >
                         {clustersList.map((c: any) => (
                           <MenuItem key={c.id || c._id} value={c.clusterName}>
@@ -319,6 +329,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                         value={details.node || ''}
                         label="Node (Physical Host)"
                         onChange={(e) => handleDetailChange('node', e.target.value)}
+                        MenuProps={{ disablePortal: true }}
                       >
                         {nodesList.map((n: any) => (
                           <MenuItem key={n.id || n._id} value={n.node}>

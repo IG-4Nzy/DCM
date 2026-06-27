@@ -112,24 +112,47 @@ async def update_attendance_on_request(username: str, user_dept: str, user_role:
 
 security = HTTPBearer()
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token payload",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        from database import db
+        users_col = db.get_collection("users")
+        user = await users_col.find_one({"username": username})
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            
+        user_session_key = user.get("session_key")
+        token_session_key = payload.get("session_key")
+        if user_session_key and user_session_key != token_session_key:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session expired: logged in from another location",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            
         try:
-            from database import db
             from datetime import datetime, timezone
             import asyncio
-            username = payload.get("sub")
-            if username:
-                role = payload.get("role", "User")
-                department = payload.get("department", "")
-                users_col = db.get_collection("users")
-                asyncio.create_task(users_col.update_one(
-                    {"username": username},
-                    {"$set": {"lastActive": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}}
-                ))
-                asyncio.create_task(update_attendance_on_request(username, department, role))
+            role = payload.get("role", "User")
+            department = payload.get("department", "")
+            asyncio.create_task(users_col.update_one(
+                {"username": username},
+                {"$set": {"lastActive": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}}
+            ))
+            asyncio.create_task(update_attendance_on_request(username, department, role))
         except Exception as e:
             print("Error updating user activity:", e)
         return payload

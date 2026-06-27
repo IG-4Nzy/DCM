@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Paper, Tooltip, IconButton, FormControl, InputLabel, Select, MenuItem, Checkbox, ListItemText, OutlinedInput } from '@mui/material';
-import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
+import { Box, Paper, Tooltip, IconButton, FormControl, InputLabel, Select, MenuItem, Checkbox, ListItemText, OutlinedInput, Tabs, Tab } from '@mui/material';
+import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdCheckCircle as ApproveIcon } from 'react-icons/md';
 import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';
@@ -19,6 +19,7 @@ import styles from "./index.module.scss";
 
 // Import fetchUsers from users action to populate assignee dropdown
 import { fetchUsers } from '../Users/action';
+import { fetchDepartments } from '../Departments/action';
 import { fetchWorks, createWork, updateWork, deleteWork, transferWork } from './action';
 import type { WorkData } from './model';
 
@@ -28,7 +29,32 @@ const Works: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { users } = useSelector((state: RootState) => state?.users || { users: [] });
   const { username: currentUser, isSuperuser } = useSelector((state: RootState) => state?.auth || { username: '', isSuperuser: false });
+  const departments = useSelector((state: RootState) => state?.departments?.departments || []);
   const { showToast } = useToast();
+
+  const isDepartmentHeadOfWork = React.useCallback((work: any) => {
+    if (!currentUser || !departments || departments.length === 0) return false;
+    
+    const headDepts = departments.filter((d: any) => d.departmentHead === currentUser).map((d: any) => d.name);
+    if (headDepts.length === 0) return false;
+
+    if (work.createdBy) {
+      const creatorUser = users.find((u: any) => u.username === work.createdBy);
+      if (creatorUser && headDepts.includes(creatorUser.department)) {
+        return true;
+      }
+    }
+
+    const workAssignees = work.assignees || (work.assignee ? [work.assignee] : []);
+    for (const assigneeId of workAssignees) {
+      const assigneeUser = users.find((u: any) => u.username === assigneeId || u.id === assigneeId || u._id === assigneeId);
+      if (assigneeUser && headDepts.includes(assigneeUser.department)) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [currentUser, departments, users]);
 
   const canFilterByAssignee = isSuperuser || hasPrivilege(PRIVILEGES.WORK_VIEW);
 
@@ -67,9 +93,14 @@ const Works: React.FC = () => {
 
   const { works, totalCount } = useSelector((state: RootState) => state?.works || { works: [], totalCount: 0 });
 
+
+
+  const [activeTab, setActiveTab] = useTableState<'works' | 'emergency'>('work_activeTab', 'works');
+
   // Modal and Form state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingWork, setEditingWork] = useState<any | null>(null);
+  const [isEmergency, setIsEmergency] = useState(false);
 
   // Detail Modal state
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -87,6 +118,9 @@ const Works: React.FC = () => {
       pagination: false,
       showToast: undefined
     }));
+    dispatch(fetchDepartments({
+      limit: 1000
+    }));
   }, [dispatch]);
 
   const loadWorks = React.useCallback((silent = false) => {
@@ -98,9 +132,10 @@ const Works: React.FC = () => {
       search: searchQuery,
       status: statusFilter.join(','),
       assignee: selectedAssignee === 'All' ? undefined : selectedAssignee,
+      tab: activeTab,
       showToast: silent ? undefined : showToast
     }));
-  }, [dispatch, page, rowsPerPage, orderBy, order, searchQuery, statusFilter, selectedAssignee, showToast]);
+  }, [dispatch, page, rowsPerPage, orderBy, order, searchQuery, statusFilter, selectedAssignee, activeTab, showToast]);
 
   useEffect(() => {
     loadWorks();
@@ -122,6 +157,7 @@ const Works: React.FC = () => {
       setDueDate(work.dueDate);
       setDescription(work.description);
       setAttachments((work.attachments || []).map((a: any) => ({ name: a.name || a } as File)));
+      setIsEmergency(!!work.isEmergency);
     } else {
       setEditingWork(null);
       setWorkName('');
@@ -130,6 +166,7 @@ const Works: React.FC = () => {
       setDueDate('');
       setDescription('');
       setAttachments([]);
+      setIsEmergency(!hasPrivilege(PRIVILEGES.WORK_CREATE) || activeTab === 'emergency');
     }
     setIsModalOpen(true);
   };
@@ -202,7 +239,8 @@ const Works: React.FC = () => {
         priority,
         dueDate,
         description,
-        attachments: finalAttachments
+        attachments: finalAttachments,
+        isEmergency
       };
 
       if (editingWork) {
@@ -348,21 +386,60 @@ const Works: React.FC = () => {
     },
   ];
 
-  if (hasPrivilege(PRIVILEGES.WORK_UPDATE) || hasPrivilege(PRIVILEGES.WORK_DELETE)) {
+  if (
+    hasPrivilege(PRIVILEGES.WORK_UPDATE) || 
+    hasPrivilege(PRIVILEGES.WORK_DELETE) || 
+    hasPrivilege(PRIVILEGES.EMERGENCY_WORK_UPDATE) || 
+    hasPrivilege(PRIVILEGES.EMERGENCY_WORK_DELETE) ||
+    hasPrivilege(PRIVILEGES.EMERGENCY_WORK_APPROVE) ||
+    departments.some((d: any) => d.departmentHead === currentUser)
+  ) {
     columns.push({
       id: 'actions',
       label: 'Actions',
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          {hasPrivilege(PRIVILEGES.WORK_UPDATE) && (
+          {row.isEmergency && !row.approved && (isSuperuser || hasPrivilege(PRIVILEGES.WORK_UPDATE) || hasPrivilege(PRIVILEGES.EMERGENCY_WORK_APPROVE)) && (
+            <Tooltip title="Approve Emergency Work">
+              <IconButton 
+                size="small" 
+                color="success" 
+                sx={{ backgroundColor: 'rgba(46, 125, 50, 0.04)' }} 
+                onClick={async (e) => { 
+                  e.stopPropagation(); 
+                  if (await confirm("Are you sure you want to approve this emergency work?", "Approve Emergency Work")) {
+                    try {
+                      const commentPayload = {
+                        text: `This emergency work ticket was approved by ${currentUser}.`,
+                        user: "System",
+                        timestamp: new Date().toISOString()
+                      };
+                      await dispatch(updateWork({
+                        payload: {
+                          id: row.id || row._id || '',
+                          approved: true,
+                          comments: [...(row.comments || []), commentPayload]
+                        },
+                        showToast
+                      })).unwrap();
+                      loadWorks();
+                    } catch (err) {}
+                  }
+                }}
+              >
+                <ApproveIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {(row.isEmergency ? (hasPrivilege(PRIVILEGES.WORK_UPDATE) || hasPrivilege(PRIVILEGES.EMERGENCY_WORK_UPDATE) || isDepartmentHeadOfWork(row)) : hasPrivilege(PRIVILEGES.WORK_UPDATE)) && (
             <Tooltip title="Edit Work">
               <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }} onClick={(e) => { e.stopPropagation(); handleOpenModal(row); }}>
                 <EditIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           )}
-          {hasPrivilege(PRIVILEGES.WORK_DELETE) && (
+          {(row.isEmergency ? (hasPrivilege(PRIVILEGES.WORK_DELETE) || hasPrivilege(PRIVILEGES.EMERGENCY_WORK_DELETE) || isDepartmentHeadOfWork(row)) : hasPrivilege(PRIVILEGES.WORK_DELETE)) && (
             <Tooltip title="Delete Work">
               <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }} onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}>
                 <DeleteIcon fontSize="small" />
@@ -374,7 +451,7 @@ const Works: React.FC = () => {
     });
   }
 
-  const canClickRow = hasPrivilege(PRIVILEGES.WORK_UPDATE) || hasPrivilege(PRIVILEGES.WORK_VIEW_ASSIGNED);
+  const canClickRow = hasPrivilege(PRIVILEGES.WORK_UPDATE) || hasPrivilege(PRIVILEGES.EMERGENCY_WORK_UPDATE) || hasPrivilege(PRIVILEGES.WORK_VIEW_ASSIGNED) || hasPrivilege(PRIVILEGES.EMERGENCY_WORK_VIEW) || departments.some((d: any) => d.departmentHead === currentUser);
 
   return (
     <Box className={styles.users} sx={{ p: 3 }}>
@@ -427,7 +504,8 @@ const Works: React.FC = () => {
               ))}
             </Select>
           </FormControl>
-          {hasPrivilege(PRIVILEGES.WORK_CREATE) && (
+          {((activeTab === 'works' && hasPrivilege(PRIVILEGES.WORK_CREATE)) ||
+            (activeTab === 'emergency' && (hasPrivilege(PRIVILEGES.WORK_CREATE) || hasPrivilege(PRIVILEGES.EMERGENCY_WORK_CREATE)))) && (
             <Button
               variant="contained"
               color="primary"
@@ -439,6 +517,31 @@ const Works: React.FC = () => {
           )}
         </Box>
       </Box>
+
+      <Tabs
+        value={activeTab}
+        onChange={(_e, val) => { setActiveTab(val); setPage(0); }}
+        sx={{
+          mb: 3,
+          borderBottom: 1,
+          borderColor: 'divider',
+          '& .MuiTab-root': {
+            textTransform: 'none',
+            fontWeight: 'bold',
+            fontSize: '1.05rem',
+          },
+          '& .Mui-selected': {
+            color: '#1976d2',
+          },
+          '& .MuiTabs-indicator': {
+            backgroundColor: '#1976d2',
+            height: 3,
+          }
+        }}
+      >
+        <Tab label="Works" value="works" />
+        <Tab label="Emergency Works" value="emergency" />
+      </Tabs>
 
       <Paper sx={{ width: '100%', mb: 2, p: 0, boxShadow: 'none', background: 'transparent' }}>
         <Table
@@ -474,6 +577,8 @@ const Works: React.FC = () => {
         setAttachments={setAttachments}
         users={filteredUsersForAssignee}
         handleSubmit={handleSubmit}
+        isEmergency={isEmergency}
+        setIsEmergency={setIsEmergency}
       />
 
       <WorkDetailModal

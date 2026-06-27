@@ -318,6 +318,7 @@ const Dashboard: React.FC = () => {
             data={data}
             onMorningClick={() => navigate(ROUTE_CONSTANTS.DAILY_ACTIVITIES)}
             onBmsClick={() => navigate(ROUTE_CONSTANTS.BMS_CHECKLIST)}
+            onClusterClick={() => navigate(ROUTE_CONSTANTS.CLUSTER_CHECKLIST)}
           />
           <RecentObservationsCard
             latestObservations={latestObservations}

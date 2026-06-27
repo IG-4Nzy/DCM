@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import apiClient from '../../services/request';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, Divider, Grid, Chip, TextField, FormControl, InputLabel, Select, MenuItem, Checkbox, FormControlLabel } from '@mui/material';
 import Button from '../../components/Button';
 import type { RequestData, RequestLogData } from './model';
@@ -82,28 +83,6 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
     if (isOpen && requestId) {
       dispatch(fetchUsers({ pagination: false }));
       dispatch(fetchInventory({ pagination: false }));
-      setRemarks('');
-      setIpAddress(request.details?.ip || '');
-      setIpError(false);
-      setBackupLocation(request.details?.backupLocation || '');
-      setBackupError(false);
-      setAddedToMonitoring(!!request.details?.addedToMonitoring);
-
-      setEntryTime(
-        request.details?.entryTime 
-          ? dayjs(request.details.entryTime).format('YYYY-MM-DDTHH:mm') 
-          : (request.details?.dateTime 
-              ? dayjs(request.details.dateTime).format('YYYY-MM-DDTHH:mm') 
-              : dayjs(request.createdAt || getServerTime().toDate()).format('YYYY-MM-DDTHH:mm'))
-      );
-      setEntryTimeError(false);
-      setExitTime(
-        request.details?.exitTime 
-          ? dayjs(request.details.exitTime).format('YYYY-MM-DDTHH:mm') 
-          : getServerTime().format('YYYY-MM-DDTHH:mm')
-      );
-      setExitTimeError(false);
-      setKeptItemsOnExit(!!request.details?.keptItemsOnExit);
 
       setLoadingLogs(true);
       fetchRequestLogs(requestId)
@@ -116,6 +95,41 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
         .finally(() => {
           setLoadingLogs(false);
         });
+    }
+  }, [isOpen, requestId, dispatch]);
+
+  const hasInitializedRef = React.useRef(false);
+
+  // Initialize form fields when request details are loaded
+  useEffect(() => {
+    if (!isOpen) {
+      hasInitializedRef.current = false;
+      return;
+    }
+
+    if (isOpen && !hasInitializedRef.current && request && (request.id === requestId || request._id === requestId)) {
+      setRemarks('');
+      setIpAddress(request.details?.ip || '');
+      setIpError(false);
+      setBackupLocation(request.details?.backupLocation || '');
+      setBackupError(false);
+      setAddedToMonitoring(!!request.details?.addedToMonitoring);
+
+      setEntryTime(
+        request.details?.entryTime
+          ? dayjs(request.details.entryTime).format('YYYY-MM-DDTHH:mm')
+          : (request.details?.dateTime
+            ? dayjs(request.details.dateTime).format('YYYY-MM-DDTHH:mm')
+            : dayjs(request.createdAt || getServerTime().toDate()).format('YYYY-MM-DDTHH:mm'))
+      );
+      setEntryTimeError(false);
+      setExitTime(
+        request.details?.exitTime
+          ? dayjs(request.details.exitTime).format('YYYY-MM-DDTHH:mm')
+          : getServerTime().format('YYYY-MM-DDTHH:mm')
+      );
+      setExitTimeError(false);
+      setKeptItemsOnExit(!!request.details?.keptItemsOnExit);
 
       if (request.status?.toLowerCase() === 'cluster deciding' || request.status?.toLowerCase().includes('cluster')) {
         fetchClusters({ pagination: false }).then(res => {
@@ -123,8 +137,23 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
         }).catch(() => {
           setClusters([]);
         });
-        fetchNodes().then(res => {
-          setNodes(res || []);
+        const fetchNodes1 = apiClient.get('/api/nodes/', { params: { pagination: false } }).then(res => res.data.data || []);
+        const fetchNodes2 = fetchNodes().catch(() => []);
+        Promise.all([fetchNodes1, fetchNodes2]).then(([nodesList1, nodesList2]) => {
+          const normalized1 = nodesList1.map((n: any) => ({
+            ...n,
+            hostName: n.node,
+            ipAddress: n.ipAddress || ''
+          }));
+          // Merge lists and de-duplicate by hostName/node name
+          const mergedMap = new Map();
+          [...normalized1, ...nodesList2].forEach((n: any) => {
+            const name = n.hostName || n.node;
+            if (name) {
+              mergedMap.set(name, n);
+            }
+          });
+          setNodes(Array.from(mergedMap.values()));
         }).catch(() => {
           setNodes([]);
         });
@@ -133,8 +162,9 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
         setClusterError(false);
         setNodeError(false);
       }
+      hasInitializedRef.current = true;
     }
-  }, [isOpen, requestId, dispatch]);
+  }, [isOpen, request, requestId]);
 
   // Reactive node filtering based on selected cluster
   useEffect(() => {
@@ -143,7 +173,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       const clusterId = clusterObj?.id || clusterObj?._id || '';
       const matchingNodes = nodes.filter((n: any) => String(n.clusterId) === String(clusterId));
       setFilteredNodes(matchingNodes);
-      
+
       // Clear selectedNode if it does not belong to matching nodes
       if (selectedNode && !matchingNodes.some((n: any) => n.hostName === selectedNode)) {
         setSelectedNode('');
@@ -159,7 +189,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   const canAction = isSuperuser || isAssigned || hasUpdatePrivilege;
   const isTerminal = request.status === 'Completed' || request.status === 'Rejected';
   const canSendBack = request && typeof request.currentStageIndex === 'number' && request.currentStageIndex > 0;
-  
+
   // Check if status is IP Issuance
   const isIpIssuance = request.status?.toLowerCase() === 'ip issuance' || request.status?.toLowerCase().includes('ip');
 
@@ -209,7 +239,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       if (isIpIssuance) {
         payload.details = { ip: ipAddress.trim() };
       } else if (isVMCreationStage) {
-        payload.details = { 
+        payload.details = {
           addedToMonitoring: !!addedToMonitoring
         };
       } else if (isVMBackupStage) {
@@ -217,16 +247,16 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
           backupLocation: backupLocation.trim()
         };
       } else if (isClusterDeciding) {
-        payload.details = { 
+        payload.details = {
           cluster: selectedCluster,
           node: selectedNode
         };
       } else if (isMarkEntryTime) {
-        payload.details = { 
-          entryTime: new Date(entryTime).toISOString() 
+        payload.details = {
+          entryTime: new Date(entryTime).toISOString()
         };
       } else if (isMarkExitTime) {
-        payload.details = { 
+        payload.details = {
           exitTime: new Date(exitTime).toISOString(),
           keptItemsOnExit: !!keptItemsOnExit
         };
@@ -280,9 +310,14 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+    >
       <DialogTitle sx={{ pb: 1, fontWeight: 'bold', fontSize: '1.25rem', color: '#333' }}>
-        Request Details
+        Request Details i
       </DialogTitle>
       <DialogContent dividers sx={{ backgroundColor: '#fafbfd' }}>
         <Grid container spacing={3} sx={{ py: 1 }}>
@@ -355,7 +390,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                 REQUEST FIELDS
               </Typography>
               <Divider sx={{ mb: 2 }} />
-              
+
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <Typography variant="caption" color="textSecondary">Purpose</Typography>
@@ -417,7 +452,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                     </Grid>
                   </>
                 )}
- 
+
                 {request.requestType === 'DC Entry' && (
                   <>
                     <Grid item xs={12} sm={6}>
@@ -496,7 +531,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                 REQUEST HISTORY LOGS
               </Typography>
               <Divider sx={{ mb: 2 }} />
-              
+
               {loadingLogs ? (
                 <Typography variant="body2" color="textSecondary" sx={{ py: 1 }}>Loading logs...</Typography>
               ) : logs.length === 0 ? (
@@ -504,12 +539,12 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
               ) : (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
                   {logs.map((log, idx) => (
-                    <Box 
-                      key={log._id || idx} 
-                      sx={{ 
-                        p: 1.5, 
-                        bgcolor: '#f8fafc', 
-                        borderRadius: '8px', 
+                    <Box
+                      key={log._id || idx}
+                      sx={{
+                        p: 1.5,
+                        bgcolor: '#f8fafc',
+                        borderRadius: '8px',
                         borderLeft: `4px solid ${log.action && log.action.includes('Reject') ? '#ef4444' : log.action && (log.action.includes('Advance') || log.action.includes('Completed') || log.action.includes('Advanced') || log.action.includes('Created')) ? '#22c55e' : '#3b82f6'}`
                       }}
                     >
@@ -675,6 +710,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                               if (e.target.value) setClusterError(false);
                             }}
                             sx={{ bgcolor: '#fff' }}
+                            MenuProps={{ disablePortal: false }}
                           >
                             {clusters.map((c: any) => (
                               <MenuItem key={c.id || c._id} value={c.clusterName}>
@@ -697,10 +733,11 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                               if (e.target.value) setNodeError(false);
                             }}
                             sx={{ bgcolor: '#fff' }}
+                            MenuProps={{ disablePortal: true }}
                           >
                             {filteredNodes.map((n: any) => (
                               <MenuItem key={n.id || n._id} value={n.hostName}>
-                                {n.hostName} ({n.ipAddress})
+                                {n.hostName} {n.ipAddress ? `(${n.ipAddress})` : ''}
                               </MenuItem>
                             ))}
                           </Select>
@@ -768,9 +805,9 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
           </>
         )}
       </DialogActions>
-      
-      <Dialog 
-        open={isSendBackOpen} 
+
+      <Dialog
+        open={isSendBackOpen}
         onClose={() => setIsSendBackOpen(false)}
         slotProps={{
           paper: {
@@ -798,8 +835,8 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button variant="text" onClick={() => setIsSendBackOpen(false)}>Cancel</Button>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             color="error"
             onClick={handleConfirmSendBack}
             disabled={!sendBackReason.trim() || submitting}

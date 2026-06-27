@@ -138,7 +138,12 @@ const ServerPingMonitoring: React.FC = () => {
 
   // Sound Loop management
   useEffect(() => {
-    const hasOfflineServers = metrics.offline > 0;
+    const hasOfflineServers = metrics.offline > 0 || servers.some(s => 
+      s.status === 'DOWN' || 
+      ((s.monitoringType === 'both' || s.monitoringType === 'port') && 
+       s.portsStatus && 
+       Object.values(s.portsStatus).includes('DOWN'))
+    );
 
     if (hasOfflineServers && !isMuted) {
       if (!audioIntervalRef.current) {
@@ -160,7 +165,7 @@ const ServerPingMonitoring: React.FC = () => {
         audioIntervalRef.current = null;
       }
     };
-  }, [metrics.offline, isMuted]);
+  }, [metrics.offline, servers, isMuted]);
 
   // Load dashboard metrics
   const loadDashboardMetrics = async () => {
@@ -550,11 +555,34 @@ const ServerPingMonitoring: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell sx={{ py: 0.75 }}>
-                    <span className={`${styles.container__statusChip} ${styles[srv.status]}`} style={{ padding: '2px 8px', fontSize: '0.7rem' }}>
-                      {srv.status === 'UP' && <CheckIcon size={12} />}
-                      {srv.status === 'DOWN' && <ErrorIcon size={12} />}
-                      {srv.status}
-                    </span>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      <span className={`${styles.container__statusChip} ${styles[srv.status]}`} style={{ padding: '2px 8px', fontSize: '0.7rem', width: 'fit-content' }}>
+                        {srv.status === 'UP' && <CheckIcon size={12} />}
+                        {srv.status === 'DOWN' && <ErrorIcon size={12} />}
+                        {srv.status}
+                      </span>
+                      {srv.monitoringType === 'both' && srv.portsStatus && Object.keys(srv.portsStatus).length > 0 && (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.25 }}>
+                          {Object.entries(srv.portsStatus).map(([port, status]) => (
+                            <Tooltip key={port} title={`Port ${port}: ${status}`}>
+                              <Chip
+                                size="small"
+                                label={`${port}:${status}`}
+                                sx={{
+                                  fontSize: '0.62rem',
+                                  height: '16px',
+                                  px: 0.5,
+                                  fontWeight: 600,
+                                  color: status === 'UP' ? '#15803d' : '#b91c1c',
+                                  bgcolor: status === 'UP' ? '#f0fdf4' : '#fef2f2',
+                                  border: `1px solid ${status === 'UP' ? '#bbf7d0' : '#fca5a5'}`,
+                                }}
+                              />
+                            </Tooltip>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
                   </TableCell>
                   <TableCell sx={{ py: 0.75 }}>
                     {srv.status === 'DOWN' ? '--' : `${srv.responseTimeMs} ms`}

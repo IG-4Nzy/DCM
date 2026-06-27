@@ -103,7 +103,7 @@ const NodeViewModal: React.FC<NodeViewModalProps> = ({ open, onClose, node }) =>
                                 </Grid>
                                 <Grid item xs={12} sm={4}>
                                     <Typography variant="caption" color="textSecondary">Total CPU</Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.totalCpu !== undefined && node.totalCpu !== null ? `${node.totalCpu} Cores` : '-'}</Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.totalCpu !== undefined && node.totalCpu !== null ? `${node.totalCpu} GHz` : '-'}</Typography>
                                 </Grid>
                             </Grid>
                         </Box>

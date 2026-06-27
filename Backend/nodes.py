@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
-from auth_utils import require_privilege, get_current_user
+from auth_utils import require_privilege, get_current_user, require_any_privilege
 from fastapi.responses import JSONResponse
 from typing import Optional, List
 from database import db
@@ -47,7 +47,7 @@ async def compute_available_resources(node_doc: dict):
     
     return node_doc
 
-@router.get("/", response_description="List all nodes", response_model=PaginatedNodesModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
+@router.get("/", response_description="List all nodes", response_model=PaginatedNodesModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "Create Request", "Update Request", "View Request"]))])
 async def list_items(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),

@@ -169,7 +169,7 @@ const NodeDetailsViewModal: React.FC<NodeDetailsViewModalProps> = ({ open, onClo
                             
                             {renderResource('RAM Capacity', item.totalRam, item.availableRam, 'GB')}
                             {renderResource('Hard Disk Storage', item.totalHardisk, item.availableHardisk, 'GB')}
-                            {renderResource('CPU Allocation', item.totalCpu, item.availableCpu, 'Cores')}
+                            {renderResource('CPU Allocation', item.totalCpu, item.availableCpu, 'GHz')}
                         </Box>
                     </Grid>
 

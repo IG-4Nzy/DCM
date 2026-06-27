@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, UploadFile, File, Response
-from auth_utils import require_privilege, get_current_user
+from auth_utils import require_privilege, require_any_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional, List
 from database import db
@@ -62,7 +62,7 @@ async def compute_node_details_available_resources(doc: dict):
     
     return doc
 
-@router.get("/", response_description="List all node details", response_model=PaginatedNodeDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
+@router.get("/", response_description="List all node details", response_model=PaginatedNodeDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "Create Request", "Update Request", "View Request"]))])
 async def list_items(
     clusterId: Optional[str] = Query(None, description="The ID of the cluster"),
     skip: int = Query(0, ge=0),

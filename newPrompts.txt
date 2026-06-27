@@ -1,2 +1,16 @@
-in vm request,submit cluster and approve stage,choose node dropdoonw not dispalying data
+in checklist,give option to export as pdf
+need label for warnings in chekcklist fields
+in checklist view,show current day observations and visitors log.
+server time shown in header is not sync with backend time
+if a user is logged in on another session,logout the previous session
+give token expiry time -> 8 hrs
+give file upload option in comment section of the works and observations.
+in vm create,give option to mark power status - on or off
+increase width of all modals
+implement email functionality
+ping monitoring is not accurate,getting ping drop alert after a huge delay.
+
+
+
+
 Remove download button from mobile app.

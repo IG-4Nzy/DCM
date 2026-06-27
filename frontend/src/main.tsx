@@ -6,30 +6,6 @@ import App from './App';
 import './index.css';
 import { ThemeProvider, createTheme, CssBaseline, Dialog, Modal } from '@mui/material';
 
-// Global monkeypatch to prevent Dialog/Modal backdrop click closing and disable Escape key closes
-if (Dialog && (Dialog as any).render) {
-  const originalDialogRender = (Dialog as any).render;
-  (Dialog as any).render = function (props: any, ref: any) {
-    const { onClose, disableEscapeKeyDown, ...rest } = props;
-    const handleClose = (event: any, reason: string) => {
-      if (reason === 'backdropClick') return;
-      if (onClose) onClose(event, reason);
-    };
-    return originalDialogRender.call(this, { ...rest, onClose: handleClose, disableEscapeKeyDown: true }, ref);
-  };
-}
-
-if (Modal && (Modal as any).render) {
-  const originalModalRender = (Modal as any).render;
-  (Modal as any).render = function (props: any, ref: any) {
-    const { onClose, disableEscapeKeyDown, ...rest } = props;
-    const handleClose = (event: any, reason: string) => {
-      if (reason === 'backdropClick') return;
-      if (onClose) onClose(event, reason);
-    };
-    return originalModalRender.call(this, { ...rest, onClose: handleClose, disableEscapeKeyDown: true }, ref);
-  };
-}
 
 
 // LocalStorage Interceptor for page-level state cleanup
@@ -139,6 +115,29 @@ const theme = createTheme({
   },
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+  },
+  components: {
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          '&.MuiDialog-paperWidthXs': {
+            maxWidth: '650px !important',
+          },
+          '&.MuiDialog-paperWidthSm': {
+            maxWidth: '900px !important',
+          },
+          '&.MuiDialog-paperWidthMd': {
+            maxWidth: '1200px !important',
+          },
+          '&.MuiDialog-paperWidthLg': {
+            maxWidth: '1500px !important',
+          },
+          '&.MuiDialog-paperWidthXl': {
+            maxWidth: '1800px !important',
+          },
+        },
+      },
+    },
   },
 });
 

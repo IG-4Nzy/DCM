@@ -154,6 +154,9 @@ class WorkModel(BaseModel):
     comments: List[dict] = Field(default_factory=list)
     completedAt: Optional[str] = None
     createdAt: Optional[str] = None
+    isEmergency: bool = False
+    approved: bool = True
+    createdBy: Optional[str] = None
 
     @model_validator(mode='before')
     @classmethod
@@ -212,6 +215,9 @@ class CreateWorkModel(BaseModel):
     comments: List[dict] = Field(default_factory=list)
     completedAt: Optional[str] = None
     createdAt: Optional[str] = None
+    isEmergency: bool = False
+    approved: bool = True
+    createdBy: Optional[str] = None
 
     @model_validator(mode='before')
     @classmethod
@@ -239,6 +245,9 @@ class UpdateWorkModel(BaseModel):
     comments: Optional[List[dict]] = None
     completedAt: Optional[str] = None
     createdAt: Optional[str] = None
+    isEmergency: Optional[bool] = None
+    approved: Optional[bool] = None
+    createdBy: Optional[str] = None
 
     @model_validator(mode='before')
     @classmethod
@@ -969,6 +978,7 @@ class VMDetailsModel(BaseModel):
     addedToMonitoring: Optional[bool] = False
     adminName: Optional[str] = None
     adminContact: Optional[str] = None
+    powerStatus: Optional[str] = None
     
     model_config = ConfigDict(
         populate_by_name=True,
@@ -988,6 +998,7 @@ class CreateVMDetailsModel(BaseModel):
     addedToMonitoring: Optional[bool] = False
     adminName: Optional[str] = None
     adminContact: Optional[str] = None
+    powerStatus: Optional[str] = None
 
 class UpdateVMDetailsModel(BaseModel):
     ipAddress: Optional[str] = None
@@ -1001,6 +1012,7 @@ class UpdateVMDetailsModel(BaseModel):
     addedToMonitoring: Optional[bool] = None
     adminName: Optional[str] = None
     adminContact: Optional[str] = None
+    powerStatus: Optional[str] = None
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -1184,6 +1196,7 @@ class AttendanceConfigModel(BaseModel):
     shifts: List[ShiftInfoModel] = Field(default_factory=list)
     trackedRole: Optional[str] = "All Roles"
     rosterRows: List[RosterRowModel] = Field(default_factory=list)
+    lateLoginRestriction: bool = True
 
     model_config = ConfigDict(
         populate_by_name=True,

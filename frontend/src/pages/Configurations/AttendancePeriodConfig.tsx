@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Paper, Typography, TextField, Grid, Divider, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Box, Paper, Typography, TextField, Grid, Divider, FormControl, InputLabel, Select, MenuItem, FormControlLabel, Switch } from '@mui/material';
 import Button from '../../components/Button';
 import { useToast } from '../../contexts/ToastContext';
 import { useSelector } from 'react-redux';
@@ -29,6 +29,7 @@ const AttendancePeriodConfig = () => {
     const [rosterRows, setRosterRows] = useState<RosterRow[]>([]);
     const [trackedRole, setTrackedRole] = useState<string>('All Roles');
     const [roles, setRoles] = useState<string[]>(['All Roles']);
+    const [lateLoginRestriction, setLateLoginRestriction] = useState<boolean>(true);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -49,6 +50,7 @@ const AttendancePeriodConfig = () => {
                 setShifts(response.data.shifts || []);
                 setRosterRows(response.data.rosterRows || []);
                 setTrackedRole(response.data.trackedRole || 'All Roles');
+                setLateLoginRestriction(response.data.lateLoginRestriction !== undefined ? response.data.lateLoginRestriction : true);
             }
         } catch (e: any) {
             showToast('Failed to load attendance configuration', 'error');
@@ -114,7 +116,8 @@ const AttendancePeriodConfig = () => {
                 maxAllowedDays: parseInt(maxAllowedDays.toString()),
                 shifts,
                 trackedRole,
-                rosterRows
+                rosterRows,
+                lateLoginRestriction
             });
             showToast('Attendance configuration saved successfully', 'success');
         } catch (e: any) {
@@ -250,6 +253,30 @@ const AttendancePeriodConfig = () => {
                                     ))}
                                 </Select>
                             </FormControl>
+                        </Grid>
+
+                        <Grid item xs={12} sm={6}>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={lateLoginRestriction}
+                                        onChange={(e) => setLateLoginRestriction(e.target.checked)}
+                                        disabled={!hasUpdate || saving}
+                                        color="primary"
+                                    />
+                                }
+                                label={
+                                    <Box>
+                                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                            Restrict Late Logins
+                                        </Typography>
+                                        <Typography variant="caption" color="textSecondary">
+                                            If enabled, users are blocked from logging in if they are late. If disabled, they are allowed to log in but marked as late.
+                                        </Typography>
+                                    </Box>
+                                }
+                                sx={{ mt: 0.5 }}
+                            />
                         </Grid>
 
                         <Grid item xs={12}>
