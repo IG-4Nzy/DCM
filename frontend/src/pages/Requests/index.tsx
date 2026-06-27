@@ -68,6 +68,11 @@ const Requests: React.FC = () => {
     const hasUpdatePrivilege = isSuperuser || hasPrivilege(PRIVILEGES.REQUEST_UPDATE);
     const hasDeletePrivilege = isSuperuser || hasPrivilege(PRIVILEGES.REQUEST_DELETE);
 
+    const hasTypeViewPrivilege = isSuperuser || hasPrivilege(PRIVILEGES.REQUEST_TYPE_VIEW);
+    const hasTypeCreatePrivilege = isSuperuser || hasPrivilege(PRIVILEGES.REQUEST_TYPE_CREATE);
+    const hasTypeUpdatePrivilege = isSuperuser || hasPrivilege(PRIVILEGES.REQUEST_TYPE_UPDATE);
+    const hasTypeDeletePrivilege = isSuperuser || hasPrivilege(PRIVILEGES.REQUEST_TYPE_DELETE);
+
     const loadData = useCallback(async (silent = false) => {
         if (!hasViewPrivilege) return;
         try {
@@ -318,14 +323,14 @@ const Requests: React.FC = () => {
             align: 'right',
             render: (row) => (
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                    {hasUpdatePrivilege && (
+                    {hasTypeUpdatePrivilege && (
                         <Tooltip title="Edit Request Type">
                             <IconButton size="small" color="primary" onClick={(e) => { e.stopPropagation(); handleEditRequestType(row); }}>
                                 <EditIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
                     )}
-                    {hasDeletePrivilege && (
+                    {hasTypeDeletePrivilege && (
                         <Tooltip title="Delete Request Type">
                             <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); handleDeleteRequestType(row.id); }}>
                                 <DeleteIcon fontSize="small" />
@@ -480,7 +485,7 @@ const Requests: React.FC = () => {
 
             <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val as any)} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
                 <Tab label="Requests List" value="requests" />
-                <Tab label="Request Types" value="types" />
+                {hasTypeViewPrivilege && <Tab label="Request Types" value="types" />}
             </Tabs>
 
             {activeTab === 'requests' ? (
@@ -558,7 +563,7 @@ const Requests: React.FC = () => {
             ) : (
                 <>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
-                        {hasCreatePrivilege && (
+                        {hasTypeCreatePrivilege && (
                             <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => { setEditingType(null); setNewTypeName(''); setIsTypeModalOpen(true); }}>
                                 Add Request Type
                             </Button>

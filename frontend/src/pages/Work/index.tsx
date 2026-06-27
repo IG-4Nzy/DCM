@@ -57,6 +57,7 @@ const Works: React.FC = () => {
   }, [currentUser, departments, users]);
 
   const canFilterByAssignee = isSuperuser || hasPrivilege(PRIVILEGES.WORK_VIEW);
+  const canViewEmergency = isSuperuser || hasPrivilege(PRIVILEGES.EMERGENCY_WORK_VIEW);
 
   const filteredUsersForAssignee = React.useMemo(() => {
     if (!currentUser || !users) return [];
@@ -140,6 +141,13 @@ const Works: React.FC = () => {
   useEffect(() => {
     loadWorks();
   }, [loadWorks]);
+
+  useEffect(() => {
+    if (!canViewEmergency && activeTab === 'emergency') {
+      setActiveTab('works');
+      setPage(0);
+    }
+  }, [canViewEmergency, activeTab, setActiveTab, setPage]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -540,7 +548,7 @@ const Works: React.FC = () => {
         }}
       >
         <Tab label="Works" value="works" />
-        <Tab label="Emergency Works" value="emergency" />
+        {canViewEmergency && <Tab label="Emergency Works" value="emergency" />}
       </Tabs>
 
       <Paper sx={{ width: '100%', mb: 2, p: 0, boxShadow: 'none', background: 'transparent' }}>
