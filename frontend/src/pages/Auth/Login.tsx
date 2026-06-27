@@ -5,6 +5,7 @@ import { loginApi } from './action';
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, TextField, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useToast } from '../../contexts/ToastContext';
+import { useEffect } from 'react';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -13,6 +14,15 @@ const Login: React.FC = () => {
   const dispatch = useDispatch<any>();
   const navigate = useNavigate();
   const { showToast } = useToast();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('reason') === 'session_expired') {
+      showToast('You have been logged out because you logged in from another device.', 'error');
+      // Clean up the URL
+      navigate('/login', { replace: true });
+    }
+  }, [navigate, showToast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

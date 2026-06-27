@@ -372,8 +372,8 @@ async def reject_regularize(
 
 @router.get("/server-time")
 async def get_server_time():
-    from database import get_local_now
-    return {"currentTime": get_local_now().isoformat()}
+    from datetime import datetime, timezone
+    return {"currentTime": datetime.now(timezone.utc).isoformat()}
 
 @router.get("/config", response_model=AttendanceConfigModel, response_model_by_alias=False)
 async def get_attendance_config():

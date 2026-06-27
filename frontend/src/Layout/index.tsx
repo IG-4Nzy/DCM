@@ -146,6 +146,23 @@ const Layout: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'token') {
+        if (!e.newValue) {
+          // Token was removed (e.g., logged out from another tab)
+          dispatch(logout());
+        } else if (e.newValue !== e.oldValue && e.oldValue) {
+          // Token was overwritten (logged in from another tab)
+          localStorage.clear();
+          window.location.href = '/login?reason=session_expired';
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [dispatch]);
+
   const fetchUnreadNotifications = async () => {
     try {
       const res = await request.get('/api/notifications/unread');

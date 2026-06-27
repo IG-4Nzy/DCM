@@ -4,17 +4,28 @@ import dayjs, { Dayjs } from 'dayjs';
 let timeOffsetMs = 0;
 let isSynced = false;
 
+export const updateServerTimeOffset = (dateHeader: string) => {
+  const serverTime = new Date(dateHeader).getTime();
+  if (!isNaN(serverTime)) {
+    timeOffsetMs = serverTime - Date.now();
+    isSynced = true;
+  }
+};
+
 export const syncServerTime = async () => {
   if (isSynced) return;
   try {
-    const start = Date.now();
     const res = await request.get('/api/attendance/server-time');
-    const end = Date.now();
-    const latency = (end - start) / 2;
-    if (res.data && res.data.currentTime) {
-      const serverTime = new Date(res.data.currentTime).getTime();
-      const localTime = end - latency;
-      timeOffsetMs = serverTime - localTime;
+    if (res.headers && res.headers['date']) {
+      updateServerTimeOffset(res.headers['date']);
+    } else if (res.data && res.data.currentTime) {
+      // Fallback if Date header is missing
+      let timeStr = res.data.currentTime;
+      if (!timeStr.includes('Z') && !timeStr.includes('+')) {
+        timeStr = timeStr + '+05:30'; // Assume IST if naive
+      }
+      const serverTime = new Date(timeStr).getTime();
+      timeOffsetMs = serverTime - Date.now();
       isSynced = true;
     }
   } catch (error) {

@@ -14,6 +14,7 @@ import {
 } from 'react-icons/md';
 import dayjs from 'dayjs';
 import { getServerTime } from '../../helpers/time';
+import { exportChecklistPdf } from '../../helpers/exportChecklistPdf';
 import styles from './index.module.scss';
 import {
   flattenConfig, unflattenRows,
@@ -30,6 +31,7 @@ import { PRIVILEGES } from '../../helpers/privileges';
 import { useToast } from '../../contexts/ToastContext';
 import DatePicker from '../../components/DatePicker';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import DaySummary from '../../components/DaySummary';
 
 // ─── Tolerance Check ───
 function hasDeviation(value: string, bmsReading: string): boolean {
@@ -1014,7 +1016,9 @@ const BMSChecklist: React.FC = () => {
                               )}
                               {(checkRes.failed || checkRes.warning) && (
                                 <Tooltip title={checkRes.message}>
-                                  <span style={{ color: checkRes.failed ? '#ef4444' : '#d97706', fontWeight: 'bold', marginLeft: '6px', cursor: 'pointer' }}>⚠</span>
+                                  <span style={{ color: checkRes.failed ? '#ef4444' : '#d97706', backgroundColor: checkRes.failed ? '#fee2e2' : '#fef3c7', padding: '2px 6px', borderRadius: '4px', fontSize: '0.8em', fontWeight: 'bold', marginLeft: '6px', cursor: 'pointer' }}>
+                                    ⚠ {checkRes.failed ? 'Failed' : 'Warning'}
+                                  </span>
                                 </Tooltip>
                               )}
                               {deviation && (
@@ -1151,7 +1155,9 @@ const BMSChecklist: React.FC = () => {
                                 <span>#{slNo}</span>
                                 {(checkRes.failed || checkRes.warning) && (
                                   <Tooltip title={checkRes.message}>
-                                    <span style={{ color: checkRes.failed ? '#ef4444' : '#d97706', fontWeight: 'bold', cursor: 'pointer', marginRight: '6px' }}>⚠</span>
+                                    <span style={{ color: checkRes.failed ? '#ef4444' : '#d97706', backgroundColor: checkRes.failed ? '#fee2e2' : '#fef3c7', padding: '2px 6px', borderRadius: '4px', fontSize: '0.8em', fontWeight: 'bold', cursor: 'pointer', marginRight: '6px' }}>
+                                      ⚠ {checkRes.failed ? 'Failed' : 'Warning'}
+                                    </span>
                                   </Tooltip>
                                 )}
                                 {deviation && <span className={styles.container__deviationMark}>!</span>}
@@ -1446,6 +1452,8 @@ const BMSChecklist: React.FC = () => {
               {viewMode === 'table'
                 ? renderChecklistTable(groupedData, canUpdate && !isViewOnlyMode, updateRow, false)
                 : renderChecklistCards(groupedData, canUpdate && !isViewOnlyMode, updateRow, false)}
+                
+              <DaySummary date={selectedDate} />
             </>
           ) : (
             <Box sx={{ textAlign: 'center', py: 8, color: '#94a3b8' }}>
@@ -1624,8 +1632,37 @@ const BMSChecklist: React.FC = () => {
                 </Box>
               </Box>
               {renderChecklistTable(viewGrouped, false)}
+              <DaySummary date={viewingChecklist.date} />
             </DialogContent>
             <DialogActions>
+              <Button
+                variant="outlined"
+                startIcon={<MdDownload />}
+                onClick={() => {
+                  if (!viewingChecklist || !viewRows.length) return;
+                  let slNo = 0;
+                  const pdfRows = viewRows.map(row => {
+                    slNo++;
+                    return [slNo, row.category, row.device, row.parameter, row.value || '-', row.bmsReading || '-', row.unit || '-', row.remarks || '-'];
+                  });
+                  exportChecklistPdf({
+                    title: 'BMS Checklist',
+                    date: viewingChecklist.date,
+                    time: viewingChecklist.time,
+                    preparedBy: viewingChecklist.preparedBy,
+                    status: viewingChecklist.status,
+                    department: viewingChecklist.department,
+                    completedBy: viewingChecklist.completedBy,
+                    columns: ['#', 'Category', 'Device', 'Parameter', 'Value', 'BMS Reading', 'Unit', 'Remarks'],
+                    rows: pdfRows,
+                    fileName: `BMS_Checklist_${viewingChecklist.date}`,
+                    includeDaySummary: true,
+                  });
+                }}
+                sx={{ textTransform: 'none', mr: 1 }}
+              >
+                Export PDF
+              </Button>
               <Button onClick={() => setViewingChecklist(null)} sx={{ textTransform: 'none' }}>Close</Button>
             </DialogActions>
           </>

@@ -11,7 +11,7 @@ router = APIRouter()
 
 SECRET_KEY = "super-secret-jwt-key-replace-me-in-production"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 960 # Token valid for 16 hours
+ACCESS_TOKEN_EXPIRE_MINUTES = 480 # Token valid for 8 hours
 
 class LoginRequest(BaseModel):
     username: str
@@ -112,14 +112,17 @@ async def login(credentials: LoginRequest):
     )
     
     # Generate the JWT
-    access_token = create_access_token(data={
-        "sub": user["username"], 
-        "role": role, 
-        "privileges": privileges, 
+    access_token = create_access_token(
+    data={
+        "sub": user["username"],
+        "role": role,
+        "privileges": privileges,
         "isSuperuser": is_superuser,
         "department": user.get("department", ""),
         "session_key": session_key
-    })
+    },
+    expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+)
     
     is_first_login_today = False
 

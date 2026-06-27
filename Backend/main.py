@@ -511,6 +511,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Date"],
 )
 
 app.include_router(items_router, tags=["items"], prefix="/items")
@@ -556,6 +557,7 @@ app.include_router(vcenter_monitor_router, tags=["vcenter_telemetry"], prefix="/
 
 import os
 os.makedirs("uploads/works", exist_ok=True)
+os.makedirs("uploads/observations", exist_ok=True)
 os.makedirs("uploads/documentations", exist_ok=True)
 os.makedirs("logs", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

@@ -8,7 +8,7 @@ import DatePicker from '../../components/DatePicker';
 import { FormControl, InputLabel, MenuItem, Select, Button, Box, IconButton, Tooltip, Typography, Chip, OutlinedInput, FormGroup, FormControlLabel, Checkbox, Avatar, Autocomplete, TextField as MuiTextField } from '@mui/material';
 import { MdEdit as EditIcon, MdSend } from 'react-icons/md';
 import styles from './index.module.scss';
-import request from '../../services/request';
+import request, { API_BASE_URL } from '../../services/request';
 import { getServerTime } from '../../helpers/time';
 
 interface ObservationFormModalProps {
@@ -59,6 +59,8 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
   const [newComment, setNewComment] = useState("");
   const currentUser = useSelector((state: RootState) => (state?.auth as any)?.user?.username || state?.auth?.username) || "User";
   const [allObservations, setAllObservations] = useState<any[]>([]);
+  const [commentFile, setCommentFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (isModalOpen) {
@@ -86,13 +88,37 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
   const showEditButton = editingObs && !isEditMode && hasUpdatePrivilege && !isResolved;
 
   const handleAddComment = async () => {
-    if (!newComment.trim() || !editingObs) return;
+    if ((!newComment.trim() && !commentFile) || !editingObs || isUploading) return;
 
-    const newCommentObj = {
+    setIsUploading(true);
+    let uploadedFileDetails = null;
+
+    if (commentFile) {
+      const fd = new FormData();
+      fd.append('files', commentFile);
+      try {
+        const res = await request.post('/api/observations/upload', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        if (res.data && res.data.length > 0) {
+          uploadedFileDetails = res.data[0];
+        }
+      } catch (err) {
+        console.error("Upload failed", err);
+        setIsUploading(false);
+        return;
+      }
+    }
+
+    const newCommentObj: any = {
       text: newComment.trim(),
       user: currentUser,
       timestamp: getServerTime().toDate().toISOString()
     };
+
+    if (uploadedFileDetails) {
+      newCommentObj.attachment = uploadedFileDetails;
+    }
 
     const updatedComments = [...(formData.comments || []), newCommentObj];
     try {
@@ -105,8 +131,11 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
       })).unwrap();
       setFormData((prev: any) => ({ ...prev, comments: res.comments }));
       setNewComment("");
+      setCommentFile(null);
     } catch (err) {
       console.error("Failed to add comment", err);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -461,6 +490,15 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                           </Typography>
                         </Box>
                         <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>{comment.text}</Typography>
+                        {comment.attachment && (
+                          <Chip
+                            icon={<MdAttachFile />}
+                            label={comment.attachment.name || "Attachment"}
+                            size="small"
+                            onClick={() => window.open(`${API_BASE_URL}${comment.attachment.url}`, "_blank")}
+                            sx={{ mt: 1, backgroundColor: 'rgba(0,0,0,0.05)', cursor: 'pointer' }}
+                          />
+                        )}
                       </Box>
                     </Box>
                   );
@@ -472,28 +510,60 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
               )}
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Add a comment..."
-                value={newComment}
-                onChange={(e: any) => setNewComment(e.target.value)}
-                onKeyPress={(e: any) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddComment();
-                  }
-                }}
-              />
-              <IconButton 
-                color="primary" 
-                onClick={handleAddComment}
-                disabled={!newComment.trim()}
-                sx={{ bgcolor: 'rgba(25, 118, 210, 0.04)', borderRadius: 1.5 }}
-              >
-                <MdSend size={18} />
-              </IconButton>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {commentFile && (
+                <Box sx={{ display: 'flex' }}>
+                  <Chip 
+                    label={commentFile.name} 
+                    onDelete={() => setCommentFile(null)} 
+                    size="small" 
+                    color="primary" 
+                    variant="outlined" 
+                  />
+                </Box>
+              )}
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <IconButton
+                  component="label"
+                  disabled={isUploading}
+                  sx={{ minWidth: '40px', width: '40px', height: '40px', borderRadius: '50%', color: '#637381' }}
+                >
+                  <MdAttachFile size={20} />
+                  <input
+                    type="file"
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        setCommentFile(e.target.files[0]);
+                      }
+                      e.target.value = '';
+                    }}
+                  />
+                </IconButton>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Add a comment..."
+                  value={newComment}
+                  onChange={(e: any) => setNewComment(e.target.value)}
+                  onKeyPress={(e: any) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddComment();
+                    }
+                  }}
+                  disabled={isUploading}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '20px' } }}
+                />
+                <IconButton 
+                  color="primary" 
+                  onClick={handleAddComment}
+                  disabled={(!newComment.trim() && !commentFile) || isUploading}
+                  sx={{ bgcolor: 'rgba(25, 118, 210, 0.04)', borderRadius: '50%', width: 40, height: 40 }}
+                >
+                  <MdSend size={18} />
+                </IconButton>
+              </Box>
             </Box>
           </Box>
         )}

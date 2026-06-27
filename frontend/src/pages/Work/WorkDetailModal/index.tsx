@@ -15,6 +15,7 @@ import {
   InputLabel,
   FormControl,
   Box,
+  IconButton,
 } from "@mui/material";
 import {
   MdSend,
@@ -26,7 +27,7 @@ import {
 } from "react-icons/md";
 import { useSelector } from "react-redux";
 import type { RootState } from "../../../store";
-import { API_BASE_URL } from "../../../services/request";
+import request, { API_BASE_URL } from "../../../services/request";
 import type { WorkData } from "../model";
 import { hasPrivilege } from "../../../helpers/authUtils";
 import { PRIVILEGES } from "../../../helpers/privileges";
@@ -58,6 +59,8 @@ const WorkDetailModal = ({
   const [isTransferring, setIsTransferring] = useState(false);
   const [transferAssignee, setTransferAssignee] = useState("");
   const [transferReason, setTransferReason] = useState("");
+  const [commentFile, setCommentFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const openMenu = Boolean(anchorEl);
   const currentUser =
     useSelector(
@@ -271,13 +274,37 @@ const WorkDetailModal = ({
   };
 
   const handleAddComment = async () => {
-    if (!newComment.trim() || isLocked) return;
+    if ((!newComment.trim() && !commentFile) || isLocked || isUploading) return;
 
-    const newCommentObj = {
+    setIsUploading(true);
+    let uploadedFileDetails = null;
+
+    if (commentFile) {
+      const fd = new FormData();
+      fd.append('files', commentFile);
+      try {
+        const res = await request.post('/api/works/upload', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        if (res.data && res.data.length > 0) {
+          uploadedFileDetails = res.data[0];
+        }
+      } catch (err) {
+        console.error("Upload failed", err);
+        setIsUploading(false);
+        return;
+      }
+    }
+
+    const newCommentObj: any = {
       text: newComment.trim(),
       user: currentUser,
       timestamp: getServerTime().toDate().toISOString(),
     };
+
+    if (uploadedFileDetails) {
+      newCommentObj.attachment = uploadedFileDetails;
+    }
 
     const updatedComments = [...(work.comments || []), newCommentObj];
     try {
@@ -289,8 +316,11 @@ const WorkDetailModal = ({
         true,
       );
       setNewComment("");
+      setCommentFile(null);
     } catch (err) {
       // Error handled in parent
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -609,6 +639,15 @@ const WorkDetailModal = ({
                         </span>
                       </div>
                       <div className={styles.commentText}>{comment.text}</div>
+                      {comment.attachment && (
+                        <Chip
+                          icon={<MdAttachFile />}
+                          label={comment.attachment.name || "Attachment"}
+                          size="small"
+                          onClick={() => window.open(`${API_BASE_URL}${comment.attachment.url}`, "_blank")}
+                          sx={{ mt: 1, backgroundColor: 'rgba(0,0,0,0.05)', cursor: 'pointer' }}
+                        />
+                      )}
                     </div>
                   </div>
                 );
@@ -620,27 +659,58 @@ const WorkDetailModal = ({
         </div>
 
         {/* Fixed Chat Input at the bottom */}
-        <div className={styles.fixedChatOption}>
-          <TextField
-            fullWidth
-            size="small"
-            placeholder={isLocked ? "Comments are disabled for completed works" : "Add a comment..."}
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === "Enter" && !isLocked) handleAddComment();
-            }}
-            disabled={isLocked}
-          />
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleAddComment}
-            disabled={!newComment.trim() || isLocked}
-            sx={{ height: 40, minWidth: 40, p: 0 }}
-          >
-            <MdSend size={20} />
-          </Button>
+        <div style={{ display: 'flex', flexDirection: 'column', padding: '12px 16px', borderTop: '1px solid #e5e7eb', backgroundColor: '#fff' }}>
+          {commentFile && (
+            <Box sx={{ mb: 1, display: 'flex' }}>
+              <Chip 
+                label={commentFile.name} 
+                onDelete={() => setCommentFile(null)} 
+                size="small" 
+                color="primary" 
+                variant="outlined" 
+              />
+            </Box>
+          )}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <IconButton
+              component="label"
+              disabled={isLocked || isUploading}
+              sx={{ minWidth: '40px', width: '40px', height: '40px', borderRadius: '50%', color: '#637381' }}
+            >
+              <MdAttachFile size={20} />
+              <input
+                type="file"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    setCommentFile(e.target.files[0]);
+                  }
+                  e.target.value = '';
+                }}
+              />
+            </IconButton>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder={isLocked ? "Comments are disabled for completed works" : "Add a comment..."}
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter" && !isLocked) handleAddComment();
+              }}
+              disabled={isLocked || isUploading}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '20px' } }}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleAddComment}
+              disabled={(!newComment.trim() && !commentFile) || isLocked || isUploading}
+              sx={{ height: 40, minWidth: 40, p: 0, borderRadius: '50%' }}
+            >
+              <MdSend size={20} />
+            </Button>
+          </div>
         </div>
       </div>
       <Dialog 

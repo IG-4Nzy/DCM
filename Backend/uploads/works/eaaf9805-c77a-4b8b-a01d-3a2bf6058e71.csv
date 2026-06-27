@@ -1,0 +1,128 @@
+Sl. No,Item Description,Part No,Qty,Value,PPL Status (A/B/C/ Non PPL/NA)
+,,,,,
+1,"Isolated micro module
+ DC DC Converter",LTM8068IY#PBF,1,,Non PPL*
+2,Linear regulator,LT3065IDDPBF,1,,Non PPL
+3,"Chip
+ capacitor",C1210C476K8RACTU,2,47uF,Non PPL
+4,Chip capacitor,C1210C475K5RACTU,15,4.7uF,Non PPL
+5,Chip capacitor,CRCW0603C103M4RACTU,2,0.01uF,Non PPL
+6,Chip capacitor,C0805C105K3RACTU,3,1uF,Non PPL
+7,Chip capacitor,C1210C106K5RACTU,2,10uF,Non PPL
+8,Chip capacitor,C0402C224M4RACTU,2,0.22uF,Non PPL
+9,Chip capacitor,C0603C102M4RACTU,2,1nF,Non PPL
+10,Chip Resistor,CRCW0402487KFKED,1,487K,Non PPL
+11,Chip Resistor,CRCW1206200RFKEA,3,200 Ohm,Non PPL
+,,,,,
+12,Chip Resistor,CRCW12181K00FKEA,14,1K,Non PPL
+13,Chip Resistor,CRCW12184K99FKEK,1,4.9K,Non PPL
+14,Chip Resistor,CRCW0402140KFKED,1,140K,Non PPL
+15,Chip Resistor,CRCW0603604RFKEA,4,604 ohm,Non PPL
+16,Chip Resistor,CRCW0402442KFKED,1,442K,Non PPL
+17,Chip Resistor,CRCW040260K4FKED,1,60.4K,Non PPL
+18,Bead,2643000801 with 22AWG(1T),2,3-12 uH,PPL
+19,Chip Inductor,CMF2-1003SM,1,100 uH,PPL
+20,Chip Inductor,SMP3316LP103M,1,100 uH,PPL
+21,Connector (KF1),M24308/23-32F,1,,PPL
+,,,,,
+22,Connector( KM2),M24308/24-32F,1,,PPL
+1,AlphaItem001,Fashion,13.7,8,active
+2,AlphaItem002,Groceries,17.4,15,active
+3,AlphaItem003,Hardware,21.1,22,active
+4,AlphaItem004,Books,24.8,29,active
+5,AlphaItem005,Electronics,28.5,36,active
+6,AlphaItem006,Fashion,32.2,43,active
+7,AlphaItem007,Groceries,35.9,50,active
+8,AlphaItem008,Hardware,39.6,7,active
+9,AlphaItem009,Books,43.3,14,active
+10,AlphaItem010,Electronics,47,21,active
+11,AlphaItem011,Fashion,50.7,28,active
+12,AlphaItem012,Groceries,54.4,35,active
+13,AlphaItem013,Hardware,58.1,42,active
+14,AlphaItem014,Books,61.8,49,active
+15,AlphaItem015,Electronics,65.5,6,active
+16,AlphaItem016,Fashion,69.2,13,active
+17,AlphaItem017,Groceries,72.9,20,active
+18,AlphaItem018,Hardware,76.6,27,active
+19,AlphaItem019,Books,80.3,34,active
+20,AlphaItem020,Electronics,84,41,active
+21,AlphaItem021,Fashion,87.7,48,active
+22,AlphaItem022,Groceries,91.4,5,active
+23,AlphaItem023,Hardware,95.1,12,active
+24,AlphaItem024,Books,98.8,19,active
+25,AlphaItem025,Electronics,102.5,26,active
+26,AlphaItem026,Fashion,106.2,33,active
+27,AlphaItem027,Groceries,109.9,40,active
+28,AlphaItem028,Hardware,113.6,47,active
+29,AlphaItem029,Books,117.3,4,active
+30,AlphaItem030,Electronics,121,11,active
+31,AlphaItem031,Fashion,124.7,18,active
+32,AlphaItem032,Groceries,128.4,25,active
+33,AlphaItem033,Hardware,132.1,32,active
+34,AlphaItem034,Books,135.8,39,active
+35,AlphaItem035,Electronics,139.5,46,active
+36,AlphaItem036,Fashion,143.2,3,active
+37,AlphaItem037,Groceries,146.9,10,active
+38,AlphaItem038,Hardware,150.6,17,active
+39,AlphaItem039,Books,154.3,24,active
+40,AlphaItem040,Electronics,158,31,active
+41,AlphaItem041,Fashion,161.7,38,active
+42,AlphaItem042,Groceries,165.4,45,active
+43,AlphaItem043,Hardware,169.1,2,active
+44,AlphaItem044,Books,172.8,9,active
+45,AlphaItem045,Electronics,176.5,16,active
+46,AlphaItem046,Fashion,180.2,23,active
+47,AlphaItem047,Groceries,183.9,30,active
+48,AlphaItem048,Hardware,187.6,37,active
+49,AlphaItem049,Books,191.3,44,active
+50,AlphaItem050,Electronics,195,1,active
+51,AlphaItem051,Fashion,198.7,8,active
+52,AlphaItem052,Groceries,202.4,15,active
+53,AlphaItem053,Hardware,206.1,22,active
+54,AlphaItem054,Books,209.8,29,active
+55,AlphaItem055,Electronics,213.5,36,active
+56,AlphaItem056,Fashion,217.2,43,active
+57,AlphaItem057,Groceries,220.9,50,active
+58,AlphaItem058,Hardware,224.6,7,active
+59,AlphaItem059,Books,228.3,14,active
+60,AlphaItem060,Electronics,232,21,active
+61,AlphaItem061,Fashion,235.7,28,active
+62,AlphaItem062,Groceries,239.4,35,active
+63,AlphaItem063,Hardware,243.1,42,active
+64,AlphaItem064,Books,246.8,49,active
+65,AlphaItem065,Electronics,250.5,6,active
+66,AlphaItem066,Fashion,254.2,13,active
+67,AlphaItem067,Groceries,257.9,20,active
+68,AlphaItem068,Hardware,261.6,27,active
+69,AlphaItem069,Books,265.3,34,active
+70,AlphaItem070,Electronics,269,41,active
+71,AlphaItem071,Fashion,272.7,48,active
+72,AlphaItem072,Groceries,276.4,5,active
+73,AlphaItem073,Hardware,280.1,12,active
+74,AlphaItem074,Books,283.8,19,active
+75,AlphaItem075,Electronics,287.5,26,active
+76,AlphaItem076,Fashion,291.2,33,active
+77,AlphaItem077,Groceries,294.9,40,active
+78,AlphaItem078,Hardware,298.6,47,active
+79,AlphaItem079,Books,302.3,4,active
+80,AlphaItem080,Electronics,306,11,active
+81,AlphaItem081,Fashion,309.7,18,active
+82,AlphaItem082,Groceries,313.4,25,active
+83,AlphaItem083,Hardware,317.1,32,active
+84,AlphaItem084,Books,320.8,39,active
+85,AlphaItem085,Electronics,324.5,46,active
+86,AlphaItem086,Fashion,328.2,3,active
+87,AlphaItem087,Groceries,331.9,10,active
+88,AlphaItem088,Hardware,335.6,17,active
+89,AlphaItem089,Books,339.3,24,active
+90,AlphaItem090,Electronics,343,31,active
+91,AlphaItem091,Fashion,346.7,38,active
+92,AlphaItem092,Groceries,350.4,45,active
+93,AlphaItem093,Hardware,354.1,2,active
+94,AlphaItem094,Books,357.8,9,active
+95,AlphaItem095,Electronics,361.5,16,active
+96,AlphaItem096,Fashion,365.2,23,active
+97,AlphaItem097,Groceries,368.9,30,active
+98,AlphaItem098,Hardware,372.6,37,active
+99,AlphaItem099,Books,376.3,44,active
+100,AlphaItem100,Electronics,380,1,active

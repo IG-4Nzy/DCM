@@ -63,7 +63,7 @@ async def list_logs(
         ]
 
     total = await collection.count_documents(query)
-    cursor = collection.find(query).sort("createdAt", -1)
+    cursor = collection.find(query).sort([("status", -1), ("createdAt", -1)])
     if pagination:
         cursor = cursor.skip(skip).limit(limit)
     

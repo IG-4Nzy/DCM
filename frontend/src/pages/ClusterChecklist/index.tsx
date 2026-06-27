@@ -14,6 +14,7 @@ import {
 } from 'react-icons/md';
 import dayjs from 'dayjs';
 import { getServerTime } from '../../helpers/time';
+import { exportChecklistPdf } from '../../helpers/exportChecklistPdf';
 import styles from './index.module.scss';
 import {
   flattenClusterConfig, unflattenClusterRows,
@@ -30,6 +31,7 @@ import { PRIVILEGES } from '../../helpers/privileges';
 import { useToast } from '../../contexts/ToastContext';
 import DatePicker from '../../components/DatePicker';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import DaySummary from '../../components/DaySummary';
 
 // ─── Tolerance Check ───
 function hasDeviation(value: string, bmsReading: string): boolean {
@@ -959,34 +961,37 @@ const ClusterChecklist: React.FC = () => {
                         sx={{ height: 20, fontSize: 10, fontWeight: 600 }}
                       />
                       
-                      <AutoGrowingTextarea
-                        placeholder="warnings or any remarks if any"
-                        value={remarksMap[catGroup.category] || ''}
-                        onChange={(e: any) => {
-                          const val = e.target.value;
-                          if (onUpdate) {
-                            setCategoryRemarks(prev => ({ ...prev, [catGroup.category]: val }));
-                          } else {
-                            setViewCategoryRemarks(prev => ({ ...prev, [catGroup.category]: val }));
-                          }
-                        }}
-                        onClick={(e: any) => e.stopPropagation()}
-                        style={{
-                          marginLeft: 'auto',
-                          padding: '4px 10px',
-                          borderRadius: '6px',
-                          border: '1px solid #cbd5e1',
-                          width: '320px',
-                          fontSize: '12px',
-                          fontWeight: 'normal',
-                          color: '#334155',
-                          backgroundColor: '#ffffff',
-                          minHeight: '40px',
-                          fontFamily: 'inherit',
-                          outline: 'none',
-                        }}
-                        disabled={!canEditValues}
-                      />
+                      <Box sx={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }} onClick={(e: any) => e.stopPropagation()}>
+                        <Typography variant="caption" sx={{ color: '#d97706', fontWeight: 700, mb: 0.5, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          ⚠ Warning / Remarks
+                        </Typography>
+                        <AutoGrowingTextarea
+                          placeholder="Enter warnings or remarks here..."
+                          value={remarksMap[catGroup.category] || ''}
+                          onChange={(e: any) => {
+                            const val = e.target.value;
+                            if (onUpdate) {
+                              setCategoryRemarks(prev => ({ ...prev, [catGroup.category]: val }));
+                            } else {
+                              setViewCategoryRemarks(prev => ({ ...prev, [catGroup.category]: val }));
+                            }
+                          }}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            width: '320px',
+                            fontSize: '12px',
+                            fontWeight: 'normal',
+                            color: '#334155',
+                            backgroundColor: '#ffffff',
+                            minHeight: '40px',
+                            fontFamily: 'inherit',
+                            outline: 'none',
+                          }}
+                          disabled={!canEditValues}
+                        />
+                      </Box>
                     </Box>
                   </td>
                 </tr>
@@ -1057,7 +1062,9 @@ const ClusterChecklist: React.FC = () => {
                               )}
                               {(checkRes.failed || checkRes.warning) && (
                                 <Tooltip title={checkRes.message}>
-                                  <span style={{ color: checkRes.failed ? '#ef4444' : '#d97706', fontWeight: 'bold', marginLeft: '6px', cursor: 'pointer' }}>⚠</span>
+                                  <span style={{ color: checkRes.failed ? '#ef4444' : '#d97706', backgroundColor: checkRes.failed ? '#fee2e2' : '#fef3c7', padding: '2px 6px', borderRadius: '4px', fontSize: '0.8em', fontWeight: 'bold', marginLeft: '6px', cursor: 'pointer' }}>
+                                    ⚠ {checkRes.failed ? 'Failed' : 'Warning'}
+                                  </span>
                                 </Tooltip>
                               )}
                             </td>
@@ -1130,34 +1137,37 @@ const ClusterChecklist: React.FC = () => {
                   sx={{ ml: 1, height: 20, fontSize: 10, fontWeight: 600 }}
                 />
 
-                <AutoGrowingTextarea
-                  placeholder="warnings or any remarks if any"
-                  value={remarksMap[catGroup.category] || ''}
-                  onChange={(e: any) => {
-                    const val = e.target.value;
-                    if (onUpdate) {
-                      setCategoryRemarks(prev => ({ ...prev, [catGroup.category]: val }));
-                    } else {
-                      setViewCategoryRemarks(prev => ({ ...prev, [catGroup.category]: val }));
-                    }
-                  }}
-                  onClick={(e: any) => e.stopPropagation()}
-                  style={{
-                    marginLeft: 'auto',
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    width: '320px',
-                    fontSize: '12px',
-                    fontWeight: 'normal',
-                    color: '#334155',
-                    backgroundColor: '#ffffff',
-                    minHeight: '40px',
-                    fontFamily: 'inherit',
-                    outline: 'none',
-                  }}
-                  disabled={!canEditValues}
-                />
+                <Box sx={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }} onClick={(e: any) => e.stopPropagation()}>
+                  <Typography variant="caption" sx={{ color: '#d97706', fontWeight: 700, mb: 0.5, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    ⚠ Warning / Remarks
+                  </Typography>
+                  <AutoGrowingTextarea
+                    placeholder="Enter warnings or remarks here..."
+                    value={remarksMap[catGroup.category] || ''}
+                    onChange={(e: any) => {
+                      const val = e.target.value;
+                      if (onUpdate) {
+                        setCategoryRemarks(prev => ({ ...prev, [catGroup.category]: val }));
+                      } else {
+                        setViewCategoryRemarks(prev => ({ ...prev, [catGroup.category]: val }));
+                      }
+                    }}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      width: '320px',
+                      fontSize: '12px',
+                      fontWeight: 'normal',
+                      color: '#334155',
+                      backgroundColor: '#ffffff',
+                      minHeight: '40px',
+                      fontFamily: 'inherit',
+                      outline: 'none',
+                    }}
+                    disabled={!canEditValues}
+                  />
+                </Box>
               </button>
 
               {!isCatCollapsed && catGroup.devices.map((devGroup) => {
@@ -1211,7 +1221,9 @@ const ClusterChecklist: React.FC = () => {
                                 <span>#{slNo}</span>
                                 {(checkRes.failed || checkRes.warning) && (
                                   <Tooltip title={checkRes.message}>
-                                    <span style={{ color: checkRes.failed ? '#ef4444' : '#d97706', fontWeight: 'bold', cursor: 'pointer', marginRight: '6px' }}>⚠</span>
+                                    <span style={{ color: checkRes.failed ? '#ef4444' : '#d97706', backgroundColor: checkRes.failed ? '#fee2e2' : '#fef3c7', padding: '2px 6px', borderRadius: '4px', fontSize: '0.8em', fontWeight: 'bold', cursor: 'pointer', marginRight: '6px' }}>
+                                      ⚠ {checkRes.failed ? 'Failed' : 'Warning'}
+                                    </span>
                                   </Tooltip>
                                 )}
                               </div>
@@ -1492,6 +1504,8 @@ const ClusterChecklist: React.FC = () => {
               {viewMode === 'table'
                 ? renderChecklistTable(groupedData, canUpdate && !isViewOnlyMode, updateRow, false, categoryRemarks)
                 : renderChecklistCards(groupedData, canUpdate && !isViewOnlyMode, updateRow, false, categoryRemarks)}
+
+              <DaySummary date={selectedDate} />
             </>
           ) : (
             <Box sx={{ textAlign: 'center', py: 8, color: '#94a3b8' }}>
@@ -1670,8 +1684,38 @@ const ClusterChecklist: React.FC = () => {
                 </Box>
               </Box>
               {renderChecklistTable(viewGrouped, false, undefined, false, viewCategoryRemarks)}
+              <DaySummary date={viewingChecklist.date} />
             </DialogContent>
             <DialogActions>
+              <Button
+                variant="outlined"
+                startIcon={<MdDownload />}
+                onClick={() => {
+                  if (!viewingChecklist || !viewRows.length) return;
+                  let slNo = 0;
+                  const pdfRows = viewRows.map(row => {
+                    slNo++;
+                    return [slNo, row.category, row.device, row.parameter, row.value || '-', row.unit || '-', row.remarks || '-'];
+                  });
+                  exportChecklistPdf({
+                    title: 'Cluster Checklist',
+                    date: viewingChecklist.date,
+                    time: viewingChecklist.time,
+                    preparedBy: viewingChecklist.preparedBy,
+                    status: viewingChecklist.status,
+                    department: viewingChecklist.department,
+                    completedBy: viewingChecklist.completedBy,
+                    columns: ['#', 'Category', 'Fields Group', 'Parameter', 'Value', 'Unit', 'Remarks'],
+                    rows: pdfRows,
+                    categoryRemarks: viewCategoryRemarks,
+                    fileName: `Cluster_Checklist_${viewingChecklist.date}`,
+                    includeDaySummary: true,
+                  });
+                }}
+                sx={{ textTransform: 'none', mr: 1 }}
+              >
+                Export PDF
+              </Button>
               <Button onClick={() => setViewingChecklist(null)} sx={{ textTransform: 'none' }}>Close</Button>
             </DialogActions>
           </>

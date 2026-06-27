@@ -8,18 +8,20 @@ import {
   Paper, Divider, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TablePagination
 } from '@mui/material';
-import { MdSave, MdCheckCircle, MdHistory, MdSearch, MdVisibility, MdEdit } from 'react-icons/md';
+import { MdSave, MdCheckCircle, MdHistory, MdSearch, MdVisibility, MdEdit, MdDownload } from 'react-icons/md';
 import dayjs from 'dayjs';
 import { getServerTime } from '../../../helpers/time';
 import { hasPrivilege } from '../../../helpers/authUtils';
 import { PRIVILEGES } from '../../../helpers/privileges';
 import { useToast } from '../../../contexts/ToastContext';
+import { exportChecklistPdf } from '../../../helpers/exportChecklistPdf';
 import {
   fetchMorningChecklists,
   createMorningChecklist,
   updateMorningChecklist,
   fetchMorningChecklistConfig,
 } from './action';
+import DaySummary from '../../../components/DaySummary';
 
 interface ConfigField {
   _id: string;
@@ -466,6 +468,8 @@ const MorningChecklist: React.FC = () => {
                 </Button>
               </Box>
             )}
+
+            <DaySummary date={selectedDate} />
           </>
         )}
       </Box>
@@ -615,7 +619,38 @@ const MorningChecklist: React.FC = () => {
                   </TableBody>
                 </Table>
               </TableContainer>
-              <Box sx={{ mt: 2, textAlign: 'right' }}>
+
+              <DaySummary date={viewingChecklist.date} />
+
+              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<MdDownload />}
+                  onClick={() => {
+                    if (!viewingChecklist) return;
+                    const pdfRows = (viewingChecklist.items || []).map((itm, idx) => [
+                      idx + 1,
+                      itm.label,
+                      Array.isArray(itm.value) ? itm.value.join(', ') : (itm.value || '-'),
+                      itm.remarks || '-',
+                    ]);
+                    exportChecklistPdf({
+                      title: 'Morning Checklist',
+                      date: viewingChecklist.date,
+                      preparedBy: viewingChecklist.preparedBy,
+                      status: viewingChecklist.status,
+                      department: viewingChecklist.department,
+                      completedBy: viewingChecklist.completedBy,
+                      columns: ['#', 'Item', 'Value', 'Remarks'],
+                      rows: pdfRows,
+                      fileName: `Morning_Checklist_${viewingChecklist.date}`,
+                      includeDaySummary: true,
+                    });
+                  }}
+                  sx={{ borderRadius: '8px', textTransform: 'none' }}
+                >
+                  Export PDF
+                </Button>
                 <Button variant="outlined" onClick={() => setViewingChecklist(null)} sx={{ borderRadius: '8px', textTransform: 'none' }}>
                   Close
                 </Button>

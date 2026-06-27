@@ -1,5 +1,8 @@
 import os
-from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
+from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response, UploadFile, File
+import shutil
+import uuid
+import time
 from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional
@@ -126,6 +129,29 @@ async def enrich_observation(obs: dict):
     else:
         obs["repeatedDetails"] = None
     return obs
+
+@router.post("/upload", response_description="Upload attachments", dependencies=[Depends(get_current_user)])
+async def upload_attachments(files: list[UploadFile] = File(...)):
+    uploaded_files = []
+    base_dir = "uploads/observations"
+    os.makedirs(base_dir, exist_ok=True)
+    
+    for file in files:
+        if not file.filename:
+            continue
+            
+        unique_name = f"{int(time.time())}_{uuid.uuid4().hex[:8]}_{file.filename}"
+        file_path = os.path.join(base_dir, unique_name)
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        uploaded_files.append({
+            "name": file.filename,
+            "url": f"/uploads/observations/{unique_name}"
+        })
+        
+    return uploaded_files
 
 @router.get("/", response_description="List all observations", response_model=PaginatedObservationsModel, response_model_by_alias=False)
 async def list_observations(
