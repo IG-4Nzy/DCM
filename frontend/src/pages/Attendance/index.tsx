@@ -118,10 +118,13 @@ const Attendance: React.FC = () => {
 
     // Current Logged In User Info
     const { username, isSuperuser, department: userDept } = useSelector((state: RootState) => state.auth);
-    const hasViewAll = isSuperuser || hasPrivilege(PRIVILEGES.VIEW_ALL_ATTENDACE);
-    const hasViewDept = isSuperuser || hasPrivilege(PRIVILEGES.VIEW_DEPARTMENTAL_ATTENDACE);
-    const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.ATTENDANCE_DELETE);
-    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.ATTENDANCE_UPDATE);
+    const privileges = useSelector((state: RootState) => state.auth.privileges || []);
+    const canViewDepartmental = hasPrivilege(PRIVILEGES.VIEW_DEPARTMENTAL_ATTENDACE, privileges) || isSuperuser;
+    const canViewAll = hasPrivilege(PRIVILEGES.VIEW_ALL_ATTENDACE, privileges) || isSuperuser;
+    const canEdit = hasPrivilege(PRIVILEGES.ATTENDANCE_UPDATE, privileges) || isSuperuser;
+    const canDelete = hasPrivilege(PRIVILEGES.ATTENDANCE_DELETE, privileges) || isSuperuser;
+    const canViewVerification = hasPrivilege(PRIVILEGES.VIEW_ATTENDANCE_VERIFICATION, privileges) || isSuperuser || hasPrivilege(PRIVILEGES.ATTENDANCE_VERIFY, privileges);
+    const canVerify = hasPrivilege(PRIVILEGES.ATTENDANCE_VERIFY, privileges) || isSuperuser;
 
     const { showToast } = useToast();
     const { confirm } = useConfirm();
@@ -229,7 +232,7 @@ const Attendance: React.FC = () => {
                 params.endDate = period.endDate;
             }
 
-            if (hasViewAll && departmentFilter) {
+            if (canViewAll && departmentFilter) {
                 params.department = departmentFilter;
             }
 
@@ -245,7 +248,7 @@ const Attendance: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, rowsPerPage, searchQuery, selectedPeriod, departmentFilter, periods, hasViewAll, showToast]);
+    }, [page, rowsPerPage, searchQuery, selectedPeriod, departmentFilter, periods, canViewAll, showToast]);
 
     const isRecordLate = (row: AttendanceRecord) => {
         if (!row.firstLogin) return false;
@@ -316,7 +319,7 @@ const Attendance: React.FC = () => {
                 params.startDate = period.startDate;
                 params.endDate = period.endDate;
             }
-            if (hasViewAll && departmentFilter) {
+            if (canViewAll && departmentFilter) {
                 params.department = departmentFilter;
             }
             const res = await request.get('/api/attendance/summary', { params });
@@ -326,7 +329,7 @@ const Attendance: React.FC = () => {
         } finally {
             setLoadingSummary(false);
         }
-    }, [selectedPeriod, departmentFilter, periods, hasViewAll, showToast]);
+    }, [selectedPeriod, departmentFilter, periods, canViewAll, showToast]);
 
     useEffect(() => {
         loadCycleConfig();
@@ -799,7 +802,7 @@ const Attendance: React.FC = () => {
                                 </Tooltip>
                             </>
                         )}
-                        {hasUpdate && (
+                        {canEdit && (
                             <Tooltip title="Edit Attendance Log">
                                 <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.06)' }} onClick={(e) => { e.stopPropagation(); handleOpenEditModal(row); }}>
                                     <EditIcon fontSize="small" />
@@ -820,7 +823,7 @@ const Attendance: React.FC = () => {
                                 </Tooltip>
                             </>
                         )}
-                        {hasDelete && (
+                        {canDelete && (
                             <Tooltip title="Delete Attendance Log">
                                 <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); handleDelete(row); }}>
                                     <RejectIcon fontSize="small" />
@@ -919,10 +922,18 @@ const Attendance: React.FC = () => {
                 </Typography>
 
                 <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-                    <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} textColor="primary" indicatorColor="primary">
-                        <Tab label="Attendance Logs" sx={{ fontWeight: 600 }} />
-                        <Tab label="Employee Summary" sx={{ fontWeight: 600 }} />
-                        <Tab label="Verification" sx={{ fontWeight: 600 }} />
+                    <Tabs
+                        value={activeTab}
+                        onChange={(_, nv) => setActiveTab(nv)}
+                        textColor="primary"
+                        indicatorColor="primary"
+                        sx={{ mt: 2 }}
+                    >
+                        <Tab label="Logs" value={0} sx={{ fontWeight: 600 }} />
+                        <Tab label="Summary" value={1} sx={{ fontWeight: 600 }} />
+                        {canViewVerification && (
+                            <Tab label="Verification" value={2} sx={{ fontWeight: 600 }} />
+                        )}
                     </Tabs>
                 </Box>
             </Box>
@@ -949,7 +960,7 @@ const Attendance: React.FC = () => {
                         </FormControl>
                     </Box>
 
-                    {hasViewAll && (
+                    {canViewAll && (
                         <Box className={styles['attendance-filters__item']}>
                             <FormControl fullWidth size="small">
                                 <InputLabel>Department Filter</InputLabel>
@@ -1037,9 +1048,10 @@ const Attendance: React.FC = () => {
                 isOpen={isVerificationModalOpen}
                 period={selectedVerificationPeriod}
                 onClose={handleCloseVerificationModal}
-                users={useSelector((state: RootState) => state.users.users)}
+                users={useSelector((state: RootState) => state.users.users).filter(u => (!canVerify && canViewVerification) ? u.department === userDept : true)}
                 isVerified={selectedVerificationPeriod ? verifiedPeriods.includes(selectedVerificationPeriod.label) : false}
                 onVerify={(label) => setVerifiedPeriods(prev => [...prev, label])}
+                canVerify={canVerify}
             />
 
             {/* Regularization Submission Modal */}

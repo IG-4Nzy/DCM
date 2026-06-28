@@ -71,6 +71,8 @@ export const PRIVILEGES = {
     VIEW_DEPARTMENTAL_ATTENDACE: "View Departmental Attendance",
     VIEW_SELF_ATTENDANCE: "View Self Attendance",
     VIEW_ALL_ATTENDACE: "View All Attendance",
+    ATTENDANCE_VERIFY: "Attendance Verify",
+    VIEW_ATTENDANCE_VERIFICATION: "View Attendance Verification",
     BMS_CHECKLIST_VIEW: "View BMS Checklist",
     BMS_CHECKLIST_CREATE: "Create BMS Checklist",
     BMS_CHECKLIST_UPDATE: "Update BMS Checklist",

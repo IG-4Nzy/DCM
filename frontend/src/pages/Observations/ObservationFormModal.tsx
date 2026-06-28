@@ -543,11 +543,13 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                 <TextField
                   fullWidth
                   size="small"
+                  multiline
+                  maxRows={4}
                   placeholder="Add a comment..."
                   value={newComment}
                   onChange={(e: any) => setNewComment(e.target.value)}
-                  onKeyPress={(e: any) => {
-                    if (e.key === 'Enter') {
+                  onKeyDown={(e: any) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       handleAddComment();
                     }

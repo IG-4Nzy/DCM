@@ -19,6 +19,7 @@ interface VerificationModalProps {
     users: UserData[];
     isVerified: boolean;
     onVerify: (label: string) => void;
+    canVerify: boolean;
 }
 
 interface CombinedRecord {
@@ -39,7 +40,7 @@ interface CombinedRecord {
     errorReasons: string[];
 }
 
-const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, period, onClose, users, isVerified, onVerify }) => {
+const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, period, onClose, users, isVerified, onVerify, canVerify }) => {
     const { showToast } = useToast();
     const [loadingAppRecords, setLoadingAppRecords] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
@@ -384,30 +385,34 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, period, o
                     </Box>
 
                     <Box sx={{ display: 'flex', gap: 1 }}>
-                        <input
-                            type="file"
-                            accept=".csv"
-                            style={{ display: 'none' }}
-                            ref={fileInputRef}
-                            onChange={handleFileUpload}
-                        />
-                        <Button
-                            variant="outlined"
-                            color="primary"
-                            startIcon={<UploadIcon />}
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            Upload CSV
-                        </Button>
+                        {canVerify && (
+                            <>
+                                <input
+                                    type="file"
+                                    accept=".csv"
+                                    style={{ display: 'none' }}
+                                    ref={fileInputRef}
+                                    onChange={handleFileUpload}
+                                />
+                                <Button
+                                    variant="outlined"
+                                    color="primary"
+                                    startIcon={<UploadIcon />}
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    Upload CSV
+                                </Button>
 
-                        <Button
-                            variant="contained"
-                            color={isVerified ? "success" : "primary"}
-                            onClick={handleVerify}
-                            disabled={isVerifying || isVerified}
-                        >
-                            {isVerifying ? 'Verifying...' : isVerified ? 'Verified' : 'Mark as Verified'}
-                        </Button>
+                                <Button
+                                    variant="contained"
+                                    color={isVerified ? "success" : "primary"}
+                                    onClick={handleVerify}
+                                    disabled={isVerifying || isVerified}
+                                >
+                                    {isVerifying ? 'Verifying...' : isVerified ? 'Verified' : 'Mark as Verified'}
+                                </Button>
+                            </>
+                        )}
                     </Box>
                 </Box>
 

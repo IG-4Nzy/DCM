@@ -692,11 +692,16 @@ const WorkDetailModal = ({
             <TextField
               fullWidth
               size="small"
+              multiline
+              maxRows={4}
               placeholder={isLocked ? "Comments are disabled for completed works" : "Add a comment..."}
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === "Enter" && !isLocked) handleAddComment();
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && !isLocked) {
+                  e.preventDefault();
+                  handleAddComment();
+                }
               }}
               disabled={isLocked || isUploading}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: '20px' } }}
