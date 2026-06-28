@@ -14,6 +14,7 @@ interface FetchParams {
   status_filter?: string;
   date_filter?: string;
   category_filter?: string;
+  department_filter?: string;
   pagination?: boolean;
 }
 

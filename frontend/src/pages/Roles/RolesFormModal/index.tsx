@@ -44,6 +44,7 @@ const PRIVILEGE_GROUPS: { [category: string]: string[] } = {
   ],
   "BMS Checklist": [
     "View BMS Checklist",
+    "View All Department BMS Checklist",
     "Create BMS Checklist",
     "Update BMS Checklist",
     "Delete BMS Checklist",
@@ -56,6 +57,14 @@ const PRIVILEGE_GROUPS: { [category: string]: string[] } = {
     "Delete Morning Checklist",
     "Edit Morning Checklist Field"
   ],
+  "Cluster Checklist": [
+    "View Cluster Checklist",
+    "View All Department Cluster Checklist",
+    "Create Cluster Checklist",
+    "Update Cluster Checklist",
+    "Delete Cluster Checklist",
+    "Edit Cluster Checklist Field"
+  ],
   "Roaster & Attendance": [
     "View Roaster",
     "Create Roaster",
@@ -67,7 +76,9 @@ const PRIVILEGE_GROUPS: { [category: string]: string[] } = {
     "View All Attendance",
     "Create Attendance",
     "Update Attendance",
-    "Delete Attendance"
+    "Delete Attendance",
+    "Attendance Verify",
+    "View Attendance Verification"
   ],
   "Work & Departments": [
     "View All Work",
@@ -82,6 +93,7 @@ const PRIVILEGE_GROUPS: { [category: string]: string[] } = {
   ],
   "Observations": [
     "View Observations",
+    "View All Department Observations",
     "Create Observation",
     "Update Observation",
     "Delete Observation",

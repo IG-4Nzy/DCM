@@ -26,7 +26,7 @@ import {
   fetchBMSChecklists, createBMSChecklist, updateBMSChecklist, deleteBMSChecklist,
   fetchBMSChecklistConfig
 } from './action';
-import { hasPrivilege } from '../../helpers/authUtils';
+import { hasPrivilege, hasAnyPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
 import { useToast } from '../../contexts/ToastContext';
 import DatePicker from '../../components/DatePicker';
@@ -251,6 +251,7 @@ const BMSChecklist: React.FC = () => {
   const { showToast } = useToast();
   const token = useSelector((state: RootState) => state.auth.token);
   const isSuperuser = useSelector((state: RootState) => state.auth.isSuperuser);
+  const privileges = useSelector((state: RootState) => state.auth.privileges);
   const username = useSelector((state: RootState) => state.auth.username) || 'system';
   const displayName = useSelector((state: RootState) => state.auth.displayName) || username;
   const userDepartment = useMemo(() => {
@@ -266,7 +267,7 @@ const BMSChecklist: React.FC = () => {
   const { confirm } = useConfirm();
   const [selectedDate, setSelectedDate] = useState<string>(getServerTime().format('YYYY-MM-DD'));
 
-  const canView = hasPrivilege(PRIVILEGES.BMS_CHECKLIST_VIEW);
+  const canView = hasAnyPrivilege([PRIVILEGES.BMS_CHECKLIST_VIEW, PRIVILEGES.BMS_CHECKLIST_VIEW_ALL_DEPT]);
   const canCreate = hasPrivilege(PRIVILEGES.BMS_CHECKLIST_CREATE);
   const canUpdate = hasPrivilege(PRIVILEGES.BMS_CHECKLIST_UPDATE);
   const canDelete = hasPrivilege(PRIVILEGES.BMS_CHECKLIST_DELETE);
@@ -366,12 +367,13 @@ const BMSChecklist: React.FC = () => {
   // ─── Load History ───
   const refreshHistory = useCallback(async () => {
     try {
-      const res = await fetchBMSChecklists({ department: userDepartment });
+      const canViewAllDept = isSuperuser || hasPrivilege(PRIVILEGES.BMS_CHECKLIST_VIEW_ALL_DEPT, privileges || []);
+      const res = await fetchBMSChecklists({ department: canViewAllDept ? undefined : userDepartment });
       setHistory(res.data || []);
     } catch {
       setHistory([]);
     }
-  }, [userDepartment]);
+  }, [userDepartment, isSuperuser, privileges]);
 
   useEffect(() => {
     refreshHistory();

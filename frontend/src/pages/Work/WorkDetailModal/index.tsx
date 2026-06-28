@@ -638,7 +638,7 @@ const WorkDetailModal = ({
                           )}
                         </span>
                       </div>
-                      <div className={styles.commentText}>{comment.text}</div>
+                      <div className={styles.commentText} style={{ whiteSpace: 'pre-wrap' }}>{comment.text}</div>
                       {comment.attachment && (
                         <Chip
                           icon={<MdAttachFile />}

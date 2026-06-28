@@ -489,7 +489,7 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                             })}
                           </Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>{comment.text}</Typography>
+                        <Typography variant="body2" sx={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{comment.text}</Typography>
                         {comment.attachment && (
                           <Chip
                             icon={<MdAttachFile />}

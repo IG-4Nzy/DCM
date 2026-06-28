@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Typography, Tabs, Tab } from '@mui/material';
 import { MdFactCheck, MdWbSunny } from 'react-icons/md';
-import { hasPrivilege } from '../../helpers/authUtils';
+import { hasPrivilege, hasAnyPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
@@ -14,8 +14,8 @@ import MorningChecklist from './MorningChecklist';
 const DailyActivities: React.FC = () => {
   const isSuperuser = useSelector((state: RootState) => state.auth.isSuperuser);
 
-  const hasBMS = isSuperuser || hasPrivilege(PRIVILEGES.BMS_CHECKLIST_VIEW);
-  const hasCluster = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_CHECKLIST_VIEW);
+  const hasBMS = isSuperuser || hasAnyPrivilege([PRIVILEGES.BMS_CHECKLIST_VIEW, PRIVILEGES.BMS_CHECKLIST_VIEW_ALL_DEPT]);
+  const hasCluster = isSuperuser || hasAnyPrivilege([PRIVILEGES.CLUSTER_CHECKLIST_VIEW, PRIVILEGES.CLUSTER_CHECKLIST_VIEW_ALL_DEPT]);
   const hasMorning = isSuperuser || hasPrivilege(PRIVILEGES.MORNING_CHECKLIST_VIEW);
 
   // Build tab list dynamically based on privileges

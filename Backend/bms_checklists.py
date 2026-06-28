@@ -43,7 +43,7 @@ def serialize_checklist(doc: dict) -> dict:
     response_description="List BMS checklists",
     response_model=PaginatedBMSChecklistsModel,
     response_model_by_alias=False,
-    dependencies=[Depends(require_privilege("View BMS Checklist"))],
+    dependencies=[Depends(require_any_privilege(["View BMS Checklist", "View All Department BMS Checklist"]))],
 )
 async def list_bms_checklists(
     pagination: bool = Query(True),
@@ -63,9 +63,12 @@ async def list_bms_checklists(
     if date:
         query["date"] = date
 
-    target_dept = department or current_user.get("department", "")
-    if not current_user.get("isSuperuser", False) or target_dept:
-        query["department"] = target_dept
+    can_view_all = current_user.get("isSuperuser", False) or "View All Department BMS Checklist" in current_user.get("privileges", [])
+    
+    if not can_view_all:
+        query["department"] = current_user.get("department", "")
+    elif department:
+        query["department"] = department
 
     total = await collection.count_documents(query)
     cursor = collection.find(query).sort("createdAt", -1)
@@ -121,7 +124,7 @@ async def create_bms_checklist(
     response_description="Get BMS checklist",
     response_model=BMSChecklistModel,
     response_model_by_alias=False,
-    dependencies=[Depends(require_privilege("View BMS Checklist"))],
+    dependencies=[Depends(require_any_privilege(["View BMS Checklist", "View All Department BMS Checklist"]))],
 )
 async def get_bms_checklist(id: str):
     if not ObjectId.is_valid(id):

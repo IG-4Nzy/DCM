@@ -36,6 +36,7 @@ const ObservationList: React.FC = () => {
   const [statusFilter, setStatusFilter] = useTableState('obs_status', 'Not Resolved');
   const [dateFilter, setDateFilter] = useTableState('obs_date', '');
   const [categoryFilter, setCategoryFilter] = useTableState('obs_category', '');
+  const [departmentFilter, setDepartmentFilter] = useTableState('obs_department', '');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingObs, setEditingObs] = useState<any>(null);
@@ -61,6 +62,7 @@ const ObservationList: React.FC = () => {
   const hasCreatePrivilege = isSuperuser || privileges?.includes('Create Observation');
   const hasUpdatePrivilege = isSuperuser || privileges?.includes('Update Observation');
   const hasDeletePrivilege = isSuperuser || privileges?.includes('Delete Observation');
+  const canViewAllDept = isSuperuser || hasPrivilege(PRIVILEGES.OBSERVATION_VIEW_ALL_DEPT, privileges || []);
 
   useEffect(() => {
     dispatch(fetchObservationCategories({ pagination: false }));
@@ -75,9 +77,10 @@ const ObservationList: React.FC = () => {
       search: searchQuery,
       status_filter: statusFilter,
       date_filter: dateFilter || undefined,
-      category_filter: categoryFilter || undefined
+      category_filter: categoryFilter || undefined,
+      department_filter: departmentFilter || undefined
     }));
-  }, [dispatch, page, rowsPerPage, statusFilter, dateFilter, categoryFilter, searchQuery]);
+  }, [dispatch, page, rowsPerPage, statusFilter, dateFilter, categoryFilter, departmentFilter, searchQuery]);
 
   const currentObs = observations.find((o: any) => (o._id || o.id) === (editingObs?._id || editingObs?.id)) || editingObs;
 
@@ -160,7 +163,8 @@ const ObservationList: React.FC = () => {
       search: searchQuery,
       status_filter: statusFilter,
       date_filter: dateFilter || undefined,
-      category_filter: categoryFilter || undefined
+      category_filter: categoryFilter || undefined,
+      department_filter: departmentFilter || undefined
     }));
   };
 
@@ -174,7 +178,9 @@ const ObservationList: React.FC = () => {
         limit: rowsPerPage,
         search: searchQuery,
         status_filter: statusFilter,
-        date_filter: dateFilter || undefined
+        date_filter: dateFilter || undefined,
+        category_filter: categoryFilter || undefined,
+        department_filter: departmentFilter || undefined
       }));
     }
   }
@@ -205,6 +211,7 @@ const ObservationList: React.FC = () => {
       status_filter: statusFilter,
       date_filter: dateFilter || undefined,
       category_filter: categoryFilter || undefined,
+      department_filter: departmentFilter || undefined
     });
 
     const rows = response.data.map((row) => {
@@ -371,6 +378,21 @@ const ObservationList: React.FC = () => {
               ))}
             </Select>
           </FormControl>
+          {canViewAllDept && (
+            <FormControl size="small">
+              <Select
+                displayEmpty
+                value={departmentFilter}
+                onChange={(e) => { setDepartmentFilter(e.target.value); setPage(0); }}
+                sx={{ minWidth: 150, height: 40 }}
+              >
+                <MenuItem value="">All Departments</MenuItem>
+                {departments.map((dept: any) => (
+                  <MenuItem key={dept._id || dept.id} value={dept.name}>{dept.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
           <TextField 
             type="date"
             size="small"

@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Resp
 import shutil
 import uuid
 import time
-from auth_utils import require_privilege, get_current_user
+from auth_utils import require_privilege, get_current_user, require_any_privilege
 from fastapi.responses import JSONResponse
 from typing import Optional
 from database import db
@@ -165,13 +165,14 @@ async def list_observations(
     status_filter: Optional[str] = None,
     date_filter: Optional[str] = None,
     category_filter: Optional[str] = None,
+    department_filter: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     query = {}
     is_superuser = current_user.get("isSuperuser", False)
     privileges = current_user.get("privileges", [])
     
-    if not is_superuser and "View Observations" not in privileges:
+    if not is_superuser and "View Observations" not in privileges and "View All Department Observations" not in privileges:
         raise HTTPException(status_code=403, detail="Not enough permissions to view observations")
 
     if search:
@@ -191,8 +192,15 @@ async def list_observations(
     if category_filter:
         query["category"] = category_filter
         
-    if not is_superuser:
-        users_collection = db.get_collection("users")
+    users_collection = db.get_collection("users")
+    can_view_all = is_superuser or "View All Department Observations" in privileges
+
+    if can_view_all:
+        if department_filter:
+            dept_users = await users_collection.find({"department": department_filter}).to_list(length=None)
+            dept_usernames = [u["username"] for u in dept_users]
+            query["loggedBy"] = {"$in": dept_usernames}
+    else:
         current_user_record = await users_collection.find_one({"username": current_user["sub"]})
         if current_user_record and current_user_record.get("department"):
             dept = current_user_record["department"]
@@ -255,7 +263,7 @@ async def create_observation(
     await enrich_observation(created_obs)
     return created_obs
 
-@router.get("/{id}", response_description="Get a single observation", response_model=ObservationModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Observations"))])
+@router.get("/{id}", response_description="Get a single observation", response_model=ObservationModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["View Observations", "View All Department Observations"]))])
 async def show_observation(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
