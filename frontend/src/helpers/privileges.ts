@@ -115,4 +115,8 @@ export const PRIVILEGES = {
     EMERGENCY_WORK_DELETE: "Delete Emergency Work",
     EMERGENCY_WORK_VIEW: "View Emergency Work",
     EMERGENCY_WORK_APPROVE: "Approve Emergency Work",
+    IP_LIST_VIEW: "View IP List",
+    IP_LIST_CREATE: "Create IP List",
+    IP_LIST_UPDATE: "Update IP List",
+    IP_LIST_DELETE: "Delete IP List",
 }

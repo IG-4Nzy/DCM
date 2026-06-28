@@ -7,6 +7,7 @@ import departmentsReducer from '../pages/Departments/slice';
 import observationsReducer from '../pages/Observations/slice';
 import inventoryReducer from '../pages/Inventory/slice';
 import dashboardReducer from '../pages/Dashboard/slice';
+import ipListReducer from '../pages/IpList/slice';
 
 export const store = configureStore({
   reducer: {
@@ -17,7 +18,8 @@ export const store = configureStore({
     departments: departmentsReducer,
     observations: observationsReducer,
     inventory: inventoryReducer,
-    dashboard: dashboardReducer
+    dashboard: dashboardReducer,
+    ipList: ipListReducer
   },
 });
 

@@ -114,5 +114,9 @@
     "Update Emergency Work",
     "Delete Emergency Work",
     "View Emergency Work",
-    "Approve Emergency Work"
+    "Approve Emergency Work",
+    "View IP List",
+    "Create IP List",
+    "Update IP List",
+    "Delete IP List"
 ]

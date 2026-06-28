@@ -9,8 +9,11 @@ import {
   FormHelperText,
   IconButton,
   ListItemText,
+  ListSubheader,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
-import { MdClear } from 'react-icons/md';
+import { MdClear, MdSearch } from 'react-icons/md';
 
 export interface DropdownOption {
   label: string;
@@ -33,6 +36,7 @@ export interface DropdownProps {
   sx?: any;
   className?:string;
   clearable?: boolean;
+  searchable?: boolean;
 }
 
 const ITEM_HEIGHT = 48;
@@ -52,8 +56,18 @@ const Dropdown: React.FC<DropdownProps> = ({
   size = 'medium',
   sx = {},
   className = "",
-  clearable = false
+  clearable = false,
+  searchable = false
 }) => {
+  const [searchTerm, setSearchTerm] = React.useState('');
+
+  const filteredOptions = React.useMemo(() => {
+    if (!searchable || !searchTerm) return options;
+    return options.filter((opt) =>
+      opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [options, searchable, searchTerm]);
+
   const handleChange = (event: SelectChangeEvent<any>) => {
     onChange(event.target.value);
   };
@@ -88,6 +102,7 @@ const Dropdown: React.FC<DropdownProps> = ({
         multiple={multiple}
         value={displayValue}  
         onChange={handleChange}
+        onClose={() => setSearchTerm('')}
         label={label}
         renderValue={
           multiple
@@ -136,8 +151,35 @@ const Dropdown: React.FC<DropdownProps> = ({
           ) : undefined
         }
       >
-        {options.map((option) => (
-          <MenuItem
+        {searchable && (
+          <ListSubheader sx={{ pt: 1, pb: 1, bgcolor: '#fff', zIndex: 2 }}>
+            <TextField
+              size="small"
+              autoFocus
+              placeholder="Search..."
+              fullWidth
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== 'Escape') {
+                  e.stopPropagation();
+                }
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <MdSearch />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </ListSubheader>
+        )}
+        {filteredOptions.length === 0 ? (
+          <MenuItem disabled>No results found</MenuItem>
+        ) : (
+          filteredOptions.map((option) => (
+            <MenuItem
             key={option.value}
             value={option.value}
           >
@@ -166,7 +208,7 @@ const Dropdown: React.FC<DropdownProps> = ({
 
             <ListItemText primary={option.label} />
           </MenuItem>
-        ))}
+        )))}
       </Select>
 
       {helperText && (

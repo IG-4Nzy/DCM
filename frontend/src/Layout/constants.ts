@@ -147,5 +147,11 @@ export const SIDEBAR_OPTIONS = [
         icon: Icons.LogsIcon,
         route: ROUTE_CONSTANTS.OPERATION_LOGS,
         privileges: [PRIVILEGES.LOGS_VIEW]
+    },
+    {
+        label: wordings.ipList,
+        icon: Icons.IpListIcon,
+        route: ROUTE_CONSTANTS.IP_LIST,
+        privileges: [PRIVILEGES.IP_LIST_VIEW]
     }
 ]

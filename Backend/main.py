@@ -25,6 +25,8 @@ from requests_router import router as requests_router
 from request_routings import router as request_routings_router
 from attendance import router as attendance_router
 from audit_logs import router as audit_logs_router
+from operation_logs import router as operation_logs_router
+from ip_list import router as ip_list_router
 from documentations import router as documentations_router
 from bms_checklists import router as bms_checklists_router
 from bms_checklist_config import router as bms_checklist_config_router
@@ -38,7 +40,6 @@ from dashboard import router as dashboard_router
 from notifications import router as notifications_router
 from periodic_activities import router as periodic_activities_router
 from announcements import router as announcements_router
-from operation_logs import router as operation_logs_router
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from database import db
@@ -548,6 +549,7 @@ app.include_router(morning_checklist_config_router, tags=["morning_checklist_con
 app.include_router(periodic_activities_router, tags=["periodic_activities"], prefix="/api/periodic-activities")
 app.include_router(announcements_router, tags=["announcements"], prefix="/api/announcements")
 app.include_router(operation_logs_router, tags=["operation_logs"], prefix="/api/operation-logs")
+app.include_router(ip_list_router, tags=["ip-list"], prefix="/api/ip-list")
 app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")
 app.include_router(notifications_router, tags=["notifications"], prefix="/api/notifications")
 app.include_router(server_ping_monitoring_router, tags=["server_ping_monitoring"], prefix="/api/server-ping-monitoring")
