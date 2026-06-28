@@ -9,7 +9,7 @@ export interface WorkData {
   description: string;
   attachments: { name: string; url: string }[];
   status: string;
-  comments: { text: string; user: string; timestamp: string }[];
+  comments: { text: string; user: string; timestamp: string; attachment?: { name: string; url: string } }[];
   completedAt?: string;
   createdAt?: string;
   isEmergency?: boolean;
@@ -26,7 +26,7 @@ export interface CreateWorkPayload {
   description: string;
   attachments: { name: string; url: string }[];
   status?: string;
-  comments?: { text: string; user: string; timestamp: string }[];
+  comments?: { text: string; user: string; timestamp: string; attachment?: { name: string; url: string } }[];
   completedAt?: string;
   createdAt?: string;
   isEmergency?: boolean;

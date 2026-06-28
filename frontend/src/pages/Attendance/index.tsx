@@ -23,6 +23,7 @@ import request from '../../services/request';
 import dayjs from 'dayjs';
 import { getServerTime } from '../../helpers/time';
 import styles from './index.module.scss';
+import VerificationModal from './VerificationModal';
 
 interface AttendanceRecord {
     id: string;
@@ -76,7 +77,7 @@ const Attendance: React.FC = () => {
     const [departments, setDepartments] = useState<string[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [rowsPerPage, setRowsPerPage] = useState(25);
 
     // Summary tab state
     const [activeTab, setActiveTab] = useState(0);
@@ -109,6 +110,11 @@ const Attendance: React.FC = () => {
     const [calLogs, setCalLogs] = useState<AttendanceRecord[]>([]);
     const [calRosters, setCalRosters] = useState<any[]>([]);
     const [loadingCal, setLoadingCal] = useState(false);
+
+    // Verification Modal State
+    const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
+    const [selectedVerificationPeriod, setSelectedVerificationPeriod] = useState<PeriodOption | null>(null);
+    const [verifiedPeriods, setVerifiedPeriods] = useState<string[]>([]);
 
     // Current Logged In User Info
     const { username, isSuperuser, department: userDept } = useSelector((state: RootState) => state.auth);
@@ -178,6 +184,12 @@ const Attendance: React.FC = () => {
             } else if (options.length > 0) {
                 setSelectedPeriod(options[0].label); // default fallback to the most recent period
             }
+
+            // Fetch verification statuses
+            try {
+                const verRes = await request.get('/api/attendance/verification-status');
+                setVerifiedPeriods(verRes.data?.verifiedPeriods || []);
+            } catch(e) {}
         } catch (e: any) {
             console.error("CYCLE CONFIG ERROR:", e);
             showToast('Failed to load cycle configuration', 'error');
@@ -538,6 +550,16 @@ const Attendance: React.FC = () => {
         setCalRosters([]);
     };
 
+    const handleOpenVerificationModal = (period: PeriodOption) => {
+        setSelectedVerificationPeriod(period);
+        setIsVerificationModalOpen(true);
+    };
+
+    const handleCloseVerificationModal = () => {
+        setIsVerificationModalOpen(false);
+        setSelectedVerificationPeriod(null);
+    };
+
     // Table Column Definitions
     const columns: Column<AttendanceRecord>[] = [
         {
@@ -887,20 +909,26 @@ const Attendance: React.FC = () => {
     ];
 
     return (
-        <Box sx={{ p: 1 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-                <Box>
-                    <Typography variant="h5" sx={{ fontWeight: 600, color: '#333', mb: 0.5 }}>
-                        Attendance Logs
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                        View timings, track active duration, and manage regularization requests.
-                    </Typography>
+        <Box sx={{ p: 0 }}>
+            <Box sx={{ p: 3 }}>
+                <Typography variant="h5" sx={{ fontWeight: 600, color: '#333', mb: 0.5 }}>
+                    Attendance Tracking
+                </Typography>
+                <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
+                    View timings, track active duration, and manage regularization requests.
+                </Typography>
+
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+                    <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} textColor="primary" indicatorColor="primary">
+                        <Tab label="Attendance Logs" sx={{ fontWeight: 600 }} />
+                        <Tab label="Employee Summary" sx={{ fontWeight: 600 }} />
+                        <Tab label="Verification" sx={{ fontWeight: 600 }} />
+                    </Tabs>
                 </Box>
             </Box>
 
-            {/* Filter Bar */}
-            <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+            {activeTab !== 2 && (
+                <Paper sx={{ p: 3, mx: 3, mb: 3, borderRadius: 2, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                 <Box className={styles['attendance-filters']}>
                     <Box className={styles['attendance-filters__item']}>
                         <FormControl fullWidth size="small">
@@ -954,14 +982,7 @@ const Attendance: React.FC = () => {
                     </Box>
                 </Box>
             </Paper>
-
-            {/* Tabs for switching between Logs and summary counts */}
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-                <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} textColor="primary" indicatorColor="primary">
-                    <Tab label="Attendance Logs" sx={{ fontWeight: 600 }} />
-                    <Tab label="Employee Attendance Summary" sx={{ fontWeight: 600 }} />
-                </Tabs>
-            </Box>
+            )}
 
             {activeTab === 0 ? (
                 /* Logs Table */
@@ -978,16 +999,48 @@ const Attendance: React.FC = () => {
                         onRowClick={(row) => { setViewingRecord(row); setIsDetailOpen(true); }}
                     />
                 </Paper>
-            ) : (
+            ) : activeTab === 1 ? (
                 /* Employee Summary Table */
-                <Paper sx={{ width: '100%', mb: 2, p: 0, boxShadow: 'none', background: 'transparent' }}>
+                <Paper sx={{ width: '100%', mb: 2, p: 0, mx: 3, boxShadow: 'none', background: 'transparent' }}>
                     <Table
                         columns={summaryColumns}
                         data={getRealtimeSummary()}
                         loading={loadingSummary}
                     />
                 </Paper>
+            ) : (
+                /* Verification Tab */
+                <Box sx={{ mx: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 2 }}>Attendance Verification Cycles</Typography>
+                    <Grid container spacing={2}>
+                        {periods.map((p, idx) => (
+                            <Grid item xs={12} sm={6} md={4} key={idx}>
+                                <Paper 
+                                    sx={{ p: 3, cursor: 'pointer', transition: '0.2s', '&:hover': { boxShadow: 4, transform: 'translateY(-2px)' }, position: 'relative' }} 
+                                    onClick={() => handleOpenVerificationModal(p)}
+                                >
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Attendance Report</Typography>
+                                        {verifiedPeriods.includes(p.label) && (
+                                            <Chip label="Verified" size="small" color="success" sx={{ height: 20, fontSize: '0.7rem' }} />
+                                        )}
+                                    </Box>
+                                    <Typography variant="body2" color="textSecondary">{p.label}</Typography>
+                                </Paper>
+                            </Grid>
+                        ))}
+                    </Grid>
+                </Box>
             )}
+
+            <VerificationModal
+                isOpen={isVerificationModalOpen}
+                period={selectedVerificationPeriod}
+                onClose={handleCloseVerificationModal}
+                users={useSelector((state: RootState) => state.users.users)}
+                isVerified={selectedVerificationPeriod ? verifiedPeriods.includes(selectedVerificationPeriod.label) : false}
+                onVerify={(label) => setVerifiedPeriods(prev => [...prev, label])}
+            />
 
             {/* Regularization Submission Modal */}
             <Dialog open={isRegModalOpen} onClose={handleCloseRegModal} maxWidth="sm" fullWidth>

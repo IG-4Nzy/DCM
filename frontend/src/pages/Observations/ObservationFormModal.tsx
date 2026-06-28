@@ -6,7 +6,7 @@ import Modal from '../../components/Modal';
 import TextField from '../../components/TextField';
 import DatePicker from '../../components/DatePicker';
 import { FormControl, InputLabel, MenuItem, Select, Button, Box, IconButton, Tooltip, Typography, Chip, OutlinedInput, FormGroup, FormControlLabel, Checkbox, Avatar, Autocomplete, TextField as MuiTextField } from '@mui/material';
-import { MdEdit as EditIcon, MdSend } from 'react-icons/md';
+import { MdEdit as EditIcon, MdSend, MdAttachFile } from 'react-icons/md';
 import styles from './index.module.scss';
 import request, { API_BASE_URL } from '../../services/request';
 import { getServerTime } from '../../helpers/time';

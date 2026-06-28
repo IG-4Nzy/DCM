@@ -45,7 +45,7 @@ const IpListFormModal: React.FC<IpListFormModalProps> = ({
 }) => {
     return (
         <Dialog open={isModalOpen} onClose={handleCloseModal} maxWidth="sm" fullWidth>
-            <DialogTitle sx={{ fontWeight: 'bold' }}>
+            <DialogTitle sx={{ fontWeight: 'bold',color:"#333" }}>
                 {editingIp ? 'Edit IP' : 'Create IP'}
             </DialogTitle>
             <form onSubmit={handleSubmit}>

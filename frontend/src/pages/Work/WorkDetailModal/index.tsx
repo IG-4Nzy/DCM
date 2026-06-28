@@ -644,7 +644,7 @@ const WorkDetailModal = ({
                           icon={<MdAttachFile />}
                           label={comment.attachment.name || "Attachment"}
                           size="small"
-                          onClick={() => window.open(`${API_BASE_URL}${comment.attachment.url}`, "_blank")}
+                          onClick={() => window.open(`${API_BASE_URL}${comment.attachment?.url}`, "_blank")}
                           sx={{ mt: 1, backgroundColor: 'rgba(0,0,0,0.05)', cursor: 'pointer' }}
                         />
                       )}

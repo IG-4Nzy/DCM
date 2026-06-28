@@ -687,3 +687,45 @@ async def reject_late_login(
     from notification_helper import log_page_update
     await log_page_update("attendance", department=target_dept, username=current_user.get("sub"))
     return {"message": "Late login rejected"}
+
+# --- Verification Endpoints ---
+
+verification_collection = db.get_collection("attendance_verification")
+
+@router.get("/verification-status")
+async def get_verification_status(current_user: dict = Depends(get_current_user)):
+    records = await verification_collection.find({}).to_list(length=None)
+    return {"verifiedPeriods": [r.get("periodLabel") for r in records if r.get("verified")]}
+
+@router.get("/verification-data")
+async def get_verification_data(
+    periodLabel: str,
+    current_user: dict = Depends(get_current_user)
+):
+    if not periodLabel:
+        raise HTTPException(status_code=400, detail="periodLabel is required")
+    record = await verification_collection.find_one({"periodLabel": periodLabel})
+    if not record:
+        return {"data": []}
+    return {"data": record.get("data", [])}
+
+@router.post("/verify-period")
+async def verify_period(
+    body: dict = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    period_label = body.get("periodLabel")
+    if not period_label:
+        raise HTTPException(status_code=400, detail="periodLabel is required")
+    
+    await verification_collection.update_one(
+        {"periodLabel": period_label},
+        {"$set": {
+            "verified": True, 
+            "verifiedBy": current_user.get("sub"), 
+            "verifiedAt": datetime.utcnow().isoformat(),
+            "data": body.get("data", [])
+        }},
+        upsert=True
+    )
+    return {"message": "Period verified successfully"}
