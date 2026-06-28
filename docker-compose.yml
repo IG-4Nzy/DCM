@@ -41,4 +41,5 @@ services:
 
 volumes:
   mongodb_data:
+    name: mongodb_data
   backend_uploads:

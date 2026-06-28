@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip } from '@mui/material';
-import request from '../services/request';
 import dayjs from 'dayjs';
 
 import { fetchDaySummaryData } from '../helpers/daySummary';
 
 interface Props {
-  date: string; // YYYY-MM-DD
+  date: string;
 }
 
 const DaySummary: React.FC<Props> = ({ date }) => {

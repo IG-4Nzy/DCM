@@ -34,7 +34,7 @@ export interface DropdownProps {
   error?: boolean;
   size?: 'small' | 'medium';
   sx?: any;
-  className?:string;
+  className?: string;
   clearable?: boolean;
   searchable?: boolean;
 }
@@ -100,7 +100,7 @@ const Dropdown: React.FC<DropdownProps> = ({
 
       <Select
         multiple={multiple}
-        value={displayValue}  
+        value={displayValue}
         onChange={handleChange}
         onClose={() => setSearchTerm('')}
         label={label}
@@ -165,12 +165,14 @@ const Dropdown: React.FC<DropdownProps> = ({
                   e.stopPropagation();
                 }
               }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <MdSearch />
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <MdSearch />
+                    </InputAdornment>
+                  ),
+                },
               }}
             />
           </ListSubheader>
@@ -180,35 +182,35 @@ const Dropdown: React.FC<DropdownProps> = ({
         ) : (
           filteredOptions.map((option) => (
             <MenuItem
-            key={option.value}
-            value={option.value}
-          >
-            {multiple && (
-              <Checkbox
-                checked={
-                  Array.isArray(displayValue) &&
-                  displayValue.includes(option.value)
-                }
-              />
-            )}
+              key={option.value}
+              value={option.value}
+            >
+              {multiple && (
+                <Checkbox
+                  checked={
+                    Array.isArray(displayValue) &&
+                    displayValue.includes(option.value)
+                  }
+                />
+              )}
 
-            {option.isOnline !== undefined && (
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  backgroundColor: option.isOnline ? "#4caf50" : "#f44336",
-                  marginRight: 8,
-                  display: "inline-block",
-                  boxShadow: option.isOnline ? "0 0 6px #4caf50" : "none",
-                }}
-              />
-            )}
+              {option.isOnline !== undefined && (
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    backgroundColor: option.isOnline ? "#4caf50" : "#f44336",
+                    marginRight: 8,
+                    display: "inline-block",
+                    boxShadow: option.isOnline ? "0 0 6px #4caf50" : "none",
+                  }}
+                />
+              )}
 
-            <ListItemText primary={option.label} />
-          </MenuItem>
-        )))}
+              <ListItemText primary={option.label} />
+            </MenuItem>
+          )))}
       </Select>
 
       {helperText && (

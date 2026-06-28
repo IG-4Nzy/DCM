@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Snackbar, Alert, type AlertColor } from '@mui/material';
+import type { ReactNode } from 'react';
 
 interface ToastContextType {
   showToast: (message: string, severity?: AlertColor) => void;
@@ -18,7 +19,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setOpen(true);
   }, []);
 
-  const handleClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
+  const handleClose = (_event?: React.SyntheticEvent | Event, reason?: string) => {
     if (reason === 'clickaway') {
       return;
     }

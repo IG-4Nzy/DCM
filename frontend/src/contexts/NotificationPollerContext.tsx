@@ -51,7 +51,6 @@ const getAudioContext = (): AudioContext | null => {
   return sharedAudioContext;
 };
 
-// Automatic resume listener on click or keydown to satisfy browser autoplay policies
 if (typeof window !== 'undefined') {
   const resumeAudio = () => {
     const ctx = getAudioContext();
@@ -95,7 +94,6 @@ export const playTTS = (text: string, volume: number = 0.5) => {
   try {
     if (!window.speechSynthesis) return;
 
-    // Cancel any ongoing speech and force resume to clear any stuck state
     window.speechSynthesis.cancel();
     if (window.speechSynthesis.paused) {
       window.speechSynthesis.resume();
@@ -104,7 +102,6 @@ export const playTTS = (text: string, volume: number = 0.5) => {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.volume = volume;
 
-    // Try assigning a valid English voice to improve browser compatibility (especially Chrome/Safari)
     if (window.speechSynthesis.getVoices) {
       const voices = window.speechSynthesis.getVoices();
       if (voices && voices.length > 0) {
@@ -154,7 +151,7 @@ const triggerDesktopNotification = (title: string, body: string) => {
 export const NotificationPollerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { isAuthenticated, isSuperuser, username } = useSelector((state: RootState) => state.auth);
-  const { users } = useSelector((state: RootState) => state.users || { users: [] });
+  const { users = [] } = useSelector((state: RootState) => state.users || { users: [] });
 
   const canView = isAuthenticated && (
     isSuperuser || 
@@ -292,7 +289,7 @@ export const NotificationPollerProvider: React.FC<{ children: React.ReactNode }>
     if (!silent) setLoading(true);
     try {
       const currentUsers = usersRef.current;
-      const loggedInUser = currentUsers.find((u: any) => u.username === username);
+      const loggedInUser = currentUsers?.find((u: any) => u.username === username);
       const userDept = loggedInUser?.department;
 
       const isFull = isSuperuser || hasPrivilege(PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW);

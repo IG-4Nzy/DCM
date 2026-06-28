@@ -12,12 +12,10 @@ interface SearchBarProps {
 const SearchBar: React.FC<SearchBarProps> = ({ value, onChange, placeholder = 'Search...' }) => {
   const [localValue, setLocalValue] = useState(value);
 
-  // Sync internal state with external prop changes (e.g. parent resetting state)
   useEffect(() => {
     setLocalValue(value);
   }, [value]);
 
-  // Debounce effect to update parent after 500ms of inactivity
   useEffect(() => {
     const handler = setTimeout(() => {
       if (localValue !== value) {
@@ -37,12 +35,14 @@ const SearchBar: React.FC<SearchBarProps> = ({ value, onChange, placeholder = 'S
       placeholder={placeholder}
       value={localValue}
       onChange={(e) => setLocalValue(e.target.value)}
-      InputProps={{
-        startAdornment: (
-          <InputAdornment position="start">
-            <SearchIcon />
-          </InputAdornment>
-        ),
+      slotProps={{
+        input: {
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon />
+            </InputAdornment>
+          ),
+        },
       }}
       sx={{
         width: { xs: '100%', sm: 250, md: 300 },

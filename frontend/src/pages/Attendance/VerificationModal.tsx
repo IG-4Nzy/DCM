@@ -106,6 +106,8 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, period, o
         Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
+            transformHeader: (header) => header.trim(),
+            transform: (value) => typeof value === 'string' ? value.trim() : value,
             complete: (results) => {
                 const data = results.data as any[];
                 setCsvRecords(data);

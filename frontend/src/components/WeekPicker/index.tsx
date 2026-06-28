@@ -76,7 +76,7 @@ const WeekPicker: React.FC<WeekPickerProps> = ({ value, onChange }) => {
   const endOfWeek = value ? value.endOf('isoWeek') : getServerTime().endOf('isoWeek');
 
   const renderWeekPickerDay = (props: PickerDayProps) => {
-    const { day: date, outsideCurrentMonth, ...other } = props;
+    const { day: date } = props;
 
     if (!value) {
       return <PickerDay {...props} />;

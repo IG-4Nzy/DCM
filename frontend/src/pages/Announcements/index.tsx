@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Paper, 
-  Typography, 
-  TextField, 
-  Button, 
-  IconButton, 
-  Tooltip, 
+import {
+  Box,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  IconButton,
+  Tooltip,
   CircularProgress,
   Dialog,
   DialogTitle,
@@ -24,11 +24,11 @@ import {
   InputLabel,
   FormControl
 } from '@mui/material';
-import { 
-  MdAdd as AddIcon, 
-  MdDelete as DeleteIcon, 
-  MdEdit as EditIcon, 
-  MdSearch as SearchIcon, 
+import {
+  MdAdd as AddIcon,
+  MdDelete as DeleteIcon,
+  MdEdit as EditIcon,
+  MdSearch as SearchIcon,
   MdRefresh as RefreshIcon,
   MdCampaign as AnnouncementIcon
 } from 'react-icons/md';
@@ -63,7 +63,7 @@ const Announcements: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  
+
   // Data lists for selection
   const [departments, setDepartments] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -78,7 +78,7 @@ const Announcements: React.FC = () => {
   const [mentionedDepartment, setMentionedDepartment] = useState('');
   const [mentionedStaff, setMentionedStaff] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  
+
   const { showToast } = useToast();
   const { confirm } = useConfirm();
 
@@ -251,13 +251,13 @@ const Announcements: React.FC = () => {
             </IconButton>
           </Tooltip>
           {canCreate && (
-            <Button 
-              variant="contained" 
-              startIcon={<AddIcon />} 
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
               onClick={handleOpenCreateModal}
-              sx={{ 
-                borderRadius: '8px', 
-                textTransform: 'none', 
+              sx={{
+                borderRadius: '8px',
+                textTransform: 'none',
                 fontWeight: '600',
                 boxShadow: '0 4px 6px -1px rgba(49, 130, 206, 0.2)'
               }}
@@ -269,24 +269,24 @@ const Announcements: React.FC = () => {
       </Box>
 
       {/* Filter and Table Container */}
-      <Paper 
-        elevation={0} 
-        sx={{ 
-          p: 3, 
-          borderRadius: 3, 
-          border: '1px solid #e2e8f0', 
+      <Paper
+        elevation={0}
+        sx={{
+          p: 3,
+          borderRadius: 3,
+          border: '1px solid #e2e8f0',
           bgcolor: '#ffffff',
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
         }}
       >
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            mb: 3, 
-            gap: 2, 
-            flexWrap: 'wrap' 
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 3,
+            gap: 2,
+            flexWrap: 'wrap'
           }}
         >
           <TextField
@@ -295,10 +295,12 @@ const Announcements: React.FC = () => {
             placeholder="Search announcements..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            InputProps={{
-              startAdornment: <SearchIcon style={{ color: '#a0aec0', marginRight: '8px' }} />,
+            slotProps={{
+              input: {
+                startAdornment: <SearchIcon style={{ color: '#a0aec0', marginRight: '8px' }} />,
+              }
             }}
-            sx={{ 
+            sx={{
               width: '350px',
               '& .MuiOutlinedInput-root': {
                 borderRadius: '8px',
@@ -306,7 +308,7 @@ const Announcements: React.FC = () => {
               }
             }}
           />
-          
+
           <Typography variant="body2" sx={{ fontWeight: '600', color: '#4a5568' }}>
             Total Announcements: <span style={{ color: '#3182ce' }}>{total}</span>
           </Typography>
@@ -342,11 +344,11 @@ const Announcements: React.FC = () => {
               </TableHead>
               <TableBody>
                 {announcements.map((ann) => {
-                  const formattedDate = ann.date 
+                  const formattedDate = ann.date
                     ? dayjs(ann.date).format('DD-MM-YYYY')
                     : '--';
                   const daysLeft = getDaysRemaining(ann.date);
-                  
+
                   let mentionLabel = 'All Staffs';
                   if (ann.mentionType === 'department') {
                     mentionLabel = `Dept: ${ann.mentionedDepartment}`;
@@ -366,16 +368,16 @@ const Announcements: React.FC = () => {
                         {ann.description}
                       </TableCell>
                       <TableCell>
-                        <Chip 
-                          label={mentionLabel} 
-                          size="small" 
-                          variant="outlined" 
-                          sx={{ 
+                        <Chip
+                          label={mentionLabel}
+                          size="small"
+                          variant="outlined"
+                          sx={{
                             fontWeight: '600',
                             borderColor: ann.mentionType === 'all' ? '#93c5fd' : ann.mentionType === 'department' ? '#c084fc' : '#fbcfe8',
                             color: ann.mentionType === 'all' ? '#1d4ed8' : ann.mentionType === 'department' ? '#7e22ce' : '#be185d',
                             bgcolor: ann.mentionType === 'all' ? '#eff6ff' : ann.mentionType === 'department' ? '#f5f3ff' : '#fdf2f8'
-                          }} 
+                          }}
                         />
                       </TableCell>
                       <TableCell color="textSecondary">
@@ -427,13 +429,18 @@ const Announcements: React.FC = () => {
       </Paper>
 
       {/* Form Dialog Modal */}
-      <Dialog 
-        open={isModalOpen} 
+      <Dialog
+        open={isModalOpen}
         onClose={() => !submitting && setIsModalOpen(false)}
         maxWidth="sm"
         fullWidth
-        PaperProps={{
-          sx: { borderRadius: '12px', p: 1 }
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: '12px',
+              p: 1,
+            },
+          },
         }}
       >
         <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.25rem', pb: 1, color: '#333' }}>
@@ -449,8 +456,11 @@ const Announcements: React.FC = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Server Maintenance Notice"
-              InputLabelProps={{ shrink: true }}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+              slotProps={{
+                inputLabel: {
+                  shrink: true,
+                },
+              }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
             />
 
             <TextField
@@ -534,12 +544,12 @@ const Announcements: React.FC = () => {
             <Button onClick={() => setIsModalOpen(false)} disabled={submitting} sx={{ borderRadius: '8px', textTransform: 'none' }}>
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              variant="contained" 
+            <Button
+              type="submit"
+              variant="contained"
               disabled={submitting}
-              sx={{ 
-                borderRadius: '8px', 
+              sx={{
+                borderRadius: '8px',
                 textTransform: 'none',
                 px: 3,
                 boxShadow: '0 4px 6px -1px rgba(49, 130, 206, 0.2)'

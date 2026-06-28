@@ -2,3 +2,4 @@ implement email functionality
 ping monitoring is not accurate,getting ping drop alert after a huge delay.
 
 
+fav icon not showing when run with docker
