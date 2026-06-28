@@ -5,7 +5,7 @@ import {
   Box, TextField, MenuItem, FormControl, InputLabel, Select,
   IconButton, Typography, Divider, ListSubheader
 } from '@mui/material';
-import { MdAdd as AddIcon, MdDelete as DeleteIcon } from 'react-icons/md';
+import { MdAdd as AddIcon, MdDelete as DeleteIcon, MdArrowUpward, MdArrowDownward } from 'react-icons/md';
 import Button from '../../../components/Button';
 import type { RequestRoutingData, RequestRoutingStage } from './model';
 import type { RootState, AppDispatch } from '../../../store';
@@ -82,6 +82,24 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
 
   const removeStage = (index: number) => {
     const updated = stages.filter((_, i) => i !== index);
+    setStages(updated.map((s, i) => ({ ...s, order: i + 1 })));
+  };
+
+  const moveStageUp = (index: number) => {
+    if (index === 0) return;
+    const updated = [...stages];
+    const temp = updated[index];
+    updated[index] = updated[index - 1];
+    updated[index - 1] = temp;
+    setStages(updated.map((s, i) => ({ ...s, order: i + 1 })));
+  };
+
+  const moveStageDown = (index: number) => {
+    if (index === stages.length - 1) return;
+    const updated = [...stages];
+    const temp = updated[index];
+    updated[index] = updated[index + 1];
+    updated[index + 1] = temp;
     setStages(updated.map((s, i) => ({ ...s, order: i + 1 })));
   };
 
@@ -200,13 +218,21 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                   backgroundColor: 'action.hover',
                 }}
               >
-                <Typography
-                  variant="body2"
-                  fontWeight={700}
-                  sx={{ minWidth: 28, textAlign: 'center', color: 'primary.main' }}
-                >
-                  {index + 1}
-                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <IconButton size="small" disabled={index === 0} onClick={() => moveStageUp(index)} type="button" sx={{ padding: '2px' }}>
+                    <MdArrowUpward fontSize="small" />
+                  </IconButton>
+                  <Typography
+                    variant="body2"
+                    fontWeight={700}
+                    sx={{ textAlign: 'center', color: 'primary.main', my: 0.5 }}
+                  >
+                    {index + 1}
+                  </Typography>
+                  <IconButton size="small" disabled={index === stages.length - 1} onClick={() => moveStageDown(index)} type="button" sx={{ padding: '2px' }}>
+                    <MdArrowDownward fontSize="small" />
+                  </IconButton>
+                </Box>
 
                 <TextField
                   label="Status Name"
