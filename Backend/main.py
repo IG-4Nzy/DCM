@@ -40,6 +40,7 @@ from dashboard import router as dashboard_router
 from notifications import router as notifications_router
 from periodic_activities import router as periodic_activities_router
 from announcements import router as announcements_router
+from phone_directory import router as phone_directory_router
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from database import db
@@ -159,6 +160,13 @@ def get_action_name(method: str, path: str) -> str:
         if method == "PUT": return "Update Operation Log"
         if method == "DELETE": return "Delete Operation Log"
         return "Operation Log Action"
+
+    # Check phone directory
+    if "phone-directory" in parts:
+        if method == "POST": return "Create Phone Entry"
+        if method == "PUT": return "Update Phone Entry"
+        if method == "DELETE": return "Delete Phone Entry"
+        return "Phone Directory Action"
 
     # Default fallback
     action_type = parts[1] if len(parts) > 1 else parts[0]
@@ -375,6 +383,17 @@ def get_audit_details(username: str, method: str, path: str, status_code: int, b
             dept_name = before.get("name") if before else "unknown"
             return f'"{username}" deleted department - {dept_name}'
 
+    if "phone-directory" in parts:
+        if method == "POST":
+            name = body.get("name", "unknown entry")
+            return f'"{username}" created phone directory entry - {name}'
+        if method == "PUT":
+            name = before.get("name") if before else body.get("name", "unknown entry")
+            return f'"{username}" updated phone directory entry - {name}'
+        if method == "DELETE":
+            name = before.get("name") if before else "unknown entry"
+            return f'"{username}" deleted phone directory entry - {name}'
+
     return default_desc
 
 class AuditLogMiddleware(BaseHTTPMiddleware):
@@ -548,6 +567,7 @@ app.include_router(morning_checklists_router, tags=["morning_checklists"], prefi
 app.include_router(morning_checklist_config_router, tags=["morning_checklist_config"], prefix="/api/morning-checklist-config")
 app.include_router(periodic_activities_router, tags=["periodic_activities"], prefix="/api/periodic-activities")
 app.include_router(announcements_router, tags=["announcements"], prefix="/api/announcements")
+app.include_router(phone_directory_router, tags=["phone_directory"], prefix="/api/phone-directory")
 app.include_router(operation_logs_router, tags=["operation_logs"], prefix="/api/operation-logs")
 app.include_router(ip_list_router, tags=["ip-list"], prefix="/api/ip-list")
 app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")

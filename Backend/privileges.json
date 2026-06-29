@@ -123,5 +123,9 @@
     "View IP List",
     "Create IP List",
     "Update IP List",
-    "Delete IP List"
+    "Delete IP List",
+    "View Phone Directory",
+    "Create Phone Directory",
+    "Update Phone Directory",
+    "Delete Phone Directory"
 ]
