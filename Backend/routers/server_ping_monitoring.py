@@ -22,7 +22,7 @@ class MonitoredServerCreate(BaseModel):
     name: str = Field(..., min_length=1)
     ipAddress: str = Field(..., min_length=1)
     adminName: Optional[str] = Field(None)
-    monitoringType: str = Field("ping", pattern="^(ping|port|both)$")
+    monitoringType: str = Field("heartbeat", pattern="^(ping|port|both|heartbeat)$")
     interval: int = Field(60, ge=10) # default 60s, min 10s
     timeout: int = Field(5, ge=1, le=10) # default 5s
     retryCount: int = Field(3, ge=1, le=10) # default 3 retries
@@ -33,7 +33,7 @@ class MonitoredServerUpdate(BaseModel):
     name: Optional[str] = None
     ipAddress: Optional[str] = None
     adminName: Optional[str] = None
-    monitoringType: Optional[str] = Field(None, pattern="^(ping|port|both)$")
+    monitoringType: Optional[str] = Field(None, pattern="^(ping|port|both|heartbeat)$")
     interval: Optional[int] = Field(None, ge=10)
     timeout: Optional[int] = Field(None, ge=1, le=10)
     retryCount: Optional[int] = Field(None, ge=1, le=10)
@@ -195,6 +195,7 @@ class ServerPingScheduler:
                 "totalSuccessChecks": 0,
                 "lastOutageDuration": 0.0,
                 "outagesCount": 0,
+                "lastHeartbeatTime": time.time(),
                 "lastUpdated": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             }
 
@@ -230,10 +231,21 @@ class ServerPingScheduler:
                 if ports and port_failures == len(ports):
                     curr_ports_ok = False
             
+            # 3. Heartbeat checks
+            if mon_type == "heartbeat":
+                last_hb = curr_status.get("lastHeartbeatTime", 0.0)
+                grace_period = 15 # 15s grace
+                if time.time() - last_hb <= server.get("interval", 60) + grace_period:
+                    curr_ping_ok = True
+                    curr_ports_ok = True
+                else:
+                    curr_ping_ok = False
+                    curr_ports_ok = False
+            
             # Combine based on type
             if mon_type == "both":
                 attempt_ok = curr_ping_ok or curr_ports_ok
-            elif mon_type == "ping":
+            elif mon_type in ("ping", "heartbeat"):
                 attempt_ok = curr_ping_ok
             else:
                 attempt_ok = curr_ports_ok
@@ -251,7 +263,7 @@ class ServerPingScheduler:
                     await asyncio.sleep(0.2) # short gap before retry
 
         # Determine target state
-        if mon_type == "both":
+        if mon_type in ("both", "heartbeat"):
             target_status = "UP" if (ping_ok or ports_ok) else "DOWN"
         elif mon_type == "ping":
             target_status = "UP" if ping_ok else "DOWN"
@@ -554,6 +566,55 @@ server_ping_scheduler = ServerPingScheduler()
 # ----------------------------------------------------------------------
 # API Endpoints
 # ----------------------------------------------------------------------
+
+class HeartbeatPayload(BaseModel):
+    ipAddress: str
+    hostname: Optional[str] = None
+    status: str = "UP"
+
+@router.post("/heartbeat", response_description="Receive a heartbeat from a server agent")
+async def receive_heartbeat(payload: HeartbeatPayload):
+    servers_col = db.get_collection("monitored_servers")
+    server = await servers_col.find_one({"ipAddress": payload.ipAddress, "isEnabled": True})
+    
+    now_str = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    
+    if not server:
+        # Auto-register the server if it doesn't exist
+        server_doc = {
+            "name": payload.hostname or payload.ipAddress,
+            "ipAddress": payload.ipAddress,
+            "adminName": "Agent Auto-Registered",
+            "monitoringType": "heartbeat",
+            "interval": 60,
+            "timeout": 5,
+            "retryCount": 3,
+            "ports": [],
+            "isEnabled": True,
+            "createdBy": "agent",
+            "createdAt": now_str,
+            "updatedAt": now_str
+        }
+        res = await servers_col.insert_one(server_doc)
+        server_id = str(res.inserted_id)
+        name = server_doc["name"]
+    else:
+        server_id = str(server["_id"])
+        name = server["name"]
+
+    status_col = db.get_collection("monitoring_status")
+    
+    # Update last heartbeat time
+    await status_col.update_one(
+        {"serverId": server_id},
+        {"$set": {
+            "lastHeartbeatTime": time.time(),
+            "name": name,
+            "ipAddress": payload.ipAddress
+        }},
+        upsert=True
+    )
+    return {"status": "ok", "message": "Heartbeat received"}
 
 # 1. Monitored Server CRUD
 @router.post("/", response_description="Register a new monitored server", status_code=status.HTTP_201_CREATED)

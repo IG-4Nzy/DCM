@@ -33,7 +33,7 @@ interface MonitoredServer {
   name: string;
   ipAddress: string;
   adminName?: string;
-  monitoringType: 'ping' | 'port' | 'both';
+  monitoringType: 'ping' | 'port' | 'both' | 'heartbeat';
   interval: number;
   timeout: number;
   retryCount: number;
@@ -534,7 +534,7 @@ const ServerPingMonitoring: React.FC = () => {
                 <TableCell sx={{ fontWeight: 700, py: 1 }}>Type</TableCell>
                 <TableCell sx={{ fontWeight: 700, py: 1 }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 700, py: 1 }}>Latency</TableCell>
-                <TableCell sx={{ fontWeight: 700, py: 1 }}>Availability</TableCell>
+
                 <TableCell sx={{ fontWeight: 700, py: 1 }}>Ping Dropped Time</TableCell>
                 <TableCell sx={{ fontWeight: 700, py: 1 }}>Last Check</TableCell>
                 {canUpdate || canDelete ? <TableCell sx={{ fontWeight: 700, py: 1 }} align="center">Actions</TableCell> : null}
@@ -588,9 +588,7 @@ const ServerPingMonitoring: React.FC = () => {
                   <TableCell sx={{ py: 0.75 }}>
                     {srv.status === 'DOWN' ? '--' : `${srv.responseTimeMs} ms`}
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 700, color: srv.availabilityPct > 99 ? '#10b981' : '#f59e0b', py: 0.75 }}>
-                    {srv.availabilityPct}%
-                  </TableCell>
+
                   <TableCell sx={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 500, py: 0.75 }}>
                     {srv.lastFailedTime ? new Date(srv.lastFailedTime).toLocaleString() : '--'}
                   </TableCell>
@@ -741,6 +739,7 @@ const ServerPingMonitoring: React.FC = () => {
               <MenuItem value="ping">ICMP Ping Only</MenuItem>
               <MenuItem value="port">TCP Port Only</MenuItem>
               <MenuItem value="both">Ping + Port Monitoring</MenuItem>
+              <MenuItem value="heartbeat">Heartbeat Agent</MenuItem>
             </Select>
           </FormControl>
           
