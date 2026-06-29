@@ -69,7 +69,7 @@ export const playBeep = (volume: number = 0.5) => {
     if (!ctx) return;
 
     if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
+      ctx.resume().catch(() => { });
     }
 
     const osc = ctx.createOscillator();
@@ -155,9 +155,9 @@ export const NotificationPollerProvider: React.FC<{ children: React.ReactNode }>
   const { users = [] } = useSelector((state: RootState) => state.users || { users: [] });
 
   const canView = isAuthenticated && (
-    isSuperuser || 
-    hasPrivilege(PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW) || 
-    hasPrivilege(PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW_DEPT) || 
+    isSuperuser ||
+    hasPrivilege(PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW) ||
+    hasPrivilege(PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW_DEPT) ||
     hasPrivilege(PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW_OWN)
   );
 
@@ -496,12 +496,12 @@ export const NotificationPollerProvider: React.FC<{ children: React.ReactNode }>
         knownRequestIdsRef.current = new Set([...requestIds, ...storedRequestIds]);
         knownAnnouncementIdsRef.current = new Set([...announcementIds, ...storedAnnouncementIds]);
         knownPeriodicActivityIdsRef.current = new Set([...periodicActivityIds, ...storedPeriodicIds]);
-        
+
         saveStoredAlertedIds('alerted_work_ids', knownWorkIdsRef.current);
         saveStoredAlertedIds('alerted_request_ids', knownRequestIdsRef.current);
         saveStoredAlertedIds('alerted_announcement_ids', knownAnnouncementIdsRef.current);
         saveStoredAlertedIds('alerted_periodic_ids', knownPeriodicActivityIdsRef.current);
-        
+
         isInitialLoadRef.current = false;
       } else {
         let hasNewWork = false;

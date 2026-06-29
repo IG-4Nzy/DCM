@@ -150,7 +150,7 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, period, o
         users.forEach(u => {
             usernameMap.set(u.username, u);
             if (u.passNumber) {
-                passMap.set(u.passNumber.trim(), u);
+                passMap.set(u.passNumber.replace(/\s+/g, ''), u);
             }
         });
 
@@ -196,7 +196,7 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, period, o
                 return k ? csvRow[k] : undefined;
             };
 
-            const passNum = (getCol('enrollment') || getCol('enrollmentId'))?.trim();
+            const passNum = (getCol('enrollment') || getCol('enrollmentId'))?.toString().replace(/\s+/g, '');
             if (!passNum) return;
 
             const user = passMap.get(passNum);
@@ -312,7 +312,7 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, period, o
                     <Typography variant="body2">{row.fullName}</Typography>
                     {row.passNumber && (
                         <Typography variant="caption" color="textSecondary">
-                            Pass: {row.passNumber}
+                            Pass: {row.passNumber.trim()}
                         </Typography>
                     )}
                 </Box>

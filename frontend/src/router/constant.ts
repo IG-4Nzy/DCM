@@ -32,4 +32,5 @@ export const ROUTE_CONSTANTS = {
     IP_LIST: "/ip-list",
     SERVER_DETAILS: "/server-details",
     SERVER_PING_MONITORING: "/server-ping-monitoring",
+    PHONE_DIRECTORY: "/phone-directory",
 }

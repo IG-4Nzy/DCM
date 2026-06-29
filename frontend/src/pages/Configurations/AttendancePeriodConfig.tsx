@@ -24,7 +24,7 @@ const AttendancePeriodConfig = () => {
     const [startDay, setStartDay] = useState<number | string>(1);
     const [endDay, setEndDay] = useState<number | string>(31);
     const [shiftStart, setShiftStart] = useState<string>('09:00');
-    const [lateGracePeriod, setLateGracePeriod] = useState<number>(30);
+    const [lateGracePeriod, setLateGracePeriod] = useState<number | string>(30);
     const [maxAllowedDays, setMaxAllowedDays] = useState<number | string>(26);
     const [shifts, setShifts] = useState<ShiftInfo[]>([]);
     const [rosterRows, setRosterRows] = useState<RosterRow[]>([]);
@@ -84,6 +84,10 @@ const AttendancePeriodConfig = () => {
         }
         if (maxAllowedDays < 1 || maxAllowedDays > 31) {
             showToast('Maximum allowed days must be between 1 and 31', 'warning');
+            return;
+        }
+        if (lateGracePeriod === '' || isNaN(parseInt(lateGracePeriod.toString())) || parseInt(lateGracePeriod.toString()) < 0) {
+            showToast('Late grace period must be a valid positive number', 'warning');
             return;
         }
 
@@ -203,19 +207,26 @@ const AttendancePeriodConfig = () => {
                             />
                         </Grid>
                         <Grid size={{xs: 12, sm: 4}}   >
-                            <FormControl fullWidth>
-                                <InputLabel>Late Grace Period</InputLabel>
-                                <Select
-                                    value={lateGracePeriod}
-                                    label="Late Grace Period"
-                                    onChange={(e) => setLateGracePeriod(parseInt(e.target.value.toString()))}
-                                    disabled={!hasUpdate || saving}
-                                >
-                                    <MenuItem value={30}>30 Minutes</MenuItem>
-                                    <MenuItem value={60}>60 Minutes</MenuItem>
-                                    <MenuItem value={90}>90 Minutes</MenuItem>
-                                </Select>
-                            </FormControl>
+                            <TextField
+                                label="Late Grace Period (Minutes)"
+                                type="number"
+                                fullWidth
+                                slotProps={{ htmlInput: { min: 0 } }}
+                                value={lateGracePeriod}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === '') {
+                                        setLateGracePeriod('');
+                                    } else {
+                                        const parsedVal = parseInt(val);
+                                        if (!isNaN(parsedVal)) {
+                                            setLateGracePeriod(Math.max(0, parsedVal));
+                                        }
+                                    }
+                                }}
+                                disabled={!hasUpdate || saving}
+                                helperText="Allowed minutes before marked late"
+                            />
                         </Grid>
                         <Grid size={{xs: 12, sm: 4}}   >
                             <TextField

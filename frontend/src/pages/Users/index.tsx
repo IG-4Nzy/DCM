@@ -207,7 +207,7 @@ const Users: React.FC = () => {
           department: formDepartment,
           isDepartmentHead: formIsDepartmentHead,
           replacementFor: formReplacementFor || null,
-          passNumber: formPassNumber || undefined,
+          passNumber: formPassNumber ? formPassNumber.trim() : undefined,
         };
         if (formPassword) {
           payload.password = formPassword;
@@ -231,7 +231,7 @@ const Users: React.FC = () => {
               department: formDepartment,
               isDepartmentHead: formIsDepartmentHead,
               replacementFor: formReplacementFor || null,
-              passNumber: formPassNumber || undefined,
+              passNumber: formPassNumber ? formPassNumber.trim() : undefined,
             },
             showToast,
           }),

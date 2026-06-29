@@ -37,4 +37,5 @@ export default {
   operationLogs: "Operation Logs",
   ipList: "IP List",
   racks: "Racks",
+  phoneDirectory: "Phone Directory",
 };

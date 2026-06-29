@@ -105,18 +105,23 @@ const MorningChecklist: React.FC = () => {
     const todayStr = getServerTime().format('YYYY-MM-DD');
     const isToday = chk.date === todayStr;
     const isFuture = dayjs(chk.date).isAfter(todayStr, 'day');
+    const diffDays = Math.abs(dayjs(todayStr).diff(dayjs(chk.date), 'day'));
     const isCompleted = chk.status === 'Completed';
 
     if (isSuperuser) {
       return !isFuture;
     }
 
-    if (isCompleted) {
-      const completer = chk.completedBy || chk.createdBy;
-      return completer === username && isToday;
+    if (diffDays > 1) {
+      return false;
     }
 
-    if (isToday) {
+    if (isCompleted) {
+      const completer = chk.completedBy || chk.createdBy;
+      return completer === username && diffDays <= 1;
+    }
+
+    if (isToday || diffDays <= 1) {
       return true;
     }
     return false;

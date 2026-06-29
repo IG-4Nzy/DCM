@@ -306,10 +306,15 @@ const ClusterChecklist: React.FC = () => {
     const todayStr = getServerTime().format('YYYY-MM-DD');
     const isToday = chk.date === todayStr;
     const isFuture = dayjs(chk.date).isAfter(todayStr, 'day');
+    const diffDays = Math.abs(dayjs(todayStr).diff(dayjs(chk.date), 'day'));
     const isCompleted = chk.status === 'Completed';
 
     if (isSuperuser) {
       return !isFuture;
+    }
+
+    if (diffDays > 1) {
+      return false;
     }
 
     if (isCompleted) {
@@ -317,7 +322,7 @@ const ClusterChecklist: React.FC = () => {
       return completer === username;
     }
 
-    if (isToday) {
+    if (isToday || diffDays <= 1) {
       return true;
     }
     return false;
@@ -325,15 +330,22 @@ const ClusterChecklist: React.FC = () => {
 
   const isViewOnlyMode = useMemo(() => {
     if (!checklist) return false;
+    const todayStr = getServerTime().format('YYYY-MM-DD');
+    const diffDays = Math.abs(dayjs(todayStr).diff(dayjs(checklist.date), 'day'));
+
     if (isSuperuser) {
       return isFutureDaySelected;
+    }
+
+    if (diffDays > 1) {
+      return true;
     }
     if (checklist.status === 'Completed') {
       const completer = checklist.completedBy || checklist.createdBy;
       return completer !== username;
     }
     if (isFutureDaySelected) return true;
-    if (isPastDaySelected) return true;
+    if (isPastDaySelected && diffDays > 1) return true;
 
     return false;
   }, [checklist, isFutureDaySelected, isPastDaySelected, isSuperuser, username]);

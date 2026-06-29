@@ -21,159 +21,169 @@ interface PropType {
 }
 
 const PRIVILEGE_GROUPS: { [category: string]: string[] } = {
-  "Dashboard & Server Monitoring": [
-    "View Dashboard",
-    "View Server Monitoring",
-    "Create Server Monitoring",
-    "Update Server Monitoring",
-    "Delete Server Monitoring",
-    "View Server Ping Monitoring",
-    "Create Server Ping Monitoring",
-    "Update Server Ping Monitoring",
-    "Delete Server Ping Monitoring"
-  ],
-  "Users & Roles": [
-    "View All Users",
-    "View Department Users",
-    "Create User",
-    "Update User",
-    "Delete User",
-    "View Role",
-    "Create Role",
-    "Update Role",
-    "Delete Role"
-  ],
-  "BMS Checklist": [
-    "View BMS Checklist",
-    "View All Department BMS Checklist",
-    "Create BMS Checklist",
-    "Update BMS Checklist",
-    "Delete BMS Checklist",
-    "Edit BMS Checklist Field"
-  ],
-  "Morning Checklist": [
-    "View Morning Checklist",
-    "Create Morning Checklist",
-    "Update Morning Checklist",
-    "Delete Morning Checklist",
-    "Edit Morning Checklist Field"
-  ],
-  "Cluster Checklist": [
-    "View Cluster Checklist",
-    "View All Department Cluster Checklist",
-    "Create Cluster Checklist",
-    "Update Cluster Checklist",
-    "Delete Cluster Checklist",
-    "Edit Cluster Checklist Field"
-  ],
-  "Roaster & Attendance": [
-    "View Roaster",
-    "Create Roaster",
-    "Update Roaster",
-    "Delete Roaster",
-    "Approve Roaster",
-    "View Self Attendance",
-    "View Departmental Attendance",
-    "View All Attendance",
-    "Create Attendance",
-    "Update Attendance",
-    "Delete Attendance",
-    "Attendance Verify",
-    "View Attendance Verification"
-  ],
-  "Work & Departments": [
-    "View All Work",
-    "View Assigned Work",
-    "Create Work",
-    "Update Work",
-    "Delete Work",
-    "View Department",
-    "Create Department",
-    "Update Department",
-    "Delete Department"
-  ],
-  "Observations": [
-    "View Observations",
-    "View All Department Observations",
-    "Create Observation",
-    "Update Observation",
-    "Delete Observation",
-    "View Observation Category",
-    "Create Observation Category",
-    "Update Observation Category",
-    "Delete Observation Category"
-  ],
-  "Inventory": [
-    "View All Inventory",
-    "View Department Inventory",
-    "Create Inventory",
-    "Update Inventory",
-    "Delete Inventory"
-  ],
-  "Configurations & Virtualization": [
-    "View Configurations",
-    "Create Configuration",
-    "Update Configurations",
-    "Delete Configurations",
-    "View Server Details",
-    "Create Server Details",
-    "Update Server Details",
-    "Delete Server Details",
-    "View Cluster",
-    "Create Cluster",
-    "Update Cluster",
-    "Delete Cluster"
-  ],
-  "Requests & Search": [
-    "View Request",
-    "Create Request",
-    "Update Request",
-    "Delete Request",
-    "View Search"
-  ],
-  "Documentations": [
-    "View Documentation",
-    "Create Documentation",
-    "Update Documentation",
-    "Delete Documentation"
-  ],
-  "Periodic Activities": [
-    "View Periodic Activity",
-    "Create Periodic Activity",
-    "Update Periodic Activity",
-    "Delete Periodic Activity"
-  ],
-  "Announcements": [
-    "View Announcements",
-    "Create Announcement",
-    "Update Announcement",
-    "Delete Announcement"
-  ],
-  "Notification Triggering": [
-    "View Notification Triggering"
-  ],
-  "Operation & Audit Logs": [
-    "View Logs",
-    "Create Log",
-    "Update Log",
-    "Delete Log",
-    "View Audit Logs"
-  ]
+    "Dashboard & Server Monitoring": [
+        "View Dashboard",
+        "View Server Monitoring",
+        "Create Server Monitoring",
+        "Update Server Monitoring",
+        "Delete Server Monitoring",
+        "View Server Ping Monitoring",
+        "Create Server Ping Monitoring",
+        "Update Server Ping Monitoring",
+        "Delete Server Ping Monitoring"
+    ],
+    "Users & Roles": [
+        "View All Users",
+        "View Department Users",
+        "Create User",
+        "Update User",
+        "Delete User",
+        "View Role",
+        "Create Role",
+        "Update Role",
+        "Delete Role"
+    ],
+    "BMS Checklist": [
+        "View BMS Checklist",
+        "View All Department BMS Checklist",
+        "Create BMS Checklist",
+        "Update BMS Checklist",
+        "Delete BMS Checklist",
+        "Edit BMS Checklist Field"
+    ],
+    "Morning Checklist": [
+        "View Morning Checklist",
+        "Create Morning Checklist",
+        "Update Morning Checklist",
+        "Delete Morning Checklist",
+        "Edit Morning Checklist Field"
+    ],
+    "Cluster Checklist": [
+        "View Cluster Checklist",
+        "View All Department Cluster Checklist",
+        "Create Cluster Checklist",
+        "Update Cluster Checklist",
+        "Delete Cluster Checklist",
+        "Edit Cluster Checklist Field"
+    ],
+    "Roaster & Attendance": [
+        "View Roaster",
+        "Create Roaster",
+        "Update Roaster",
+        "Delete Roaster",
+        "Approve Roaster",
+        "View Self Attendance",
+        "View Departmental Attendance",
+        "View All Attendance",
+        "Create Attendance",
+        "Update Attendance",
+        "Delete Attendance",
+        "Attendance Verify",
+        "View Attendance Verification"
+    ],
+    "Work & Departments": [
+        "View All Work",
+        "View Assigned Work",
+        "Create Work",
+        "Update Work",
+        "Delete Work",
+        "View Department",
+        "Create Department",
+        "Update Department",
+        "Delete Department"
+    ],
+    "Observations": [
+        "View Observations",
+        "View All Department Observations",
+        "Create Observation",
+        "Update Observation",
+        "Delete Observation",
+        "View Observation Category",
+        "Create Observation Category",
+        "Update Observation Category",
+        "Delete Observation Category"
+    ],
+    "Inventory": [
+        "View All Inventory",
+        "View Department Inventory",
+        "Create Inventory",
+        "Update Inventory",
+        "Delete Inventory"
+    ],
+    "Configurations & Virtualization": [
+        "View Configurations",
+        "Create Configuration",
+        "Update Configurations",
+        "Delete Configurations",
+        "View Server Details",
+        "Create Server Details",
+        "Update Server Details",
+        "Delete Server Details",
+        "View Cluster",
+        "Create Cluster",
+        "Update Cluster",
+        "Delete Cluster"
+    ],
+    "Requests & Search": [
+        "View Request",
+        "Create Request",
+        "Update Request",
+        "Delete Request",
+        "View Search"
+    ],
+    "Documentations": [
+        "View Documentation",
+        "Create Documentation",
+        "Update Documentation",
+        "Delete Documentation"
+    ],
+    "Periodic Activities": [
+        "View Periodic Activity",
+        "Create Periodic Activity",
+        "Update Periodic Activity",
+        "Delete Periodic Activity"
+    ],
+    "Announcements": [
+        "View Announcements",
+        "Create Announcement",
+        "Update Announcement",
+        "Delete Announcement"
+    ],
+    "Notification Triggering": [
+        "View Notification Triggering"
+    ],
+    "Operation & Audit Logs": [
+        "View Logs",
+        "Create Log",
+        "Update Log",
+        "Delete Log",
+        "View Audit Logs"
+    ],
+    "Network & Phone": [
+        "View IP List",
+        "Create IP List",
+        "Update IP List",
+        "Delete IP List",
+        "View Phone Directory",
+        "Create Phone Directory",
+        "Update Phone Directory",
+        "Delete Phone Directory"
+    ]
 };
 
-const RoleFormModal = ({ 
-    isModalOpen, 
-    handleCloseModal, 
-    editingRole, 
-    formName, 
-    setFormName, 
-    formStatus, 
-    setFormStatus, 
-    formPrivileges = [], 
-    setFormPrivileges, 
+const RoleFormModal = ({
+    isModalOpen,
+    handleCloseModal,
+    editingRole,
+    formName,
+    setFormName,
+    formStatus,
+    setFormStatus,
+    formPrivileges = [],
+    setFormPrivileges,
     availablePrivileges = [],
-    handleSubmit 
-}:PropType) => {
+    handleSubmit
+}: PropType) => {
 
     const safeFormPrivileges = formPrivileges || [];
     const safeAvailablePrivileges = availablePrivileges || [];
@@ -233,18 +243,18 @@ const RoleFormModal = ({
                         </Select>
                     </FormControl>
                 </div>
-                
+
                 <Box sx={{ mt: 2, mb: 1 }}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#334155', mb: 1 }}>
                         Permissions / Privileges (Grouped by Module)
                     </Typography>
-                    
-                    <Box sx={{ 
-                        maxHeight: '400px', 
-                        overflowY: 'auto', 
+
+                    <Box sx={{
+                        maxHeight: '400px',
+                        overflowY: 'auto',
                         pr: 1.5,
-                        display: 'flex', 
-                        flexDirection: 'column', 
+                        display: 'flex',
+                        flexDirection: 'column',
                         gap: 2.5,
                         '&::-webkit-scrollbar': { width: '6px' },
                         '&::-webkit-scrollbar-thumb': { bgcolor: '#cbd5e1', borderRadius: '3px' }
@@ -258,12 +268,12 @@ const RoleFormModal = ({
                             const isSomeSelected = selectedInGroup.length > 0 && !isAllSelected;
 
                             return (
-                                <Paper 
-                                    key={groupName} 
-                                    variant="outlined" 
-                                    sx={{ 
-                                        p: 2, 
-                                        borderRadius: '8px', 
+                                <Paper
+                                    key={groupName}
+                                    variant="outlined"
+                                    sx={{
+                                        p: 2,
+                                        borderRadius: '8px',
                                         borderColor: '#e2e8f0',
                                         background: '#f8fafc'
                                     }}
@@ -288,7 +298,7 @@ const RoleFormModal = ({
                                     <Divider sx={{ mb: 1.5, borderColor: '#e2e8f0' }} />
                                     <Grid container spacing={1.5}>
                                         {activeGroupPrivs.map((priv) => (
-                                            <Grid size={{xs: 12, sm: 6}}    key={priv}>
+                                            <Grid size={{ xs: 12, sm: 6 }} key={priv}>
                                                 <FormControlLabel
                                                     control={
                                                         <Checkbox
@@ -298,7 +308,7 @@ const RoleFormModal = ({
                                                         />
                                                     }
                                                     label={<span style={{ fontSize: '0.825rem', color: '#334155' }}>{priv}</span>}
-                                                    sx={{ 
+                                                    sx={{
                                                         width: '100%',
                                                         margin: 0,
                                                         p: '2px 4px',

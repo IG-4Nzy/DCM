@@ -95,7 +95,7 @@ export const SIDEBAR_OPTIONS = [
         label: wordings.attendance,
         icon: Icons.AttendanceIcon,
         route: ROUTE_CONSTANTS.ATTENDANCE,
-        privileges: [PRIVILEGES.VIEW_DEPARTMENTAL_ATTENDACE,PRIVILEGES.VIEW_SELF_ATTENDANCE,PRIVILEGES.VIEW_ALL_ATTENDACE ,PRIVILEGES.ATTENDANCE_CREATE, PRIVILEGES.ATTENDANCE_UPDATE, PRIVILEGES.ATTENDANCE_DELETE, PRIVILEGES.ATTENDANCE_VERIFY, PRIVILEGES.VIEW_ATTENDANCE_VERIFICATION]
+        privileges: [PRIVILEGES.VIEW_DEPARTMENTAL_ATTENDACE, PRIVILEGES.VIEW_SELF_ATTENDANCE, PRIVILEGES.VIEW_ALL_ATTENDACE, PRIVILEGES.ATTENDANCE_CREATE, PRIVILEGES.ATTENDANCE_UPDATE, PRIVILEGES.ATTENDANCE_DELETE, PRIVILEGES.ATTENDANCE_VERIFY, PRIVILEGES.VIEW_ATTENDANCE_VERIFICATION]
     },
     {
         label: wordings.documentations,
@@ -119,7 +119,7 @@ export const SIDEBAR_OPTIONS = [
         label: wordings.visitorLogs,
         icon: Icons.VisitorLogsIcon,
         route: ROUTE_CONSTANTS.VISITOR_LOGS,
-        privileges: [PRIVILEGES.VISITOR_LOGS_VIEW, PRIVILEGES.VISITOR_LOGS_CREATE, PRIVILEGES.VISITOR_LOGS_UPDATE, PRIVILEGES.VISITOR_LOGS_DELETE   ]
+        privileges: [PRIVILEGES.VISITOR_LOGS_VIEW, PRIVILEGES.VISITOR_LOGS_CREATE, PRIVILEGES.VISITOR_LOGS_UPDATE, PRIVILEGES.VISITOR_LOGS_DELETE]
     },
     {
         label: wordings.periodicActivities,
@@ -133,16 +133,16 @@ export const SIDEBAR_OPTIONS = [
         route: ROUTE_CONSTANTS.ANNOUNCEMENTS,
         privileges: [PRIVILEGES.ANNOUNCEMENT_VIEW, PRIVILEGES.ANNOUNCEMENT_CREATE, PRIVILEGES.ANNOUNCEMENT_UPDATE, PRIVILEGES.ANNOUNCEMENT_DELETE]
     },
-    {
-        label: wordings.notificationTriggering,
-        icon: Icons.NotificationsActiveIcon,
-        route: ROUTE_CONSTANTS.NOTIFICATION_TRIGGERING,
-        privileges: [
-            PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW,
-            PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW_DEPT,
-            PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW_OWN
-        ]
-    },
+    // {
+    //     label: wordings.notificationTriggering,
+    //     icon: Icons.NotificationsActiveIcon,
+    //     route: ROUTE_CONSTANTS.NOTIFICATION_TRIGGERING,
+    //     privileges: [
+    //         PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW,
+    //         PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW_DEPT,
+    //         PRIVILEGES.NOTIFICATION_TRIGGERING_VIEW_OWN
+    //     ]
+    // },
     {
         label: wordings.operationLogs,
         icon: Icons.LogsIcon,
@@ -154,5 +154,11 @@ export const SIDEBAR_OPTIONS = [
         icon: Icons.IpListIcon,
         route: ROUTE_CONSTANTS.IP_LIST,
         privileges: [PRIVILEGES.IP_LIST_VIEW]
+    },
+    {
+        label: wordings.phoneDirectory,
+        icon: Icons.SearchIcon,
+        route: ROUTE_CONSTANTS.PHONE_DIRECTORY,
+        privileges: [PRIVILEGES.PHONE_DIRECTORY_VIEW]
     }
 ]
