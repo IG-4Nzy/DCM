@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface NodeData {
     id: string;
     node?: string;

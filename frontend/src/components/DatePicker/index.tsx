@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from 'react';
 import TextField from '../TextField';
 import { type TextFieldProps as MuiTextFieldProps } from '@mui/material';

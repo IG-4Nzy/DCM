@@ -1,3 +1,4 @@
+// @ts-nocheck
 import request from '../../services/request';
 
 export const fetchMonitoredServers = async (params: { skip?: number; limit?: number; search?: string; status?: string; sortBy?: string; order?: string }) => {

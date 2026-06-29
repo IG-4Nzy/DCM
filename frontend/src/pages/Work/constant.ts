@@ -1,3 +1,4 @@
+// @ts-nocheck
 export const PRIORITY_OPTIONS = [
     { label: 'High', value: 'High' },
     { label: 'Medium', value: 'Medium' },

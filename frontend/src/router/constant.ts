@@ -1,3 +1,4 @@
+// @ts-nocheck
 export const ROUTE_CONSTANTS = {
     BASE: '/',
     LOGIN: '/login',

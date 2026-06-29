@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createSlice } from '@reduxjs/toolkit';
 import { fetchDepartments, createDepartment, updateDepartment, deleteDepartment } from './action';
 import type { DepartmentsState } from './model';

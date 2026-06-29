@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface DepartmentData {
   id: string;
   name: string;

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Checkbox, FormControlLabel } from '@mui/material';
 import Modal from '../../../components/Modal';

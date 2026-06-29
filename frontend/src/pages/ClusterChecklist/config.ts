@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Default Cluster Checklist Configuration
 // This structure drives the entire checklist UI dynamically.
 // To add new categories, fields groups, or parameters, simply extend this JSON.

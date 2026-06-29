@@ -248,7 +248,7 @@ class ServerPingScheduler:
                 ping_ok = curr_ping_ok
                 ports_ok = curr_ports_ok
                 if attempt < retry_count - 1:
-                    await asyncio.sleep(1.0) # short gap before retry
+                    await asyncio.sleep(0.2) # short gap before retry
 
         # Determine target state
         if mon_type == "both":
@@ -479,7 +479,49 @@ class ServerPingScheduler:
         recipient = config.get("recipientEmail")
         if not recipient:
             return
+        
+        smtp_host = config.get("smtpHost", "smtp.gmail.com")
+        smtp_port = int(config.get("smtpPort", 587))
+        smtp_user = config.get("smtpUser", "")
+        smtp_pass = config.get("smtpPassword", "")
+        sender_email = config.get("senderEmail", smtp_user or "alerts@dcm.local")
+
         logger.info(f"[Email Alert] Sending to {recipient}: Server {name} ({ip}) changed from {from_st} to {to_st}. Message: {msg}")
+
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        def do_send():
+            message = MIMEMultipart()
+            message["From"] = sender_email
+            message["To"] = recipient
+            message["Subject"] = f"🚨 DCM ALERT: Server {name} is {to_st} 🚨"
+            
+            body = f"Server Name: {name}\nIP Address: {ip}\nStatus Change: {from_st} -> {to_st}\nDetails: {msg}\n\nPlease check the DCM dashboard for more details."
+            message.attach(MIMEText(body, "plain"))
+
+            try:
+                # Use context manager for SMTP connection
+                if smtp_port in (465,):
+                    with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10) as server:
+                        if smtp_user and smtp_pass:
+                            server.login(smtp_user, smtp_pass)
+                        server.send_message(message)
+                else:
+                    with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
+                        server.ehlo()
+                        if smtp_port == 587:
+                            server.starttls()
+                            server.ehlo()
+                        if smtp_user and smtp_pass:
+                            server.login(smtp_user, smtp_pass)
+                        server.send_message(message)
+                logger.info(f"Email sent successfully to {recipient}")
+            except Exception as e:
+                logger.error(f"Failed to send email to {recipient}: {e}")
+
+        await asyncio.get_event_loop().run_in_executor(None, do_send)
 
     async def _send_webhook(self, config: dict, name: str, ip: str, from_st: str, to_st: str, msg: str):
         webhook_url = config.get("webhookUrl")

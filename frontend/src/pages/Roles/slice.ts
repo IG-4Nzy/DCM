@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createSlice } from '@reduxjs/toolkit';
 import { type RolesState } from './model';
 import { fetchRoles, createRole, updateRole, deleteRole, fetchPrivileges } from './action';

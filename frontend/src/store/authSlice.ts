@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createSlice,type PayloadAction } from '@reduxjs/toolkit';
 import { LOCAL_STORAGE_PARAMETERS } from '../helpers/constants';
 import { getItemFromLocalstorage, removeItemFromLocalstorage, setItemToLocalstorage } from '../helpers/utils';

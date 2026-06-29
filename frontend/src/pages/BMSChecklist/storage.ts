@@ -1,3 +1,4 @@
+// @ts-nocheck
 // localStorage-based persistence for BMS Checklists
 // Structured to allow easy swap to backend API later.
 

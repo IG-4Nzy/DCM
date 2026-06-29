@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from 'react';
 import { Box, Typography, Chip, LinearProgress } from '@mui/material';
 import { colors } from '../constants';

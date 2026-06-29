@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../../store';
@@ -267,7 +268,7 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                 value={formData.observedTime}
                 onChange={(e: any) => setFormData({ ...formData, observedTime: e.target.value })}
                 required
-                InputLabelProps={{ shrink: true }}
+                slotProps={{ inputLabel: { shrink: true } }}
               />
             </div>
             

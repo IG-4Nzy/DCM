@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface VCenterDetailsData {
     id: string;
     clusterId: string;

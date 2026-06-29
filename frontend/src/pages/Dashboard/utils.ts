@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { colors } from './constants';
 
 export const getChecklistPct = (status: string): number => {

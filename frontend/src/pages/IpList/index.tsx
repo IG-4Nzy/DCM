@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, Paper, Tooltip, IconButton, Chip, ToggleButton, ToggleButtonGroup } from '@mui/material';

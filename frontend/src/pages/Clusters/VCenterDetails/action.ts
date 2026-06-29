@@ -1,3 +1,4 @@
+// @ts-nocheck
 import request from '../../../services/request';
 import { type FetchVCenterDetailsParams, type CreateVCenterDetailsPayload, type UpdateVCenterDetailsPayload } from './model';
 

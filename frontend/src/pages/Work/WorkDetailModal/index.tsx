@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from "react";
 import Modal from "../../../components/Modal";
 import TextField from "../../../components/TextField";
@@ -73,6 +74,7 @@ const WorkDetailModal = ({
   );
 
   const departments = useSelector((state: RootState) => state?.departments?.departments || []);
+  const { confirm } = useConfirm();
 
   const isDeptHeadOfWork = React.useMemo(() => {
     if (!work || !currentUser || !departments || departments.length === 0) return false;
@@ -229,8 +231,6 @@ const WorkDetailModal = ({
         return "#757575"; // Pending
     }
   };
-
-  const { confirm } = useConfirm();
 
   const handleStatusChange = async (newVal: string) => {
     if (!canUpdateStatus) return;

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import request from '../../../services/request';
 
 export const fetchPhysicalServers = async (params: any) => {

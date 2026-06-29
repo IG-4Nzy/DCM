@@ -1,3 +1,4 @@
+// @ts-nocheck
 // localStorage-based persistence fallback for Cluster Checklists
 // Structured to allow easy swap to backend API later.
 

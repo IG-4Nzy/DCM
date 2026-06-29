@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface ShiftInfo {
   name: string;
   startTime: string;

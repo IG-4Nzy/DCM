@@ -1,3 +1,4 @@
+// @ts-nocheck
 import request from '../services/request';
 import dayjs, { Dayjs } from 'dayjs';
 

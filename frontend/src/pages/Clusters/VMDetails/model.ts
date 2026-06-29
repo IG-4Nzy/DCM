@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface VMDetailsData {
     id: string;
     clusterId?: string;

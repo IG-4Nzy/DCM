@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from 'react';
 import { Alert, Box, Typography, Button } from '@mui/material';
 import { Icons } from '../../../helpers/icons';

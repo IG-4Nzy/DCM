@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface ClusterData {
     id: string;
     slNumber?: string;

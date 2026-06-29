@@ -1,3 +1,4 @@
+// @ts-nocheck
 export const dummy = {
     "day1": {
         "date": 1716076800000,

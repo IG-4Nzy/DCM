@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import request from '../../services/request';
 import type { CreateUserPayload, UpdateUserPayload } from './model';

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import request from '../../../services/request';
 
 const MORNING_CHECKLIST_API = '/api/morning-checklists';

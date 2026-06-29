@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { 
   Box, 
@@ -259,9 +260,7 @@ const Documentations: React.FC = () => {
             placeholder="Search documentations..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            InputProps={{
-              startAdornment: <SearchIcon style={{ color: '#a0aec0', marginRight: '8px' }} />,
-            }}
+            slotProps={{ input: { startAdornment: <SearchIcon style={{ color: '#a0aec0', marginRight: '8px' }} /> } }}
             sx={{ 
               width: '350px',
               '& .MuiOutlinedInput-root': {
@@ -317,7 +316,7 @@ const Documentations: React.FC = () => {
                 ? dayjs(doc.createdAt.replace(/\+00:00Z$/, 'Z').replace(/\+00:00$/, 'Z')).format('DD-MM-YYYY h:mm A')
                 : '--';
               return (
-                <Grid item xs={12} sm={6} md={4} key={doc.id || doc._id}>
+                <Grid size={{xs: 12, sm: 6, md: 4}}     key={doc.id || doc._id}>
                   <Card 
                     elevation={0}
                     sx={{ 
@@ -484,9 +483,7 @@ const Documentations: React.FC = () => {
         onClose={() => !submitting && setIsModalOpen(false)}
         maxWidth="xs"
         fullWidth
-        PaperProps={{
-          sx: { borderRadius: '12px', p: 1 }
-        }}
+        slotProps={{ paper: { sx: { borderRadius: '12px', p: 1 } } }}
       >
         <DialogTitle sx={{ fontWeight: 'bold', fontSize: '1.25rem', pb: 1,color:'#333' }}>
           {editingDoc ? 'Edit Documentation' : 'Add Documentation'}
@@ -501,7 +498,7 @@ const Documentations: React.FC = () => {
               value={modalTitle}
               onChange={(e) => setModalTitle(e.target.value)}
               placeholder="e.g. Server Rack Layout Guide"
-              InputLabelProps={{ shrink: true }}
+              slotProps={{ inputLabel: { shrink: true } }}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
             />
 

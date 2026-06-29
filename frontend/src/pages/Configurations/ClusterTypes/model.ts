@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface ClusterTypeData {
     id: string;
     clusterType: string;

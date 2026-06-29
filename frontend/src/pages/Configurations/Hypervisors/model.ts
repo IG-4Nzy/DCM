@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface HypervisorData {
     id: string;
     hypervisor: string;

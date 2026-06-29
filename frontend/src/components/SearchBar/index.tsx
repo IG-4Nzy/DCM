@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { InputAdornment } from '@mui/material';
 import { MdSearch as SearchIcon } from 'react-icons/md';

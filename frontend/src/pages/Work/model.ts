@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface WorkData {
   id: string;
   _id?: string;

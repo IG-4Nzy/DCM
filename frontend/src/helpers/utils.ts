@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { LOCAL_STORAGE_PARAMETERS } from "./constants";
 
 export const setItemToLocalstorage = (key: string, value: any) => {

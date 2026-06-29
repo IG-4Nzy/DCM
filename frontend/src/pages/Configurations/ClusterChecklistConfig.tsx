@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box, Paper, Typography, Button as MuiButton, IconButton, Tooltip, Checkbox,

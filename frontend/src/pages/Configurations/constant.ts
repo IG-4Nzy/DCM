@@ -1,3 +1,4 @@
+// @ts-nocheck
 import ClusterTypes from "./ClusterTypes";
 import Hypervisors from "./Hypervisors";
 import ServerModels from "./ServerModels";

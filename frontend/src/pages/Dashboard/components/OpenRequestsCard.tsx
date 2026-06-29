@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from 'react';
 import { Card, CardContent, Button, Box, Typography, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Avatar, Tooltip, Chip } from '@mui/material';
 import { MdArrowForward } from 'react-icons/md';

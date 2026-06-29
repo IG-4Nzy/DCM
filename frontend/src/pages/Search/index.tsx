@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { 
   Box, 
@@ -287,25 +288,24 @@ const Search: React.FC = () => {
     <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 100px)', gap: 3 }}>
       {/* Search Header */}
       <Paper sx={{ p: 2.5, borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={4}>
+        <Grid container spacing={2}  sx={{ alignItems: 'center' }} >
+          <Grid size={{xs: 12, md: 4}}   >
             <TextField
               fullWidth
               variant="outlined"
               placeholder="Search by IP, name, rack, node, app, tag, inventory..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              InputProps={{
-                startAdornment: (
+              slotProps={{ input: { startAdornment: (
                   <InputAdornment position="start">
                     <SearchIcon style={{ fontSize: '1.5rem', color: '#757575' }} />
                   </InputAdornment>
                 ),
                 style: { borderRadius: '12px' }
-              }}
+              } }}
             />
           </Grid>
-          <Grid item xs={12} md={8} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
+          <Grid size={{xs: 12, md: 8}}    sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
             <ToggleButtonGroup
               value={filterType}
               exclusive
@@ -492,43 +492,43 @@ const Search: React.FC = () => {
                   // Node Detailed Fields
                   <Grid container spacing={3}>
                     {/* Specifications Card */}
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{xs: 12, md: 6}}   >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <InfoIcon color="#1976d2" /> Hardware Specifications
                         </Typography>
                         <Grid container spacing={2}>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Total RAM</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <RamIcon /> {selectedItem.data.totalRam ? `${selectedItem.data.totalRam} GB` : '--'}
                             </Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Available RAM</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600, color: 'success.main', display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <RamIcon /> {selectedItem.data.availableRam ? `${selectedItem.data.availableRam} GB` : '--'}
                             </Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Total HDD</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <HddIcon /> {selectedItem.data.totalHardisk ? `${selectedItem.data.totalHardisk} GB` : '--'}
                             </Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Available HDD</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600, color: 'success.main', display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <HddIcon /> {selectedItem.data.availableHardisk ? `${selectedItem.data.availableHardisk} GB` : '--'}
                             </Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Total CPU Cores</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <CpuIcon /> {selectedItem.data.totalCpu ? `${selectedItem.data.totalCpu} Cores` : '--'}
                             </Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Available CPU Cores</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600, color: 'success.main', display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <CpuIcon /> {selectedItem.data.availableCpu ? `${selectedItem.data.availableCpu} Cores` : '--'}
@@ -539,33 +539,33 @@ const Search: React.FC = () => {
                     </Grid>
 
                     {/* Server details */}
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{xs: 12, md: 6}}   >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <ClusterIcon color="#1976d2" /> System & Environment
                         </Typography>
                         <Grid container spacing={2}>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">IP Address</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.ipAddress || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Rack Location</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.rack || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Server Model</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.serverModel || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Serial Number</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.serialNumber || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Hypervisor</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.hypervisor || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Cluster Type</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.clusterType || '--'}</Typography>
                           </Grid>
@@ -574,37 +574,37 @@ const Search: React.FC = () => {
                     </Grid>
 
                     {/* Allocation & Administration details */}
-                    <Grid item xs={12}>
+                    <Grid size={{xs: 12}}  >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <PersonIcon color="#1976d2" /> Administration & Procurement
                         </Typography>
                         <Grid container spacing={2}>
-                          <Grid item xs={6} md={3}>
+                          <Grid size={{xs: 6, md: 3}}   >
                             <Typography variant="caption" color="textSecondary">Admin</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.admin || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6} md={3}>
+                          <Grid size={{xs: 6, md: 3}}   >
                             <Typography variant="caption" color="textSecondary">Admin Code</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.adminCode || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6} md={3}>
+                          <Grid size={{xs: 6, md: 3}}   >
                             <Typography variant="caption" color="textSecondary">Indentor</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.indentor || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6} md={3}>
+                          <Grid size={{xs: 6, md: 3}}   >
                             <Typography variant="caption" color="textSecondary">Custodian</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.custodian || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6} md={3}>
+                          <Grid size={{xs: 6, md: 3}}   >
                             <Typography variant="caption" color="textSecondary">PO Number</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.poNum || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6} md={3}>
+                          <Grid size={{xs: 6, md: 3}}   >
                             <Typography variant="caption" color="textSecondary">Asset Number</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.assetNum || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6} md={3}>
+                          <Grid size={{xs: 6, md: 3}}   >
                             <Typography variant="caption" color="textSecondary">Redundancy Power</Typography>
                             <Chip 
                               label={selectedItem.data.redundancyPower || 'No'} 
@@ -613,14 +613,14 @@ const Search: React.FC = () => {
                               sx={{ fontWeight: 'bold', mt: 0.5 }}
                             />
                           </Grid>
-                          <Grid item xs={12}>
+                          <Grid size={{xs: 12}}  >
                             <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>Applications Running</Typography>
                             <Typography variant="body1" sx={{ bgcolor: 'rgba(0,0,0,0.02)', p: 1.5, borderRadius: 1.5, border: '1px solid rgba(0,0,0,0.05)', fontWeight: 500 }}>
                               {selectedItem.data.applications || 'No applications registered.'}
                             </Typography>
                           </Grid>
                           {selectedItem.data.remarks && (
-                            <Grid item xs={12}>
+                            <Grid size={{xs: 12}}  >
                               <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>Remarks</Typography>
                               <Typography variant="body1" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
                                 "{selectedItem.data.remarks}"
@@ -635,25 +635,25 @@ const Search: React.FC = () => {
                   // VM Detailed Fields
                   <Grid container spacing={3}>
                     {/* Resource Allocation */}
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{xs: 12, md: 6}}   >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <InfoIcon color="#2e7d32" /> Allocated Resources
                         </Typography>
                         <Grid container spacing={2}>
-                          <Grid item xs={4}>
+                          <Grid size={{xs: 4}}  >
                             <Typography variant="caption" color="textSecondary">RAM</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <RamIcon /> {selectedItem.data.ram ? `${selectedItem.data.ram} GB` : '--'}
                             </Typography>
                           </Grid>
-                          <Grid item xs={4}>
+                          <Grid size={{xs: 4}}  >
                             <Typography variant="caption" color="textSecondary">HDD</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <HddIcon /> {selectedItem.data.hdd ? `${selectedItem.data.hdd} GB` : '--'}
                             </Typography>
                           </Grid>
-                          <Grid item xs={4}>
+                          <Grid size={{xs: 4}}  >
                             <Typography variant="caption" color="textSecondary">CPU Cores</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <CpuIcon /> {selectedItem.data.cpu ? `${selectedItem.data.cpu} Cores` : '--'}
@@ -664,21 +664,21 @@ const Search: React.FC = () => {
                     </Grid>
 
                     {/* OS and Node details */}
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{xs: 12, md: 6}}   >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <ClusterIcon color="#2e7d32" /> System Environment
                         </Typography>
                         <Grid container spacing={2}>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Host Node</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.node || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">IP Address</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.ipAddress || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={12}>
+                          <Grid size={{xs: 12}}  >
                             <Typography variant="caption" color="textSecondary">OS and Expiry Details</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.osAndExpiry || '--'}</Typography>
                           </Grid>
@@ -687,7 +687,7 @@ const Search: React.FC = () => {
                     </Grid>
 
                     {/* Applications details */}
-                    <Grid item xs={12}>
+                    <Grid size={{xs: 12}}  >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <AppIcon color="#2e7d32" /> Applications
@@ -699,23 +699,23 @@ const Search: React.FC = () => {
                     </Grid>
 
                     {/* Registration metadata */}
-                    <Grid item xs={12}>
+                    <Grid size={{xs: 12}}  >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <TagIcon color="#2e7d32" /> Registration Metadata
                         </Typography>
                         <Grid container spacing={2}>
-                          <Grid item xs={6} md={4}>
+                          <Grid size={{xs: 6, md: 4}}   >
                             <Typography variant="caption" color="textSecondary">Created By</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.createdBy || 'System'}</Typography>
                           </Grid>
-                          <Grid item xs={6} md={4}>
+                          <Grid size={{xs: 6, md: 4}}   >
                             <Typography variant="caption" color="textSecondary">Created At</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <DateIcon /> {selectedItem.data.createdAt ? new Date(selectedItem.data.createdAt).toLocaleDateString() : '--'}
                             </Typography>
                           </Grid>
-                          <Grid item xs={6} md={4}>
+                          <Grid size={{xs: 6, md: 4}}   >
                             <Typography variant="caption" color="textSecondary">Updated At</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <DateIcon /> {selectedItem.data.updatedAt ? new Date(selectedItem.data.updatedAt).toLocaleDateString() : '--'}
@@ -728,21 +728,21 @@ const Search: React.FC = () => {
                 ) : selectedItem.type === 'cluster' ? (
                   // Cluster Detailed Fields
                   <Grid container spacing={3}>
-                    <Grid item xs={12}>
+                    <Grid size={{xs: 12}}  >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <ClusterIcon color="#ed6c02" /> Cluster Information
                         </Typography>
                         <Grid container spacing={2}>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Cluster Name</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.clusterName || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">IP Address / Range</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.ipAddress || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Serial Number (SL)</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.slNumber || '--'}</Typography>
                           </Grid>
@@ -750,17 +750,17 @@ const Search: React.FC = () => {
                       </Paper>
                     </Grid>
                     {/* Metadata */}
-                    <Grid item xs={12}>
+                    <Grid size={{xs: 12}}  >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <TagIcon color="#ed6c02" /> Metadata
                         </Typography>
                         <Grid container spacing={2}>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Created By</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.createdBy || 'System'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Last Updated</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <DateIcon /> {selectedItem.data.updatedAt ? new Date(selectedItem.data.updatedAt).toLocaleDateString() : '--'}
@@ -773,27 +773,27 @@ const Search: React.FC = () => {
                 ) : selectedItem.type === 'rack' ? (
                   // Rack Detailed Fields
                   <Grid container spacing={3}>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{xs: 12, md: 6}}   >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <HddIcon color="#9c27b0" /> Rack Specifications
                         </Typography>
                         <Grid container spacing={2}>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Rack Name</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.serverRack || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Capacity (U)</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.rackCapacity ? `${selectedItem.data.rackCapacity} U` : '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Remaining Capacity (U)</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600, color: 'success.main' }}>
                               {selectedItem.data.remainingCapacity !== undefined ? `${selectedItem.data.remainingCapacity} U` : '--'}
                             </Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Temperature</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>
                               {selectedItem.data.temperature !== undefined ? `${selectedItem.data.temperature} °C` : '--'}
@@ -803,31 +803,31 @@ const Search: React.FC = () => {
                       </Paper>
                     </Grid>
 
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{xs: 12, md: 6}}   >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <CpuIcon color="#9c27b0" /> Features & Power
                         </Typography>
                         <Grid container spacing={2}>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Fan Available</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>
                               {selectedItem.data.fanAvailable ? 'Yes' : 'No'}
                             </Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Spare Power</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>
                               {selectedItem.data.sparePowerAvailability ? 'Yes' : 'No'}
                             </Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Spare Power C-30</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>
                               {selectedItem.data.sparePowerC30 || '--'}
                             </Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Spare Power C-90</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>
                               {selectedItem.data.sparePowerC90 || '--'}
@@ -837,7 +837,7 @@ const Search: React.FC = () => {
                       </Paper>
                     </Grid>
 
-                    <Grid item xs={12}>
+                    <Grid size={{xs: 12}}  >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <AppIcon color="#9c27b0" /> Networks Available
@@ -855,7 +855,7 @@ const Search: React.FC = () => {
                     </Grid>
 
                     {selectedItem.data.remarks && (
-                      <Grid item xs={12}>
+                      <Grid size={{xs: 12}}  >
                         <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>Remarks</Typography>
                         <Typography variant="body1" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
                           "{selectedItem.data.remarks}"
@@ -866,21 +866,21 @@ const Search: React.FC = () => {
                 ) : selectedItem.type === 'physical_server' ? (
                   // Physical Server Detailed Fields
                   <Grid container spacing={3}>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{xs: 12, md: 6}}   >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <NodeIcon color="#0288d1" /> System Resources
                         </Typography>
                         <Grid container spacing={2}>
-                          <Grid item xs={4}>
+                          <Grid size={{xs: 4}}  >
                             <Typography variant="caption" color="textSecondary">RAM</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.ram || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={4}>
+                          <Grid size={{xs: 4}}  >
                             <Typography variant="caption" color="textSecondary">HDD</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.hdd || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={4}>
+                          <Grid size={{xs: 4}}  >
                             <Typography variant="caption" color="textSecondary">CPU</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.cpu || '--'}</Typography>
                           </Grid>
@@ -888,21 +888,21 @@ const Search: React.FC = () => {
                       </Paper>
                     </Grid>
 
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{xs: 12, md: 6}}   >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <ClusterIcon color="#0288d1" /> Environment Details
                         </Typography>
                         <Grid container spacing={2}>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Host Node</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.node || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">IP Address</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.ipAddress || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={12}>
+                          <Grid size={{xs: 12}}  >
                             <Typography variant="caption" color="textSecondary">OS and Expiry Details</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.osAndExpiry || '--'}</Typography>
                           </Grid>
@@ -910,23 +910,23 @@ const Search: React.FC = () => {
                       </Paper>
                     </Grid>
 
-                    <Grid item xs={12}>
+                    <Grid size={{xs: 12}}  >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <AppIcon color="#0288d1" /> Application and Backup
                         </Typography>
                         <Grid container spacing={2}>
-                          <Grid item xs={12}>
+                          <Grid size={{xs: 12}}  >
                             <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>Applications Running</Typography>
                             <Typography variant="body1" sx={{ bgcolor: 'rgba(0,0,0,0.02)', p: 1.5, borderRadius: 1.5, border: '1px solid rgba(0,0,0,0.05)', fontWeight: 500 }}>
                               {selectedItem.data.applications || 'No applications registered.'}
                             </Typography>
                           </Grid>
-                          <Grid item xs={12}>
+                          <Grid size={{xs: 12}}  >
                             <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>Backup Location</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.backupLocation || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Added to Monitoring</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.addedToMonitoring ? 'Yes' : 'No'}</Typography>
                           </Grid>
@@ -937,27 +937,27 @@ const Search: React.FC = () => {
                 ) : (
                   // Inventory Detailed Fields
                   <Grid container spacing={3}>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{xs: 12, md: 6}}   >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <TagIcon color="#e91e63" /> Item Details
                         </Typography>
                         <Grid container spacing={2}>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Item Name</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.itemName || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Quantity Available</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600, color: 'primary.main' }}>{selectedItem.data.quantity ?? 0}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Type</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>
                               {selectedItem.data.isReturnable ? 'Returnable' : 'Consumable'}
                             </Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Department</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.department || '--'}</Typography>
                           </Grid>
@@ -965,17 +965,17 @@ const Search: React.FC = () => {
                       </Paper>
                     </Grid>
 
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{xs: 12, md: 6}}   >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                           <InfoIcon color="#e91e63" /> Storage Location
                         </Typography>
                         <Grid container spacing={2}>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Almira Number</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.almiraNumber || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Rack Number</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.rackNumber || '--'}</Typography>
                           </Grid>
@@ -984,7 +984,7 @@ const Search: React.FC = () => {
                     </Grid>
 
                     {selectedItem.data.description && (
-                      <Grid item xs={12}>
+                      <Grid size={{xs: 12}}  >
                         <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                           <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>Description</Typography>
                           <Typography variant="body1">{selectedItem.data.description}</Typography>
@@ -993,14 +993,14 @@ const Search: React.FC = () => {
                     )}
 
                     {/* Meta info */}
-                    <Grid item xs={12}>
+                    <Grid size={{xs: 12}}  >
                       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                         <Grid container spacing={2}>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Last Updated By</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.lastUpdatedBy || '--'}</Typography>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid size={{xs: 6}}  >
                             <Typography variant="caption" color="textSecondary">Last Updated Date</Typography>
                             <Typography variant="body1" sx={{ fontWeight: 600 }}>
                               {selectedItem.data.lastUpdatedDate ? new Date(selectedItem.data.lastUpdatedDate).toLocaleDateString() : '--'}

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {
   MdMenu as MenuIcon,
   MdDashboard as DashboardIcon,

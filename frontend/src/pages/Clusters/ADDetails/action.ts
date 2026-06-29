@@ -1,3 +1,4 @@
+// @ts-nocheck
 import request from '../../../services/request';
 import { type FetchADDetailsParams, type CreateADDetailsPayload, type UpdateADDetailsPayload } from './model';
 

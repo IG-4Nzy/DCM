@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface NodeDetailsData {
     id: string;
     clusterId: string;

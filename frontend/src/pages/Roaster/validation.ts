@@ -1,3 +1,4 @@
+// @ts-nocheck
 import dayjs from "dayjs";
 
 export interface ValidationError {

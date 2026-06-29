@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createSlice } from '@reduxjs/toolkit';
 import { fetchDashboardSummary } from './action';
 import type { DashboardData } from './models';

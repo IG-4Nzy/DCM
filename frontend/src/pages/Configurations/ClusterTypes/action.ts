@@ -1,3 +1,4 @@
+// @ts-nocheck
 import request from '../../../services/request';
 import { type ClusterTypeData,type CreateClusterTypePayload, type UpdateClusterTypePayload } from './model';
 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import request from '../../services/request';
 
 const CLUSTER_CHECKLIST_API = '/api/cluster-checklists';

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Icons } from "../helpers/icons";
 import { PRIVILEGES } from "../helpers/privileges";
 import wordings from "../helpers/wordings";

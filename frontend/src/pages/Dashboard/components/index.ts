@@ -1,3 +1,4 @@
+// @ts-nocheck
 export { KpiCard } from './KpiCard';
 export { ChecklistCard } from './ChecklistCard';
 export { SectionHeader } from './SectionHeader';

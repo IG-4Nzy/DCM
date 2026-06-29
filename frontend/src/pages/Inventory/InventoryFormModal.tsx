@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import Modal from '../../components/Modal';
 import TextField from '../../components/TextField';

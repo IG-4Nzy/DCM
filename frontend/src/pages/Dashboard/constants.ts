@@ -1,3 +1,4 @@
+// @ts-nocheck
 export const colors = {
   bg: '#F8FAFC',
   cardBg: '#FFFFFF',

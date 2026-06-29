@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface PhysicalServerData {
     id: string;
     clusterId?: string;

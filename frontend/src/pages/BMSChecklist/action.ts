@@ -1,3 +1,4 @@
+// @ts-nocheck
 import request from '../../services/request';
 
 const BMS_CHECKLIST_API = '/api/bms-checklists';

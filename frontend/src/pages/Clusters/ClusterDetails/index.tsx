@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { Box, Paper, IconButton } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';

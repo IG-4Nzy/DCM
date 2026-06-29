@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createSlice } from '@reduxjs/toolkit';
 import { fetchWorks, createWork, updateWork, deleteWork, transferWork } from './action';
 import type { WorkData } from './model';

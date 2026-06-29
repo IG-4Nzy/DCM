@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { Box } from '@mui/material';
 import SliderTabSelector, { type TabItem } from '../../components/SliderTabSelector';

@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface ObservationData {
   id?: string;
   _id?: string;

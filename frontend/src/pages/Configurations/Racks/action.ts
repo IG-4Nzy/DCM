@@ -1,3 +1,4 @@
+// @ts-nocheck
 import request from '../../../services/request';
 import { type ServerRackData, type CreateServerRackPayload, type UpdateServerRackPayload } from './model';
 

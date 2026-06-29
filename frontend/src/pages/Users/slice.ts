@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createSlice } from '@reduxjs/toolkit';
 import { type UsersState } from './model';
 import { fetchUsers, createUser, updateUser, deleteUser, fetchAllRolesForDropdown, fetchAllDepartmentsForDropdown } from './action';

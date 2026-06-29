@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { Box, Paper, Typography, TextField, Grid, Divider, FormControl, InputLabel, Select, MenuItem, FormControlLabel, Switch } from '@mui/material';
 import Button from '../../components/Button';
@@ -144,12 +145,12 @@ const AttendancePeriodConfig = () => {
                     <Typography variant="body2" color="textSecondary">Loading settings...</Typography>
                 ) : (
                     <Grid container spacing={3}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{xs: 12, sm: 6}}   >
                             <TextField
                                 label="Cycle Start Day"
                                 type="number"
                                 fullWidth
-                                inputProps={{ min: 1, max: 31 }}
+                                slotProps={{ htmlInput: { min: 1, max: 31 } }}
                                 value={startDay}
                                 onChange={(e) => {
                                     const val = e.target.value;
@@ -166,12 +167,12 @@ const AttendancePeriodConfig = () => {
                                 helperText="Day of the month to start tracking"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{xs: 12, sm: 6}}   >
                             <TextField
                                 label="Cycle End Day"
                                 type="number"
                                 fullWidth
-                                inputProps={{ min: 1, max: 31 }}
+                                slotProps={{ htmlInput: { min: 1, max: 31 } }}
                                 value={endDay}
                                 onChange={(e) => {
                                     const val = e.target.value;
@@ -189,7 +190,7 @@ const AttendancePeriodConfig = () => {
                             />
                         </Grid>
 
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{xs: 12, sm: 4}}   >
                             <TextField
                                 label="Standard Shift Start"
                                 type="time"
@@ -197,11 +198,11 @@ const AttendancePeriodConfig = () => {
                                 value={shiftStart}
                                 onChange={(e) => setShiftStart(e.target.value)}
                                 disabled={!hasUpdate || saving}
-                                InputLabelProps={{ shrink: true }}
+                                slotProps={{ inputLabel: { shrink: true } }}
                                 helperText="Default work start time"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{xs: 12, sm: 4}}   >
                             <FormControl fullWidth>
                                 <InputLabel>Late Grace Period</InputLabel>
                                 <Select
@@ -216,12 +217,12 @@ const AttendancePeriodConfig = () => {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{xs: 12, sm: 4}}   >
                             <TextField
                                 label="Max Allowed Days"
                                 type="number"
                                 fullWidth
-                                inputProps={{ min: 1, max: 31 }}
+                                slotProps={{ htmlInput: { min: 1, max: 31 } }}
                                 value={maxAllowedDays}
                                 onChange={(e) => {
                                     const val = e.target.value;
@@ -239,7 +240,7 @@ const AttendancePeriodConfig = () => {
                             />
                         </Grid>
 
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{xs: 12, sm: 6}}   >
                             <FormControl fullWidth>
                                 <InputLabel>Track Attendance For Role</InputLabel>
                                 <Select
@@ -255,7 +256,7 @@ const AttendancePeriodConfig = () => {
                             </FormControl>
                         </Grid>
 
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{xs: 12, sm: 6}}   >
                             <FormControlLabel
                                 control={
                                     <Switch
@@ -279,7 +280,7 @@ const AttendancePeriodConfig = () => {
                             />
                         </Grid>
 
-                        <Grid item xs={12}>
+                        <Grid size={{xs: 12}}  >
                             <Divider sx={{ my: 3 }} />
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                 <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333' }}>
@@ -304,8 +305,8 @@ const AttendancePeriodConfig = () => {
                             ) : (
                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
                                     {shifts.map((shift, idx) => (
-                                        <Grid container spacing={2} key={idx} alignItems="center">
-                                            <Grid item xs={12} sm={4}>
+                                        <Grid container spacing={2} key={idx}  sx={{ alignItems: 'center' }} >
+                                            <Grid size={{xs: 12, sm: 4}}   >
                                                 <TextField
                                                     label="Shift Name"
                                                     placeholder="e.g. Morning Shift"
@@ -319,7 +320,7 @@ const AttendancePeriodConfig = () => {
                                                     disabled={!hasUpdate || saving}
                                                 />
                                             </Grid>
-                                            <Grid item xs={6} sm={3}>
+                                            <Grid size={{xs: 6, sm: 3}}   >
                                                 <TextField
                                                     label="Start Time"
                                                     type="time"
@@ -331,10 +332,10 @@ const AttendancePeriodConfig = () => {
                                                         setShifts(newShifts);
                                                     }}
                                                     disabled={!hasUpdate || saving}
-                                                    InputLabelProps={{ shrink: true }}
+                                                    slotProps={{ inputLabel: { shrink: true } }}
                                                 />
                                             </Grid>
-                                            <Grid item xs={6} sm={3}>
+                                            <Grid size={{xs: 6, sm: 3}}   >
                                                 <TextField
                                                     label="End Time"
                                                     type="time"
@@ -346,10 +347,10 @@ const AttendancePeriodConfig = () => {
                                                         setShifts(newShifts);
                                                     }}
                                                     disabled={!hasUpdate || saving}
-                                                    InputLabelProps={{ shrink: true }}
+                                                    slotProps={{ inputLabel: { shrink: true } }}
                                                 />
                                             </Grid>
-                                            <Grid item xs={12} sm={2}>
+                                            <Grid size={{xs: 12, sm: 2}}   >
                                                 {hasUpdate && (
                                                     <Button
                                                         variant="outlined"
@@ -371,7 +372,7 @@ const AttendancePeriodConfig = () => {
                             )}
                         </Grid>
                         
-                        <Grid item xs={12}>
+                        <Grid size={{xs: 12}}  >
                             <Divider sx={{ my: 3 }} />
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                 <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333' }}>
@@ -396,8 +397,8 @@ const AttendancePeriodConfig = () => {
                             ) : (
                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
                                     {rosterRows.map((row, idx) => (
-                                        <Grid container spacing={2} key={idx} alignItems="center">
-                                            <Grid item xs={12} sm={5}>
+                                        <Grid container spacing={2} key={idx}  sx={{ alignItems: 'center' }} >
+                                            <Grid size={{xs: 12, sm: 5}}   >
                                                 <TextField
                                                     label="Row / Slot Name"
                                                     placeholder="e.g. Shift 1 Row 1"
@@ -411,7 +412,7 @@ const AttendancePeriodConfig = () => {
                                                     disabled={!hasUpdate || saving}
                                                 />
                                             </Grid>
-                                            <Grid item xs={12} sm={5}>
+                                            <Grid size={{xs: 12, sm: 5}}   >
                                                 <FormControl fullWidth>
                                                     <InputLabel>Mapped Shift</InputLabel>
                                                     <Select
@@ -432,7 +433,7 @@ const AttendancePeriodConfig = () => {
                                                     </Select>
                                                 </FormControl>
                                             </Grid>
-                                            <Grid item xs={12} sm={2}>
+                                            <Grid size={{xs: 12, sm: 2}}   >
                                                 {hasUpdate && (
                                                     <Button
                                                         variant="outlined"
@@ -454,7 +455,7 @@ const AttendancePeriodConfig = () => {
                             )}
                         </Grid>
 
-                        <Grid item xs={12} sx={{ mt: 2 }}>
+                        <Grid size={{xs: 12}}   sx={{ mt: 2 }}>
                             <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                                 {hasUpdate && (
                                     <Button

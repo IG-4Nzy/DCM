@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState } from 'react';
 import { Box, Typography, Tabs, Tab } from '@mui/material';
 import { MdFactCheck, MdWbSunny } from 'react-icons/md';

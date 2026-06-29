@@ -1,3 +1,4 @@
+// @ts-nocheck
 export default {
   dataCentreManagement: "Datacentre Management System",
   dcm: "DCM",

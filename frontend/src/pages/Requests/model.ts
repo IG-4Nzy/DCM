@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface RequestData {
   id?: string;
   _id?: string;

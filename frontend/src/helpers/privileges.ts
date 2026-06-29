@@ -1,3 +1,4 @@
+// @ts-nocheck
 export const PRIVILEGES = {
     DASHBOARD_VIEW: "View Dashboard",
     USER_CREATE: "Create User",

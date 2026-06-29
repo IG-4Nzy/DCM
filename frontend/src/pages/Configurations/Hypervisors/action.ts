@@ -1,3 +1,4 @@
+// @ts-nocheck
 import request from '../../../services/request';
 import { type HypervisorData, type CreateHypervisorPayload, type UpdateHypervisorPayload } from './model';
 

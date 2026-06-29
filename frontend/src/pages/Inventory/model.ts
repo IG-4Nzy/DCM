@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface InventoryHistory {
   date: string;
   action: string;

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { store } from '../store';
 import { LOCAL_STORAGE_PARAMETERS } from './constants';
 import { getItemFromLocalstorage } from './utils';

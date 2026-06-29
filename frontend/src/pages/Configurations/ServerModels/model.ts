@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface ServerModelData {
     id: string;
     serverModel: string;

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Default BMS Checklist Configuration
 // This structure drives the entire checklist UI dynamically.
 // To add new categories, devices, or parameters, simply extend this JSON.

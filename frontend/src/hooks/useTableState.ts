@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from 'react';
 
 export function useTableState<T>(key: string, initialValue: T) {

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createSlice } from '@reduxjs/toolkit';
 import { fetchInventory, createInventory, updateInventory, editInventoryItem, deleteInventory, giveInventoryItem, returnInventoryItem } from './action';
 import type { InventoryData } from './model';

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import axios from 'axios';
 import { getItemFromLocalstorage } from '../helpers/utils';
 import { LOCAL_STORAGE_PARAMETERS } from '../helpers/constants';

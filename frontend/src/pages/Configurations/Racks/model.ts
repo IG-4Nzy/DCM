@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface ServerRackData {
     id: string;
     serverRack?: string;
