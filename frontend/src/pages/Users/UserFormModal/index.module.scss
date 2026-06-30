@@ -1,39 +1,182 @@
 .formContainer {
   display: flex;
   flex-direction: column;
-  gap: 32px;
-  margin-top: 16px;
-  padding: 16px;
+  gap: 28px;
+  margin-top: 8px;
+  padding: 8px 4px;
+}
 
-  .row {
+.profileHeader {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(25, 118, 210, 0.04) 0%, rgba(124, 77, 255, 0.04) 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(25, 118, 210, 0.08);
+  margin-bottom: 8px;
+
+  .avatar {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, #1976d2 0%, #7c4dff 100%);
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.5rem;
+    border-radius: 50%;
     display: flex;
-    flex-direction: column;
-    gap: 16px;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(25, 118, 210, 0.2);
   }
 
-  .field {
-    flex: 1;
-    margin: 0;
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    height: 58.88px;
+  .headerInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-grow: 1;
 
-    // Fix for helper text pushing fields out of alignment in flex layout
-    position: relative;
+    .name {
+      font-size: 1.25rem;
+      fontWeight: 700;
+      color: #1e293b;
+    }
 
-    :global(.MuiFormHelperText-root) {
-      position: absolute;
-      bottom: -20px;
+    .role {
+      font-size: 0.875rem;
+      color: #64748b;
     }
   }
 
-  .actions {
+  .statusBadge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+
+    &.active {
+      background-color: rgba(46, 125, 50, 0.1);
+      color: #2e7d32;
+      border: 1px solid rgba(46, 125, 50, 0.2);
+    }
+
+    &.inactive {
+      background-color: rgba(211, 47, 47, 0.1);
+      color: #d32f2f;
+      border: 1px solid rgba(211, 47, 47, 0.2);
+    }
+  }
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+
+  .sectionHeader {
     display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 16px;
-    padding-top: 20px;
-    border-top: 1px solid #f0f2f5;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1e293b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #f1f5f9;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+
+    svg {
+      color: #1976d2;
+      font-size: 1.2rem;
+    }
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+
+    @media (max-width: 600px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .fullWidthRow {
+    grid-column: span 2;
+
+    @media (max-width: 600px) {
+      grid-column: span 1;
+    }
+  }
+}
+
+.viewFieldCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+  }
+
+  .label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .value {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #0f172a;
+    word-break: break-word;
+  }
+
+  .replacementLink {
+    font-weight: 700;
+    color: #1976d2;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.15s;
+
+    &:hover {
+      color: #0f5499;
+      text-decoration: underline;
+    }
+  }
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.checkboxContainer {
+  display: flex;
+  align-items: center;
+  grid-column: span 2;
+  margin-top: -6px;
+
+  @media (max-width: 600px) {
+    grid-column: span 1;
   }
 }

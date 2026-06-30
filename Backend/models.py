@@ -396,6 +396,7 @@ class ObservationModel(BaseModel):
     loggedBy: str
     status: str = "Not Resolved"
     remarks: Optional[str] = ""
+    actionsTaken: Optional[str] = ""
     comments: List[dict] = Field(default_factory=list)
     isRepeated: Optional[bool] = False
     repeatedFromId: Optional[str] = None
@@ -431,6 +432,7 @@ class CreateObservationModel(BaseModel):
     loggedBy: str
     status: str = "Not Resolved"
     remarks: Optional[str] = ""
+    actionsTaken: Optional[str] = ""
     comments: List[dict] = Field(default_factory=list)
     isRepeated: Optional[bool] = False
     repeatedFromId: Optional[str] = None
@@ -445,6 +447,7 @@ class UpdateObservationModel(BaseModel):
     informedToOther: Optional[str] = None
     status: Optional[str] = None
     remarks: Optional[str] = None
+    actionsTaken: Optional[str] = None
     comments: Optional[List[dict]] = None
     isRepeated: Optional[bool] = None
     repeatedFromId: Optional[str] = None

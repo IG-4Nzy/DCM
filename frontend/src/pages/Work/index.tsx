@@ -591,6 +591,7 @@ const Works: React.FC = () => {
         handleSubmit={handleSubmit}
         isEmergency={isEmergency}
         setIsEmergency={setIsEmergency}
+        activeTab={activeTab}
       />
 
       <WorkDetailModal

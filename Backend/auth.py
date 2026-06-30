@@ -170,15 +170,49 @@ async def login(credentials: LoginRequest):
                 # If there's already a pending/rejected late attempt, keep blocking only if restriction is enabled
                 late_status = existing_attendance.get("lateApprovalStatus")
                 if existing_attendance.get("isLateAttempt") and late_login_restriction:
+                    all_checklist_privileges = [
+                        "View BMS Checklist", "View All Department BMS Checklist", "Create BMS Checklist", "Update BMS Checklist", "Delete BMS Checklist", "Edit BMS Checklist Field",
+                        "View Cluster Checklist", "View All Department Cluster Checklist", "Create Cluster Checklist", "Update Cluster Checklist", "Delete Cluster Checklist", "Edit Cluster Checklist Field",
+                        "View Morning Checklist", "Create Morning Checklist", "Update Morning Checklist", "Delete Morning Checklist", "Edit Morning Checklist Field"
+                    ]
+                    restricted_privileges = [p for p in all_checklist_privileges if p in privileges]
+                    restricted_token = create_access_token(
+                        data={
+                            "sub": user["username"],
+                            "role": role,
+                            "privileges": restricted_privileges,
+                            "isSuperuser": False,
+                            "department": user.get("department", ""),
+                            "session_key": session_key
+                        },
+                        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+                    )
+
                     if late_status == "Pending":
                         raise HTTPException(
                             status_code=status.HTTP_403_FORBIDDEN,
-                            detail="You are late, you are not allowed to login, contact your department head"
+                            detail={
+                                "message": "You are late, you are not allowed to login, contact your department head",
+                                "restricted_token": restricted_token,
+                                "role": role,
+                                "privileges": restricted_privileges,
+                                "isSuperuser": False,
+                                "username": user["username"],
+                                "displayName": " ".join(part for part in [user.get("firstName", ""), user.get("lastName", "")] if part) or user["username"]
+                            }
                         )
                     elif late_status == "Rejected":
                         raise HTTPException(
                             status_code=status.HTTP_403_FORBIDDEN,
-                            detail="Your late login request has been rejected, contact your department head"
+                            detail={
+                                "message": "Your late login request has been rejected, contact your department head",
+                                "restricted_token": restricted_token,
+                                "role": role,
+                                "privileges": restricted_privileges,
+                                "isSuperuser": False,
+                                "username": user["username"],
+                                "displayName": " ".join(part for part in [user.get("firstName", ""), user.get("lastName", "")] if part) or user["username"]
+                            }
                         )
                     # If "Approved", fall through and allow login
             else:
@@ -207,6 +241,24 @@ async def login(credentials: LoginRequest):
 
                 if is_late and not is_superuser:
                     if late_login_restriction:
+                        all_checklist_privileges = [
+                            "View BMS Checklist", "View All Department BMS Checklist", "Create BMS Checklist", "Update BMS Checklist", "Delete BMS Checklist", "Edit BMS Checklist Field",
+                            "View Cluster Checklist", "View All Department Cluster Checklist", "Create Cluster Checklist", "Update Cluster Checklist", "Delete Cluster Checklist", "Edit Cluster Checklist Field",
+                            "View Morning Checklist", "Create Morning Checklist", "Update Morning Checklist", "Delete Morning Checklist", "Edit Morning Checklist Field"
+                        ]
+                        restricted_privileges = [p for p in all_checklist_privileges if p in privileges]
+                        restricted_token = create_access_token(
+                            data={
+                                "sub": user["username"],
+                                "role": "Restricted",
+                                "privileges": restricted_privileges,
+                                "isSuperuser": False,
+                                "department": user.get("department", ""),
+                                "session_key": session_key
+                            },
+                            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+                        )
+
                         # Create a pending late attendance record and block login
                         await attendance_collection.insert_one({
                             "username": user["username"],
@@ -227,7 +279,15 @@ async def login(credentials: LoginRequest):
                         })
                         raise HTTPException(
                             status_code=status.HTTP_403_FORBIDDEN,
-                            detail="You are late, you are not allowed to login, contact your department head"
+                            detail={
+                                "message": "You are late, you are not allowed to login, contact your department head",
+                                "restricted_token": restricted_token,
+                                "role": role,
+                                "privileges": restricted_privileges,
+                                "isSuperuser": False,
+                                "username": user["username"],
+                                "displayName": " ".join(part for part in [user.get("firstName", ""), user.get("lastName", "")] if part) or user["username"]
+                            }
                         )
                     else:
                         # Create an approved late attendance record and allow login

@@ -112,13 +112,34 @@ async def list_works(
         query["$or"] = or_conditions
         if not status or status == "All" or status == "All Statuses":
             query["status"] = {"$ne": "Closed"}
+    elif not is_superuser and has_view_all:
+        # "View All Work" shows all works in the user's department only
+        user_dept = user_record.get("department") if user_record else None
+        if user_dept:
+            # Find all users in the same department
+            dept_users = await users_collection.find({"department": user_dept}).to_list(length=None)
+            dept_user_ids = [str(u["_id"]) for u in dept_users]
+            dept_usernames = [u["username"] for u in dept_users if u.get("username")]
+            dept_filter_conditions = []
+            if dept_user_ids:
+                dept_filter_conditions.append({"assignee": {"$in": dept_user_ids}})
+                dept_filter_conditions.append({"assignees": {"$elemMatch": {"$in": dept_user_ids}}})
+            if dept_usernames:
+                dept_filter_conditions.append({"createdBy": {"$in": dept_usernames}})
+            if dept_filter_conditions:
+                query["$or"] = dept_filter_conditions
+        if assignee and assignee != "All" and assignee != "All Assignees":
+            if "$or" in query:
+                query["$and"] = [{"$or": query.pop("$or")}, {"$or": [{"assignee": assignee}, {"assignees": assignee}]}]
+            else:
+                query["$or"] = [{"assignee": assignee}, {"assignees": assignee}]
     else:
+        # Superuser — can see everything, but still allow assignee filter
         if assignee and assignee != "All" and assignee != "All Assignees":
             query["$or"] = [
                 {"assignee": assignee},
                 {"assignees": assignee}
             ]
-
     if status and status != "All" and status != "All Statuses":
         if "," in status:
             status_list = [s.strip() for s in status.split(",") if s.strip()]

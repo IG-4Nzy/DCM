@@ -12,6 +12,7 @@ const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [birthdayWish, setBirthdayWish] = useState<{ open: boolean; name: string }>({ open: false, name: '' });
+  const [restrictedLoginData, setRestrictedLoginData] = useState<any>(null);
   const dispatch = useDispatch<any>();
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -39,6 +40,11 @@ const Login: React.FC = () => {
         setBirthdayWish({ open: true, name: data.displayName || data.username || username });
       } else {
         navigateToDashboard();
+      }
+    } else if (loginApi.rejected.match(result)) {
+      const data = result.payload as any;
+      if (data && data.detail && typeof data.detail === 'object' && data.detail.restricted_token) {
+        setRestrictedLoginData(data.detail);
       }
     }
   };
@@ -149,6 +155,54 @@ const Login: React.FC = () => {
           <Button onClick={handleBirthdayClose} variant="contained" sx={{ textTransform: 'none', fontWeight: 600 }}>
             Continue
           </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={!!restrictedLoginData} onClose={() => setRestrictedLoginData(null)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, color: '#d32f2f' }}>
+          Late Login Restricted
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: '#475569', mb: 2 }}>
+            {restrictedLoginData?.message}
+          </Typography>
+          {restrictedLoginData?.privileges?.length > 0 ? (
+            <Typography sx={{ color: '#475569' }}>
+              However, you can still access the checklists.
+            </Typography>
+          ) : (
+            <Typography sx={{ color: '#9e9e9e', fontStyle: 'italic' }}>
+              You do not have any checklist privileges assigned to access.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRestrictedLoginData(null)} sx={{ color: '#666', textTransform: 'none' }}>
+            Cancel
+          </Button>
+          {restrictedLoginData?.privileges?.length > 0 && (
+            <Button 
+              onClick={() => {
+                if (restrictedLoginData) {
+                  dispatch({
+                    type: 'auth/loginSuccess',
+                    payload: {
+                      token: restrictedLoginData.restricted_token,
+                      role: 'Restricted',
+                      username: restrictedLoginData.username,
+                      privileges: restrictedLoginData.privileges,
+                      isSuperuser: false,
+                      displayName: restrictedLoginData.displayName
+                    }
+                  });
+                  navigate('/daily-activities');
+                }
+              }}
+              variant="contained" 
+              sx={{ textTransform: 'none', fontWeight: 600 }}
+            >
+              Go to Checklists
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Box>

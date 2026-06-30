@@ -175,6 +175,9 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
               <ViewField label="Description" value={formData.description} />
             </div>
             <div className={styles.row}>
+              <ViewField label="Actions Taken" value={formData.actionsTaken} />
+            </div>
+            <div className={styles.row}>
               <FormControl component="fieldset" fullWidth sx={{ p: 1.5, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 1.5, border: '1px solid rgba(0,0,0,0.05)' }}>
                 <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 'bold', mb: 1.5, letterSpacing: '0.5px' }}>
                   Reports To / Escalation Status
@@ -313,6 +316,19 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                 onChange={(e: any) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Enter description"
                 required
+                multiline
+                rows={3}
+              />
+            </div>
+            
+            <div className={styles.row}>
+              <TextField
+                className={styles.field}
+                fullWidth
+                label="Actions Taken"
+                value={formData.actionsTaken || ""}
+                onChange={(e: any) => setFormData({ ...formData, actionsTaken: e.target.value })}
+                placeholder="Enter actions taken"
                 multiline
                 rows={3}
               />

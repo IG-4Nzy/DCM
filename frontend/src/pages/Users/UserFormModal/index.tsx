@@ -6,7 +6,12 @@ import { Button, FormControl, InputLabel, MenuItem, Select, Box, Typography, Too
 import type { UpdateUserPayload } from '../model';
 import DatePicker from '../../../components/DatePicker';
 import Dropdown from '../../../components/Dropdown';
-import { MdEdit as EditIcon } from 'react-icons/md';
+import { 
+  MdEdit as EditIcon, 
+  MdOutlineSecurity as SecurityIcon, 
+  MdOutlinePerson as PersonIcon, 
+  MdOutlineBadge as BadgeIcon 
+} from 'react-icons/md';
 import styles from './index.module.scss';
 
 interface PropType {
@@ -64,287 +69,323 @@ const BLOOD_GROUPS = [
     { label: "AB-", value: "AB-" }
 ];
 
-const ViewField = ({ label, value }: { label: string, value: any }) => (
-    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, p: 1, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 1, border: '1px solid rgba(0,0,0,0.05)' }}>
-         <Typography variant="caption" color="textSecondary">{label}</Typography>
-         <Typography variant="body1" sx={{ mt: 0.5, wordBreak: 'break-word' }}>{value || '-'}</Typography>
-     </Box>
- );
- 
- const UserFormModal = ({ 
-     isModalOpen, handleCloseModal, editingUser, 
-     isEditMode, setIsEditMode, hasUpdatePrivilege,
-     setFormUsername, formUsername, 
-     formPassword, setFormPassword, 
-     setFormRole, formRole, 
-     formStatus, setFormStatus, 
-     availableRoles, handleSubmit,
-     formFirstName, setFormFirstName,
-     formLastName, setFormLastName,
-     formDob, setFormDob,
-     formMobile, setFormMobile,
-     formBloodGroup, setFormBloodGroup,
-     formAddress, setFormAddress,
-     formDateOfJoin, setFormDateOfJoin,
-     formDepartment, setFormDepartment,
-     formIsDepartmentHead, setFormIsDepartmentHead,
-     availableDepartments,
-     formReplacementFor, setFormReplacementFor,
-     inactiveUsers, onViewReplacedUser,
-     formPassNumber, setFormPassNumber
- }: PropType) => {
-     
-     const canEdit = isEditMode;
-     const showEditButton = editingUser && !isEditMode && hasUpdatePrivilege;
- 
-     const headerTitle = (
-         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
-           <Typography variant="h6">{editingUser ? "User Details" : "Create User"}</Typography>
-           {showEditButton && (
-             <Tooltip title="Edit User">
-               <IconButton size="small" color="primary" onClick={() => setIsEditMode(true)}>
-                 <EditIcon />
-               </IconButton>
-             </Tooltip>
-           )}
-         </Box>
-     );
- 
-     return (
-         <Modal
-             open={isModalOpen}
-             handleClose={handleCloseModal}
-             title={headerTitle as any}
-         >
-             <form onSubmit={handleSubmit} className={styles.formContainer}>
-                 
-                 {!canEdit ? (
-                     <>
-                         <div className={styles.row}>
-                             <ViewField label="Username" value={formUsername} />
-                             <ViewField label="Role" value={Array.isArray(formRole) ? formRole.join(", ") : formRole} />
-                         </div>
-                         <div className={styles.row}>
-                             <ViewField label="Status" value={formStatus ? "Active" : "Inactive"} />
-                             <ViewField label="Department" value={formDepartment} />
-                         </div>
-                         <div className={styles.row}>
-                             <ViewField label="Is Department Head" value={formIsDepartmentHead ? "Yes" : "No"} />
-                             <ViewField label="Pass Number" value={formPassNumber} />
-                         </div>
-                        {editingUser?.replacementFor && (
-                            <div className={styles.row}>
-                                <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, p: 1, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 1, border: '1px solid rgba(0,0,0,0.05)' }}>
-                                    <Typography variant="caption" color="textSecondary">Replacement For (Relieved User)</Typography>
-                                    <Typography 
-                                        variant="body1" 
-                                        sx={{ 
-                                            mt: 0.5, 
-                                            color: '#1976d2', 
-                                            textDecoration: 'underline', 
-                                            cursor: 'pointer',
-                                            fontWeight: 'bold',
-                                            '&:hover': { color: '#115293' }
-                                        }}
-                                        onClick={() => onViewReplacedUser && onViewReplacedUser(editingUser.replacementFor!)}
-                                    >
-                                        {editingUser.replacementForName || 'View Details'}
-                                    </Typography>
-                                </Box>
+const ViewField = ({ label, value, className = '' }: { label: string, value: any, className?: string }) => (
+    <div className={`${styles.viewFieldCard} ${className}`}>
+        <span className={styles.label}>{label}</span>
+        <span className={styles.value}>{value || '-'}</span>
+    </div>
+);
+
+const UserFormModal = ({ 
+    isModalOpen, handleCloseModal, editingUser, 
+    isEditMode, setIsEditMode, hasUpdatePrivilege,
+    setFormUsername, formUsername, 
+    formPassword, setFormPassword, 
+    setFormRole, formRole, 
+    formStatus, setFormStatus, 
+    availableRoles, handleSubmit,
+    formFirstName, setFormFirstName,
+    formLastName, setFormLastName,
+    formDob, setFormDob,
+    formMobile, setFormMobile,
+    formBloodGroup, setFormBloodGroup,
+    formAddress, setFormAddress,
+    formDateOfJoin, setFormDateOfJoin,
+    formDepartment, setFormDepartment,
+    formIsDepartmentHead, setFormIsDepartmentHead,
+    availableDepartments,
+    formReplacementFor, setFormReplacementFor,
+    inactiveUsers, onViewReplacedUser,
+    formPassNumber, setFormPassNumber
+}: PropType) => {
+    
+    const canEdit = isEditMode;
+    const showEditButton = editingUser && !isEditMode && hasUpdatePrivilege;
+
+    // Get initials for profile avatar
+    const getInitials = () => {
+        const first = (formFirstName || '').charAt(0).toUpperCase();
+        const last = (formLastName || '').charAt(0).toUpperCase();
+        return last ? `${first}${last}` : first || (formUsername || '?').charAt(0).toUpperCase();
+    };
+
+    const headerTitle = (
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: '#1e293b' }}>
+                {editingUser ? (isEditMode ? "Edit User" : "User Details") : "Create User"}
+            </Typography>
+            {showEditButton && (
+                <Tooltip title="Edit User">
+                    <IconButton 
+                        size="small" 
+                        color="primary" 
+                        onClick={() => setIsEditMode(true)}
+                        sx={{ 
+                            border: '1.5px solid rgba(25, 118, 210, 0.2)', 
+                            borderRadius: '8px',
+                            '&:hover': {
+                                backgroundColor: 'rgba(25, 118, 210, 0.08)'
+                            }
+                        }}
+                    >
+                        <EditIcon size={18} />
+                    </IconButton>
+                </Tooltip>
+            )}
+        </Box>
+    );
+
+    return (
+        <Modal
+            open={isModalOpen}
+            handleClose={handleCloseModal}
+            title={headerTitle}
+            maxWidth="md"
+        >
+            <form onSubmit={handleSubmit} className={styles.formContainer}>
+                {editingUser && !canEdit && (
+                    <div className={styles.profileHeader}>
+                        <div className={styles.avatar}>{getInitials()}</div>
+                        <div className={styles.headerInfo}>
+                            <span className={styles.name}>
+                                {`${formFirstName || ''} ${formLastName || ''}`.trim() || formUsername}
+                            </span>
+                            <span className={styles.role}>
+                                {Array.isArray(formRole) ? formRole.join(", ") : (formRole || "No Role")}
+                            </span>
+                        </div>
+                        <span className={`${styles.statusBadge} ${formStatus ? styles.active : styles.inactive}`}>
+                            {formStatus ? "Active" : "Inactive"}
+                        </span>
+                    </div>
+                )}
+
+                {!canEdit ? (
+                    <>
+                        {/* VIEW MODE */}
+                        <div className={styles.section}>
+                            <div className={styles.sectionHeader}>
+                                <SecurityIcon />
+                                <span>Account & Access</span>
                             </div>
-                        )}
-                        <div className={styles.row}>
-                            <ViewField label="First Name" value={formFirstName} />
-                            <ViewField label="Last Name" value={formLastName} />
+                            <div className={styles.grid}>
+                                <ViewField label="Username" value={formUsername} />
+                                <ViewField label="Role(s)" value={Array.isArray(formRole) ? formRole.join(", ") : formRole} />
+                                <ViewField label="Status" value={formStatus ? "Active" : "Inactive"} />
+                                <ViewField label="Pass Number" value={formPassNumber} />
+                                {editingUser?.replacementFor && (
+                                    <div className={`${styles.viewFieldCard} ${styles.fullWidthRow}`}>
+                                        <span className={styles.label}>Replacement For (Relieved User)</span>
+                                        <span 
+                                            className={styles.replacementLink}
+                                            onClick={() => onViewReplacedUser && onViewReplacedUser(editingUser.replacementFor!)}
+                                        >
+                                            {editingUser.replacementForName || 'View Details'}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                        <div className={styles.row}>
-                            <ViewField label="Date of Birth" value={formDob} />
-                            <ViewField label="Blood Group" value={formBloodGroup} />
+
+                        <div className={styles.section}>
+                            <div className={styles.sectionHeader}>
+                                <PersonIcon />
+                                <span>Personal Profile</span>
+                            </div>
+                            <div className={styles.grid}>
+                                <ViewField label="First Name" value={formFirstName} />
+                                <ViewField label="Last Name" value={formLastName} />
+                                <ViewField label="Date of Birth" value={formDob} />
+                                <ViewField label="Blood Group" value={formBloodGroup} />
+                                <ViewField label="Mobile Number" value={formMobile} />
+                            </div>
                         </div>
-                        <div className={styles.row}>
-                            <ViewField label="Mobile Number" value={formMobile} />
-                            <ViewField label="Date of Join" value={formDateOfJoin} />
-                        </div>
-                        <div className={styles.row}>
-                            <ViewField label="Address" value={formAddress} />
+
+                        <div className={styles.section}>
+                            <div className={styles.sectionHeader}>
+                                <BadgeIcon />
+                                <span>Employment Details</span>
+                            </div>
+                            <div className={styles.grid}>
+                                <ViewField label="Department" value={formDepartment} />
+                                <ViewField label="Is Department Head" value={formIsDepartmentHead ? "Yes" : "No"} />
+                                <ViewField label="Date of Join" value={formDateOfJoin} />
+                                <ViewField label="Address" value={formAddress} className={styles.fullWidthRow} />
+                            </div>
                         </div>
                     </>
                 ) : (
                     <>
-                        <div className={styles.row}>
-                            <TextField
-                                className={styles.field}
-                                fullWidth
-                                label="Username"
-                                value={formUsername}
-                                onChange={(e) => setFormUsername(e.target.value)}
-                                required
-                            />
-                            <TextField
-                                className={styles.field}
-                                fullWidth
-                                label="Password"
-                                type="password"
-                                value={formPassword}
-                                onChange={(e) => setFormPassword(e.target.value)}
-                                required={!editingUser}
-                                helperText={editingUser ? "Leave blank to keep existing password" : ""}
-                                sx={{
-                                    '& .MuiFormHelperText-root': {
-                                        color: '#637381'
-                                    }
-                                }}
-                            />
-                        </div>
-                        <div className={styles.row}>
-                            <FormControl fullWidth className={styles.field}>
-                                <InputLabel>Role(s)</InputLabel>
-                                <Select
-                                    multiple
-                                    value={Array.isArray(formRole) ? formRole : (formRole ? [formRole] : [])}
-                                    label="Role(s)"
-                                    onChange={(e) => setFormRole(e.target.value as string[])}
-                                    renderValue={(selected) => (selected as string[]).join(', ')}
-                                    sx={{ borderRadius: '8px' }}
-                                >
-                                    {(availableRoles || []).map((role) => (
-                                        <MenuItem key={role.id} value={role.name}>{role.name}</MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                            <FormControl fullWidth className={styles.field}>
-                                <InputLabel>Status</InputLabel>
-                                <Select
-                                    value={formStatus ? "true" : "false"}
-                                    label="Status"
-                                    onChange={(e) => setFormStatus(e.target.value === "true")}
-                                    sx={{ borderRadius: '8px' }}
-                                >
-                                    <MenuItem value="true">Active</MenuItem>
-                                    <MenuItem value="false">Inactive</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </div>
-                        
-                        <div className={styles.row}>
-                            <TextField
-                                className={styles.field}
-                                fullWidth
-                                label="First Name"
-                                value={formFirstName}
-                                onChange={(e) => setFormFirstName(e.target.value)}
-                            />
-                            <TextField
-                                className={styles.field}
-                                fullWidth
-                                label="Last Name"
-                                value={formLastName}
-                                onChange={(e) => setFormLastName(e.target.value)}
-                            />
-                        </div>
-
-                        <div className={styles.row}>
-                            <DatePicker
-                                className={styles.field}
-                                fullWidth
-                                label="Date of Birth"
-                                value={formDob}
-                                onChange={setFormDob}
-                            />
-                            <TextField
-                                className={styles.field}
-                                fullWidth
-                                label="Mobile Number"
-                                value={formMobile}
-                                onChange={(e) => setFormMobile(e.target.value)}
-                            />
+                        {/* EDIT / CREATE MODE */}
+                        <div className={styles.section}>
+                            <div className={styles.sectionHeader}>
+                                <SecurityIcon />
+                                <span>Account & Access</span>
+                            </div>
+                            <div className={styles.grid}>
+                                <TextField
+                                    fullWidth
+                                    label="Username"
+                                    value={formUsername}
+                                    onChange={(e) => setFormUsername(e.target.value)}
+                                    required
+                                />
+                                <TextField
+                                    fullWidth
+                                    label="Password"
+                                    type="password"
+                                    value={formPassword}
+                                    onChange={(e) => setFormPassword(e.target.value)}
+                                    required={!editingUser}
+                                    helperText={editingUser ? "Leave blank to keep existing password" : ""}
+                                    sx={{
+                                        '& .MuiFormHelperText-root': {
+                                            color: '#637381'
+                                        }
+                                    }}
+                                />
+                                <FormControl fullWidth>
+                                    <InputLabel>Role(s)</InputLabel>
+                                    <Select
+                                        multiple
+                                        value={Array.isArray(formRole) ? formRole : (formRole ? [formRole] : [])}
+                                        label="Role(s)"
+                                        onChange={(e) => setFormRole(e.target.value as string[])}
+                                        renderValue={(selected) => (selected as string[]).join(', ')}
+                                        sx={{ borderRadius: '8px' }}
+                                    >
+                                        {(availableRoles || []).map((role) => (
+                                            <MenuItem key={role.id} value={role.name}>{role.name}</MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                                <FormControl fullWidth>
+                                    <InputLabel>Status</InputLabel>
+                                    <Select
+                                        value={formStatus ? "true" : "false"}
+                                        label="Status"
+                                        onChange={(e) => setFormStatus(e.target.value === "true")}
+                                        sx={{ borderRadius: '8px' }}
+                                    >
+                                        <MenuItem value="true">Active</MenuItem>
+                                        <MenuItem value="false">Inactive</MenuItem>
+                                    </Select>
+                                </FormControl>
+                                <TextField
+                                    fullWidth
+                                    label="Pass Number"
+                                    value={formPassNumber}
+                                    onChange={(e) => setFormPassNumber(e.target.value)}
+                                />
+                                <FormControl fullWidth>
+                                    <InputLabel>Replacement For (Relieved User)</InputLabel>
+                                    <Select
+                                        value={formReplacementFor || ""}
+                                        label="Replacement For (Relieved User)"
+                                        onChange={(e) => setFormReplacementFor(e.target.value)}
+                                        sx={{ borderRadius: '8px' }}
+                                    >
+                                        <MenuItem value=""><em>None</em></MenuItem>
+                                        {(inactiveUsers || []).map((u: any) => (
+                                            <MenuItem key={u.id} value={u.id}>
+                                                {u.username} {u.firstName || u.lastName ? `(${u.firstName || ''} ${u.lastName || ''})`.trim() : ''}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </div>
                         </div>
 
-                        <div className={styles.row}>
-                            <Dropdown
-                                className={styles.field}
-                                fullWidth
-                                label="Blood Group"
-                                options={BLOOD_GROUPS}
-                                value={formBloodGroup}
-                                onChange={setFormBloodGroup}
-                                clearable
-                            />
-                            <Dropdown
-                                className={styles.field}
-                                fullWidth
-                                label="Department"
-                                options={(availableDepartments || []).map(d => ({ label: d.name, value: d.name }))}
-                                value={formDepartment}
-                                onChange={(val) => {
-                                    setFormDepartment(val);
-                                    if (!val) {
-                                        setFormIsDepartmentHead(false);
-                                    }
-                                }}
-                                clearable
-                            />
-                        </div>
-                        
-                        {formDepartment && (
-                            <div className={styles.row} style={{ marginTop: '-8px', marginBottom: '8px' }}>
-                                <FormControlLabel
-                                    control={
-                                        <Checkbox
-                                            checked={formIsDepartmentHead}
-                                            onChange={(e) => setFormIsDepartmentHead(e.target.checked)}
-                                            color="primary"
-                                        />
-                                    }
-                                    label="Is Department Head"
-                                    sx={{ ml: 0.5 }}
+                        <div className={styles.section}>
+                            <div className={styles.sectionHeader}>
+                                <PersonIcon />
+                                <span>Personal Profile</span>
+                            </div>
+                            <div className={styles.grid}>
+                                <TextField
+                                    fullWidth
+                                    label="First Name"
+                                    value={formFirstName}
+                                    onChange={(e) => setFormFirstName(e.target.value)}
+                                />
+                                <TextField
+                                    fullWidth
+                                    label="Last Name"
+                                    value={formLastName}
+                                    onChange={(e) => setFormLastName(e.target.value)}
+                                />
+                                <DatePicker
+                                    fullWidth
+                                    label="Date of Birth"
+                                    value={formDob}
+                                    onChange={setFormDob}
+                                />
+                                <Dropdown
+                                    fullWidth
+                                    label="Blood Group"
+                                    options={BLOOD_GROUPS}
+                                    value={formBloodGroup}
+                                    onChange={setFormBloodGroup}
+                                    clearable
+                                />
+                                <TextField
+                                    fullWidth
+                                    label="Mobile Number"
+                                    value={formMobile}
+                                    onChange={(e) => setFormMobile(e.target.value)}
                                 />
                             </div>
-                        )}
-                        
-                        <div className={styles.row}>
-                            <FormControl fullWidth className={styles.field}>
-                                <InputLabel>Replacement For (Relieved User)</InputLabel>
-                                <Select
-                                    value={formReplacementFor || ""}
-                                    label="Replacement For (Relieved User)"
-                                    onChange={(e) => setFormReplacementFor(e.target.value)}
-                                    sx={{ borderRadius: '8px' }}
-                                >
-                                    <MenuItem value=""><em>None</em></MenuItem>
-                                    {(inactiveUsers || []).map((u: any) => (
-                                        <MenuItem key={u.id} value={u.id}>
-                                            {u.username} {u.firstName || u.lastName ? `(${u.firstName || ''} ${u.lastName || ''})`.trim() : ''}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                            <TextField
-                                className={styles.field}
-                                fullWidth
-                                label="Pass Number"
-                                value={formPassNumber}
-                                onChange={(e) => setFormPassNumber(e.target.value)}
-                            />
                         </div>
-                        
-                        <div className={styles.row}>
-                            <TextField
-                                className={styles.field}
-                                fullWidth
-                                label="Address"
-                                value={formAddress}
-                                onChange={(e) => setFormAddress(e.target.value)}
-                                multiline
-                                maxRows={3}
-                            />
-                            <DatePicker
-                                className={styles.field}
-                                fullWidth
-                                label="Date of Join"
-                                value={formDateOfJoin}
-                                onChange={setFormDateOfJoin}
-                            />
+
+                        <div className={styles.section}>
+                            <div className={styles.sectionHeader}>
+                                <BadgeIcon />
+                                <span>Employment Details</span>
+                            </div>
+                            <div className={styles.grid}>
+                                <Dropdown
+                                    fullWidth
+                                    label="Department"
+                                    options={(availableDepartments || []).map(d => ({ label: d.name, value: d.name }))}
+                                    value={formDepartment}
+                                    onChange={(val) => {
+                                        setFormDepartment(val);
+                                        if (!val) {
+                                            setFormIsDepartmentHead(false);
+                                        }
+                                    }}
+                                    clearable
+                                />
+                                <DatePicker
+                                    fullWidth
+                                    label="Date of Join"
+                                    value={formDateOfJoin}
+                                    onChange={setFormDateOfJoin}
+                                />
+                                {formDepartment && (
+                                    <div className={styles.checkboxContainer}>
+                                        <FormControlLabel
+                                            control={
+                                                <Checkbox
+                                                    checked={formIsDepartmentHead}
+                                                    onChange={(e) => setFormIsDepartmentHead(e.target.checked)}
+                                                    color="primary"
+                                                />
+                                            }
+                                            label={<span style={{ fontWeight: 600, color: '#334155' }}>Is Department Head</span>}
+                                        />
+                                    </div>
+                                )}
+                                <TextField
+                                    fullWidth
+                                    label="Address"
+                                    value={formAddress}
+                                    onChange={(e) => setFormAddress(e.target.value)}
+                                    multiline
+                                    maxRows={3}
+                                    className={styles.fullWidthRow}
+                                />
+                            </div>
                         </div>
                     </>
                 )}
@@ -361,7 +402,7 @@ const ViewField = ({ label, value }: { label: string, value: any }) => (
                 </div>
             </form>
         </Modal>
-    )
-}
+    );
+};
 
-export default UserFormModal
+export default UserFormModal;
