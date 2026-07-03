@@ -114,7 +114,11 @@ const UserProfile: React.FC = () => {
             setSaving(true);
             const payload: any = {};
             Object.entries(form).forEach(([k, v]) => {
-                if (v) payload[k] = v;
+                if (v !== undefined && v !== null && v !== "") {
+                    payload[k] = v;
+                } else if (k === 'stickyNoteEnabled') {
+                    payload[k] = v; // Allow boolean false
+                }
             });
             const res = await request.put("/api/auth/me", payload);
             setProfile(res.data);
