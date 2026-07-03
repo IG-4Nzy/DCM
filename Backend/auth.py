@@ -33,6 +33,10 @@ class UpdateProfileModel(BaseModel):
     mobile: Optional[str] = None
     bloodGroup: Optional[str] = None
     address: Optional[str] = None
+    stickyNoteEnabled: Optional[bool] = None
+    stickyNoteContent: Optional[str] = None
+    stickyNotePositionX: Optional[int] = None
+    stickyNotePositionY: Optional[int] = None
 
 class ChangePasswordRequest(BaseModel):
     currentPassword: str
@@ -462,6 +466,10 @@ async def get_my_profile(current_user: dict = Depends(get_current_user)):
         "address": user.get("address", ""),
         "dateOfJoin": user.get("dateOfJoin", ""),
         "department": user.get("department", ""),
+        "stickyNoteEnabled": user.get("stickyNoteEnabled", False),
+        "stickyNoteContent": user.get("stickyNoteContent", ""),
+        "stickyNotePositionX": user.get("stickyNotePositionX", 100),
+        "stickyNotePositionY": user.get("stickyNotePositionY", 100),
     }
 
 @router.put("/me", response_description="Update current user profile")
@@ -496,6 +504,10 @@ async def update_my_profile(profile: UpdateProfileModel = Body(...), current_use
         "address": user.get("address", ""),
         "dateOfJoin": user.get("dateOfJoin", ""),
         "department": user.get("department", ""),
+        "stickyNoteEnabled": user.get("stickyNoteEnabled", False),
+        "stickyNoteContent": user.get("stickyNoteContent", ""),
+        "stickyNotePositionX": user.get("stickyNotePositionX", 100),
+        "stickyNotePositionY": user.get("stickyNotePositionY", 100),
     }
 
 @router.post("/change-password", response_description="Change current user password")

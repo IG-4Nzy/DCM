@@ -74,6 +74,7 @@ async def list_works(
     search: Optional[str] = None,
     status: Optional[str] = None,
     assignee: Optional[str] = None,
+    department: Optional[str] = None,
     tab: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
@@ -82,17 +83,18 @@ async def list_works(
     privileges = current_user.get("privileges", [])
     
     has_view_all = "View All Work" in privileges
+    has_view_all_departments = "View All Department Works" in privileges
     has_view_assigned = "View Assigned Work" in privileges
     has_view_emergency = "View Emergency Work" in privileges
     
-    if not is_superuser and not has_view_all and not has_view_assigned and not has_view_emergency:
+    if not is_superuser and not has_view_all and not has_view_all_departments and not has_view_assigned and not has_view_emergency:
         raise HTTPException(status_code=403, detail="Not enough permissions to view works")
             
     users_collection = db.get_collection("users")
     user_record = await users_collection.find_one({"username": current_user["sub"]})
     user_id = str(user_record["_id"]) if user_record else None
 
-    if not is_superuser and not has_view_all:
+    if not is_superuser and not has_view_all and not has_view_all_departments:
         or_conditions = []
         if has_view_assigned:
             if not user_id:
@@ -112,6 +114,13 @@ async def list_works(
         query["$or"] = or_conditions
         if not status or status == "All" or status == "All Statuses":
             query["status"] = {"$ne": "Closed"}
+    elif not is_superuser and has_view_all_departments:
+        # "View All Department Works" allows seeing works across all departments
+        if assignee and assignee != "All" and assignee != "All Assignees":
+            query["$or"] = [
+                {"assignee": assignee},
+                {"assignees": assignee}
+            ]
     elif not is_superuser and has_view_all:
         # "View All Work" shows all works in the user's department only
         user_dept = user_record.get("department") if user_record else None
@@ -140,6 +149,30 @@ async def list_works(
                 {"assignee": assignee},
                 {"assignees": assignee}
             ]
+    if (is_superuser or has_view_all_departments) and department and department not in ["All", "All Departments"]:
+        dept_users = await users_collection.find({"department": department}).to_list(length=None)
+        dept_user_ids = [str(u["_id"]) for u in dept_users]
+        dept_usernames = [u["username"] for u in dept_users if u.get("username")]
+        
+        dept_filter_conditions = []
+        if dept_user_ids:
+            dept_filter_conditions.append({"assignee": {"$in": dept_user_ids}})
+            dept_filter_conditions.append({"assignees": {"$elemMatch": {"$in": dept_user_ids}}})
+        if dept_usernames:
+            dept_filter_conditions.append({"createdBy": {"$in": dept_usernames}})
+            
+        if dept_filter_conditions:
+            if "$or" in query:
+                query["$and"] = [{"$or": query.pop("$or")}, {"$or": dept_filter_conditions}]
+            else:
+                query["$or"] = dept_filter_conditions
+        else:
+            # If department has no users, return empty
+            if "$or" in query:
+                query["$and"] = [{"$or": query.pop("$or")}, {"_id": "nonexistent_for_empty_department"}]
+            else:
+                query["_id"] = "nonexistent_for_empty_department"
+
     if status and status != "All" and status != "All Statuses":
         if "," in status:
             status_list = [s.strip() for s in status.split(",") if s.strip()]
@@ -287,18 +320,42 @@ async def show_work(id: str, current_user: dict = Depends(get_current_user)):
     privileges = current_user.get("privileges", [])
     
     has_view_all = "View All Work" in privileges
+    has_view_all_departments = "View All Department Works" in privileges
     has_view_assigned = "View Assigned Work" in privileges
     has_view_emergency = "View Emergency Work" in privileges
     
-    if not is_superuser and not has_view_all:
+    if not is_superuser and not has_view_all_departments:
         allowed = False
+        
+        users_collection = db.get_collection("users")
+        user_record = await users_collection.find_one({"username": current_user["sub"]})
+        user_id = str(user_record["_id"]) if user_record else None
+
         if has_view_emergency and work.get("isEmergency"):
             allowed = True
-        elif has_view_assigned:
-            users_collection = db.get_collection("users")
-            user_record = await users_collection.find_one({"username": current_user["sub"]})
-            user_id = str(user_record["_id"]) if user_record else None
-            
+        elif has_view_all and user_record:
+            user_dept = user_record.get("department")
+            if user_dept:
+                dept_users = await users_collection.find({"department": user_dept}).to_list(length=None)
+                dept_user_ids = [str(u["_id"]) for u in dept_users]
+                dept_usernames = [u["username"] for u in dept_users if u.get("username")]
+                
+                assignees_list = work.get("assignees") or []
+                if work.get("assignee"):
+                    assignees_list.append(work.get("assignee"))
+                
+                is_in_dept = False
+                for a in assignees_list:
+                    if a in dept_user_ids:
+                        is_in_dept = True
+                        break
+                if work.get("createdBy") in dept_usernames:
+                    is_in_dept = True
+                
+                if is_in_dept:
+                    allowed = True
+                    
+        if not allowed and has_view_assigned:
             assignees_list = work.get("assignees") or []
             if work.get("assignee"):
                 assignees_list.append(work.get("assignee"))

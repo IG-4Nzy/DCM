@@ -39,4 +39,5 @@ export default {
   racks: "Racks",
   phoneDirectory: "Phone Directory",
   salary: "Salary Calculation",
+  about: "About App",
 };

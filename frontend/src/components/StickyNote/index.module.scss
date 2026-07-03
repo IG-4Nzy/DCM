@@ -1,0 +1,59 @@
+.stickyNote {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    height: 250px;
+    display: flex;
+    flex-direction: column;
+    background-color: #fffbc8 !important; /* classic yellow sticky note */
+    border-radius: 4px;
+    overflow: hidden;
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.header {
+    background-color: #fce883;
+    padding: 4px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: grab;
+    user-select: none;
+    
+    &:active {
+        cursor: grabbing;
+    }
+}
+
+.title {
+    font-weight: 600 !important;
+    color: #5c5315;
+    font-size: 0.75rem !important;
+}
+
+.closeBtn {
+    padding: 2px !important;
+    color: #5c5315 !important;
+    &:hover {
+        background-color: rgba(0,0,0,0.05) !important;
+    }
+}
+
+.textarea {
+    flex: 1;
+    width: 100%;
+    border: none;
+    resize: none;
+    background: transparent;
+    padding: 12px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: #333;
+    outline: none;
+    
+    &::placeholder {
+        color: rgba(0,0,0,0.3);
+    }
+}

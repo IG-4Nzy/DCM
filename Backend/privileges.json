@@ -24,6 +24,7 @@
     "Create Work",
     "View Assigned Work",
     "View All Work",
+    "View All Department Works",
     "Update Work",
     "Delete Work",
     "Create Department",
@@ -127,5 +128,11 @@
     "View Phone Directory",
     "Create Phone Directory",
     "Update Phone Directory",
-    "Delete Phone Directory"
+    "Delete Phone Directory",
+    "View Salary Calculation",
+    "Create Salary Calculation",
+    "Update Salary Calculation",
+    "Delete Salary Calculation",
+    "Edit About App",
+    "View Bug Reports"
 ]

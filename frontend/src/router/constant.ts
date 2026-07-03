@@ -34,4 +34,5 @@ export const ROUTE_CONSTANTS = {
     SERVER_PING_MONITORING: "/server-ping-monitoring",
     PHONE_DIRECTORY: "/phone-directory",
     SALARY: "/salary",
+    ABOUT: "/about",
 }

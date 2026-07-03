@@ -12,6 +12,8 @@ import {
     MdSave as SaveIcon,
     MdClose as CancelIcon,
 } from "react-icons/md";
+import Switch from "@mui/material/Switch";
+import FormControlLabel from "@mui/material/FormControlLabel";
 import TextField from "../../components/TextField";
 import Dropdown from "../../components/Dropdown";
 import { useToast } from "../../contexts/ToastContext";
@@ -32,6 +34,7 @@ interface UserProfileData {
     address: string;
     dateOfJoin: string;
     department: string;
+    stickyNoteEnabled?: boolean;
 }
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
@@ -60,6 +63,7 @@ const UserProfile: React.FC = () => {
         mobile: "",
         bloodGroup: "",
         address: "",
+        stickyNoteEnabled: false,
     });
 
     const fetchProfile = async () => {
@@ -74,6 +78,7 @@ const UserProfile: React.FC = () => {
                 mobile: res.data.mobile || "",
                 bloodGroup: res.data.bloodGroup || "",
                 address: res.data.address || "",
+                stickyNoteEnabled: res.data.stickyNoteEnabled || false,
             });
         } catch (err: any) {
             showToast(
@@ -98,6 +103,7 @@ const UserProfile: React.FC = () => {
                 mobile: profile.mobile || "",
                 bloodGroup: profile.bloodGroup || "",
                 address: profile.address || "",
+                stickyNoteEnabled: profile.stickyNoteEnabled || false,
             });
         }
         setEditing(false);
@@ -113,6 +119,7 @@ const UserProfile: React.FC = () => {
             const res = await request.put("/api/auth/me", payload);
             setProfile(res.data);
             setEditing(false);
+            window.dispatchEvent(new Event('profileUpdated'));
             showToast("Profile updated successfully", "success");
         } catch (err: any) {
             showToast(
@@ -353,6 +360,30 @@ const UserProfile: React.FC = () => {
                             label="Status"
                             value={profile.status ? "Active" : "Inactive"}
                         />
+                    </Box>
+                </Paper>
+
+                {/* Preferences */}
+                <Paper className={styles.card} elevation={0}>
+                    <label className={styles.sectionTitle}>Preferences</label>
+                    <Box className={styles.infoGrid}>
+                        {editing ? (
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={form.stickyNoteEnabled}
+                                        onChange={(e) => setForm({ ...form, stickyNoteEnabled: e.target.checked })}
+                                        color="primary"
+                                    />
+                                }
+                                label="Enable Floating Sticky Note"
+                            />
+                        ) : (
+                            <InfoRow 
+                                label="Floating Sticky Note" 
+                                value={profile.stickyNoteEnabled ? "Enabled" : "Disabled"} 
+                            />
+                        )}
                     </Box>
                 </Paper>
 

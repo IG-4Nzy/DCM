@@ -57,17 +57,26 @@ const Works: React.FC = () => {
     return false;
   }, [currentUser, departments, users]);
 
-  const canFilterByAssignee = isSuperuser || hasPrivilege(PRIVILEGES.WORK_VIEW);
+  const canFilterByDepartment = isSuperuser || hasPrivilege(PRIVILEGES.WORK_VIEW_ALL_DEPARTMENTS);
+  const canFilterByAssignee = isSuperuser || hasPrivilege(PRIVILEGES.WORK_VIEW) || hasPrivilege(PRIVILEGES.WORK_VIEW_ALL_DEPARTMENTS);
   const canViewEmergency = isSuperuser || hasPrivilege(PRIVILEGES.EMERGENCY_WORK_VIEW);
+
+  const [selectedDepartment, setSelectedDepartment] = useTableState('work_selectedDepartment', 'All Departments');
 
   const filteredUsersForAssignee = React.useMemo(() => {
     if (!currentUser || !users) return [];
+    if (canFilterByDepartment && selectedDepartment !== 'All Departments') {
+      return users.filter((u) => u.department === selectedDepartment);
+    }
+    if (isSuperuser || hasPrivilege(PRIVILEGES.WORK_VIEW_ALL_DEPARTMENTS)) {
+      return users;
+    }
     const loggedInUser = users.find((u) => u.username === currentUser);
     if (!loggedInUser || !loggedInUser.department) {
       return users;
     }
     return users.filter((u) => u.department === loggedInUser.department);
-  }, [users, currentUser]);
+  }, [users, currentUser, canFilterByDepartment, selectedDepartment, isSuperuser]);
 
   const [searchQuery, setSearchQuery] = useTableState('work_search', '');
   
@@ -134,10 +143,11 @@ const Works: React.FC = () => {
       search: searchQuery,
       status: statusFilter.join(','),
       assignee: selectedAssignee === 'All' ? undefined : selectedAssignee,
+      department: selectedDepartment === 'All Departments' ? undefined : selectedDepartment,
       tab: activeTab,
       showToast: silent ? undefined : showToast
     }));
-  }, [dispatch, page, rowsPerPage, orderBy, order, searchQuery, statusFilter, selectedAssignee, activeTab, showToast]);
+  }, [dispatch, page, rowsPerPage, orderBy, order, searchQuery, statusFilter, selectedAssignee, selectedDepartment, activeTab, showToast]);
 
   useEffect(() => {
     loadWorks();
@@ -477,6 +487,23 @@ const Works: React.FC = () => {
             onChange={setSearchQuery}
             placeholder="Search works..."
           />
+          {canFilterByDepartment && (
+            <FormControl size="small" sx={{ minWidth: 160, bgcolor: '#fff' }}>
+              <InputLabel>Department</InputLabel>
+              <Select
+                value={selectedDepartment}
+                label="Department"
+                onChange={(e) => { setSelectedDepartment(e.target.value as string); setPage(0); }}
+              >
+                <MenuItem value="All Departments">All Departments</MenuItem>
+                {departments.map((dept: any) => (
+                  <MenuItem key={dept.id || dept._id || dept.name} value={dept.name}>
+                    {dept.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
           {canFilterByAssignee && (
             <FormControl size="small" sx={{ minWidth: 160, bgcolor: '#fff' }}>
               <InputLabel>Assignee</InputLabel>
@@ -486,11 +513,14 @@ const Works: React.FC = () => {
                 onChange={(e) => { setSelectedAssignee(e.target.value as string); setPage(0); }}
               >
                 <MenuItem value="All">All Assignees</MenuItem>
-                {users.map((u: any) => (
-                  <MenuItem key={u.id || u._id} value={u.id || u._id}>
-                    {u.displayName || u.username}
-                  </MenuItem>
-                ))}
+                {users.map((user: any) => {
+                  const name = (user.firstName || user.lastName) ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : (user.username || user.name);
+                  return (
+                    <MenuItem key={user.id || user._id || user.username} value={user.id || user._id || user.username}>
+                      {name}
+                    </MenuItem>
+                  );
+                })}
               </Select>
             </FormControl>
           )}

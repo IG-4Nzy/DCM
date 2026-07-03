@@ -164,6 +164,12 @@ export const SIDEBAR_OPTIONS = [
     {
         label: wordings.salary,
         icon: Icons.DailyActivitiesIcon,
-        route: ROUTE_CONSTANTS.SALARY
+        route: ROUTE_CONSTANTS.SALARY,
+        privileges: [PRIVILEGES.SALARY_CALCULATION_VIEW, PRIVILEGES.SALARY_CALCULATION_CREATE, PRIVILEGES.SALARY_CALCULATION_UPDATE, PRIVILEGES.SALARY_CALCULATION_DELETE]
+    },
+    {
+        label: wordings.about,
+        icon: Icons.InfoIcon,
+        route: ROUTE_CONSTANTS.ABOUT
     }
 ]

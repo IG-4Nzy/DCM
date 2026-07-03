@@ -244,21 +244,15 @@ const UserFormModal = ({
                                         }
                                     }}
                                 />
-                                <FormControl fullWidth>
-                                    <InputLabel>Role(s)</InputLabel>
-                                    <Select
-                                        multiple
-                                        value={Array.isArray(formRole) ? formRole : (formRole ? [formRole] : [])}
-                                        label="Role(s)"
-                                        onChange={(e) => setFormRole(e.target.value as string[])}
-                                        renderValue={(selected) => (selected as string[]).join(', ')}
-                                        sx={{ borderRadius: '8px' }}
-                                    >
-                                        {(availableRoles || []).map((role) => (
-                                            <MenuItem key={role.id} value={role.name}>{role.name}</MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
+                                <Dropdown
+                                    fullWidth
+                                    multiple
+                                    label="Role(s)"
+                                    options={(availableRoles || []).map(r => ({ label: r.name, value: r.name }))}
+                                    value={Array.isArray(formRole) ? formRole : (formRole ? [formRole] : [])}
+                                    onChange={(val) => setFormRole(val)}
+                                    clearable
+                                />
                                 <FormControl fullWidth>
                                     <InputLabel>Status</InputLabel>
                                     <Select
@@ -277,22 +271,17 @@ const UserFormModal = ({
                                     value={formPassNumber}
                                     onChange={(e) => setFormPassNumber(e.target.value)}
                                 />
-                                <FormControl fullWidth>
-                                    <InputLabel>Replacement For (Relieved User)</InputLabel>
-                                    <Select
-                                        value={formReplacementFor || ""}
-                                        label="Replacement For (Relieved User)"
-                                        onChange={(e) => setFormReplacementFor(e.target.value)}
-                                        sx={{ borderRadius: '8px' }}
-                                    >
-                                        <MenuItem value=""><em>None</em></MenuItem>
-                                        {(inactiveUsers || []).map((u: any) => (
-                                            <MenuItem key={u.id} value={u.id}>
-                                                {u.username} {u.firstName || u.lastName ? `(${u.firstName || ''} ${u.lastName || ''})`.trim() : ''}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
+                                <Dropdown
+                                    fullWidth
+                                    label="Replacement For (Relieved User)"
+                                    options={(inactiveUsers || []).map(u => ({ 
+                                        label: `${u.username} ${u.firstName || u.lastName ? `(${u.firstName || ''} ${u.lastName || ''})`.trim() : ''}`, 
+                                        value: u.id 
+                                    }))}
+                                    value={formReplacementFor || ""}
+                                    onChange={(val) => setFormReplacementFor(val)}
+                                    clearable
+                                />
                             </div>
                         </div>
 

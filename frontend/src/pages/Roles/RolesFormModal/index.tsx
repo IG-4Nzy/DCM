@@ -83,6 +83,7 @@ const PRIVILEGE_GROUPS: { [category: string]: string[] } = {
     ],
     "Work & Departments": [
         "View All Work",
+        "View All Department Works",
         "View Assigned Work",
         "Create Work",
         "Update Work",
@@ -168,6 +169,12 @@ const PRIVILEGE_GROUPS: { [category: string]: string[] } = {
         "Create Phone Directory",
         "Update Phone Directory",
         "Delete Phone Directory"
+    ],
+    "Salary Calculation": [
+        "View Salary Calculation",
+        "Create Salary Calculation",
+        "Update Salary Calculation",
+        "Delete Salary Calculation"
     ]
 };
 

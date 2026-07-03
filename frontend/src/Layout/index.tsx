@@ -37,6 +37,7 @@ import { ROUTE_CONSTANTS } from '../router/constant';
 import request from '../services/request';
 import { NotificationPollerProvider } from '../contexts/NotificationPollerContext';
 import { getServerTime } from '../helpers/time';
+import StickyNote from '../components/StickyNote';
 
 const drawerWidth = 240;
 
@@ -261,6 +262,7 @@ const Layout: React.FC = () => {
 
   return (
     <NotificationPollerProvider>
+      <StickyNote />
       <Box sx={{ display: 'flex', textAlign: 'left', width: '100%', minHeight: '100vh' }}>
       <CssBaseline />
       <AppBar position="fixed" open={open}>

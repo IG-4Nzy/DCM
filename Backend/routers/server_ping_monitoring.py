@@ -116,7 +116,7 @@ class ServerPingScheduler:
     def __init__(self):
         self._running = False
         self._task: Optional[asyncio.Task] = None
-        self._semaphore = asyncio.Semaphore(50) # Limit concurrent checks to 50
+        self._semaphore = asyncio.Semaphore(200) # Limit concurrent checks to 200
         self._last_checked: Dict[str, float] = {}
 
     def start(self):
@@ -154,7 +154,7 @@ class ServerPingScheduler:
                         asyncio.create_task(self._check_server_throttled(server))
             except Exception as e:
                 logger.error(f"Error in Server Ping Monitoring Loop: {e}")
-            await asyncio.sleep(5.0)
+            await asyncio.sleep(1.0)
 
     async def _check_server_throttled(self, server: dict):
         async with self._semaphore:

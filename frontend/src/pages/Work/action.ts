@@ -10,10 +10,10 @@ type ToastFunction = (msg: string, severity?: 'error' | 'success') => void;
 
 export const fetchWorks = createAsyncThunk(
   'works/fetchWorks',
-  async ({ skip, limit, sortBy, order, search, status, assignee, tab, showToast }: FetchWorksParams, { rejectWithValue }) => {
+  async ({ skip, limit, sortBy, order, search, status, assignee, department, tab, showToast }: FetchWorksParams, { rejectWithValue }) => {
     try {
       const response = await request.get(WORKS_ENDPOINT, {
-        params: { skip, limit, sort_by: sortBy, order, search, status, assignee, tab }
+        params: { skip, limit, sort_by: sortBy, order, search, status, assignee, department, tab }
       });
       return response.data;
     } catch (error: any) {

@@ -4,6 +4,7 @@ export interface WorkData {
   _id?: string;
   workName: string;
   assignee?: string;
+  department?: string;
   assignees?: string[];
   priority: string;
   dueDate: string;
@@ -21,6 +22,7 @@ export interface WorkData {
 export interface CreateWorkPayload {
   workName: string;
   assignee?: string;
+  department?: string;
   assignees?: string[];
   priority: string;
   dueDate: string;
@@ -47,6 +49,7 @@ export interface FetchWorksParams {
   search: string;
   status?: string;
   assignee?: string;
+  department?: string;
   tab?: string;
   showToast?: (msg: string, severity?: 'error' | 'success') => void;
 }

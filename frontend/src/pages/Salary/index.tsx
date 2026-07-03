@@ -44,7 +44,9 @@ import {
 import dayjs from 'dayjs';
 import request from '../../services/request';
 import { useSelector } from 'react-redux';
-import type { RootState } from '../../store';
+import { type RootState } from '../../store';
+import { hasPrivilege } from '../../helpers/authUtils';
+import { PRIVILEGES } from '../../helpers/privileges';
 import { useToast } from '../../contexts/ToastContext';
 
 type Activity = {
@@ -76,8 +78,12 @@ type Group = {
 };
 
 const Salary = () => {
-  const { username, displayName } = useSelector((state: RootState) => state.auth);
+  const { username, displayName, isSuperuser } = useSelector((state: RootState) => state.auth);
   const { showToast } = useToast();
+
+  const canView = isSuperuser || hasPrivilege(PRIVILEGES.SALARY_CALCULATION_VIEW);
+  const canManage = isSuperuser || hasPrivilege(PRIVILEGES.SALARY_CALCULATION_CREATE) || hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE);
+
   const [currentMonth, setCurrentMonth] = useState(dayjs().format('YYYY-MM'));
   const [salaryData, setSalaryData] = useState<Record<string, Group[]>>({});
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -92,6 +98,7 @@ const Salary = () => {
   const [showSalaryPrint, setShowSalaryPrint] = useState(false);
 
   useEffect(() => {
+    if (!canView) return;
     const fetchAll = async () => {
       try {
         const [configRes, salaryConfigRes, templatesRes, allSalaryRes] = await Promise.all([
@@ -129,6 +136,18 @@ const Salary = () => {
   const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
   const [editingGroupIds, setEditingGroupIds] = useState<string[]>([]);
   const [editingTemplateIds, setEditingTemplateIds] = useState<string[]>([]);
+
+  // loadData() was removed because fetchAll() already fetches all months' data on mount
+
+  if (!canView) {
+    return (
+      <Box sx={{ p: 4, textAlign: 'center' }}>
+        <Typography variant="h6" color="textSecondary">
+          You need the View Salary Calculation privilege to access this feature.
+        </Typography>
+      </Box>
+    );
+  }
 
   let groups = salaryData[currentMonth];
   if (!groups) {

@@ -12,6 +12,7 @@ export const PRIVILEGES = {
     ROLE_DELETE: "Delete Role",
     WORK_CREATE: "Create Work",
     WORK_VIEW: "View All Work",
+    WORK_VIEW_ALL_DEPARTMENTS: "View All Department Works",
     WORK_VIEW_ASSIGNED: "View Assigned Work",
     WORK_UPDATE: "Update Work",
     WORK_DELETE: "Delete Work",
@@ -130,4 +131,10 @@ export const PRIVILEGES = {
     PHONE_DIRECTORY_CREATE: "Create Phone Directory",
     PHONE_DIRECTORY_UPDATE: "Update Phone Directory",
     PHONE_DIRECTORY_DELETE: "Delete Phone Directory",
+    SALARY_CALCULATION_VIEW: "View Salary Calculation",
+    SALARY_CALCULATION_CREATE: "Create Salary Calculation",
+    SALARY_CALCULATION_UPDATE: "Update Salary Calculation",
+    SALARY_CALCULATION_DELETE: "Delete Salary Calculation",
+    EDIT_ABOUT_APP: "Edit About App",
+    VIEW_BUG_REPORTS: "View Bug Reports",
 }
