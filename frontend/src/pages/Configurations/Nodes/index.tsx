@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
-import { Box, Paper, Tooltip, IconButton } from '@mui/material';
+import { Box, Paper, Tooltip, IconButton, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import Button from '../../../components/Button';
 import SearchBar from '../../../components/SearchBar';
@@ -47,6 +47,7 @@ const Nodes = () => {
     const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
 
     const [searchQuery, setSearchQuery] = useTableState('Nodes_search', '');
+    const [clusterFilter, setClusterFilter] = useTableState('Nodes_clusterFilter', '');
     const [page, setPage] = useTableState('Nodes_page', 0);
     const [rowsPerPage, setRowsPerPage] = useTableState('Nodes_rowsPerPage', 5);
     const [order, setOrder] = useTableState<Order>('Nodes_order', 'asc');
@@ -61,6 +62,7 @@ const Nodes = () => {
                 sortBy: orderBy,
                 order,
                 search: searchQuery,
+                clusterId: clusterFilter || undefined,
                 pagination: true
             });
             setData(result.data);
@@ -76,7 +78,7 @@ const Nodes = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, rowsPerPage, orderBy, order, searchQuery, showToast, isViewOpen, selectedViewItem]);
+    }, [page, rowsPerPage, orderBy, order, searchQuery, clusterFilter, showToast, isViewOpen, selectedViewItem]);
 
     useEffect(() => {
         loadData();
@@ -234,6 +236,19 @@ const Nodes = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
                 <Box sx={{ flexGrow: 1 }} />
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                    <FormControl size="small" sx={{ minWidth: 200, bgcolor: 'white', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}>
+                        <InputLabel>Filter by Cluster</InputLabel>
+                        <Select
+                            value={clusterFilter}
+                            label="Filter by Cluster"
+                            onChange={(e) => { setClusterFilter(e.target.value); setPage(0); }}
+                        >
+                            <MenuItem value="">All Clusters</MenuItem>
+                            {clusters.map(c => (
+                                <MenuItem key={c.id} value={c.id}>{c.clusterName}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
                     <SearchBar
                         value={searchQuery}
                         onChange={setSearchQuery}

@@ -52,6 +52,7 @@ docker build -t dcm-backend .
 docker run -d \
   --name dcm_backend \
   -p 8080:8000 \
+  -v /home/vssc/Desktop/DCM/Backend/uploads:/app/uploads \
   -e MONGO_URI="mongodb://admin:password@192.168.1.100:27017/" \
   -e FRONTEND_URL="http://192.168.1.50:3000" \
   dcm-backend

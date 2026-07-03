@@ -40,6 +40,16 @@ const ServerDetails = () => {
         }
     }, [activeTab]);
 
+    useEffect(() => {
+        const handleTabChange = (e: CustomEvent) => {
+            if (tabs.some(tab => tab.value === e.detail)) {
+                setActiveTab(e.detail);
+            }
+        };
+        window.addEventListener('changeServerDetailsTab', handleTabChange as EventListener);
+        return () => window.removeEventListener('changeServerDetailsTab', handleTabChange as EventListener);
+    }, [tabs]);
+
     if (tabs.length === 0) {
         return (
             <Box sx={{ p: 3, textAlign: 'center' }}>

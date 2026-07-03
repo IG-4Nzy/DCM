@@ -38,4 +38,5 @@ export default {
   ipList: "IP List",
   racks: "Racks",
   phoneDirectory: "Phone Directory",
+  salary: "Salary Calculation",
 };

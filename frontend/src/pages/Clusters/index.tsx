@@ -242,7 +242,10 @@ const Clusters = () => {
                     onRequestSort={handleRequestSort}
                     onPageChange={handleChangePage}
                     onRowsPerPageChange={handleChangeRowsPerPage}
-                    onRowClick={(row) => navigate(`/cluster/${row.id}`)}
+                    onRowClick={(row) => {
+                        localStorage.setItem('Nodes_clusterFilter', JSON.stringify(row.id));
+                        window.dispatchEvent(new CustomEvent('changeServerDetailsTab', { detail: 'nodes' }));
+                    }}
                 />
             </Box>
 

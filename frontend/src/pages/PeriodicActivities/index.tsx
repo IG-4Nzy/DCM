@@ -918,6 +918,15 @@ const PeriodicActivities: React.FC = () => {
         </DialogTitle>
         <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 3, minHeight: '300px' }}>
           
+          {selectedAmcActivity?.remarks && (
+            <Box sx={{ mb: -1, p: 2, bgcolor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#4b5563', mb: 0.5 }}>Remarks:</Typography>
+              <Typography variant="body2" sx={{ color: '#374151', whiteSpace: 'pre-wrap' }}>
+                {selectedAmcActivity.remarks}
+              </Typography>
+            </Box>
+          )}
+
           {/* Services list */}
           <Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>

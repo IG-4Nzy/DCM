@@ -53,11 +53,15 @@ async def list_items(
     limit: int = Query(10, ge=1),
     pagination: bool = Query(True),
     search: Optional[str] = None,
+    clusterId: Optional[str] = Query(None),
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
     order: str = Query("asc")
 ):
     query = {}
+    
+    if clusterId:
+        query["clusterId"] = clusterId
     
     if search:
         query = {

@@ -160,5 +160,10 @@ export const SIDEBAR_OPTIONS = [
         icon: Icons.SearchIcon,
         route: ROUTE_CONSTANTS.PHONE_DIRECTORY,
         privileges: [PRIVILEGES.PHONE_DIRECTORY_VIEW]
+    },
+    {
+        label: wordings.salary,
+        icon: Icons.DailyActivitiesIcon,
+        route: ROUTE_CONSTANTS.SALARY
     }
 ]

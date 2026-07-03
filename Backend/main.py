@@ -30,6 +30,7 @@ from ip_list import router as ip_list_router
 from documentations import router as documentations_router
 from bms_checklists import router as bms_checklists_router
 from bms_checklist_config import router as bms_checklist_config_router
+from salary import router as salary_router
 from cluster_checklists import router as cluster_checklists_router
 from cluster_checklist_config import router as cluster_checklist_config_router
 from morning_checklists import router as morning_checklists_router
@@ -573,6 +574,7 @@ app.include_router(ip_list_router, tags=["ip-list"], prefix="/api/ip-list")
 app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")
 app.include_router(notifications_router, tags=["notifications"], prefix="/api/notifications")
 app.include_router(server_ping_monitoring_router, tags=["server_ping_monitoring"], prefix="/api/server-ping-monitoring")
+app.include_router(salary_router, tags=["salary"], prefix="/api/salary")
 
 # Mount the new split telemetry monitor endpoints under same prefix for backwards compatibility
 app.include_router(vcenter_monitor_router, tags=["vcenter_telemetry"], prefix="/api/vcenter-details")
