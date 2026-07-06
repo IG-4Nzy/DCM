@@ -112,6 +112,7 @@ const WorkFormModal = ({
             fullWidth={true}
             className={styles.field}
             clearable={true}
+            searchable={true}
           />
         </div>
 

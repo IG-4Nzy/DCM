@@ -493,7 +493,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
 
                 {request.requestType === 'Hardware Issuance' && (() => {
                   const hItem = inventory.find((i: any) => (i.id || i._id) === request.details?.hardwareId);
-                  const hName = hItem ? hItem.itemName : request.details?.hardwareId;
+                  const hName = hItem ? hItem.itemName : (request.details?.hardwareItem || request.details?.hardwareId || '-');
                   return (
                     <>
                       <Grid size={{xs: 12, sm: 6}}   >

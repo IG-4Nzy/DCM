@@ -51,7 +51,9 @@ import {
   MdWarning as WarningIcon,
   MdKeyboardArrowDown as KeyboardArrowDownIcon,
   MdKeyboardArrowUp as KeyboardArrowUpIcon,
-  MdLayers as ClusterIcon
+  MdLayers as ClusterIcon,
+  MdInfo as InfoIcon,
+  MdPerson as PersonIcon
 } from 'react-icons/md';
 import { fetchVCenters, fetchClusters, fetchVCenterTelemetry, createVCenter, fetchNodes, deleteVCenter, fetchVCenterClustersPreview } from './action';
 import { useToast } from '../../contexts/ToastContext';
@@ -95,6 +97,7 @@ interface VmTelemetry {
   status: string;
 }
 
+
 interface Alarm {
   id: string;
   severity: 'Critical' | 'Warning' | 'Info';
@@ -102,7 +105,21 @@ interface Alarm {
   timestamp: string;
 }
 
+interface Notification {
+  id: string;
+  timestamp: string;
+  message: string;
+}
+
+interface Action {
+  id: string;
+  timestamp: string;
+  user: string;
+  action: string;
+}
+
 interface EventLog {
+
   timestamp: string;
   message: string;
 }
@@ -125,6 +142,8 @@ interface MonitorData {
   vms: VmTelemetry[];
   alarms: Alarm[];
   events: EventLog[];
+  notifications: Notification[];
+  actions: Action[];
 }
 
 const ServerMonitoring: React.FC = () => {
@@ -1368,6 +1387,49 @@ const ServerMonitoring: React.FC = () => {
                             </Box>
                           </Box>
                         </Box>
+                      ))
+                    )}
+                  </Box>
+                </Box>
+
+
+                {/* 3. System Notifications */}
+                <Box className={styles.container__sectionCard}>
+                  <h3 className={styles.container__sectionCard__title}>
+                    <InfoIcon style={{ color: '#3b82f6' }} /> System Notifications ({monitorData.notifications?.length || 0})
+                  </h3>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    {(!monitorData.notifications || monitorData.notifications.length === 0) ? (
+                      <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic', textAlign: 'center', py: 2 }}>
+                        No new notifications.
+                      </Typography>
+                    ) : (
+                      monitorData.notifications.map((notif, idx) => (
+                        <div key={idx} style={{ padding: '12px', borderRadius: '8px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e3a8a' }}>{notif.message}</Typography>
+                          <Typography variant="caption" sx={{ color: '#3b82f6' }}>{new Date(notif.timestamp).toLocaleString()}</Typography>
+                        </div>
+                      ))
+                    )}
+                  </Box>
+                </Box>
+
+                {/* 4. Admin Actions */}
+                <Box className={styles.container__sectionCard}>
+                  <h3 className={styles.container__sectionCard__title}>
+                    <PersonIcon style={{ color: '#8b5cf6' }} /> Audit & Actions ({monitorData.actions?.length || 0})
+                  </h3>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    {(!monitorData.actions || monitorData.actions.length === 0) ? (
+                      <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic', textAlign: 'center', py: 2 }}>
+                        No recent admin actions.
+                      </Typography>
+                    ) : (
+                      monitorData.actions.map((act, idx) => (
+                        <div key={idx} style={{ padding: '12px', borderRadius: '8px', backgroundColor: '#f3e8ff', border: '1px solid #d8b4fe' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#4c1d95' }}>{act.user} - {act.action}</Typography>
+                          <Typography variant="caption" sx={{ color: '#8b5cf6' }}>{new Date(act.timestamp).toLocaleString()}</Typography>
+                        </div>
                       ))
                     )}
                   </Box>

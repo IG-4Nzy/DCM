@@ -245,21 +245,14 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
 
             {currentRequestType === 'Hardware Issuance' && (
               <>
-                <FormControl fullWidth required>
-                  <InputLabel>Hardware (from Inventory)</InputLabel>
-                  <Select
-                    value={details.hardwareId || ''}
-                    label="Hardware (from Inventory)"
-                    onChange={(e) => handleDetailChange('hardwareId', e.target.value)}
-                    MenuProps={{ disablePortal: true }}
-                  >
-                    {inventory.map((item: any) => (
-                      <MenuItem key={item.id || item._id} value={item.id || item._id}>
-                        {item.itemName} (Available: {item.quantity})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <TextField
+                  label="Hardware Item"
+                  fullWidth
+                  required
+                  value={details.hardwareItem || details.hardwareId || ''}
+                  onChange={(e) => handleDetailChange('hardwareItem', e.target.value)}
+                  placeholder="Type the hardware item you need"
+                />
                 <TextField label="Quantity" type="number" fullWidth required slotProps={{ htmlInput: { min: 1 } }} value={details.quantity || ''} onChange={(e) => handleDetailChange('quantity', e.target.value)} />
               </>
             )}

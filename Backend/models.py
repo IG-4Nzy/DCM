@@ -117,6 +117,7 @@ class RoleModel(BaseModel):
     name: str
     status: bool
     privileges: List[str] = Field(default_factory=list)
+    usersCount: Optional[int] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -127,6 +128,7 @@ class CreateRoleModel(BaseModel):
     name: str
     status: bool = True
     privileges: List[str] = Field(default_factory=list)
+    usersCount: Optional[int] = None
 
 class UpdateRoleModel(BaseModel):
     name: Optional[str] = None

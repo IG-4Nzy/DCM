@@ -138,6 +138,25 @@ const Roles: React.FC = () => {
   const columns: Column<RoleData>[] = [
     { id: 'name', label: 'Role Name', sortable: true },
     {
+      id: 'usersCount',
+      label: 'Assigned Users',
+      sortable: false,
+      render: (row) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ 
+            backgroundColor: '#e3f2fd', 
+            color: '#1976d2', 
+            borderRadius: '12px', 
+            padding: '2px 8px', 
+            fontSize: '0.75rem', 
+            fontWeight: 'bold' 
+          }}>
+            {row.usersCount || 0} Users
+          </Box>
+        </Box>
+      )
+    },
+    {
       id: 'status',
       label: 'Status',
       sortable: true,

@@ -370,7 +370,7 @@ const Requests: React.FC = () => {
                         if (row.details.dateTime) parts.push(`Time: ${new Date(row.details.dateTime).toLocaleString()}`);
                     } else if (row.requestType === 'Hardware Issuance') {
                         const hItem = inventory.find((i: any) => (i.id || i._id) === row.details.hardwareId);
-                        const hName = hItem ? hItem.itemName : row.details.hardwareId;
+                        const hName = hItem ? hItem.itemName : (row.details.hardwareItem || row.details.hardwareId || '-');
                         if (hName) parts.push(`Item: ${hName}`);
                         if (row.details.quantity) parts.push(`Qty: ${row.details.quantity}`);
                     } else if (row.requestType === 'Hardware Replacement') {

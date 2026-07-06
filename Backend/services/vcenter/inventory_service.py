@@ -138,32 +138,40 @@ class VCenterInventoryService:
         headers = {"vmware-api-session-id": session_id}
 
         async def fetch():
-            # Modern Endpoint
-            try:
-                res = await client.get(f"https://{ip_address}/api/vcenter/vm/{vm_id}/guest/networking", headers=headers)
-                if res.status_code == 200:
-                    data = res.json()
-                    if isinstance(data, dict):
-                        for addr in data.get("ip_addresses", []):
-                            ip = addr.get("ip_address") if isinstance(addr, dict) else addr
-                            if ip and not ip.startswith("fe80") and not ip.startswith("::") and ":" not in ip:
-                                return ip
-            except Exception as e:
-                logger.warning(f"Failed modern guest networking lookup for {vm_id}: {e}")
+            found_ips = []
+            def extract_ips(obj):
+                if isinstance(obj, dict):
+                    if "ip_address" in obj and isinstance(obj["ip_address"], str):
+                        found_ips.append(obj["ip_address"])
+                    if "ipAddress" in obj and isinstance(obj["ipAddress"], str):
+                        found_ips.append(obj["ipAddress"])
+                    for v in obj.values():
+                        extract_ips(v)
+                elif isinstance(obj, list):
+                    for item in obj:
+                        extract_ips(item)
 
-            # Legacy Endpoint
-            try:
-                res = await client.get(f"https://{ip_address}/rest/vcenter/vm/{vm_id}/guest/networking", headers=headers)
-                if res.status_code == 200:
-                    data = res.json()
-                    val = data.get("value", {}) if isinstance(data, dict) else {}
-                    if isinstance(val, dict):
-                        for addr in val.get("ip_addresses", []):
-                            ip = addr.get("ip_address") if isinstance(addr, dict) else addr
-                            if ip and not ip.startswith("fe80") and not ip.startswith("::") and ":" not in ip:
+            endpoints_to_try = [
+                f"/api/vcenter/vm/{vm_id}/guest/identity",
+                f"/api/vcenter/vm/{vm_id}/guest/networking",
+                f"/api/vcenter/vm/{vm_id}/guest/networking/interfaces",
+                f"/rest/vcenter/vm/{vm_id}/guest/identity",
+                f"/rest/vcenter/vm/{vm_id}/guest/networking",
+                f"/rest/vcenter/vm/{vm_id}/guest/networking/interfaces"
+            ]
+            
+            for endpoint in endpoints_to_try:
+                try:
+                    res = await client.get(f"https://{ip_address}{endpoint}", headers=headers)
+                    if res.status_code == 200:
+                        data = res.json()
+                        extract_ips(data)
+                        for ip in found_ips:
+                            if ip and not ip.startswith("fe80") and not ip.startswith("::") and ":" not in ip and ip != "127.0.0.1":
                                 return ip
-            except Exception as e:
-                logger.warning(f"Failed legacy guest networking lookup for {vm_id}: {e}")
+                except Exception as e:
+                    logger.debug(f"Failed guest IP lookup on {endpoint} for {vm_id}: {e}")
+                    
             return None
 
         key = f"vcenter:{ip_address}:vm:{vm_id}:guest_ip"
