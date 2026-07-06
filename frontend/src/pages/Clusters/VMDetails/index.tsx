@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
-import { Box, Tooltip, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Typography } from '@mui/material';
+import { Box, Tooltip, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import Button from '../../../components/Button';
 import SearchBar from '../../../components/SearchBar';
@@ -40,6 +40,7 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
     const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
 
     const [clusters, setClusters] = useState<any[]>([]);
+    const [selectedClusterFilter, setSelectedClusterFilter] = useState<string>('All');
 
     useEffect(() => {
         if (!clusterId) {
@@ -50,7 +51,7 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
     }, [clusterId]);
 
     const getClusterName = (cid: string) => {
-        const found = clusters.find(c => c.id === cid);
+        const found = clusters.find(c => c.id === cid || c._id === cid);
         return found ? found.clusterName : cid || '--';
     };
 
@@ -65,6 +66,8 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
             };
             if (clusterId) {
                 params.clusterId = clusterId;
+            } else if (selectedClusterFilter !== 'All') {
+                params.clusterId = selectedClusterFilter;
             }
             const result = await fetchVMDetails(params);
             setData(result.data);
@@ -74,7 +77,7 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
         } finally {
             setLoading(false);
         }
-    }, [clusterId, page, rowsPerPage, searchQuery, showToast]);
+    }, [clusterId, selectedClusterFilter, page, rowsPerPage, searchQuery, showToast]);
 
     useEffect(() => {
         loadData();
@@ -131,7 +134,25 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
         <Box className={styles.container}>
             <Box className={styles.container__header}>
                 <Typography variant="h6" className={styles.container__header__label}>VM Details</Typography>
-                <Box className={styles.container__header__search}>
+                <Box className={styles.container__header__search} sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                    {!clusterId && (
+                        <FormControl size="small" sx={{ minWidth: 200, bgcolor: '#fff' }}>
+                            <InputLabel>Cluster Filter</InputLabel>
+                            <Select
+                                value={selectedClusterFilter}
+                                label="Cluster Filter"
+                                onChange={(e) => {
+                                    setSelectedClusterFilter(e.target.value);
+                                    setPage(0);
+                                }}
+                            >
+                                <MenuItem value="All">All Clusters</MenuItem>
+                                {clusters.map((c: any) => (
+                                    <MenuItem key={c.id || c._id} value={c.id || c._id}>{c.clusterName || c.id}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    )}
                     <SearchBar
                         value={searchQuery}
                         onChange={(val) => { setSearchQuery(val); setPage(0); }}

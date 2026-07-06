@@ -99,8 +99,8 @@ const Works: React.FC = () => {
 
   const [page, setPage] = useTableState('work_page', 0);
   const [rowsPerPage, setRowsPerPage] = useTableState('work_rowsPerPage', 5);
-  const [order, setOrder] = useTableState<Order>('work_order', 'asc');
-  const [orderBy, setOrderBy] = useTableState<string>('work_orderBy', 'workName');
+  const [order, setOrder] = useTableState<Order>('work_order', 'desc');
+  const [orderBy, setOrderBy] = useTableState<string>('work_orderBy', 'createdAt');
 
   const { works, totalCount } = useSelector((state: RootState) => state?.works || { works: [], totalCount: 0 });
 
@@ -311,7 +311,7 @@ const Works: React.FC = () => {
   };
 
   const columns: Column<WorkData>[] = [
-    { id: 'workName', label: 'Work Name', sortable: true },
+    { id: 'workName', label: 'Work Name', sortable: false },
     {
       id: 'assignee',
       label: 'Assignees',
@@ -332,7 +332,7 @@ const Works: React.FC = () => {
     {
       id: 'priority',
       label: 'Priority',
-      sortable: true,
+      sortable: false,
       render: (row) => (
         <label
           style={{
@@ -348,7 +348,7 @@ const Works: React.FC = () => {
     {
       id: 'dueDate',
       label: 'Due Date',
-      sortable: true,
+      sortable: false,
       render: (row) => {
         if (!row.dueDate) return '-';
 
@@ -399,7 +399,7 @@ const Works: React.FC = () => {
     {
       id: 'status',
       label: 'Status',
-      sortable: true,
+      sortable: false,
       render: (row) => {
         const s = row.status || 'Pending';
         const color = s === 'Completed' ? '#2e7d32' : s === 'On Hold' ? '#ed6c02' : s === 'Assigned' ? '#1976d2' : '#757575';
@@ -513,7 +513,7 @@ const Works: React.FC = () => {
                 onChange={(e) => { setSelectedAssignee(e.target.value as string); setPage(0); }}
               >
                 <MenuItem value="All">All Assignees</MenuItem>
-                {users.map((user: any) => {
+                {filteredUsersForAssignee.map((user: any) => {
                   const name = (user.firstName || user.lastName) ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : (user.username || user.name);
                   return (
                     <MenuItem key={user.id || user._id || user.username} value={user.id || user._id || user.username}>

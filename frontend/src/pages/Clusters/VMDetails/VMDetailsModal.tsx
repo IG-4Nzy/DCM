@@ -135,7 +135,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                             fullWidth
                             value={formData.clusterId} 
                             onChange={(val) => handleChange('clusterId', val)} 
-                            options={clusters.map(c => ({ label: c.clusterName, value: c.id }))}
+                            options={clusters.map(c => ({ label: c.clusterName, value: c.id || c._id }))}
                         />
                     )}
                     <TextField 
