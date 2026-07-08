@@ -2,6 +2,7 @@
 export interface RequestData {
   id?: string;
   _id?: string;
+  requestId?: string;
   requestType?: string;
   category?: string;
   description?: string;

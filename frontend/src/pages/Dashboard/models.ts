@@ -20,6 +20,7 @@ export interface DashboardData {
   openObservationsCount: number;
   isDepartmentHead: boolean;
   userDepartment: string;
+  userDepartmentName?: string;
   shiftConfig: {
     shiftStart: string;
     lateGracePeriod: number;

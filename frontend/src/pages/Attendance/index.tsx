@@ -75,7 +75,7 @@ const Attendance: React.FC = () => {
     const [periods, setPeriods] = useState<PeriodOption[]>([]);
     const [selectedPeriod, setSelectedPeriod] = useState<string>('');
     const [departmentFilter, setDepartmentFilter] = useState<string>('');
-    const [departments, setDepartments] = useState<string[]>([]);
+    const [departments, setDepartments] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -207,7 +207,7 @@ const Attendance: React.FC = () => {
                 params: { pagination: false }
             });
             if (res.data && res.data.data) {
-                setDepartments(res.data.data.map((d: any) => d.name));
+                setDepartments(res.data.data.map((d: any) => ({ id: d.id || d._id, name: d.name })));
             }
         } catch (e) {
             // Silently fail or ignore if not allowed
@@ -578,7 +578,15 @@ const Attendance: React.FC = () => {
             sortable: true,
             render: (row) => row.fullName || row.username
         },
-        { id: 'department', label: 'Department', sortable: true },
+        {
+            id: 'department',
+            label: 'Department',
+            sortable: true,
+            render: (row) => {
+                const d = departments.find(dept => dept.id === row.department);
+                return d ? d.name : (row.department || '--');
+            }
+        },
         {
             id: 'shiftName',
             label: 'Shift',
@@ -844,7 +852,15 @@ const Attendance: React.FC = () => {
             sortable: true,
             render: (row) => row.fullName || row.username
         },
-        { id: 'department', label: 'Department', sortable: true },
+        {
+            id: 'department',
+            label: 'Department',
+            sortable: true,
+            render: (row) => {
+                const d = departments.find(dept => dept.id === row.department);
+                return d ? d.name : (row.department || '--');
+            }
+        },
         {
             id: 'presentDays',
             label: 'Present Days / Target',
@@ -975,8 +991,8 @@ const Attendance: React.FC = () => {
                                     <MenuItem value="">All Departments</MenuItem>
 
                                     {departments.map((dept, idx) => (
-                                        <MenuItem key={idx} value={dept}>
-                                            {dept}
+                                        <MenuItem key={idx} value={dept.id}>
+                                            {dept.name}
                                         </MenuItem>
                                     ))}
                                 </Select>
@@ -1430,7 +1446,7 @@ const Attendance: React.FC = () => {
                                 <Box>
                                     <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>Department</Typography>
                                     <Typography variant="body1" sx={{ fontWeight: 600, color: '#333' }}>
-                                        {viewingRecord.department || '--'}
+                                        {departments.find(d => d.id === viewingRecord.department)?.name || viewingRecord.department || '--'}
                                     </Typography>
                                 </Box>
                                 <Box>

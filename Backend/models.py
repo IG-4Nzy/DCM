@@ -145,6 +145,7 @@ class PaginatedRolesModel(BaseModel):
 
 class WorkModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    workId: Optional[str] = None
     workName: str
     assignees: List[str] = Field(default_factory=list)
     assignee: Optional[str] = None
@@ -206,6 +207,7 @@ class WorkModel(BaseModel):
     )
 
 class CreateWorkModel(BaseModel):
+    workId: Optional[str] = None
     workName: str
     assignees: List[str] = Field(default_factory=list)
     assignee: Optional[str] = None
@@ -236,6 +238,7 @@ class CreateWorkModel(BaseModel):
         return data
 
 class UpdateWorkModel(BaseModel):
+    workId: Optional[str] = None
     workName: Optional[str] = None
     assignees: Optional[List[str]] = None
     assignee: Optional[str] = None
@@ -1052,6 +1055,7 @@ class UpdateRequestModel(BaseModel):
 
 class RequestModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    requestId: Optional[str] = None
     requestType: Optional[str] = None
     category: Optional[str] = None
     description: Optional[str] = None

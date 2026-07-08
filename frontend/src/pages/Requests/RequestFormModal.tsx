@@ -30,8 +30,8 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
   requestTypes
 }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { showToast } = useToast();
   const { inventory } = useSelector((state: RootState) => state.inventory);
+  const { username } = useSelector((state: RootState) => state.auth);
 
   const [requestType, setRequestType] = useState('');
   const [description, setDescription] = useState('');
@@ -283,6 +283,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                     label="Status"
                     onChange={(e) => setStatus(e.target.value)}
                     MenuProps={{ disablePortal: true }}
+                    disabled={!isSuperuser && (!editingRequest?.currentAssignedUsers || !editingRequest.currentAssignedUsers.includes(username))}
                   >
                     {configuredStages.length > 0 ? (
                       configuredStages.map((stage) => (

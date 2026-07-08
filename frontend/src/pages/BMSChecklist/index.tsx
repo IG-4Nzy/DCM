@@ -22,6 +22,7 @@ import {
   DEFAULT_CONFIG
 } from './config';
 import type { FlatRow, SavedChecklist, Rule } from './config';
+import request from '../../services/request';
 import { createNewChecklist } from './storage';
 import {
   fetchBMSChecklists, createBMSChecklist, updateBMSChecklist, deleteBMSChecklist,
@@ -298,6 +299,22 @@ const BMSChecklist: React.FC = () => {
   useEffect(() => {
     loadTemplate();
   }, [loadTemplate]);
+
+  const [departments, setDepartments] = useState<any[]>([]);
+  const loadDepartments = useCallback(async () => {
+    try {
+      const res = await request.get('/api/departments', {
+        params: { pagination: false }
+      });
+      if (res.data && res.data.data) {
+        setDepartments(res.data.data.map((d: any) => ({ id: d.id || d._id, name: d.name })));
+      }
+    } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+    loadDepartments();
+  }, [loadDepartments]);
 
   // Tab state: 0 = Active Checklist, 1 = History
   const [activeTab, setActiveTab] = useState(0);
@@ -1556,7 +1573,7 @@ const BMSChecklist: React.FC = () => {
             filteredHistory.map(cl => (
               <Box key={cl.id} className={styles['container__history--card']}>
                 <Box className={styles['container__history--card--left']}>
-                  <h4>BMS Checklist — {dayjs(cl.date).format('DD MMM YYYY')} ({cl.department || 'General'})</h4>
+                  <h4>BMS Checklist — {dayjs(cl.date).format('DD MMM YYYY')} ({departments.find(d => d.id === cl.department)?.name || cl.department || 'General'})</h4>
                   <span>Prepared by: {cl.preparedBy} &nbsp;|&nbsp; {dayjs(cl.updatedAt).format('DD/MM/YYYY HH:mm')}</span>
                 </Box>
                 <Box className={styles['container__history--card--right']}>
@@ -1620,7 +1637,7 @@ const BMSChecklist: React.FC = () => {
         {viewingChecklist && (
           <>
             <DialogTitle sx={{ fontWeight: 700,color:"#333" }}>
-              BMS Checklist — {dayjs(viewingChecklist.date).format('DD MMM YYYY')}
+              BMS Checklist — {dayjs(viewingChecklist.date).format('DD MMM YYYY')} ({departments.find(d => d.id === viewingChecklist.department)?.name || viewingChecklist.department || 'General'})
               <Chip
                 label={viewingChecklist.status}
                 size="small"
@@ -1666,7 +1683,7 @@ const BMSChecklist: React.FC = () => {
                     time: viewingChecklist.time,
                     preparedBy: viewingChecklist.preparedBy,
                     status: viewingChecklist.status,
-                    department: viewingChecklist.department,
+                    department: departments.find(d => d.id === viewingChecklist.department)?.name || viewingChecklist.department,
                     completedBy: viewingChecklist.completedBy,
                     columns: ['#', 'Category', 'Device', 'Parameter', 'Value', 'BMS Reading', 'Unit', 'Remarks'],
                     rows: pdfRows,

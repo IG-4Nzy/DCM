@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Uplo
 from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional
-from database import db
+from database import db, get_next_sequence
 from models import WorkModel, CreateWorkModel, UpdateWorkModel, PaginatedWorksModel
 from bson import ObjectId
 
@@ -19,8 +19,8 @@ async def is_department_head_of_assignees(current_user_username: str, work: dict
     if not depts_where_head:
         return False
         
-    head_dept_names = {d["name"] for d in depts_where_head if d.get("name")}
-    if not head_dept_names:
+    head_dept_ids = {str(d["_id"]) for d in depts_where_head}
+    if not head_dept_ids:
         return False
         
     assignees_list = list(work.get("assignees") or [])
@@ -31,7 +31,7 @@ async def is_department_head_of_assignees(current_user_username: str, work: dict
     if creator_username:
         users_collection = db.get_collection("users")
         creator_user = await users_collection.find_one({"username": creator_username})
-        if creator_user and creator_user.get("department") in head_dept_names:
+        if creator_user and creator_user.get("department") in head_dept_ids:
             return True
             
     if not assignees_list:
@@ -58,7 +58,7 @@ async def is_department_head_of_assignees(current_user_username: str, work: dict
     assignee_users = await users_collection.find(query).to_list(length=None)
     for u in assignee_users:
         u_dept = u.get("department")
-        if u_dept in head_dept_names:
+        if u_dept and u_dept in head_dept_ids:
             return True
             
     return False
@@ -295,6 +295,9 @@ async def create_work(work: CreateWorkModel = Body(...), current_user: dict = De
 
     if not work_dict.get("createdAt"):
         work_dict["createdAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        
+    work_dict["workId"] = await get_next_sequence("works_sequence", "WRK")
+    
     new_work = await works_collection.insert_one(work_dict)
     created_work = await works_collection.find_one({"_id": new_work.inserted_id})
     

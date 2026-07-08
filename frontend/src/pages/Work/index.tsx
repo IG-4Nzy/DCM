@@ -311,6 +311,16 @@ const Works: React.FC = () => {
   };
 
   const columns: Column<WorkData>[] = [
+    { 
+      id: 'workId', 
+      label: 'Work ID', 
+      sortable: false,
+      render: (row) => (
+        <span style={{ fontWeight: 'bold', color: '#1976d2' }}>
+          {row.workId || '-'}
+        </span>
+      )
+    },
     { id: 'workName', label: 'Work Name', sortable: false },
     {
       id: 'assignee',
@@ -497,7 +507,7 @@ const Works: React.FC = () => {
               >
                 <MenuItem value="All Departments">All Departments</MenuItem>
                 {departments.map((dept: any) => (
-                  <MenuItem key={dept.id || dept._id || dept.name} value={dept.name}>
+                  <MenuItem key={dept.id || dept._id || dept.name} value={dept.id || dept._id || dept.name}>
                     {dept.name}
                   </MenuItem>
                 ))}

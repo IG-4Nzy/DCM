@@ -17,3 +17,16 @@ from datetime import datetime
 def get_local_now() -> datetime:
     tz = zoneinfo.ZoneInfo("Asia/Kolkata")
     return datetime.now(tz).replace(tzinfo=None)
+
+async def get_next_sequence(sequence_name: str, prefix: str) -> str:
+    seq_collection = db.get_collection("sequences")
+    year_str = get_local_now().strftime("%Y")
+    # We can reset the sequence per year or keep it running. Let's make it continuous but with year in format.
+    seq_doc = await seq_collection.find_one_and_update(
+        {"_id": sequence_name},
+        {"$inc": {"sequence_value": 1}},
+        upsert=True,
+        return_document=True
+    )
+    seq_num = seq_doc["sequence_value"]
+    return f"{prefix}{year_str}{seq_num:03d}"

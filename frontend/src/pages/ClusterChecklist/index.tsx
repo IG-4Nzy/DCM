@@ -1,3 +1,4 @@
+import request from '../../services/request';
 // @ts-nocheck
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSelector } from 'react-redux';
@@ -293,6 +294,22 @@ const ClusterChecklist: React.FC = () => {
   useEffect(() => {
     loadTemplate();
   }, [loadTemplate]);
+
+  const [departments, setDepartments] = useState<any[]>([]);
+  const loadDepartments = useCallback(async () => {
+    try {
+      const res = await request.get('/api/departments', {
+        params: { pagination: false }
+      });
+      if (res.data && res.data.data) {
+        setDepartments(res.data.data.map((d: any) => ({ id: d.id || d._id, name: d.name })));
+      }
+    } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+    loadDepartments();
+  }, [loadDepartments]);
 
   // Tab state: 0 = Active Checklist, 1 = History
   const [activeTab, setActiveTab] = useState(0);
@@ -1608,7 +1625,7 @@ const ClusterChecklist: React.FC = () => {
             filteredHistory.map(cl => (
               <Box key={cl.id} className={styles['container__history--card']}>
                 <Box className={styles['container__history--card--left']}>
-                  <h4>Cluster Checklist — {dayjs(cl.date).format('DD MMM YYYY')} ({cl.department || 'General'})</h4>
+                  <h4>Cluster Checklist — {dayjs(cl.date).format('DD MMM YYYY')} ({departments.find(d => d.id === cl.department)?.name || cl.department || 'General'})</h4>
                   <span>Prepared by: {cl.preparedBy} &nbsp;|&nbsp; {dayjs(cl.updatedAt).format('DD/MM/YYYY HH:mm')}</span>
                 </Box>
                 <Box className={styles['container__history--card--right']}>
@@ -1672,7 +1689,7 @@ const ClusterChecklist: React.FC = () => {
         {viewingChecklist && (
           <>
             <DialogTitle sx={{ fontWeight: 700,color:"#333" }}>
-              Cluster Checklist — {dayjs(viewingChecklist.date).format('DD MMM YYYY')}
+              Cluster Checklist — {dayjs(viewingChecklist.date).format('DD MMM YYYY')} ({departments.find(d => d.id === viewingChecklist.department)?.name || viewingChecklist.department || 'General'})
               <Chip
                 label={viewingChecklist.status}
                 size="small"
@@ -1718,7 +1735,7 @@ const ClusterChecklist: React.FC = () => {
                     time: viewingChecklist.time,
                     preparedBy: viewingChecklist.preparedBy,
                     status: viewingChecklist.status,
-                    department: viewingChecklist.department,
+                    department: departments.find(d => d.id === viewingChecklist.department)?.name || viewingChecklist.department,
                     completedBy: viewingChecklist.completedBy,
                     columns: ['#', 'Category', 'Fields Group', 'Parameter', 'Value', 'Unit', 'Remarks'],
                     rows: pdfRows,

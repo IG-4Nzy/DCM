@@ -22,6 +22,7 @@ import {
   updateMorningChecklist,
   fetchMorningChecklistConfig,
 } from './action';
+import request from '../../../services/request';
 import DaySummary from '../../../components/DaySummary';
 
 interface ConfigField {
@@ -200,9 +201,22 @@ const MorningChecklist: React.FC = () => {
     }
   }, [userDepartment, historyMonth, historySearch, historyPage, historyRowsPerPage]);
 
+  const [departments, setDepartments] = useState<any[]>([]);
+  const loadDepartments = useCallback(async () => {
+    try {
+      const res = await request.get('/api/departments', {
+        params: { pagination: false }
+      });
+      if (res.data && res.data.data) {
+        setDepartments(res.data.data.map((d: any) => ({ id: d.id || d._id, name: d.name })));
+      }
+    } catch (e) {}
+  }, []);
+
   useEffect(() => {
     loadConfig();
-  }, [loadConfig]);
+    loadDepartments();
+  }, [loadConfig, loadDepartments]);
 
   useEffect(() => {
     if (configFields.length > 0 && activeTab === 0) {
@@ -645,7 +659,7 @@ const MorningChecklist: React.FC = () => {
                       date: viewingChecklist.date,
                       preparedBy: viewingChecklist.preparedBy,
                       status: viewingChecklist.status,
-                      department: viewingChecklist.department,
+                      department: departments.find(d => d.id === viewingChecklist.department)?.name || viewingChecklist.department,
                       completedBy: viewingChecklist.completedBy,
                       columns: ['#', 'Item', 'Value', 'Remarks'],
                       rows: pdfRows,

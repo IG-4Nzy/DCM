@@ -100,11 +100,23 @@ async def login(credentials: LoginRequest):
         
     roles_collection = db.get_collection("roles")
     privileges_set = set()
-    for role_name in user_roles:
-        role_obj = await roles_collection.find_one({"name": role_name})
+    role_names = []
+    from bson import ObjectId
+    for role_id in user_roles:
+        role_obj = None
+        if ObjectId.is_valid(role_id):
+            role_obj = await roles_collection.find_one({"_id": ObjectId(role_id)})
+        if not role_obj:
+            role_obj = await roles_collection.find_one({"name": role_id})
         if role_obj:
             privileges_set.update(role_obj.get("privileges", []))
+            if role_obj.get("name"):
+                role_names.append(role_obj.get("name"))
+        else:
+            role_names.append(role_id)
+            
     privileges = list(privileges_set)
+    resolved_role = role_names[0] if len(role_names) == 1 else role_names
     
     is_superuser = user.get("is_superuser", False)
     
@@ -119,7 +131,8 @@ async def login(credentials: LoginRequest):
     access_token = create_access_token(
     data={
         "sub": user["username"],
-        "role": role,
+        "role": resolved_role,
+        "roleIds": user_roles,
         "privileges": privileges,
         "isSuperuser": is_superuser,
         "department": user.get("department", ""),
@@ -138,7 +151,7 @@ async def login(credentials: LoginRequest):
         late_login_restriction = config.get("lateLoginRestriction", True)
 
         should_track = True
-        if tracked_role and tracked_role != "All Roles" and role != tracked_role:
+        if tracked_role and tracked_role != "All Roles" and tracked_role not in user_roles:
             should_track = False
 
         if should_track:
@@ -198,7 +211,7 @@ async def login(credentials: LoginRequest):
                             detail={
                                 "message": "You are late, you are not allowed to login, contact your department head",
                                 "restricted_token": restricted_token,
-                                "role": role,
+                                "role": resolved_role,
                                 "privileges": restricted_privileges,
                                 "isSuperuser": False,
                                 "username": user["username"],
@@ -211,7 +224,7 @@ async def login(credentials: LoginRequest):
                             detail={
                                 "message": "Your late login request has been rejected, contact your department head",
                                 "restricted_token": restricted_token,
-                                "role": role,
+                                "role": resolved_role,
                                 "privileges": restricted_privileges,
                                 "isSuperuser": False,
                                 "username": user["username"],
@@ -336,7 +349,7 @@ async def login(credentials: LoginRequest):
     
     return LoginResponse(
         token=access_token,
-        role=role,
+        role=resolved_role,
         username=user["username"],
         privileges=privileges,
         isSuperuser=is_superuser,
@@ -452,11 +465,32 @@ async def get_my_profile(current_user: dict = Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
+    roles_collection = db.get_collection("roles")
+    role_id = user.get("role")
+    role_name = ""
+    from bson import ObjectId
+    if role_id:
+        if isinstance(role_id, list) and len(role_id) > 0:
+            role_id_to_find = role_id[0]
+        else:
+            role_id_to_find = role_id
+            
+        role_obj = None
+        if ObjectId.is_valid(role_id_to_find):
+            role_obj = await roles_collection.find_one({"_id": ObjectId(role_id_to_find)})
+        if not role_obj:
+            role_obj = await roles_collection.find_one({"name": role_id_to_find})
+        
+        if role_obj and role_obj.get("name"):
+            role_name = role_obj.get("name")
+        else:
+            role_name = role_id_to_find
+
     # Return all user fields except password
     return {
         "id": str(user["_id"]),
         "username": user.get("username", ""),
-        "role": user.get("role", ""),
+        "role": role_name,
         "status": user.get("status", True),
         "firstName": user.get("firstName", ""),
         "lastName": user.get("lastName", ""),

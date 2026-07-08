@@ -19,6 +19,8 @@ import Dropdown from "../../components/Dropdown";
 import { useToast } from "../../contexts/ToastContext";
 import request from "../../services/request";
 import type { RootState } from "../../store";
+import { hasPrivilege } from "../../helpers/authUtils";
+import { PRIVILEGES } from "../../helpers/privileges";
 import styles from "./index.module.scss";
 
 interface UserProfileData {
@@ -229,19 +231,21 @@ const UserProfile: React.FC = () => {
                         </Box>
                         <Box className={styles.headerAction}>
                             {!editing ? (
-                                <Button
-                                    variant="outlined"
-                                    size="small"
-                                    startIcon={<EditIcon />}
-                                    onClick={() => setEditing(true)}
-                                    sx={{
-                                        borderRadius: "8px",
-                                        textTransform: "none",
-                                        fontWeight: 600,
-                                    }}
-                                >
-                                    Edit
-                                </Button>
+                                hasPrivilege(PRIVILEGES.USER_UPDATE) && (
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        startIcon={<EditIcon />}
+                                        onClick={() => setEditing(true)}
+                                        sx={{
+                                            borderRadius: "8px",
+                                            textTransform: "none",
+                                            fontWeight: 600,
+                                        }}
+                                    >
+                                        Edit
+                                    </Button>
+                                )
                             ) : (
                                 <Box sx={{ display: "flex", gap: 1 }}>
                                     <Button

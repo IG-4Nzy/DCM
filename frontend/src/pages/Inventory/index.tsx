@@ -239,7 +239,16 @@ const Inventory: React.FC = () => {
         return row.lastUpdatedDate;
       }
     },
-    { id: 'lastUpdatedBy', label: 'Last Updated By', sortable: true }
+    { 
+      id: 'lastUpdatedBy', 
+      label: 'Last Updated By', 
+      sortable: true,
+      render: (row: any) => {
+        if (!row.lastUpdatedBy) return '-';
+        const user = users.find((u: any) => u.username === row.lastUpdatedBy);
+        return user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : row.lastUpdatedBy;
+      }
+    }
   );
 
   if (hasUpdate || hasDelete) {

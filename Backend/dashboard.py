@@ -37,7 +37,10 @@ async def get_dashboard_summary(
     # Check if user is department head
     dept_head_doc = await depts_col.find_one({"departmentHead": username})
     is_dept_head = dept_head_doc is not None
-    active_dept = dept_head_doc["name"] if is_dept_head else user_dept
+    active_dept = str(dept_head_doc["_id"]) if is_dept_head else user_dept
+    
+    active_dept_doc = await depts_col.find_one({"_id": ObjectId(active_dept)}) if ObjectId.is_valid(active_dept) else None
+    active_dept_name = active_dept_doc["name"] if active_dept_doc else active_dept
     
     # Reconcile roster leaves for past dates in this department
     await reconcile_roster_leaves(active_dept, get_local_now())
@@ -393,6 +396,7 @@ async def get_dashboard_summary(
         "openObservationsCount": open_obs_count,
         "isDepartmentHead": is_dept_head,
         "userDepartment": active_dept,
+        "userDepartmentName": active_dept_name,
         "shiftConfig": shift_config,
         "todayAttendance": enriched_attendance,
         "periodicActivities": alert_activities,

@@ -69,6 +69,7 @@ interface PeriodicActivity {
   dueDate: string;
   remarks?: string;
   department?: string;
+  departmentName?: string;
   createdAt?: string;
   isAmc?: boolean;
   services?: ServiceRecord[];
@@ -624,7 +625,7 @@ const PeriodicActivities: React.FC = () => {
                           {activity.remarks || '--'}
                         </TableCell>
                         <TableCell sx={{ textTransform: 'capitalize', color: '#718096' }}>
-                          {activity.department || 'General'}
+                          {activity.departmentName || activity.department || 'General'}
                         </TableCell>
                         <TableCell align="right" sx={{ pr: 2 }}>
                           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>

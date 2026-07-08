@@ -69,7 +69,7 @@ const Users: React.FC = () => {
   const [formAddress, setFormAddress] = useState("");
   const [formDateOfJoin, setFormDateOfJoin] = useState("");
   const [formDepartment, setFormDepartment] = useState("");
-  const [formIsDepartmentHead, setFormIsDepartmentHead] = useState(false);
+
   const [isEditMode, setIsEditMode] = useState(false);
   const [formReplacementFor, setFormReplacementFor] = useState("");
   const [formPassNumber, setFormPassNumber] = useState("");
@@ -157,7 +157,6 @@ const Users: React.FC = () => {
       setFormAddress(user.address || "");
       setFormDateOfJoin(user.dateOfJoin || "");
       setFormDepartment(user.department || "");
-      setFormIsDepartmentHead(user.isDepartmentHead || false);
       setFormReplacementFor(user.replacementFor || "");
       setFormPassNumber(user.passNumber || "");
       loadSystemUsers();
@@ -176,7 +175,6 @@ const Users: React.FC = () => {
       setFormAddress("");
       setFormDateOfJoin("");
       setFormDepartment("");
-      setFormIsDepartmentHead(false);
       setFormReplacementFor("");
       setFormPassNumber("");
       loadSystemUsers();
@@ -205,7 +203,6 @@ const Users: React.FC = () => {
           address: formAddress,
           dateOfJoin: formDateOfJoin,
           department: formDepartment,
-          isDepartmentHead: formIsDepartmentHead,
           replacementFor: formReplacementFor || null,
           passNumber: formPassNumber ? formPassNumber.trim() : undefined,
         };
@@ -229,7 +226,6 @@ const Users: React.FC = () => {
               address: formAddress,
               dateOfJoin: formDateOfJoin,
               department: formDepartment,
-              isDepartmentHead: formIsDepartmentHead,
               replacementFor: formReplacementFor || null,
               passNumber: formPassNumber ? formPassNumber.trim() : undefined,
             },
@@ -300,8 +296,30 @@ const Users: React.FC = () => {
       render: (row) => `${row.firstName || ''} ${row.lastName || ''}`.trim() || '-'
     },
     { id: "passNumber", label: "Pass Number", sortable: true, render: (row) => row.passNumber || '-' },
-    { id: "department", label: "Department", sortable: true, render: (row) => row.department || '-' },
-    { id: "role", label: "Role", sortable: true, render: (row) => Array.isArray(row.role) ? row.role.join(", ") : (row.role || "-") },
+    { 
+      id: "department", 
+      label: "Department", 
+      sortable: true, 
+      render: (row) => {
+        if (!row.department) return '-';
+        const dept = availableDepartments.find((d: any) => d.id === row.department || d._id === row.department || d.name === row.department);
+        return dept ? dept.name : row.department;
+      }
+    },
+    { 
+      id: "role", 
+      label: "Role", 
+      sortable: true, 
+      render: (row) => {
+        if (!row.role) return '-';
+        const roleIds = Array.isArray(row.role) ? row.role : [row.role];
+        const names = roleIds.map(rid => {
+          const r = availableRoles.find((ar: any) => ar.id === rid || ar._id === rid || ar.name === rid);
+          return r ? r.name : rid;
+        });
+        return names.join(", ");
+      }
+    },
     {
       id: "onlineStatus",
       label: "Activity",
@@ -417,7 +435,7 @@ const Users: React.FC = () => {
               >
                 <MenuItem value="All Departments">All Departments</MenuItem>
                 {availableDepartments.map((dept: any) => (
-                  <MenuItem key={dept.id || dept._id || dept.name} value={dept.name}>
+                  <MenuItem key={dept.id || dept._id || dept.name} value={dept.id || dept._id}>
                     {dept.name}
                   </MenuItem>
                 ))}
@@ -433,7 +451,7 @@ const Users: React.FC = () => {
             >
               <MenuItem value="All Roles">All Roles</MenuItem>
               {availableRoles.map((role: any) => (
-                <MenuItem key={role.id || role._id || role.name} value={role.name}>
+                <MenuItem key={role.id || role._id || role.name} value={role.id || role._id}>
                   {role.name}
                 </MenuItem>
               ))}
@@ -521,8 +539,7 @@ const Users: React.FC = () => {
         setFormDateOfJoin={setFormDateOfJoin}
         formDepartment={formDepartment}
         setFormDepartment={setFormDepartment}
-        formIsDepartmentHead={formIsDepartmentHead}
-        setFormIsDepartmentHead={setFormIsDepartmentHead}
+
         availableDepartments={availableDepartments}
         formReplacementFor={formReplacementFor}
         setFormReplacementFor={setFormReplacementFor}

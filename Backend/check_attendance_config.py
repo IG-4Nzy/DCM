@@ -1,7 +1,8 @@
 import asyncio
 from database import db
+
 async def main():
-    col = db.get_collection("attendance_config")
-    doc = await col.find_one({})
+    doc = await db.get_collection("attendance_config").find_one({})
     print(doc)
+
 asyncio.run(main())

@@ -697,7 +697,8 @@ async def list_monitored_servers(
         escaped_search = search.strip().replace('\\', '\\\\')
         server_query["$or"] = [
             {"name": {"$regex": escaped_search, "$options": "i"}},
-            {"ipAddress": {"$regex": escaped_search, "$options": "i"}}
+            {"ipAddress": {"$regex": escaped_search, "$options": "i"}},
+            {"adminName": {"$regex": escaped_search, "$options": "i"}}
         ]
 
     # Retrieve all matched server profiles

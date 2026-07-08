@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Body, Query, Depends
 from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional, List, Dict, Any
-from database import db
+from database import db, get_next_sequence
 from models import RequestModel, CreateRequestModel, UpdateRequestModel, PaginatedRequestsModel
 from bson import ObjectId
 from datetime import datetime, timezone
@@ -528,6 +528,7 @@ async def create_item(
     now = datetime.now(timezone.utc).isoformat()
     item_dict["createdAt"] = now
     item_dict["updatedAt"] = now
+    item_dict["requestId"] = await get_next_sequence("requests_sequence", "REQ")
 
     # Look up the routing configuration for this request type
     routing = await get_routing_for_type(payload.requestType)
@@ -593,6 +594,11 @@ async def update_item(id: str, payload: UpdateRequestModel = Body(...), current_
     old_status = existing.get("status")
     status_changed = False
     if new_status and new_status != old_status:
+        if not is_superuser and username not in assigned_users:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only currently assigned users can change the status."
+            )
         status_changed = True
         request_type = existing.get("requestType") or existing.get("category", "")
         routing = await get_routing_for_type(request_type)
@@ -663,10 +669,10 @@ async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), c
     privileges = current_user.get("privileges", [])
     assigned_users = existing.get("currentAssignedUsers") or []
 
-    if not is_superuser and "Update Request" not in privileges and username not in assigned_users:
+    if not is_superuser and username not in assigned_users:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions to advance this request. Must be superuser, have 'Update Request' privilege, or be assigned to this request."
+            detail="Not enough permissions to advance this request. Must be superuser or be assigned to this request."
         )
 
     # If payload is provided, update those fields first
@@ -774,10 +780,10 @@ async def backward_stage(
     privileges = current_user.get("privileges", [])
     assigned_users = existing.get("currentAssignedUsers") or []
 
-    if not is_superuser and "Update Request" not in privileges and username not in assigned_users:
+    if not is_superuser and username not in assigned_users:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions to send back this request. Must be superuser, have 'Update Request' privilege, or be assigned to this request."
+            detail="Not enough permissions to send back this request. Must be superuser or be assigned to this request."
         )
 
     reason = payload.get("reason")

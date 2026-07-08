@@ -91,7 +91,7 @@ const Dashboard: React.FC = () => {
             Dashboard
           </Typography>
           <Typography sx={{ fontSize: '14px', fontWeight: 400, color: colors.textMuted, mt: 0.5 }}>
-            Department: <strong style={{ color: colors.textSecondary }}>{data.userDepartment}</strong> — {dayjs().format('dddd, DD MMMM YYYY')}
+            Department: <strong style={{ color: colors.textSecondary }}>{data.userDepartmentName || data.userDepartment}</strong> — {dayjs().format('dddd, DD MMMM YYYY')}
           </Typography>
         </Box>
         <Button

@@ -121,6 +121,9 @@ async def list_users(
             "$or": [
                 {"username": {"$regex": search, "$options": "i"}},
                 {"role": {"$regex": search, "$options": "i"}},
+                {"firstName": {"$regex": search, "$options": "i"}},
+                {"lastName": {"$regex": search, "$options": "i"}},
+                {"$expr": {"$regexMatch": {"input": {"$concat": [{"$ifNull": ["$firstName", ""]}, " ", {"$ifNull": ["$lastName", ""]}]}, "regex": search, "options": "i"}}}
             ]
         }
         if query:

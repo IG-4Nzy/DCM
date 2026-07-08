@@ -187,7 +187,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   if (!request) return null;
 
   const isAssigned = request.currentAssignedUsers && request.currentAssignedUsers.includes(username);
-  const canAction = isSuperuser || isAssigned || hasUpdatePrivilege;
+  const canAction = isSuperuser || isAssigned;
   const isTerminal = request.status === 'Completed' || request.status === 'Rejected';
   const canSendBack = request && typeof request.currentStageIndex === 'number' && request.currentStageIndex > 0;
 
@@ -366,9 +366,13 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                   <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>Current Assignees</Typography>
                   {request.currentAssignedUsers && request.currentAssignedUsers.length > 0 ? (
                     <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                      {request.currentAssignedUsers.map((user, idx) => (
-                        <Chip key={idx} label={user} size="small" variant="outlined" color="primary" />
-                      ))}
+                      {request.currentAssignedUsers.map((usernameVal, idx) => {
+                        const u = users.find((user: any) => user.username === usernameVal);
+                        const displayName = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : usernameVal;
+                        return (
+                          <Chip key={idx} label={displayName} size="small" variant="outlined" color="primary" />
+                        );
+                      })}
                     </Box>
                   ) : (
                     <Typography variant="body2" color="textSecondary">-</Typography>

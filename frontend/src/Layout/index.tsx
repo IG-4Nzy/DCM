@@ -303,7 +303,7 @@ const Layout: React.FC = () => {
               </span>
             </Box>
             <label style={{ fontWeight: 'bold', color: '#666', fontSize: '0.875rem' }}>
-              {wordings.welcome}, {userFullName} ({role})
+              {wordings.welcome}, {userFullName} ({Array.isArray(role) ? role.join(", ") : role})
             </label>
             <Tooltip title="My Profile">
               <Avatar

@@ -20,6 +20,7 @@ type Order = 'asc' | 'desc';
 const VisitorLogs: React.FC = () => {
     const { showToast } = useToast();
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
+    const { users } = useSelector((state: RootState) => state.users);
 
     const [logs, setLogs] = useState<VisitorLogData[]>([]);
     const [totalCount, setTotalCount] = useState(0);
@@ -257,7 +258,11 @@ const VisitorLogs: React.FC = () => {
             id: 'loggedBy',
             label: 'Logged By',
             sortable: false,
-            render: (row) => row.loggedBy || '-'
+            render: (row) => {
+                if (!row.loggedBy) return '-';
+                const u = users?.find((user: any) => user.username === row.loggedBy);
+                return u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : row.loggedBy;
+            }
         }
     ];
 

@@ -3,7 +3,7 @@ import React from 'react';
 import Modal from '../../../components/Modal';
 import TextField from '../../../components/TextField';
 import Dropdown from '../../../components/Dropdown';
-import { Button } from '@mui/material';
+import { Button, Autocomplete, TextField as MuiTextField } from '@mui/material';
 import type { UpdateDepartmentPayload } from '../model';
 import styles from './index.module.scss';
 
@@ -15,6 +15,9 @@ interface PropType {
   setFormName: (value: string) => void;
   formStatus: boolean;
   setFormStatus: (value: boolean) => void;
+  formDepartmentHead: string;
+  setFormDepartmentHead: (value: string) => void;
+  usersList: any[];
   handleSubmit: (e: React.FormEvent) => void;
 }
 
@@ -26,6 +29,9 @@ const DepartmentFormModal = ({
   setFormName,
   formStatus,
   setFormStatus,
+  formDepartmentHead,
+  setFormDepartmentHead,
+  usersList,
   handleSubmit
 }: PropType) => {
   return (
@@ -53,6 +59,47 @@ const DepartmentFormModal = ({
               { label: 'Inactive', value: 'false' },
             ]}
             className={styles.field}
+          />
+        </div>
+        <div className={styles.row}>
+          <Autocomplete
+            className={styles.field}
+            options={[
+              { label: '-- None --', value: '' },
+              ...(usersList || []).map(u => ({
+                label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+                value: u.username
+              }))
+            ]}
+            getOptionLabel={(option) => option.label}
+            value={
+              formDepartmentHead
+                ? [
+                    { label: '-- None --', value: '' },
+                    ...(usersList || []).map(u => ({
+                      label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+                      value: u.username
+                    }))
+                  ].find(opt => opt.value === formDepartmentHead) || { label: '-- None --', value: '' }
+                : { label: '-- None --', value: '' }
+            }
+            onChange={(e, newValue) => {
+              setFormDepartmentHead(newValue ? newValue.value : '');
+            }}
+            renderInput={(params) => (
+              <MuiTextField 
+                {...params} 
+                label="Department Head" 
+                variant="outlined" 
+                InputLabelProps={{ shrink: true }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '8px'
+                  }
+                }}
+              />
+            )}
+            isOptionEqualToValue={(option, value) => option.value === value.value}
           />
         </div>
 

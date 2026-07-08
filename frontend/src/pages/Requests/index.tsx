@@ -345,6 +345,16 @@ const Requests: React.FC = () => {
 
     const columns: Column<RequestData>[] = [
         { 
+            id: 'requestId', 
+            label: 'Request ID', 
+            sortable: false,
+            render: (row) => (
+                <span style={{ fontWeight: 'bold', color: '#1976d2' }}>
+                    {row.requestId || '-'}
+                </span>
+            )
+        },
+        { 
             id: 'requestType', 
             label: 'Request Type', 
             sortable: true,
@@ -408,9 +418,11 @@ const Requests: React.FC = () => {
                 if (!row.currentAssignedUsers || row.currentAssignedUsers.length === 0) return '-';
                 return (
                     <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                        {row.currentAssignedUsers.map((user, i) => (
-                            <Chip key={i} label={user} size="small" variant="outlined" color="primary" />
-                        ))}
+                        {row.currentAssignedUsers.map((username, i) => {
+                            const u = users.find((user: any) => user.username === username);
+                            const displayName = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : username;
+                            return <Chip key={i} label={displayName} size="small" variant="outlined" color="primary" />;
+                        })}
                     </Box>
                 );
             }

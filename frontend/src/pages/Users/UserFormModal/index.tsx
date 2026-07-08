@@ -47,8 +47,7 @@ interface PropType {
     setFormDateOfJoin: (v: string) => void;
     formDepartment: string;
     setFormDepartment: (v: string) => void;
-    formIsDepartmentHead: boolean;
-    setFormIsDepartmentHead: (v: boolean) => void;
+
     availableDepartments: any[];
     formReplacementFor: string;
     setFormReplacementFor: (v: string) => void;
@@ -92,7 +91,7 @@ const UserFormModal = ({
     formAddress, setFormAddress,
     formDateOfJoin, setFormDateOfJoin,
     formDepartment, setFormDepartment,
-    formIsDepartmentHead, setFormIsDepartmentHead,
+
     availableDepartments,
     formReplacementFor, setFormReplacementFor,
     inactiveUsers, onViewReplacedUser,
@@ -151,7 +150,13 @@ const UserFormModal = ({
                                 {`${formFirstName || ''} ${formLastName || ''}`.trim() || formUsername}
                             </span>
                             <span className={styles.role}>
-                                {Array.isArray(formRole) ? formRole.join(", ") : (formRole || "No Role")}
+                                {(() => {
+                                    const roleIds = Array.isArray(formRole) ? formRole : (formRole ? [formRole] : []);
+                                    return roleIds.map(rid => {
+                                        const r = availableRoles.find(ar => ar.id === rid || ar._id === rid || ar.name === rid);
+                                        return r ? r.name : rid;
+                                    }).join(", ") || "No Role";
+                                })()}
                             </span>
                         </div>
                         <span className={`${styles.statusBadge} ${formStatus ? styles.active : styles.inactive}`}>
@@ -170,7 +175,13 @@ const UserFormModal = ({
                             </div>
                             <div className={styles.grid}>
                                 <ViewField label="Username" value={formUsername} />
-                                <ViewField label="Role(s)" value={Array.isArray(formRole) ? formRole.join(", ") : formRole} />
+                                <ViewField label="Role(s)" value={(() => {
+                                    const roleIds = Array.isArray(formRole) ? formRole : (formRole ? [formRole] : []);
+                                    return roleIds.map(rid => {
+                                        const r = availableRoles.find(ar => ar.id === rid || ar._id === rid || ar.name === rid);
+                                        return r ? r.name : rid;
+                                    }).join(", ") || "-";
+                                })()} />
                                 <ViewField label="Status" value={formStatus ? "Active" : "Inactive"} />
                                 <ViewField label="Pass Number" value={formPassNumber} />
                                 {editingUser?.replacementFor && (
@@ -207,8 +218,11 @@ const UserFormModal = ({
                                 <span>Employment Details</span>
                             </div>
                             <div className={styles.grid}>
-                                <ViewField label="Department" value={formDepartment} />
-                                <ViewField label="Is Department Head" value={formIsDepartmentHead ? "Yes" : "No"} />
+                                <ViewField label="Department" value={(() => {
+                                    const d = availableDepartments.find(ad => ad.id === formDepartment || ad._id === formDepartment || ad.name === formDepartment);
+                                    return d ? d.name : formDepartment;
+                                })()} />
+
                                 <ViewField label="Date of Join" value={formDateOfJoin} />
                                 <ViewField label="Address" value={formAddress} className={styles.fullWidthRow} />
                             </div>
@@ -229,6 +243,7 @@ const UserFormModal = ({
                                     value={formUsername}
                                     onChange={(e) => setFormUsername(e.target.value)}
                                     required
+                                    disabled={!!editingUser && !hasUpdatePrivilege}
                                 />
                                 <TextField
                                     fullWidth
@@ -248,7 +263,7 @@ const UserFormModal = ({
                                     fullWidth
                                     multiple
                                     label="Role(s)"
-                                    options={(availableRoles || []).map(r => ({ label: r.name, value: r.name }))}
+                                    options={(availableRoles || []).map(r => ({ label: r.name, value: r.id || r._id }))}
                                     value={Array.isArray(formRole) ? formRole : (formRole ? [formRole] : [])}
                                     onChange={(val) => setFormRole(val)}
                                     clearable
@@ -335,13 +350,10 @@ const UserFormModal = ({
                                 <Dropdown
                                     fullWidth
                                     label="Department"
-                                    options={(availableDepartments || []).map(d => ({ label: d.name, value: d.name }))}
+                                    options={(availableDepartments || []).map(d => ({ label: d.name, value: d.id || d._id }))}
                                     value={formDepartment}
                                     onChange={(val) => {
                                         setFormDepartment(val);
-                                        if (!val) {
-                                            setFormIsDepartmentHead(false);
-                                        }
                                     }}
                                     clearable
                                 />
@@ -351,20 +363,6 @@ const UserFormModal = ({
                                     value={formDateOfJoin}
                                     onChange={setFormDateOfJoin}
                                 />
-                                {formDepartment && (
-                                    <div className={styles.checkboxContainer}>
-                                        <FormControlLabel
-                                            control={
-                                                <Checkbox
-                                                    checked={formIsDepartmentHead}
-                                                    onChange={(e) => setFormIsDepartmentHead(e.target.checked)}
-                                                    color="primary"
-                                                />
-                                            }
-                                            label={<span style={{ fontWeight: 600, color: '#334155' }}>Is Department Head</span>}
-                                        />
-                                    </div>
-                                )}
                                 <TextField
                                     fullWidth
                                     label="Address"

@@ -1,7 +1,8 @@
 // @ts-nocheck
 export interface WorkData {
-  id: string;
+  id?: string;
   _id?: string;
+  workId?: string;
   workName: string;
   assignee?: string;
   department?: string;

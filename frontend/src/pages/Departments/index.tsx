@@ -85,12 +85,12 @@ const Departments: React.FC = () => {
     try {
       if (editingDepartment) {
         await dispatch(updateDepartment({
-          payload: { id: editingDepartment.id || (editingDepartment as any)._id, name: formName, status: formStatus, departmentHead: formDepartmentHead || undefined },
+          payload: { id: editingDepartment.id || (editingDepartment as any)._id, name: formName, status: formStatus, departmentHead: formDepartmentHead || "" },
           showToast
         })).unwrap();
       } else {
         await dispatch(createDepartment({
-          payload: { name: formName, status: formStatus, departmentHead: formDepartmentHead || undefined },
+          payload: { name: formName, status: formStatus, departmentHead: formDepartmentHead || "" },
           showToast
         })).unwrap();
       }
@@ -219,6 +219,9 @@ const Departments: React.FC = () => {
         setFormName={setFormName}
         formStatus={formStatus}
         setFormStatus={setFormStatus}
+        formDepartmentHead={formDepartmentHead}
+        setFormDepartmentHead={setFormDepartmentHead}
+        usersList={usersList}
         handleSubmit={handleSubmit}
       />
     </Box>

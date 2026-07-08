@@ -12,7 +12,7 @@ except ImportError:
     SECRET_KEY = "super-secret-jwt-key-replace-me-in-production"
     ALGORITHM = "HS256"
 
-async def update_attendance_on_request(username: str, user_dept: str, user_role: str):
+async def update_attendance_on_request(username: str, user_dept: str, user_roles_ids: list):
     try:
         from database import db, get_local_now
         from datetime import datetime
@@ -22,7 +22,7 @@ async def update_attendance_on_request(username: str, user_dept: str, user_role:
         tracked_role = config.get("trackedRole")
 
         should_track = True
-        user_roles = user_role
+        user_roles = user_roles_ids
         if isinstance(user_roles, str):
             user_roles = [user_roles]
         elif not isinstance(user_roles, list):
@@ -146,13 +146,13 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         try:
             from datetime import datetime, timezone
             import asyncio
-            role = payload.get("role", "User")
+            role_ids = payload.get("roleIds", [])
             department = payload.get("department", "")
             asyncio.create_task(users_col.update_one(
                 {"username": username},
                 {"$set": {"lastActive": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}}
             ))
-            asyncio.create_task(update_attendance_on_request(username, department, role))
+            asyncio.create_task(update_attendance_on_request(username, department, role_ids))
         except Exception as e:
             print("Error updating user activity:", e)
         return payload

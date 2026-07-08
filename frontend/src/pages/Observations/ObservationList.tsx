@@ -391,7 +391,7 @@ const ObservationList: React.FC = () => {
               >
                 <MenuItem value="">All Departments</MenuItem>
                 {departments.map((dept: any) => (
-                  <MenuItem key={dept._id || dept.id} value={dept.name}>{dept.name}</MenuItem>
+                  <MenuItem key={dept._id || dept.id} value={dept._id || dept.id}>{dept.name}</MenuItem>
                 ))}
               </Select>
             </FormControl>

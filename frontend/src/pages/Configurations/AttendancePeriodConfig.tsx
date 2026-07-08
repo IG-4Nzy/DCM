@@ -29,7 +29,7 @@ const AttendancePeriodConfig = () => {
     const [shifts, setShifts] = useState<ShiftInfo[]>([]);
     const [rosterRows, setRosterRows] = useState<RosterRow[]>([]);
     const [trackedRole, setTrackedRole] = useState<string>('All Roles');
-    const [roles, setRoles] = useState<string[]>(['All Roles']);
+    const [roles, setRoles] = useState<{id: string, name: string}[]>([{ id: 'All Roles', name: 'All Roles' }]);
     const [lateLoginRestriction, setLateLoginRestriction] = useState<boolean>(true);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -64,8 +64,8 @@ const AttendancePeriodConfig = () => {
         try {
             const response = await request.get('/api/roles', { params: { pagination: false } });
             if (response.data && response.data.data) {
-                const roleNames = response.data.data.map((r: any) => r.name);
-                setRoles(['All Roles', ...roleNames]);
+                const roleObjs = response.data.data.map((r: any) => ({ id: r.id || r._id, name: r.name }));
+                setRoles([{ id: 'All Roles', name: 'All Roles' }, ...roleObjs]);
             }
         } catch (e) {
             console.error('Failed to load roles list', e);
@@ -261,7 +261,7 @@ const AttendancePeriodConfig = () => {
                                     disabled={!hasUpdate || saving}
                                 >
                                     {roles.map((r, idx) => (
-                                        <MenuItem key={idx} value={r}>{r}</MenuItem>
+                                        <MenuItem key={idx} value={r.id}>{r.name}</MenuItem>
                                     ))}
                                 </Select>
                             </FormControl>

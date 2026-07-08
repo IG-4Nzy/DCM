@@ -38,6 +38,7 @@ class PeriodicActivityModel(BaseModel):
     dueDate: str  # YYYY-MM-DD format
     remarks: Optional[str] = ""
     department: Optional[str] = None
+    departmentName: Optional[str] = None
     isAmc: Optional[bool] = False
     services: Optional[List[Dict[str, Any]]] = None
     createdAt: Optional[str] = None
@@ -158,9 +159,18 @@ async def list_periodic_activities(
     cursor = collection.find(query).sort("dueDate", 1)
     if pagination:
         cursor = cursor.skip(skip).limit(limit)
-        data = [serialize_doc(doc) async for doc in cursor]
-    else:
-        data = [serialize_doc(doc) async for doc in cursor]
+        
+    depts = await db.get_collection("departments").find({}).to_list(length=None)
+    dept_map = {str(d["_id"]): d["name"] for d in depts}
+
+    data = []
+    async for doc in cursor:
+        d_id = doc.get("department")
+        dept_name = dept_map.get(d_id, d_id) if d_id else None
+        serialized = serialize_doc(doc)
+        serialized["departmentName"] = dept_name
+        data.append(serialized)
+        
     return {"data": data, "total": total}
 
 @router.put("/{id}", response_description="Update periodic activity", response_model=PeriodicActivityModel, dependencies=[Depends(require_privilege("Update Periodic Activity"))])
