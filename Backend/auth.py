@@ -485,6 +485,12 @@ async def get_my_profile(current_user: dict = Depends(get_current_user)):
             role_name = role_obj.get("name")
         else:
             role_name = role_id_to_find
+    dept_val = user.get("department", "")
+    if dept_val and ObjectId.is_valid(dept_val):
+        departments_collection = db.get_collection("departments")
+        dept_obj = await departments_collection.find_one({"_id": ObjectId(dept_val)})
+        if dept_obj:
+            dept_val = dept_obj.get("name", dept_val)
 
     # Return all user fields except password
     return {
@@ -499,7 +505,7 @@ async def get_my_profile(current_user: dict = Depends(get_current_user)):
         "bloodGroup": user.get("bloodGroup", ""),
         "address": user.get("address", ""),
         "dateOfJoin": user.get("dateOfJoin", ""),
-        "department": user.get("department", ""),
+        "department": dept_val,
         "stickyNoteEnabled": user.get("stickyNoteEnabled", False),
         "stickyNoteContent": user.get("stickyNoteContent", ""),
         "stickyNotePositionX": user.get("stickyNotePositionX", 100),
@@ -525,24 +531,7 @@ async def update_my_profile(profile: UpdateProfileModel = Body(...), current_use
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return {
-        "id": str(user["_id"]),
-        "username": user.get("username", ""),
-        "role": user.get("role", ""),
-        "status": user.get("status", True),
-        "firstName": user.get("firstName", ""),
-        "lastName": user.get("lastName", ""),
-        "dob": user.get("dob", ""),
-        "mobile": user.get("mobile", ""),
-        "bloodGroup": user.get("bloodGroup", ""),
-        "address": user.get("address", ""),
-        "dateOfJoin": user.get("dateOfJoin", ""),
-        "department": user.get("department", ""),
-        "stickyNoteEnabled": user.get("stickyNoteEnabled", False),
-        "stickyNoteContent": user.get("stickyNoteContent", ""),
-        "stickyNotePositionX": user.get("stickyNotePositionX", 100),
-        "stickyNotePositionY": user.get("stickyNotePositionY", 100),
-    }
+    return await get_my_profile(current_user)
 
 @router.post("/change-password", response_description="Change current user password")
 async def change_password(payload: ChangePasswordRequest = Body(...), current_user: dict = Depends(get_current_user)):

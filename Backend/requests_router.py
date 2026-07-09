@@ -383,6 +383,35 @@ async def list_items(
     else:
         items = await cursor.to_list(length=None)
 
+    # Resolve full names for createdBy and currentAssignedUsers
+    users_col = db.get_collection("users")
+    usernames = set()
+    for item in items:
+        if item.get("createdBy"):
+            usernames.add(item["createdBy"])
+        if item.get("currentAssignedUsers"):
+            usernames.update(item["currentAssignedUsers"])
+
+    user_map = {}
+    if usernames:
+        users = await users_col.find({"username": {"$in": list(usernames)}}).to_list(length=None)
+        for u in users:
+            name = f"{u.get('firstName', '')} {u.get('lastName', '')}".strip()
+            user_map[u.get("username")] = name or u.get("username")
+
+    for item in items:
+        cb = item.get("createdBy")
+        if cb:
+            item["createdByFullName"] = user_map.get(cb, cb)
+        else:
+            item["createdByFullName"] = ""
+            
+        cau = item.get("currentAssignedUsers")
+        if cau and isinstance(cau, list):
+            item["currentAssignedUsersFullName"] = [user_map.get(u, u) for u in cau]
+        else:
+            item["currentAssignedUsersFullName"] = []
+
     return {"data": items, "total": total}
 
 
@@ -464,8 +493,19 @@ async def list_visitor_logs(
     total = await col.count_documents(query)
     cursor = col.find(query).sort("entryTime", -1).skip(skip).limit(limit)
     items = await cursor.to_list(length=limit)
+    
+    departments_col = db.get_collection("departments")
+    dept_map = {}
+    
     for item in items:
         item["_id"] = str(item["_id"])
+        div = item.get("division")
+        if div and ObjectId.is_valid(div):
+            if div not in dept_map:
+                dept = await departments_col.find_one({"_id": ObjectId(div)})
+                dept_map[div] = dept.get("name", div) if dept else div
+            item["division"] = dept_map[div]
+            
     return {"data": items, "total": total}
 
 @router.post("/visitor-logs", response_description="Create a new visitor log", status_code=status.HTTP_201_CREATED)

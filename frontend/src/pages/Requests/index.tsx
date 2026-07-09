@@ -420,7 +420,7 @@ const Requests: React.FC = () => {
                     <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                         {row.currentAssignedUsers.map((username, i) => {
                             const u = users.find((user: any) => user.username === username);
-                            const displayName = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : username;
+                            const displayName = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : (row.currentAssignedUsersFullName?.[i] || username);
                             return <Chip key={i} label={displayName} size="small" variant="outlined" color="primary" />;
                         })}
                     </Box>
@@ -433,7 +433,7 @@ const Requests: React.FC = () => {
             sortable: true,
             render: (row) => {
                 const u = users.find((user: any) => user.username === row.createdBy);
-                return u ? u.firstName || u.username : row.createdBy;
+                return u ? u.firstName || u.username : (row.createdByFullName || row.createdBy);
             }
         },
         {
