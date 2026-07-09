@@ -132,7 +132,7 @@ async def list_works(
             dept_filter_conditions = []
             if dept_user_ids:
                 dept_filter_conditions.append({"assignee": {"$in": dept_user_ids}})
-                dept_filter_conditions.append({"assignees": {"$elemMatch": {"$in": dept_user_ids}}})
+                dept_filter_conditions.append({"assignees": {"$in": dept_user_ids}})
             if dept_usernames:
                 dept_filter_conditions.append({"createdBy": {"$in": dept_usernames}})
             if dept_filter_conditions:

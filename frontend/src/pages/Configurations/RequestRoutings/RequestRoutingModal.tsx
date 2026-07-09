@@ -12,6 +12,7 @@ import type { RequestRoutingData, RequestRoutingStage } from './model';
 import type { RootState, AppDispatch } from '../../../store';
 import { fetchRoles } from '../../Roles/action';
 import { fetchDepartments } from '../../Departments/action';
+import { fetchUsers } from '../../Users/action';
 import request from '../../../services/request';
 
 
@@ -37,6 +38,7 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
   const dispatch = useDispatch<AppDispatch>();
   const { roles } = useSelector((state: RootState) => state.roles);
   const { departments } = useSelector((state: RootState) => state.departments);
+  const { data: users } = useSelector((state: RootState) => state.users);
 
   const [requestTypes, setRequestTypes] = useState<string[]>([
     'VM Creation',
@@ -64,6 +66,7 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
       fetchRequestTypes();
       dispatch(fetchRoles({ skip: 0, limit: 1000, sortBy: 'name', order: 'asc', search: '', pagination: false }));
       dispatch(fetchDepartments({ skip: 0, limit: 1000 }));
+      dispatch(fetchUsers({ skip: 0, limit: 1000, pagination: false }));
     }
   }, [open, fetchRequestTypes, dispatch]);
 
@@ -110,37 +113,29 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
     setStages(updated);
   };
 
-  const handleAssigneeChange = (index: number, value: string) => {
+  const handleAssigneeChange = (index: number, values: string[] | string) => {
     const updated = [...stages];
-    // Check if it's a special assignment type
-    const isSpecial = SPECIAL_ASSIGNEES.some(s => s.value === value);
-    const isDeptStaffs = value.startsWith('DeptStaffs:');
-    const isRole = value.startsWith('Role:');
-
-    if (isSpecial) {
-      updated[index] = { ...updated[index], assignmentType: value, assignedTo: '' };
-    } else if (isDeptStaffs) {
-      const deptName = value.replace('DeptStaffs:', '');
-      updated[index] = { ...updated[index], assignmentType: 'DeptStaffs', assignedTo: deptName };
-    } else if (isRole) {
-      const roleName = value.replace('Role:', '');
-      updated[index] = { ...updated[index], assignmentType: 'Role', assignedTo: roleName };
-    } else {
-      // Specific user
-      updated[index] = { ...updated[index], assignmentType: 'SpecificUser', assignedTo: value };
-    }
+    const vals = Array.isArray(values) ? values : [values];
+    
+    // If it is just one Special assignment, we can keep it as is, or just always map to Mixed.
+    // Wait, let's always map to Mixed if it's an array for simplicity and flexibility.
+    updated[index] = { ...updated[index], assignmentType: 'Mixed', assignedTo: vals as any };
     setStages(updated);
   };
 
   // Get the current combined value for the assignee select
-  const getAssigneeValue = (stage: RequestRoutingStage) => {
-    if (stage.assignmentType === 'Requester') return 'Requester';
-    if (stage.assignmentType === 'RequesterDeptHead') return 'RequesterDeptHead';
-    if (stage.assignmentType === 'DeptStaffs' && stage.assignedTo) return `DeptStaffs:${stage.assignedTo}`;
-    if (stage.assignmentType === 'Role' && stage.assignedTo) return `Role:${stage.assignedTo}`;
-    // Legacy support
-    if (stage.assignmentType === 'TargetApproverDeptStaffs') return 'RequesterDeptHead'; // fallback
-    return stage.assignedTo || '';
+  const getAssigneeValue = (stage: RequestRoutingStage): string[] => {
+    if (stage.assignmentType === 'Mixed' && Array.isArray(stage.assignedTo)) {
+      return stage.assignedTo;
+    }
+    const val = stage.assignedTo || '';
+    if (stage.assignmentType === 'Requester') return ['Requester'];
+    if (stage.assignmentType === 'RequesterDeptHead') return ['RequesterDeptHead'];
+    if (stage.assignmentType === 'DeptStaffs' && val) return [`DeptStaffs:${val}`];
+    if (stage.assignmentType === 'Role' && val) return [`Role:${val}`];
+    if (stage.assignmentType === 'SpecificUser' && val) return [`SpecificUser:${val}`];
+    if (stage.assignmentType === 'TargetApproverDeptStaffs') return ['RequesterDeptHead']; // fallback
+    return [];
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -247,13 +242,12 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                 <FormControl size="small" sx={{ minWidth: 260 }}>
                   <InputLabel>Assignee</InputLabel>
                   <Select
+                    multiple
                     value={getAssigneeValue(stage)}
                     label="Assignee"
-                    onChange={(e) => handleAssigneeChange(index, e.target.value as string)}
+                    onChange={(e) => handleAssigneeChange(index, e.target.value as string[])}
+                    renderValue={(selected) => (selected as string[]).join(', ')}
                   >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
 
                     {/* Special assignment types */}
                     <ListSubheader sx={{ fontWeight: 700, color: 'primary.main', backgroundColor: 'background.paper' }}>
@@ -282,6 +276,16 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                     {roles.map((role: any) => (
                       <MenuItem key={role.id || role._id} value={`Role:${role.name}`} sx={{ pl: 3 }}>
                         ⚙️ {role.name}
+                      </MenuItem>
+                    ))}
+
+                    {/* Specific Users */}
+                    <ListSubheader sx={{ fontWeight: 700, color: 'success.main', backgroundColor: 'background.paper' }}>
+                      Specific Users
+                    </ListSubheader>
+                    {users && users.map((user: any) => (
+                      <MenuItem key={user.id || user._id} value={`SpecificUser:${user.username}`} sx={{ pl: 3 }}>
+                        👤 {user.firstName} {user.lastName} ({user.username})
                       </MenuItem>
                     ))}
                   </Select>

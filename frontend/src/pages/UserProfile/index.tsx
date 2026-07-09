@@ -231,21 +231,19 @@ const UserProfile: React.FC = () => {
                         </Box>
                         <Box className={styles.headerAction}>
                             {!editing ? (
-                                hasPrivilege(PRIVILEGES.USER_UPDATE) && (
-                                    <Button
-                                        variant="outlined"
-                                        size="small"
-                                        startIcon={<EditIcon />}
-                                        onClick={() => setEditing(true)}
-                                        sx={{
-                                            borderRadius: "8px",
-                                            textTransform: "none",
-                                            fontWeight: 600,
-                                        }}
-                                    >
-                                        Edit
-                                    </Button>
-                                )
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    startIcon={<EditIcon />}
+                                    onClick={() => setEditing(true)}
+                                    sx={{
+                                        borderRadius: "8px",
+                                        textTransform: "none",
+                                        fontWeight: 600,
+                                    }}
+                                >
+                                    Edit
+                                </Button>
                             ) : (
                                 <Box sx={{ display: "flex", gap: 1 }}>
                                     <Button

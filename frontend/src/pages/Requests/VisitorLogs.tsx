@@ -10,6 +10,7 @@ import TextField from '../../components/TextField';
 import { useToast } from '../../contexts/ToastContext';
 import { useTableState } from '../../hooks/useTableState';
 import { fetchVisitorLogs, createVisitorLog, updateVisitorLog, deleteVisitorLog } from './action';
+import request from '../../services/request';
 import type { VisitorLogData } from './model';
 import type { RootState } from '../../store';
 import { hasPrivilege } from '../../helpers/authUtils';
@@ -25,6 +26,16 @@ const VisitorLogs: React.FC = () => {
     const [logs, setLogs] = useState<VisitorLogData[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(false);
+    
+    const [departments, setDepartments] = useState<any[]>([]);
+    const loadDepartments = useCallback(async () => {
+        try {
+            const res = await request.get('/api/departments', { params: { pagination: false } });
+            if (res.data && res.data.data) {
+                setDepartments(res.data.data.map((d: any) => ({ id: d.id || d._id, name: d.name })));
+            }
+        } catch (e) {}
+    }, []);
 
     // CRUD States
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -72,7 +83,8 @@ const VisitorLogs: React.FC = () => {
 
     useEffect(() => {
         loadData();
-    }, [loadData]);
+        loadDepartments();
+    }, [loadData, loadDepartments]);
 
     const handleChangePage = (event: unknown, newPage: number) => {
         setPage(newPage);
@@ -222,7 +234,7 @@ const VisitorLogs: React.FC = () => {
             id: 'division',
             label: 'Division',
             sortable: false,
-            render: (row) => row.division || '-'
+            render: (row) => departments.find(d => d.id === row.division)?.name || row.division || '-'
         },
         {
             id: 'purpose',

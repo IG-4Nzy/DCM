@@ -81,22 +81,30 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
   }, [isModalOpen, requestType, editingRequest]);
 
   useEffect(() => {
-    if (editingRequest) {
-      setRequestType(editingRequest.requestType || editingRequest.category || (requestTypes[0] || ''));
-      setDescription(editingRequest.description || '');
-      setPurpose(editingRequest.purpose || '');
-      setStatus(editingRequest.status || 'Pending');
-      setRemarks(editingRequest.remarks || '');
-      setDetails(editingRequest.details || {});
-    } else {
-      setRequestType(requestTypes[0] || '');
-      setDescription('');
-      setPurpose('');
-      setStatus('');
-      setRemarks('');
-      setDetails({});
+    if (isModalOpen) {
+      if (editingRequest) {
+        setRequestType(editingRequest.requestType || editingRequest.category || (requestTypes[0] || ''));
+        setDescription(editingRequest.description || '');
+        setPurpose(editingRequest.purpose || '');
+        setStatus(editingRequest.status || 'Pending');
+        setRemarks(editingRequest.remarks || '');
+        setDetails(editingRequest.details || {});
+      } else {
+        setRequestType(requestTypes[0] || '');
+        setDescription('');
+        setPurpose('');
+        setStatus('');
+        setRemarks('');
+        setDetails({});
+      }
     }
-  }, [editingRequest, isModalOpen, requestTypes]);
+  }, [isModalOpen, editingRequest]);
+
+  useEffect(() => {
+    if (isModalOpen && !requestType && requestTypes.length > 0 && !editingRequest) {
+      setRequestType(requestTypes[0]);
+    }
+  }, [requestTypes, isModalOpen, requestType, editingRequest]);
 
   const handleDetailChange = (field: string, value: any) => {
     setDetails((prev: any) => ({ ...prev, [field]: value }));
@@ -115,12 +123,12 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!editingRequest && currentRequestType === 'DC Entry' && details.dateTime) {
-      const selected = new Date(details.dateTime);
+    if (!editingRequest && currentRequestType === 'DC Entry' && (details.dateTime || details.entryTime)) {
+      const selected = new Date(details.entryTime || details.dateTime);
       const now = getServerTime().toDate();
       // Use 1 minute buffer to account for minor system delays
       if (selected < new Date(now.getTime() - 60000)) {
-        showToast('Please select a date and time in the present or future.', 'error');
+        showToast('Please select an entry time in the present or future.', 'error');
         return;
       }
     }
@@ -215,21 +223,23 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
             {currentRequestType === 'DC Entry' && (
               <>
                 <TextField 
-                  label="Date and Time" 
+                  label="Entry Time" 
                   type="datetime-local" 
                   fullWidth 
                   required 
-                  slotProps={{ inputLabel: { shrink: true } }}
                   slotProps={{
                     inputLabel: {
                       shrink: true,
+                    },
+                    htmlInput: {
+                      min: getMinDateTime()
                     }
                   }}
-                  slotProps={{ htmlInput: {
-                    min: getMinDateTime()
-                  } }}
-                  value={details.dateTime || ''} 
-                  onChange={(e) => handleDetailChange('dateTime', e.target.value)} 
+                  value={details.entryTime || details.dateTime || ''} 
+                  onChange={(e) => {
+                    handleDetailChange('entryTime', e.target.value);
+                    handleDetailChange('dateTime', e.target.value);
+                  }} 
                 />
                 <TextField
                   label="Tools / Items to bring (Optional)"

@@ -121,15 +121,21 @@ async def get_dashboard_summary(
         pass
         
     # 5. Fetch pending works
-    works_query = {"status": "Pending"}
+    works_query = {"status": {"$nin": ["Closed", "Completed"]}}
     if is_superuser:
         pass
     elif is_dept_head:
         dept_users = await users_col.find({"department": active_dept}).to_list(length=None)
         dept_user_ids = [str(u["_id"]) for u in dept_users]
-        works_query["assignee"] = {"$in": dept_user_ids}
+        works_query["$or"] = [
+            {"assignee": {"$in": dept_user_ids}},
+            {"assignees": {"$in": dept_user_ids}}
+        ]
     else:
-        works_query["assignee"] = user_id_str
+        works_query["$or"] = [
+            {"assignee": user_id_str},
+            {"assignees": user_id_str}
+        ]
         
     works_cursor = works_col.find(works_query).sort("dueDate", 1)
     works_list = await works_cursor.to_list(length=100)
@@ -161,7 +167,12 @@ async def get_dashboard_summary(
         enriched_works.append(w_dict)
         
     # 6. Fetch observations for today
-    obs_query = {"observedDate": date}
+    obs_query = {
+        "$or": [
+            {"observedDate": date},
+            {"lastStatusUpdatedOn": {"$regex": f"^{date}"}}
+        ]
+    }
     if not is_superuser:
         dept_users = await users_col.find({"department": active_dept}).to_list(length=None)
         dept_usernames = [u["username"] for u in dept_users]

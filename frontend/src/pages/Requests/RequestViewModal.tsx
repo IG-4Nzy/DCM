@@ -58,6 +58,14 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   // Node Selection States
   const [nodes, setNodes] = useState<any[]>([]);
   const [filteredNodes, setFilteredNodes] = useState<any[]>([]);
+
+  // Assignee Selection States
+  const [assigneeSelectionOpen, setAssigneeSelectionOpen] = useState(false);
+  const [nextAssignees, setNextAssignees] = useState<string[]>([]);
+  const [selectedAssignee, setSelectedAssignee] = useState('');
+  const [assigneeError, setAssigneeError] = useState(false);
+  const [checkingAssignees, setCheckingAssignees] = useState(false);
+  const [nextStageName, setNextStageName] = useState('');
   const [selectedNode, setSelectedNode] = useState('');
   const [nodeError, setNodeError] = useState(false);
 
@@ -208,6 +216,57 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
     }
   };
 
+  const executeAdvance = async (assignee?: string) => {
+    setSubmitting(true);
+    try {
+      let payload: any = { remarks };
+      if (assignee) {
+        payload.selectedAssignee = assignee;
+      }
+      
+      if (isIpIssuance) {
+        payload.details = { ip: ipAddress.trim() };
+      } else if (isVMCreationStage) {
+        payload.details = {
+          addedToMonitoring: !!addedToMonitoring
+        };
+      } else if (isVMBackupStage) {
+        payload.details = {
+          backupLocation: backupLocation.trim()
+        };
+      } else if (isClusterDeciding) {
+        payload.details = {
+          cluster: selectedCluster,
+          node: selectedNode
+        };
+      } else if (isMarkEntryTime) {
+        payload.details = {
+          entryTime: new Date(entryTime).toISOString()
+        };
+      } else if (isMarkExitTime) {
+        const existingEntryTime = request.details?.entryTime || request.details?.dateTime;
+        if (existingEntryTime && new Date(exitTime) < new Date(existingEntryTime)) {
+          alert('Exit time cannot be earlier than entry time.');
+          setExitTimeError(true);
+          setSubmitting(false);
+          return;
+        }
+        payload.details = {
+          exitTime: new Date(exitTime).toISOString(),
+          keptItemsOnExit: !!keptItemsOnExit
+        };
+      }
+      await onAdvance(request.id || request._id || '', payload);
+      setAssigneeSelectionOpen(false);
+      setSelectedAssignee('');
+      onClose();
+    } catch (err) {
+      // toast is handled in parent
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleAdvance = async () => {
     if (isIpIssuance && !ipAddress.trim()) {
       setIpError(true);
@@ -234,41 +293,24 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       return;
     }
 
-    setSubmitting(true);
+    setCheckingAssignees(true);
     try {
-      let payload: any = { remarks };
-      if (isIpIssuance) {
-        payload.details = { ip: ipAddress.trim() };
-      } else if (isVMCreationStage) {
-        payload.details = {
-          addedToMonitoring: !!addedToMonitoring
-        };
-      } else if (isVMBackupStage) {
-        payload.details = {
-          backupLocation: backupLocation.trim()
-        };
-      } else if (isClusterDeciding) {
-        payload.details = {
-          cluster: selectedCluster,
-          node: selectedNode
-        };
-      } else if (isMarkEntryTime) {
-        payload.details = {
-          entryTime: new Date(entryTime).toISOString()
-        };
-      } else if (isMarkExitTime) {
-        payload.details = {
-          exitTime: new Date(exitTime).toISOString(),
-          keptItemsOnExit: !!keptItemsOnExit
-        };
+      const res = await apiClient.get(`/api/requests/${request?.id || request?._id}/next-assignees`);
+      const assignees = res.data.assignees || [];
+      if (assignees.length > 1) {
+         setNextAssignees(assignees);
+         setNextStageName(res.data.nextStageName || '');
+         setAssigneeSelectionOpen(true);
+         setCheckingAssignees(false);
+         return;
       }
-      await onAdvance(request.id || request._id || '', payload);
-      onClose();
     } catch (err) {
-      // toast is handled in parent
-    } finally {
-      setSubmitting(false);
+      console.error('Failed to fetch next assignees', err);
     }
+    setCheckingAssignees(false);
+
+    // If no selection needed, advance directly
+    executeAdvance();
   };
 
   const handleReject = async () => {
@@ -297,7 +339,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
 
   const getCreatorName = (usernameVal: string) => {
     const u = users.find((user: any) => user.username === usernameVal);
-    return u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : usernameVal;
+    return u ? u.firstName || u.username : usernameVal;
   };
 
   const getStatusColor = (status: string) => {
@@ -318,7 +360,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       fullWidth
     >
       <DialogTitle sx={{ pb: 1, fontWeight: 'bold', fontSize: '1.25rem', color: '#333' }}>
-        Request Details i
+        Request Details
       </DialogTitle>
       <DialogContent dividers sx={{ backgroundColor: '#fafbfd' }}>
         <Grid container spacing={3} sx={{ py: 1 }}>
@@ -805,7 +847,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
               color="success"
               disabled={submitting}
             >
-              {submitting ? 'Processing...' : (isIpIssuance ? 'Submit IP & Approve' : isVMCreationStage ? 'Submit Monitoring Confirmation & Approve' : isVMBackupStage ? 'Submit Backup Path & Approve' : isClusterDeciding ? 'Submit Cluster & Approve' : isMarkEntryTime ? 'Submit Entry Time & Advance' : isMarkExitTime ? 'Submit Exit Time & Approve' : 'Approve & Advance')}
+              {checkingAssignees || submitting ? 'Processing...' : (isIpIssuance ? 'Submit IP & Approve' : isVMCreationStage ? 'Submit Monitoring Confirmation & Approve' : isVMBackupStage ? 'Submit Backup Path & Approve' : isClusterDeciding ? 'Submit Cluster & Approve' : isMarkEntryTime ? 'Submit Entry Time & Advance' : isMarkExitTime ? 'Submit Exit Time & Approve' : 'Approve & Advance')}
             </Button>
           </>
         )}
@@ -847,6 +889,74 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
             disabled={!sendBackReason.trim() || submitting}
           >
             Send Back
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={assigneeSelectionOpen}
+        onClose={() => setAssigneeSelectionOpen(false)}
+        slotProps={{
+          paper: {
+            sx: { borderRadius: "12px", p: 1, minWidth: "400px" }
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: "bold", color: "#333" }}>Select Assignee for Next Stage</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <Typography variant="body2" color="textSecondary">
+              The next stage <strong>{nextStageName ? `(${nextStageName})` : ''}</strong> has multiple assignee groups. Please select one to assign this request to.
+            </Typography>
+            <FormControl fullWidth required error={assigneeError}>
+              <InputLabel>Assignee</InputLabel>
+              <Select
+                value={selectedAssignee}
+                label="Assignee"
+                onChange={(e) => {
+                  setSelectedAssignee(e.target.value as string);
+                  setAssigneeError(false);
+                }}
+              >
+                {nextAssignees.map(a => {
+                  let label = a;
+                  if (a.startsWith('Role:')) {
+                    label = `Role: ${a.replace('Role:', '')}`;
+                  } else if (a.startsWith('DeptStaffs:')) {
+                    label = `Department Staffs: ${a.replace('DeptStaffs:', '')}`;
+                  } else if (a.startsWith('SpecificUser:')) {
+                    const username = a.replace('SpecificUser:', '');
+                    const userObj = users?.find((u: any) => u.username === username);
+                    label = userObj ? `Specific User: ${userObj.firstName} ${userObj.lastName} (${username})` : `Specific User: ${username}`;
+                  } else if (a === 'RequesterDeptHead') {
+                    label = 'Department Head of Requester';
+                  }
+
+                  return (
+                    <MenuItem key={a} value={a}>
+                      {label}
+                    </MenuItem>
+                  );
+                })}
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button variant="text" onClick={() => setAssigneeSelectionOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => {
+              if (!selectedAssignee) {
+                setAssigneeError(true);
+                return;
+              }
+              executeAdvance(selectedAssignee);
+            }}
+            disabled={submitting}
+          >
+            Confirm & Advance
           </Button>
         </DialogActions>
       </Dialog>

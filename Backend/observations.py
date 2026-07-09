@@ -187,7 +187,10 @@ async def list_observations(
         query["status"] = status_filter
         
     if date_filter:
-        query["observedDate"] = date_filter
+        query["$or"] = [
+            {"observedDate": date_filter},
+            {"lastStatusUpdatedOn": {"$regex": f"^{date_filter}"}}
+        ]
 
     if category_filter:
         query["category"] = category_filter
@@ -249,6 +252,7 @@ async def create_observation(
             pass
             
     obs_dict["observationId"] = f"OBS-{current_year}{str(next_num).zfill(3)}"
+    obs_dict["lastStatusUpdatedOn"] = datetime.now().isoformat()
     
     new_obs = await obs_collection.insert_one(obs_dict)
     created_obs = await obs_collection.find_one({"_id": new_obs.inserted_id})
@@ -285,6 +289,11 @@ async def update_observation(
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     obs_dict = {k: v for k, v in observation.model_dump().items() if v is not None}
+    
+    if "status" in obs_dict:
+        existing_obs = await obs_collection.find_one({"_id": ObjectId(id)})
+        if existing_obs and existing_obs.get("status") != obs_dict["status"]:
+            obs_dict["lastStatusUpdatedOn"] = datetime.now().isoformat()
     
     if len(obs_dict) >= 1:
         update_result = await obs_collection.update_one(

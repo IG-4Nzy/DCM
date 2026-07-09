@@ -433,7 +433,7 @@ const Requests: React.FC = () => {
             sortable: true,
             render: (row) => {
                 const u = users.find((user: any) => user.username === row.createdBy);
-                return u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : row.createdBy;
+                return u ? u.firstName || u.username : row.createdBy;
             }
         },
         {
@@ -454,13 +454,13 @@ const Requests: React.FC = () => {
 
                 return (
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                        {canAdvance && (
+                        {/* {canAdvance && (
                             <Tooltip title="Advance / Approve Stage">
                                 <IconButton size="small" color="success" onClick={(e) => { e.stopPropagation(); handleAdvance(row.id || row._id || ''); }}>
                                     <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>✓</span>
                                 </IconButton>
                             </Tooltip>
-                        )}
+                        )} */}
                         {canEdit && (
                             <Tooltip title="Edit Request">
                                 <IconButton size="small" color="primary" onClick={(e) => { e.stopPropagation(); handleOpenModal(row); }}>

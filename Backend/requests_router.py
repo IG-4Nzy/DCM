@@ -132,6 +132,25 @@ async def resolve_assignees(stage: dict, requester_username: str) -> List[str]:
     assignment_type = stage.get("assignmentType", "")
     assigned_to = stage.get("assignedTo", "")
 
+    if assignment_type == "Mixed":
+        items = assigned_to if isinstance(assigned_to, list) else ([assigned_to] if isinstance(assigned_to, str) else [])
+        assignees = set()
+        for item in items:
+            if item == "Requester":
+                res = await resolve_assignees({"assignmentType": "Requester"}, requester_username)
+            elif item == "RequesterDeptHead":
+                res = await resolve_assignees({"assignmentType": "RequesterDeptHead"}, requester_username)
+            elif item.startswith("DeptStaffs:"):
+                res = await resolve_assignees({"assignmentType": "DeptStaffs", "assignedTo": item.replace("DeptStaffs:", "")}, requester_username)
+            elif item.startswith("Role:"):
+                res = await resolve_assignees({"assignmentType": "Role", "assignedTo": item.replace("Role:", "")}, requester_username)
+            elif item.startswith("SpecificUser:"):
+                res = [item.replace("SpecificUser:", "")]
+            else:
+                res = []
+            assignees.update(res)
+        return list(assignees)
+
     if assignment_type == "Requester":
         return [requester_username]
 
@@ -139,18 +158,29 @@ async def resolve_assignees(stage: dict, requester_username: str) -> List[str]:
         # Find the requester's department, then get department head
         user = await users_collection.find_one({"username": requester_username})
         if user and user.get("department"):
-            dept = await departments_collection.find_one({"name": user["department"]})
+            dept_id_or_name = user["department"]
+            if ObjectId.is_valid(dept_id_or_name):
+                dept = await departments_collection.find_one({"_id": ObjectId(dept_id_or_name)})
+            else:
+                dept = await departments_collection.find_one({"name": dept_id_or_name})
+            
             if dept and dept.get("departmentHead"):
                 return [dept["departmentHead"]]
         return []
 
     elif assignment_type == "DeptStaffs":
         # Assign to all staff in the given department
-        dept_name = assigned_to
-        if dept_name:
-            staff_cursor = users_collection.find({"department": dept_name, "status": True})
-            staff_list = await staff_cursor.to_list(length=None)
-            return [s["username"] for s in staff_list if s.get("username")]
+        dept_name_or_id = assigned_to
+        if dept_name_or_id:
+            if ObjectId.is_valid(dept_name_or_id):
+                dept = await departments_collection.find_one({"_id": ObjectId(dept_name_or_id)})
+            else:
+                dept = await departments_collection.find_one({"name": dept_name_or_id})
+                
+            if dept:
+                staff_cursor = users_collection.find({"department": str(dept["_id"]), "status": True})
+                staff_list = await staff_cursor.to_list(length=None)
+                return [s["username"] for s in staff_list if s.get("username")]
         return []
 
     elif assignment_type == "SpecificUser":
@@ -159,11 +189,18 @@ async def resolve_assignees(stage: dict, requester_username: str) -> List[str]:
         return []
 
     elif assignment_type == "Role":
-        role_name = assigned_to
-        if role_name:
-            users_cursor = users_collection.find({"role": role_name, "status": True})
-            users_list = await users_cursor.to_list(length=None)
-            return [u["username"] for u in users_list if u.get("username")]
+        role_name_or_id = assigned_to
+        if role_name_or_id:
+            roles_collection = db.get_collection("roles")
+            if ObjectId.is_valid(role_name_or_id):
+                role = await roles_collection.find_one({"_id": ObjectId(role_name_or_id)})
+            else:
+                role = await roles_collection.find_one({"name": role_name_or_id})
+                
+            if role:
+                users_cursor = users_collection.find({"role": str(role["_id"]), "status": True})
+                users_list = await users_cursor.to_list(length=None)
+                return [u["username"] for u in users_list if u.get("username")]
         return []
 
     elif assignment_type == "TargetApprover":
@@ -653,6 +690,38 @@ async def update_item(id: str, payload: UpdateRequestModel = Body(...), current_
     return updated
 
 
+@router.get("/{id}/next-assignees", response_description="Get assignees for next stage")
+async def get_next_assignees(id: str, current_user: dict = Depends(get_current_user)):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    existing = await collection.find_one({"_id": ObjectId(id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    request_type = existing.get("requestType") or existing.get("category", "")
+    routing = await get_routing_for_type(request_type)
+    if not routing or not routing.get("stages"):
+        return {"assignees": []}
+
+    stages = sorted(routing["stages"], key=lambda s: s.get("order", 0))
+    current_index = existing.get("currentStageIndex", 0)
+    next_index = current_index + 1
+
+    if next_index >= len(stages):
+        return {"assignees": []}
+
+    next_stage = stages[next_index]
+    assignment_type = next_stage.get("assignmentType", "")
+    assigned_to = next_stage.get("assignedTo", "")
+
+    if assignment_type == "Mixed":
+        items = assigned_to if isinstance(assigned_to, list) else ([assigned_to] if isinstance(assigned_to, str) else [])
+        if len(items) > 1:
+            return {"assignees": items, "isGroup": True, "nextStageName": next_stage.get("stageName", "")}
+            
+    return {"assignees": [], "isGroup": False, "nextStageName": next_stage.get("stageName", "")}
+
 @router.put("/{id}/advance", response_description="Advance request to next stage", response_model=RequestModel, response_model_by_alias=False)
 async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), current_user: dict = Depends(get_current_user)):
     """Advance the request to the next stage in the routing configuration."""
@@ -727,7 +796,13 @@ async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), c
     else:
         next_stage = stages[next_index]
         requester = existing.get("createdBy", "")
-        assignees = await resolve_assignees(next_stage, requester)
+        if payload and payload.get("selectedAssignee"):
+            selected = payload["selectedAssignee"]
+            temp_stage = {"assignmentType": "Mixed", "assignedTo": [selected]}
+            assignees = await resolve_assignees(temp_stage, requester)
+        else:
+            assignees = await resolve_assignees(next_stage, requester)
+                
         update_data = {
             "status": next_stage.get("stageName", ""),
             "currentStageIndex": next_index,

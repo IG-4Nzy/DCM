@@ -407,6 +407,7 @@ class ObservationModel(BaseModel):
     repeatedFromId: Optional[str] = None
     repeatCount: Optional[int] = 0
     repeatedDetails: Optional[dict] = None
+    lastStatusUpdatedOn: Optional[str] = None
 
     @field_validator('comments', mode='before')
     @classmethod
@@ -1102,7 +1103,7 @@ class RequestRoutingStage(BaseModel):
     stageName: str
     order: int = 0
     assignmentType: Optional[str] = None
-    assignedTo: Optional[str] = None  # username of assigned user
+    assignedTo: Optional[Union[str, List[str]]] = None  # username(s) of assigned user(s)
 
     model_config = ConfigDict(
         extra="allow",
