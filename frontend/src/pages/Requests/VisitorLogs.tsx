@@ -15,6 +15,7 @@ import type { VisitorLogData } from './model';
 import type { RootState } from '../../store';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
+import dayjs from 'dayjs';
 
 type Order = 'asc' | 'desc';
 
@@ -398,7 +399,10 @@ const VisitorLogs: React.FC = () => {
                                 onChange={(e) => setFormFields({ ...formFields, entryTime: e.target.value })}
                                 required
                                 fullWidth
-                                slotProps={{ inputLabel: { shrink: true } }}
+                                slotProps={{ 
+                                    inputLabel: { shrink: true },
+                                    htmlInput: { min: editingLog ? undefined : dayjs().format('YYYY-MM-DDTHH:mm') }
+                                }}
                             />
                         </Grid>
                         <Grid size={{xs: 12, sm: 6}}   >
@@ -408,7 +412,10 @@ const VisitorLogs: React.FC = () => {
                                 value={formFields.exitTime}
                                 onChange={(e) => setFormFields({ ...formFields, exitTime: e.target.value })}
                                 fullWidth
-                                slotProps={{ inputLabel: { shrink: true } }}
+                                slotProps={{ 
+                                    inputLabel: { shrink: true },
+                                    htmlInput: { min: editingLog ? undefined : dayjs().format('YYYY-MM-DDTHH:mm') }
+                                }}
                             />
                         </Grid>
                         {formFields.itemsToBring.trim() && (

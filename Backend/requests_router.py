@@ -347,12 +347,26 @@ async def list_items(
     is_superuser = current_user.get("isSuperuser", False)
     if not is_superuser:
         username = current_user.get("sub", "")
-        # Show requests created by the user OR assigned to them
+        user_or_conditions = [
+            {"createdBy": username},
+            {"currentAssignedUsers": username}
+        ]
+        
+        depts_col = db.get_collection("departments")
+        depts_where_head = await depts_col.find({"departmentHead": username}).to_list(length=None)
+        if depts_where_head:
+            dept_names = [d["name"] for d in depts_where_head]
+            dept_ids = [str(d["_id"]) for d in depts_where_head]
+            dept_identifiers = dept_names + dept_ids
+            
+            users_col = db.get_collection("users")
+            dept_users = await users_col.find({"department": {"$in": dept_identifiers}}).to_list(length=None)
+            dept_usernames = [u["username"] for u in dept_users if u.get("username")]
+            if dept_usernames:
+                user_or_conditions.append({"createdBy": {"$in": dept_usernames}})
+                
         conditions.append({
-            "$or": [
-                {"createdBy": username},
-                {"currentAssignedUsers": username}
-            ]
+            "$or": user_or_conditions
         })
 
     if search:
@@ -656,11 +670,12 @@ async def update_item(id: str, payload: UpdateRequestModel = Body(...), current_
     username = current_user.get("sub", "")
     privileges = current_user.get("privileges", [])
     assigned_users = existing.get("currentAssignedUsers") or []
+    is_own_stage1 = existing.get("createdBy") == username and existing.get("currentStageIndex", 0) == 0
 
-    if not is_superuser and "Update Request" not in privileges and username not in assigned_users:
+    if not is_superuser and "Update Request" not in privileges and username not in assigned_users and not is_own_stage1:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions to update this request. Must be superuser, have 'Update Request' privilege, or be assigned to this request."
+            detail="Not enough permissions to update this request. Must be superuser, have 'Update Request' privilege, be assigned to this request, or be the creator in Stage 1."
         )
 
     item_dict = {k: v for k, v in payload.model_dump().items() if v is not None}
@@ -954,10 +969,25 @@ async def backward_stage(
     return updated
 
 
-@router.delete("/{id}", response_description="Delete a request", dependencies=[Depends(require_privilege("Delete Request"))])
+@router.delete("/{id}", response_description="Delete a request")
 async def delete_item(id: str, current_user: dict = Depends(get_current_user)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    existing = await collection.find_one({"_id": ObjectId(id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Request {id} not found")
+
+    is_superuser = current_user.get("isSuperuser", False)
+    username = current_user.get("sub", "")
+    privileges = current_user.get("privileges", [])
+    is_own_stage1 = existing.get("createdBy") == username and existing.get("currentStageIndex", 0) == 0
+
+    if not is_superuser and "Delete Request" not in privileges and not is_own_stage1:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions to delete this request. Must be stage 1 of your own request, or have Delete Request privilege."
+        )
 
     delete_result = await collection.delete_one({"_id": ObjectId(id)})
 

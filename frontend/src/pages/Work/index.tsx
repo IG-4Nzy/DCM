@@ -327,6 +327,7 @@ const Works: React.FC = () => {
       label: 'Assignees',
       sortable: false,
       render: (row) => {
+        if (row.assigneesFullName) return row.assigneesFullName;
         const rowAssignees = row.assignees || (row.assignee ? [row.assignee] : []);
         if (rowAssignees.length === 0) return "Unassigned";
         const names = rowAssignees.map((assigneeId) => {
@@ -334,6 +335,7 @@ const Works: React.FC = () => {
           if (user) {
             return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || '';
           }
+          if (assigneeId && assigneeId.length !== 24) return assigneeId;
           return "User Removed";
         });
         return names.join(', ');
@@ -442,8 +444,10 @@ const Works: React.FC = () => {
                   e.stopPropagation(); 
                   if (await confirm("Are you sure you want to approve this emergency work?", "Approve Emergency Work")) {
                     try {
+                      const userObj = users.find((u: any) => u.username === currentUser);
+                      const fullName = userObj ? `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim() || currentUser : currentUser;
                       const commentPayload = {
-                        text: `This emergency work ticket was approved by ${currentUser}.`,
+                        text: `This emergency work ticket was approved by ${fullName}.`,
                         user: "System",
                         timestamp: new Date().toISOString()
                       };

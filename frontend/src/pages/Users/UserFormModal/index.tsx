@@ -206,8 +206,7 @@ const UserFormModal = ({
                             <div className={styles.grid}>
                                 <ViewField label="First Name" value={formFirstName} />
                                 <ViewField label="Last Name" value={formLastName} />
-                                <ViewField label="Date of Birth" value={formDob} />
-                                <ViewField label="Blood Group" value={formBloodGroup} />
+
                                 <ViewField label="Mobile Number" value={formMobile} />
                             </div>
                         </div>
@@ -224,7 +223,7 @@ const UserFormModal = ({
                                 })()} />
 
                                 <ViewField label="Date of Join" value={formDateOfJoin} />
-                                <ViewField label="Address" value={formAddress} className={styles.fullWidthRow} />
+
                             </div>
                         </div>
                     </>
@@ -318,20 +317,7 @@ const UserFormModal = ({
                                     value={formLastName}
                                     onChange={(e) => setFormLastName(e.target.value)}
                                 />
-                                <DatePicker
-                                    fullWidth
-                                    label="Date of Birth"
-                                    value={formDob}
-                                    onChange={setFormDob}
-                                />
-                                <Dropdown
-                                    fullWidth
-                                    label="Blood Group"
-                                    options={BLOOD_GROUPS}
-                                    value={formBloodGroup}
-                                    onChange={setFormBloodGroup}
-                                    clearable
-                                />
+
                                 <TextField
                                     fullWidth
                                     label="Mobile Number"
@@ -363,15 +349,7 @@ const UserFormModal = ({
                                     value={formDateOfJoin}
                                     onChange={setFormDateOfJoin}
                                 />
-                                <TextField
-                                    fullWidth
-                                    label="Address"
-                                    value={formAddress}
-                                    onChange={(e) => setFormAddress(e.target.value)}
-                                    multiline
-                                    maxRows={3}
-                                    className={styles.fullWidthRow}
-                                />
+
                             </div>
                         </div>
                     </>

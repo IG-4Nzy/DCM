@@ -38,6 +38,7 @@ import request from '../services/request';
 import { NotificationPollerProvider } from '../contexts/NotificationPollerContext';
 import { getServerTime } from '../helpers/time';
 import StickyNote from '../components/StickyNote';
+import { MdStickyNote2 as StickyNoteIcon } from 'react-icons/md';
 
 const drawerWidth = 240;
 
@@ -119,8 +120,9 @@ const Layout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { username, role, isSuperuser } = useSelector((state: RootState) => state.auth);
-  const [userInitials, setUserInitials] = useState('');
-  const [userFullName, setUserFullName] = useState(username);
+  const [userInitials, setUserInitials] = React.useState<string>('?');
+  const [userFullName, setUserFullName] = React.useState<string>('');
+  const [stickyNoteEnabled, setStickyNoteEnabled] = React.useState<boolean>(false);
   const [unreadRoutes, setUnreadRoutes] = useState<Record<string, boolean>>({});
   const [serverTime, setServerTime] = useState('');
 
@@ -218,14 +220,16 @@ const Layout: React.FC = () => {
     const fetchInitials = async () => {
       try {
         const res = await request.get('/api/auth/me');
-        const { firstName, lastName } = res.data;
+        const { firstName, lastName, stickyNoteEnabled: snEnabled } = res.data;
         const f = (firstName || '').charAt(0).toUpperCase();
         const l = (lastName || '').charAt(0).toUpperCase();
         setUserInitials(l ? `${f}${l}` : f || (username || '?').charAt(0).toUpperCase());
         setUserFullName(`${firstName || ''} ${lastName || ''}`.trim() || username);
+        setStickyNoteEnabled(!!snEnabled);
       } catch {
         setUserInitials((username || '?').charAt(0).toUpperCase());
         setUserFullName(username);
+        setStickyNoteEnabled(false);
       }
     };
     fetchInitials();
@@ -406,6 +410,31 @@ const Layout: React.FC = () => {
         <Divider />
 
         <List>
+          {stickyNoteEnabled && (
+            <ListItem disablePadding sx={{ display: 'block' }}>
+              <ListItemButton
+                onClick={() => window.dispatchEvent(new Event('openStickyNote'))}
+                sx={{
+                  minHeight: 48,
+                  justifyContent: open ? 'initial' : 'center',
+                  px: 2.5,
+                  color: '#5c5315'
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    minWidth: 0,
+                    mr: open ? 3 : 'auto',
+                    justifyContent: 'center',
+                    color: '#f5b041'
+                  }}
+                >
+                  <StickyNoteIcon size={24} />
+                </ListItemIcon>
+                <ListItemText primary="Sticky Note" sx={{ opacity: open ? 1 : 0 }} />
+              </ListItemButton>
+            </ListItem>
+          )}
           <ListItem disablePadding sx={{ display: 'block' }}>
             <ListItemButton
               onClick={handleLogout}

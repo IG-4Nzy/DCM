@@ -7,20 +7,33 @@ from models import UserModel, CreateUserModel, UpdateUserModel, PaginatedUsersMo
 from bson import ObjectId
 import bcrypt
 
-async def sync_department_head(username: str, department: Optional[str], is_dept_head: Optional[bool]):
+async def sync_department_head(username: str, department: Optional[str], is_dept_head: Optional[bool], old_username: Optional[str] = None):
     if is_dept_head is None:
         return
     departments_collection = db.get_collection("departments")
-    cursor = departments_collection.find({"departmentHead": username})
-    async for dept in cursor:
-        if not is_dept_head or dept["name"] != department:
+    
+    # Clear out the old username if provided
+    if old_username:
+        cursor = departments_collection.find({"departmentHead": old_username})
+        async for dept in cursor:
             await departments_collection.update_one(
                 {"_id": dept["_id"]},
                 {"$set": {"departmentHead": None}}
             )
+
+    cursor = departments_collection.find({"departmentHead": username})
+    async for dept in cursor:
+        dept_match = str(dept["_id"]) == department or dept.get("name") == department
+        if not is_dept_head or not dept_match:
+            await departments_collection.update_one(
+                {"_id": dept["_id"]},
+                {"$set": {"departmentHead": None}}
+            )
+            
     if is_dept_head and department:
+        query = {"_id": ObjectId(department)} if ObjectId.is_valid(department) else {"name": department}
         await departments_collection.update_one(
-            {"name": department},
+            query,
             {"$set": {"departmentHead": username}}
         )
 
@@ -78,7 +91,7 @@ async def populate_replacement_names(users):
 async def user_heartbeat(current_user: dict = Depends(get_current_user)):
     return {"status": "online"}
 
-@router.get("/", response_description="List all users", response_model=PaginatedUsersModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["View All Users", "View Department Users"]))])
+@router.get("/", response_description="List all users", response_model=PaginatedUsersModel, response_model_by_alias=False)
 async def list_users(
     skip: int = Query(0, ge=0),
     pagination: bool = Query(True),
@@ -104,6 +117,8 @@ async def list_users(
     user_privileges = current_user.get("privileges", [])
     
     only_dept_scoped = not (is_superuser or "View All Users" in user_privileges)
+    if not pagination:
+        only_dept_scoped = False
     
     if only_dept_scoped:
         query["department"] = current_user.get("department") or "None"
@@ -170,6 +185,11 @@ async def create_user(user: CreateUserModel = Body(...)):
     # Check replacement constraints
     await check_replacement_constraint(user_dict.get("replacementFor"))
         
+    pass_number = user_dict.get("passNumber")
+    if pass_number and isinstance(pass_number, str) and pass_number.strip():
+        if await users_collection.find_one({"passNumber": pass_number.strip()}):
+            raise HTTPException(status_code=400, detail="Pass Number already exists")
+            
     hashed_password = bcrypt.hashpw(user_dict["password"].encode('utf-8'), bcrypt.gensalt())
     user_dict["password"] = hashed_password.decode('utf-8')
     
@@ -227,6 +247,16 @@ async def update_user(id: str, user: UpdateUserModel = Body(...)):
     if "replacementFor" in user_dict:
         await check_replacement_constraint(user_dict.get("replacementFor"), id)
 
+    if "passNumber" in user_dict:
+        pass_number = user_dict["passNumber"]
+        if pass_number and isinstance(pass_number, str) and pass_number.strip():
+            existing_pass = await users_collection.find_one({
+                "passNumber": pass_number.strip(),
+                "_id": {"$ne": ObjectId(id)}
+            })
+            if existing_pass:
+                raise HTTPException(status_code=400, detail="Pass Number already exists")
+
     if "password" in user_dict:
         user_dict["password"] = bcrypt.hashpw(user_dict["password"].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
@@ -241,7 +271,8 @@ async def update_user(id: str, user: UpdateUserModel = Body(...)):
         await sync_department_head(
             updated_user.get("username"),
             updated_user.get("department"),
-            is_dept_head
+            is_dept_head,
+            existing_user.get("username") if existing_user.get("username") != updated_user.get("username") else None
         )
 
     if updated_user:

@@ -206,6 +206,20 @@ async def list_works(
             ]
         }
     
+    if not is_superuser:
+        emergency_visibility_clause = {
+            "$or": [
+                {"isEmergency": {"$ne": True}},
+                {"assignee": user_id},
+                {"assignees": user_id},
+                {"createdBy": current_user.get("sub")}
+            ]
+        }
+        if query:
+            query = {"$and": [query, emergency_visibility_clause]}
+        else:
+            query = emergency_visibility_clause
+
     if query:
         query = {"$and": [query, tab_query]}
     else:
@@ -247,6 +261,45 @@ async def list_works(
     else:
         cursor = works_collection.aggregate(pipeline)
         works = await cursor.to_list(length=None)
+        
+    # Inject assigneesFullName
+    unique_user_refs = set()
+    for w in works:
+        if w.get("assignees"):
+            unique_user_refs.update(w["assignees"])
+        if w.get("assignee"):
+            unique_user_refs.add(w["assignee"])
+            
+    if unique_user_refs:
+        object_ids = []
+        usernames = []
+        for ref in unique_user_refs:
+            if isinstance(ref, str) and ObjectId.is_valid(ref):
+                object_ids.append(ObjectId(ref))
+            elif isinstance(ref, str):
+                usernames.append(ref)
+                
+        user_query = {"$or": []}
+        if object_ids:
+            user_query["$or"].append({"_id": {"$in": object_ids}})
+        if usernames:
+            user_query["$or"].append({"username": {"$in": usernames}})
+            
+        user_map = {}
+        if user_query["$or"]:
+            found_users = await users_collection.find(user_query).to_list(length=None)
+            for fu in found_users:
+                fn = ((fu.get("firstName") or "") + " " + (fu.get("lastName") or "")).strip() or fu.get("username", "")
+                user_map[str(fu["_id"])] = fn
+                if fu.get("username"):
+                    user_map[fu["username"]] = fn
+                    
+        for w in works:
+            assignees = w.get("assignees") or ([w["assignee"]] if w.get("assignee") else [])
+            names = []
+            for a in assignees:
+                names.append(user_map.get(a, "User Removed"))
+            w["assigneesFullName"] = ", ".join(names) if names else "Unassigned"
             
     return {"data": works, "total": total}
 
@@ -501,7 +554,11 @@ async def transfer_work(
     now_str = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     local_time_formatted = datetime.now().strftime("%Y-%m-%d %I:%M %p")
     
-    log_text = f"Transferred this work to {new_assignee_username} at {local_time_formatted}. Reason: {reason}"
+    first_name = new_assignee_user.get("firstName", "")
+    last_name = new_assignee_user.get("lastName", "")
+    full_name = f"{first_name} {last_name}".strip() or new_assignee_username
+    
+    log_text = f"Transferred this work to {full_name} at {local_time_formatted}. Reason: {reason}"
     
     new_comment = {
         "text": log_text,

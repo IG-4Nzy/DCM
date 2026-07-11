@@ -7,6 +7,7 @@ export interface WorkData {
   assignee?: string;
   department?: string;
   assignees?: string[];
+  assigneesFullName?: string;
   priority: string;
   dueDate: string;
   description: string;

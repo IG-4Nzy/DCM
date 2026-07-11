@@ -24,9 +24,14 @@ const StickyNote: React.FC = () => {
         if (isAuthenticated) {
             fetchProfile();
             const handleProfileUpdate = () => fetchProfile();
+            const handleOpenEvent = () => setIsNoteVisible(true);
+            
             window.addEventListener('profileUpdated', handleProfileUpdate);
+            window.addEventListener('openStickyNote', handleOpenEvent);
+            
             return () => {
                 window.removeEventListener('profileUpdated', handleProfileUpdate);
+                window.removeEventListener('openStickyNote', handleOpenEvent);
             };
         } else {
             setEnabled(false);
@@ -101,29 +106,7 @@ const StickyNote: React.FC = () => {
     return (
         <>
             {/* The Floating Action Button when the note is hidden */}
-            {!isNoteVisible && (
-                <Tooltip title="Open Sticky Note" placement="left">
-                    <Fab 
-                        color="secondary" 
-                        aria-label="sticky note" 
-                        onClick={handleOpen}
-                        className={styles.fabButton}
-                        sx={{
-                            position: 'fixed',
-                            bottom: 30,
-                            right: 30,
-                            zIndex: 9999,
-                            backgroundColor: '#fce883',
-                            color: '#5c5315',
-                            '&:hover': {
-                                backgroundColor: '#f5df71'
-                            }
-                        }}
-                    >
-                        <NoteIcon size={24} />
-                    </Fab>
-                </Tooltip>
-            )}
+
 
             {/* The actual draggable Sticky Note */}
             {isNoteVisible && (

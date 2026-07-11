@@ -250,6 +250,15 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                   value={details.itemsToBring || ''}
                   onChange={(e) => handleDetailChange('itemsToBring', e.target.value)}
                 />
+                <TextField
+                  label="Accompanying Persons (Optional)"
+                  fullWidth
+                  multiline
+                  rows={2}
+                  placeholder="Name of those who are accompanying with you"
+                  value={details.accompanyingPersons || ''}
+                  onChange={(e) => handleDetailChange('accompanyingPersons', e.target.value)}
+                />
               </>
             )}
 

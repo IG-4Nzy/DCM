@@ -448,8 +448,9 @@ const Requests: React.FC = () => {
             align: 'right',
             render: (row) => {
                 const isAssigned = row.currentAssignedUsers && row.currentAssignedUsers.includes(username);
-                const canEdit = hasUpdatePrivilege || (row.createdBy === username && row.status === 'Pending') || isAssigned;
-                const canDelete = hasDeletePrivilege || (row.createdBy === username && row.status === 'Pending' && hasDeletePrivilege);
+                const isStage1 = row.currentStageIndex === 0 || row.currentStageIndex === undefined || row.currentStageIndex === null;
+                const canEdit = isSuperuser || (isStage1 && row.status !== 'Completed' && row.status !== 'Rejected' && (hasUpdatePrivilege || row.createdBy === username || isAssigned));
+                const canDelete = isSuperuser || hasDeletePrivilege || (row.createdBy === username && isStage1 && row.status !== 'Completed' && row.status !== 'Rejected');
                 const canAdvance = (isAssigned || isSuperuser) && row.status !== 'Completed' && row.status !== 'Rejected';
 
                 return (

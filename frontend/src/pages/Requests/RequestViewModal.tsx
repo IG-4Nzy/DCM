@@ -339,7 +339,11 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
 
   const getCreatorName = (usernameVal: string) => {
     const u = users.find((user: any) => user.username === usernameVal);
-    return u ? u.firstName || u.username : usernameVal;
+    const resolvedName = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : usernameVal;
+    if (usernameVal === request.createdBy && request.createdByFullName) {
+        return request.createdByFullName;
+    }
+    return resolvedName;
   };
 
   const getStatusColor = (status: string) => {
@@ -410,7 +414,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                     <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                       {request.currentAssignedUsers.map((usernameVal, idx) => {
                         const u = users.find((user: any) => user.username === usernameVal);
-                        const displayName = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : usernameVal;
+                        const displayName = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : (request.currentAssignedUsersFullName?.[idx] || usernameVal);
                         return (
                           <Chip key={idx} label={displayName} size="small" variant="outlined" color="primary" />
                         );
@@ -524,6 +528,12 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                       <Grid size={{xs: 12, sm: 6}}   >
                         <Typography variant="caption" color="textSecondary">Tools / Items to Bring</Typography>
                         <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details.itemsToBring}</Typography>
+                      </Grid>
+                    )}
+                    {request.details?.accompanyingPersons && (
+                      <Grid size={{xs: 12, sm: 6}}   >
+                        <Typography variant="caption" color="textSecondary">Accompanying Persons</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details.accompanyingPersons}</Typography>
                       </Grid>
                     )}
                     {request.details?.itemsToBring && (
@@ -704,7 +714,10 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                           setEntryTime(e.target.value);
                           if (e.target.value) setEntryTimeError(false);
                         }}
-                        slotProps={{ inputLabel: { shrink: true } }}
+                        slotProps={{ 
+                          inputLabel: { shrink: true },
+                          htmlInput: { min: dayjs().startOf('day').format('YYYY-MM-DDTHH:mm') }
+                        }}
                         sx={{ bgcolor: '#fff' }}
                       />
                     </Box>
@@ -725,7 +738,10 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                           setExitTime(e.target.value);
                           if (e.target.value) setExitTimeError(false);
                         }}
-                        slotProps={{ inputLabel: { shrink: true } }}
+                        slotProps={{ 
+                          inputLabel: { shrink: true },
+                          htmlInput: { min: dayjs().startOf('day').format('YYYY-MM-DDTHH:mm') }
+                        }}
                         sx={{ bgcolor: '#fff', mb: 1 }}
                       />
                       {request.details?.itemsToBring && (
@@ -847,7 +863,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
               color="success"
               disabled={submitting}
             >
-              {checkingAssignees || submitting ? 'Processing...' : (isIpIssuance ? 'Submit IP & Approve' : isVMCreationStage ? 'Submit Monitoring Confirmation & Approve' : isVMBackupStage ? 'Submit Backup Path & Approve' : isClusterDeciding ? 'Submit Cluster & Approve' : isMarkEntryTime ? 'Submit Entry Time & Advance' : isMarkExitTime ? 'Submit Exit Time & Approve' : 'Approve & Advance')}
+              {checkingAssignees || submitting ? 'Processing...' : (isIpIssuance ? 'Submit IP & Approve' : isVMCreationStage ? 'Submit Monitoring Confirmation & Approve' : isVMBackupStage ? 'Submit Backup Path & Approve' : isClusterDeciding ? 'Submit Cluster & Approve' : isMarkEntryTime ? 'Submit Entry Time' : isMarkExitTime ? 'Submit Exit Time & Approve' : 'Approve')}
             </Button>
           </>
         )}
@@ -956,7 +972,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
             }}
             disabled={submitting}
           >
-            Confirm & Advance
+            Confirm
           </Button>
         </DialogActions>
       </Dialog>

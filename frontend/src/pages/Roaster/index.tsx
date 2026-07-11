@@ -70,7 +70,10 @@ const RoasterPage: React.FC = () => {
     hasPrivilege(PRIVILEGES.ROASTER_CREATE) ||
     hasPrivilege(PRIVILEGES.ROASTER_UPDATE);
   const canApprove = isSuperuser || hasPrivilege(PRIVILEGES.ROASTER_APPROVE);
-  const userDepartment = token ? (jwtDecode(token) as any).department || "General" : "General";
+  const tokenSub = token ? (jwtDecode(token) as any).sub : "";
+  const tokenDept = token ? (jwtDecode(token) as any).department || "General" : "General";
+  const currentUserObj = users.find(u => u.username === tokenSub);
+  const userDepartment = currentUserObj ? currentUserObj.department : tokenDept;
 
   const formatTime = (timeStr: string) => {
     if (!timeStr) return '';
@@ -207,7 +210,7 @@ const RoasterPage: React.FC = () => {
     const deptUsers = users.filter((u) => {
       const isCorrectDept = u.department === userDepartment;
       const isNotSuper = !(u.is_superuser || u.isSuperuser);
-      const isCorrectRole = trackedRole === "All Roles" || u.role === trackedRole;
+      const isCorrectRole = trackedRole === "All Roles" || (Array.isArray(u.role) ? u.role.includes(trackedRole) : u.role === trackedRole);
       return isCorrectDept && isNotSuper && isCorrectRole;
     });
 
@@ -272,12 +275,9 @@ const RoasterPage: React.FC = () => {
   }, [selectedWeek]);
 
   useEffect(() => {
-    let department = "";
-    if (token) {
-      const decoded: any = jwtDecode(token);
-      department = decoded.department || "";
-    }
-    dispatch(fetchUsers({ department, pagination: false }));
+    // Backend supports "me" to automatically resolve the current user's department properly,
+    // avoiding stale token payload issues.
+    dispatch(fetchUsers({ department: "me", pagination: false }));
     dispatch(fetchAllDepartmentsForDropdown());
   }, [dispatch, token]);
 
@@ -734,7 +734,7 @@ const RoasterPage: React.FC = () => {
                                   const isSuper = u.is_superuser || u.isSuperuser;
                                   const isDeptHead = deptHeads.includes(u.username) || deptHeads.includes(u.id) || deptHeads.includes(u._id);
                                   const trackedRole = dutySummary?.trackedRole || "All Roles";
-                                  const isCorrectRole = trackedRole === "All Roles" || u.role === trackedRole;
+                                  const isCorrectRole = trackedRole === "All Roles" || (Array.isArray(u.role) ? u.role.includes(trackedRole) : u.role === trackedRole);
                                   return !isSuper && !isDeptHead && u.department === userDepartment && isCorrectRole && !otherShiftsAssignees.includes(u.username);
                                 })
                                 .map((u) => u.username)
@@ -828,7 +828,7 @@ const RoasterPage: React.FC = () => {
                                       const isSuper = u.is_superuser || u.isSuperuser;
                                       const isDeptHead = deptHeads.includes(u.username) || deptHeads.includes(u.id) || deptHeads.includes(u._id);
                                       const trackedRole = dutySummary?.trackedRole || "All Roles";
-                                      const isCorrectRole = trackedRole === "All Roles" || u.role === trackedRole;
+                                      const isCorrectRole = trackedRole === "All Roles" || (Array.isArray(u.role) ? u.role.includes(trackedRole) : u.role === trackedRole);
                                       return !isSuper && !isDeptHead && u.department === userDepartment && isCorrectRole && !excludedUsernames.includes(u.username);
                                     })
                                     .map((u) => u.username)

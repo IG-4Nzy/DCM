@@ -148,6 +148,7 @@ class WorkModel(BaseModel):
     workId: Optional[str] = None
     workName: str
     assignees: List[str] = Field(default_factory=list)
+    assigneesFullName: Optional[str] = None
     assignee: Optional[str] = None
     priority: str
     dueDate: str = ""
@@ -210,6 +211,7 @@ class CreateWorkModel(BaseModel):
     workId: Optional[str] = None
     workName: str
     assignees: List[str] = Field(default_factory=list)
+    assigneesFullName: Optional[str] = None
     assignee: Optional[str] = None
     priority: str
     dueDate: str = ""

@@ -146,6 +146,10 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         try:
             from datetime import datetime, timezone
             import asyncio
+            
+            # Use fresh data from DB instead of stale token payload for department
+            payload["department"] = user.get("department", "")
+            
             role_ids = payload.get("roleIds", [])
             department = payload.get("department", "")
             asyncio.create_task(users_col.update_one(

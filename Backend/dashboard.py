@@ -92,14 +92,26 @@ async def get_dashboard_summary(
     roaster_status = status_doc.get("status", "Pending") if status_doc else "Pending"
         
     # 3. Check checklists status for today (BMS, Morning, and Cluster)
-    bms_doc = await bms_col.find_one({"date": date, "department": active_dept})
-    bms_status = bms_doc.get("status", "Pending") if bms_doc else "Pending"
+    user_privs = current_user.get("privileges", [])
     
-    morning_doc = await morning_col.find_one({"date": date, "department": active_dept})
-    morning_status = morning_doc.get("status", "Pending") if morning_doc else "Pending"
-    
-    cluster_doc = await cluster_col.find_one({"date": date, "department": active_dept})
-    cluster_status = cluster_doc.get("status", "Pending") if cluster_doc else "Pending"
+    async def get_checklist_overall_status(collection, view_all_priv):
+        if is_superuser or (view_all_priv and view_all_priv in user_privs):
+            total_depts = await depts_col.count_documents({})
+            completed = await collection.count_documents({"date": date, "status": "Completed"})
+            draft = await collection.count_documents({"date": date, "status": "Draft"})
+            if total_depts > 0 and completed == total_depts:
+                return "Completed"
+            elif completed > 0 or draft > 0:
+                return "Draft"
+            else:
+                return "Pending"
+        else:
+            doc = await collection.find_one({"date": date, "department": active_dept})
+            return doc.get("status", "Pending") if doc else "Pending"
+
+    bms_status = await get_checklist_overall_status(bms_col, "View All Department BMS Checklist")
+    morning_status = await get_checklist_overall_status(morning_col, None)
+    cluster_status = await get_checklist_overall_status(cluster_col, "View All Department Cluster Checklist")
     
     # 4. Determine Friday roaster reminder
     show_roaster_reminder = False

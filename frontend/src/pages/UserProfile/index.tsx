@@ -295,34 +295,11 @@ const UserProfile: React.FC = () => {
                                 onChange={(e) => setForm({ ...form, lastName: e.target.value })}
                                 className={styles.field}
                             />
-                            <TextField
-
-                                label="Date of Birth"
-                                type="date"
-                                value={form.dob}
-                                onChange={(e) => setForm({ ...form, dob: e.target.value })}
-                                className={styles.field}
-                                slotProps={{
-                                    inputLabel: {
-                                        shrink: true,
-                                    },
-                                }}
-                            />
-                            <Dropdown
-                                label="Blood Group"
-                                value={form.bloodGroup}
-                                onChange={(val) => setForm({ ...form, bloodGroup: val })}
-                                options={BLOOD_GROUPS.map(bg => ({ label: bg, value: bg }))}
-                                className={styles.field}
-                                clearable
-                            />
                         </Box>
                     ) : (
                         <Box className={styles.infoGrid}>
                             <InfoRow label="First Name" value={profile.firstName} />
                             <InfoRow label="Last Name" value={profile.lastName} />
-                            <InfoRow label="Date of Birth" value={profile.dob} />
-                            <InfoRow label="Blood Group" value={profile.bloodGroup} />
                         </Box>
                     )}
                 </Paper>
@@ -333,24 +310,15 @@ const UserProfile: React.FC = () => {
                     {editing ? (
                         <Box className={styles.formGrid}>
                             <TextField
-
                                 label="Mobile"
                                 value={form.mobile}
                                 onChange={(e) => setForm({ ...form, mobile: e.target.value })}
-                                className={styles.field}
-                            />
-                            <TextField
-
-                                label="Address"
-                                value={form.address}
-                                onChange={(e) => setForm({ ...form, address: e.target.value })}
                                 className={styles.field}
                             />
                         </Box>
                     ) : (
                         <Box className={styles.infoGrid}>
                             <InfoRow label="Mobile" value={profile.mobile} />
-                            <InfoRow label="Address" value={profile.address} />
                         </Box>
                     )}
                 </Paper>

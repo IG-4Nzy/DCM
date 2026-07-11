@@ -33,7 +33,7 @@ async def list_roles(
         "Create User" in privileges or
         "Update User" in privileges
     )
-    if not allowed:
+    if not allowed and pagination:
         raise HTTPException(status_code=403, detail="Not enough privileges to view roles")
 
     query = {}

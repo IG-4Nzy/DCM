@@ -204,7 +204,7 @@ const Users: React.FC = () => {
           dateOfJoin: formDateOfJoin,
           department: formDepartment,
           replacementFor: formReplacementFor || null,
-          passNumber: formPassNumber ? formPassNumber.trim() : undefined,
+          passNumber: formPassNumber ? formPassNumber.trim() : "",
         };
         if (formPassword) {
           payload.password = formPassword;
@@ -227,7 +227,7 @@ const Users: React.FC = () => {
               dateOfJoin: formDateOfJoin,
               department: formDepartment,
               replacementFor: formReplacementFor || null,
-              passNumber: formPassNumber ? formPassNumber.trim() : undefined,
+              passNumber: formPassNumber ? formPassNumber.trim() : "",
             },
             showToast,
           }),

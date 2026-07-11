@@ -59,6 +59,7 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
   const dispatch = useDispatch<AppDispatch>();
   const [newComment, setNewComment] = useState("");
   const currentUser = useSelector((state: RootState) => (state?.auth as any)?.user?.username || state?.auth?.username) || "User";
+  const users = useSelector((state: RootState) => state?.users?.users || []);
   const [allObservations, setAllObservations] = useState<any[]>([]);
   const [commentFile, setCommentFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -487,8 +488,10 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
             
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 2, maxHeight: '200px', overflowY: 'auto', pr: 1 }}>
               {formData.comments && formData.comments.length > 0 ? (
-                formData.comments.map((comment: any, index: number) => {
-                  const avatarLetter = (comment.user || "?")[0].toUpperCase();
+                [...formData.comments].reverse().map((comment: any, index: number) => {
+                  const uObj = users.find((u: any) => u.username === comment.user);
+                  const fullName = uObj ? `${uObj.firstName || ""} ${uObj.lastName || ""}`.trim() || comment.user : comment.user;
+                  const avatarLetter = (fullName || "?")[0].toUpperCase();
                   return (
                     <Box key={index} sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
                       <Avatar sx={{ width: 28, height: 28, bgcolor: '#1976d2', fontSize: '0.85rem' }}>
@@ -496,7 +499,7 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                       </Avatar>
                       <Box sx={{ flex: 1, bgcolor: 'rgba(0,0,0,0.02)', p: 1, borderRadius: 1.5, border: '1px solid rgba(0,0,0,0.04)' }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>{comment.user}</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>{fullName}</Typography>
                           <Typography variant="caption" color="textSecondary">
                             {new Date(comment.timestamp).toLocaleString(undefined, {
                               month: 'short',

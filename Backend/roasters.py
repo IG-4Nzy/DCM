@@ -188,7 +188,7 @@ async def create_roaster(
         name_str = f"{first_name} {last_name}".strip()
         if not name_str:
             name_str = user.get("username", "Unknown")
-        roaster_dict["updatedByFullName"] = f"{name_str} ({user_dept} - {role})"
+        roaster_dict["updatedByFullName"] = name_str
 
     roaster_dict["department"] = roaster.department or user_dept
 
@@ -256,7 +256,7 @@ async def update_roaster(id: str, roaster: UpdateRoasterModel = Body(...), curre
             name_str = f"{first_name} {last_name}".strip()
             if not name_str:
                 name_str = user.get("username", "Unknown")
-            roaster_dict["updatedByFullName"] = f"{name_str} ({department} - {role})"
+            roaster_dict["updatedByFullName"] = name_str
 
         update_result = await roasters_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": roaster_dict}

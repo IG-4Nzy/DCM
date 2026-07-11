@@ -18,6 +18,8 @@ import { colors, cardSx } from './constants';
 import { getStatusColor } from './utils';
 import { Icons } from '../../helpers/icons';
 import { useSelector, useDispatch } from 'react-redux';
+import { hasPrivilege } from '../../helpers/authUtils';
+import { PRIVILEGES } from '../../helpers/privileges';
 import type { RootState, AppDispatch } from '../../store';
 import { fetchDashboardSummary } from './action';
 import {
@@ -38,6 +40,17 @@ const Dashboard: React.FC = () => {
 
   const todayStr = useMemo(() => dayjs().format('YYYY-MM-DD'), []);
 
+  const isSuperuser = useSelector((state: RootState) => state.auth?.user?.isSuperuser);
+  
+  const canViewWorks = isSuperuser || hasPrivilege(PRIVILEGES.WORK_VIEW) || hasPrivilege(PRIVILEGES.WORK_VIEW_ALL_DEPARTMENTS) || hasPrivilege(PRIVILEGES.WORK_VIEW_ASSIGNED);
+  const canViewObservations = isSuperuser || hasPrivilege(PRIVILEGES.OBSERVATION_VIEW) || hasPrivilege(PRIVILEGES.OBSERVATION_VIEW_ALL_DEPT);
+  const canViewMorningChecklist = isSuperuser || hasPrivilege(PRIVILEGES.MORNING_CHECKLIST_VIEW);
+  const canViewBmsChecklist = isSuperuser || hasPrivilege(PRIVILEGES.BMS_CHECKLIST_VIEW) || hasPrivilege(PRIVILEGES.BMS_CHECKLIST_VIEW_ALL_DEPT);
+  const canViewClusterChecklist = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_CHECKLIST_VIEW) || hasPrivilege(PRIVILEGES.CLUSTER_CHECKLIST_VIEW_ALL_DEPT);
+  const canViewChecklists = canViewMorningChecklist || canViewBmsChecklist || canViewClusterChecklist;
+  const canViewLogs = isSuperuser || hasPrivilege(PRIVILEGES.LOGS_VIEW);
+  const canViewRequests = isSuperuser || hasPrivilege(PRIVILEGES.REQUEST_VIEW);
+  const canViewRoaster = isSuperuser || hasPrivilege(PRIVILEGES.ROASTER_VIEW);
   const fetchDashboardData = () => {
     dispatch(fetchDashboardSummary(todayStr));
   };
@@ -79,10 +92,12 @@ const Dashboard: React.FC = () => {
     <Box sx={{ width: '100%', flexGrow: 1, bgcolor: colors.bg, p: { xs: 2, sm: 3, md: 4 }, pb: { xs: 8, md: 9 }, boxSizing: 'border-box' }}>
 
       {/* Weekly Roster Reminder Alert Banner */}
-      <RosterBanner
-        show={data.showRoasterReminder}
-        onConfigureClick={() => navigate(ROUTE_CONSTANTS.ROASTER)}
-      />
+      {canViewRoaster && (
+        <RosterBanner
+          show={data.showRoasterReminder}
+          onConfigureClick={() => navigate(ROUTE_CONSTANTS.ROASTER)}
+        />
+      )}
 
       {/* Page Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, flexWrap: 'wrap', gap: 2 }}>
@@ -117,38 +132,60 @@ const Dashboard: React.FC = () => {
           mb: 3,
         }}
       >
-        <KpiCard
-          title={data.isDepartmentHead ? "Pending Works" : "My Pending Works"}
-          value={data.pendingWorks.length}
-          icon={<Icons.WorksIcon size={18} />}
-          accentColor={colors.blue}
-          accentBg={colors.blueLight}
-          onClick={() => navigate(ROUTE_CONSTANTS.WORKS)}
-        />
-        <KpiCard
-          title="Open Observations"
-          value={data.openObservationsCount}
-          icon={<Icons.EyeIcon size={18} />}
-          accentColor={colors.red}
-          accentBg={colors.redLight}
-          onClick={() => navigate(ROUTE_CONSTANTS.OBSERVATIONS)}
-        />
-        <KpiCard
-          title="Morning Checklist"
-          value={`${getStatusColor(data.checklists.morning).color === colors.green ? 100 : getStatusColor(data.checklists.morning).color === colors.amber ? 60 : 0}%`}
-          icon={<Icons.DailyActivitiesIcon size={18} />}
-          accentColor={getStatusColor(data.checklists.morning).color}
-          accentBg={getStatusColor(data.checklists.morning).bg}
-          onClick={() => navigate(ROUTE_CONSTANTS.DAILY_ACTIVITIES)}
-        />
-        <KpiCard
-          title="BMS Checklist"
-          value={`${getStatusColor(data.checklists.bms).color === colors.green ? 100 : getStatusColor(data.checklists.bms).color === colors.amber ? 60 : 0}%`}
-          icon={<Icons.BMSChecklistIcon size={18} />}
-          accentColor={getStatusColor(data.checklists.bms).color}
-          accentBg={getStatusColor(data.checklists.bms).bg}
-          onClick={() => navigate(ROUTE_CONSTANTS.BMS_CHECKLIST)}
-        />
+        {canViewWorks && (
+          <KpiCard
+            title={data.isDepartmentHead ? "Pending Works" : "My Pending Works"}
+            value={data.pendingWorks.length}
+            icon={<Icons.WorksIcon size={18} />}
+            accentColor={colors.blue}
+            accentBg={colors.blueLight}
+            onClick={() => navigate(ROUTE_CONSTANTS.WORKS)}
+          />
+        )}
+        {canViewObservations && (
+          <KpiCard
+            title="Open Observations"
+            value={data.openObservationsCount}
+            icon={<Icons.EyeIcon size={18} />}
+            accentColor={colors.red}
+            accentBg={colors.redLight}
+            onClick={() => navigate(ROUTE_CONSTANTS.OBSERVATIONS)}
+          />
+        )}
+        {canViewChecklists && (
+          <>
+            {canViewMorningChecklist && (
+              <KpiCard
+                title="Morning Checklist"
+                value={`${getStatusColor(data.checklists.morning).color === colors.green ? 100 : getStatusColor(data.checklists.morning).color === colors.amber ? 60 : 0}%`}
+                icon={<Icons.DailyActivitiesIcon size={18} />}
+                accentColor={getStatusColor(data.checklists.morning).color}
+                accentBg={getStatusColor(data.checklists.morning).bg}
+                onClick={() => navigate(ROUTE_CONSTANTS.DAILY_ACTIVITIES)}
+              />
+            )}
+            {canViewBmsChecklist && (
+              <KpiCard
+                title="BMS Checklist"
+                value={`${getStatusColor(data.checklists.bms).color === colors.green ? 100 : getStatusColor(data.checklists.bms).color === colors.amber ? 60 : 0}%`}
+                icon={<Icons.BMSChecklistIcon size={18} />}
+                accentColor={getStatusColor(data.checklists.bms).color}
+                accentBg={getStatusColor(data.checklists.bms).bg}
+                onClick={() => navigate(ROUTE_CONSTANTS.BMS_CHECKLIST)}
+              />
+            )}
+            {canViewClusterChecklist && (
+              <KpiCard
+                title="Cluster Checklist"
+                value={`${getStatusColor(data.checklists.cluster).color === colors.green ? 100 : getStatusColor(data.checklists.cluster).color === colors.amber ? 60 : 0}%`}
+                icon={<Icons.ClusterIcon size={18} />}
+                accentColor={getStatusColor(data.checklists.cluster).color}
+                accentBg={getStatusColor(data.checklists.cluster).bg}
+                onClick={() => navigate(ROUTE_CONSTANTS.CLUSTER_CHECKLIST)}
+              />
+            )}
+          </>
+        )}
       </Box>
 
       {/* Main Content Grid */}
@@ -162,9 +199,9 @@ const Dashboard: React.FC = () => {
       >
         {/* Left Column */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <RosterCard data={data} />
-          <PendingWorksCard data={data} onViewAllClick={() => navigate(ROUTE_CONSTANTS.WORKS)} />
-          <OpenRequestsCard data={data} onViewAllClick={() => navigate(ROUTE_CONSTANTS.REQUESTS)} />
+          {canViewRoaster && <RosterCard data={data} />}
+          {canViewWorks && <PendingWorksCard data={data} onViewAllClick={() => navigate(ROUTE_CONSTANTS.WORKS)} />}
+          {canViewRequests && <OpenRequestsCard data={data} onViewAllClick={() => navigate(ROUTE_CONSTANTS.REQUESTS)} />}
         </Box>
 
         {/* Right Column */}
@@ -315,20 +352,29 @@ const Dashboard: React.FC = () => {
               </CardContent>
             </Card>
           )}
-          <ChecklistStatusCard
-            data={data}
-            onMorningClick={() => navigate(ROUTE_CONSTANTS.DAILY_ACTIVITIES)}
-            onBmsClick={() => navigate(ROUTE_CONSTANTS.BMS_CHECKLIST)}
-            onClusterClick={() => navigate(ROUTE_CONSTANTS.CLUSTER_CHECKLIST)}
-          />
-          <RecentObservationsCard
-            latestObservations={latestObservations}
-            onViewAllClick={() => navigate(ROUTE_CONSTANTS.OBSERVATIONS)}
-          />
-          <RecentOperationLogsCard
-            openOperationLogs={data.openOperationLogs || []}
-            onViewAllClick={() => navigate(ROUTE_CONSTANTS.OPERATION_LOGS)}
-          />
+          {canViewChecklists && (
+            <ChecklistStatusCard
+              data={data}
+              canViewMorningChecklist={canViewMorningChecklist}
+              canViewBmsChecklist={canViewBmsChecklist}
+              canViewClusterChecklist={canViewClusterChecklist}
+              onMorningClick={() => navigate(ROUTE_CONSTANTS.DAILY_ACTIVITIES)}
+              onBmsClick={() => navigate(ROUTE_CONSTANTS.BMS_CHECKLIST)}
+              onClusterClick={() => navigate(ROUTE_CONSTANTS.CLUSTER_CHECKLIST)}
+            />
+          )}
+          {canViewObservations && (
+            <RecentObservationsCard
+              latestObservations={latestObservations}
+              onViewAllClick={() => navigate(ROUTE_CONSTANTS.OBSERVATIONS)}
+            />
+          )}
+          {canViewLogs && (
+            <RecentOperationLogsCard
+              openOperationLogs={data.openOperationLogs || []}
+              onViewAllClick={() => navigate(ROUTE_CONSTANTS.OPERATION_LOGS)}
+            />
+          )}
         </Box>
       </Box>
 

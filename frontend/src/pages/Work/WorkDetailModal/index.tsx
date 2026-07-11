@@ -139,8 +139,10 @@ const WorkDetailModal = ({
   const handleApprove = async () => {
     if (!work) return;
     try {
+      const userObj = users.find((u: any) => u.username === currentUser);
+      const fullName = userObj ? `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim() || currentUser : currentUser;
       const commentPayload = {
-        text: `This emergency work ticket was approved by ${currentUser}.`,
+        text: `This emergency work ticket was approved by ${fullName}.`,
         user: "System",
         timestamp: new Date().toISOString()
       };
@@ -210,11 +212,16 @@ const WorkDetailModal = ({
   const assigneeNames = assigneeUsers.map(
     (u) => `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || u.name
   );
-  const assigneeName = assigneeNames.length > 0
-    ? assigneeNames.join(", ")
-    : workAssignees.length > 0
-      ? "User Removed"
-      : "Unassigned";
+  
+  let fallbackName = "Unassigned";
+  if (assigneeNames.length > 0) {
+    fallbackName = assigneeNames.join(", ");
+  } else if (workAssignees.length > 0) {
+    // If it's a 24-char hex string (ObjectId), say User Removed. Otherwise it might be a username.
+    fallbackName = workAssignees.map(a => (a && a.length !== 24) ? a : "User Removed").join(", ");
+  }
+  
+  const assigneeName = work.assigneesFullName || fallbackName;
 
   const getStatusColor = (status: string) => {
     switch (status) {
