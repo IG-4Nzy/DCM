@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
-from auth_utils import require_privilege, get_current_user
+from auth_utils import require_privilege, require_any_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional, List
 from database import db
@@ -70,7 +70,7 @@ async def sync_node_resources(node_name: str):
             }}
         )
 
-@router.get("/", response_description="List all physical servers", response_model=PaginatedPhysicalServersModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
+@router.get("/", response_description="List all physical servers", response_model=PaginatedPhysicalServersModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details", "Physical Server View", "Create Request", "Update Request", "View Request"]))])
 async def list_items(
     clusterId: Optional[str] = Query(None, description="The ID of the cluster"),
     skip: int = Query(0, ge=0),
@@ -79,9 +79,16 @@ async def list_items(
     search: Optional[str] = None,
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
-    order: str = Query("desc")
+    order: str = Query("desc"),
+    current_user: dict = Depends(get_current_user)
 ):
     query = {}
+    
+    privs = current_user.get("privileges", [])
+    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Create Server Details" in privs or "Create Request" in privs or "Update Request" in privs or "View Request" in privs
+    if not can_view_all:
+        query["admin"] = current_user.get("sub")
+    
     if clusterId:
         query["clusterId"] = clusterId
     

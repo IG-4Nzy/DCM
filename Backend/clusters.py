@@ -25,7 +25,7 @@ def parse_sl_number(value) -> int:
         digits = "".join(c for c in value_str if c.isdigit())
         return int(digits) if digits else 0
 
-@router.get("/", response_description="List all clusters", response_model=PaginatedClustersModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "Create Request", "Update Request", "View Request"]))])
+@router.get("/", response_description="List all clusters", response_model=PaginatedClustersModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details", "Cluster View", "Create Request", "Update Request", "View Request"]))])
 async def list_items(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),

@@ -596,6 +596,7 @@ class PaginatedHypervisorsModel(BaseModel):
 
 class NodeModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    nodeId: Optional[str] = None
     node: Optional[str] = None
     remarks: Optional[str] = None
     totalRam: Optional[Union[int, str]] = None
@@ -623,6 +624,7 @@ class NodeModel(BaseModel):
     )
 
 class CreateNodeModel(BaseModel):
+    nodeId: Optional[str] = None
     node: Optional[str] = None
     remarks: Optional[str] = None
     totalRam: Optional[Union[int, str]] = None
@@ -640,6 +642,7 @@ class CreateNodeModel(BaseModel):
     raidConfiguration: Optional[List[str]] = Field(default_factory=list)
 
 class UpdateNodeModel(BaseModel):
+    nodeId: Optional[str] = None
     node: Optional[str] = None
     remarks: Optional[str] = None
     totalRam: Optional[Union[int, str]] = None
@@ -744,6 +747,7 @@ class PaginatedServerModelsModel(BaseModel):
 
 class NodeDetailsModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    nodeId: Optional[str] = None
     clusterId: str
     slNumber: str
     rack: str
@@ -777,6 +781,7 @@ class NodeDetailsModel(BaseModel):
     )
 
 class CreateNodeDetailsModel(BaseModel):
+    nodeId: Optional[str] = None
     clusterId: str
     slNumber: Optional[str] = None
     rack: str
@@ -800,6 +805,7 @@ class CreateNodeDetailsModel(BaseModel):
     remarks: Optional[str] = None
 
 class UpdateNodeDetailsModel(BaseModel):
+    nodeId: Optional[str] = None
     slNumber: Optional[str] = None
     rack: Optional[str] = None
     hostName: Optional[str] = None
@@ -977,6 +983,7 @@ class PaginatedVCenterDetailsModel(BaseModel):
 
 class VMDetailsModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    vmId: Optional[str] = None
     clusterId: Optional[str] = None
     ipAddress: Optional[str] = None
     applications: Optional[str] = None
@@ -998,6 +1005,7 @@ class VMDetailsModel(BaseModel):
     )
 
 class CreateVMDetailsModel(BaseModel):
+    vmId: Optional[str] = None
     clusterId: Optional[str] = None
     ipAddress: Optional[str] = None
     applications: Optional[str] = None
@@ -1014,6 +1022,7 @@ class CreateVMDetailsModel(BaseModel):
     powerStatus: Optional[str] = None
 
 class UpdateVMDetailsModel(BaseModel):
+    vmId: Optional[str] = None
     ipAddress: Optional[str] = None
     applications: Optional[str] = None
     node: Optional[str] = None

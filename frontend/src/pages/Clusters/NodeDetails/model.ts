@@ -1,6 +1,7 @@
 // @ts-nocheck
 export interface NodeDetailsData {
     id: string;
+    nodeId?: string;
     clusterId: string;
     slNumber: string;
     rack: string;

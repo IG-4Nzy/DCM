@@ -47,7 +47,7 @@ async def compute_available_resources(node_doc: dict):
     
     return node_doc
 
-@router.get("/", response_description="List all nodes", response_model=PaginatedNodesModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "Create Request", "Update Request", "View Request"]))])
+@router.get("/", response_description="List all nodes", response_model=PaginatedNodesModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details", "Nodes View", "Create Request", "Update Request", "View Request"]))])
 async def list_items(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),
@@ -56,23 +56,29 @@ async def list_items(
     clusterId: Optional[str] = Query(None),
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
-    order: str = Query("asc")
+    order: str = Query("asc"),
+    current_user: dict = Depends(get_current_user)
 ):
     query = {}
+    
+    privs = current_user.get("privileges", [])
+    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Create Server Details" in privs or "Create Request" in privs or "Update Request" in privs or "View Request" in privs
+    if not can_view_all:
+        query["admin"] = current_user.get("sub")
+    
     
     if clusterId:
         query["clusterId"] = clusterId
     
     if search:
-        query = {
-            "$or": [
-                {"node": {"$regex": search, "$options": "i"}},
-                {"custodian": {"$regex": search, "$options": "i"}},
-                {"admin": {"$regex": search, "$options": "i"}},
-                {"assetNumber": {"$regex": search, "$options": "i"}},
-                {"serialNumber": {"$regex": search, "$options": "i"}}
-            ]
-        }
+        query["$or"] = [
+            {"node": {"$regex": search, "$options": "i"}},
+            {"nodeId": {"$regex": search, "$options": "i"}},
+            {"custodian": {"$regex": search, "$options": "i"}},
+            {"admin": {"$regex": search, "$options": "i"}},
+            {"assetNumber": {"$regex": search, "$options": "i"}},
+            {"serialNumber": {"$regex": search, "$options": "i"}}
+        ]
 
     actual_sort_by = sortBy or sort_by or "node"
     sort_order = 1 if order == "asc" else -1
@@ -103,6 +109,18 @@ async def create_item(
     item_dict = payload.model_dump()
     item_dict["createdBy"] = current_user.get("sub", "")
     item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    
+    max_node_id = 0
+    cursor = collection.find({"nodeId": {"$regex": "^NODE-"}}, {"nodeId": 1})
+    async for doc in cursor:
+        nid = doc.get("nodeId", "")
+        if nid.startswith("NODE-"):
+            try:
+                num = int(nid.replace("NODE-", ""))
+                max_node_id = max(max_node_id, num)
+            except:
+                pass
+    item_dict["nodeId"] = f"NODE-{max_node_id + 1:02d}"
 
     new_item = await collection.insert_one(item_dict)
     created = await collection.find_one({"_id": new_item.inserted_id})

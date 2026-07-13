@@ -1,6 +1,7 @@
 // @ts-nocheck
 export interface VMDetailsData {
     id: string;
+    vmId?: string;
     clusterId?: string;
     ipAddress?: string;
     applications?: string;

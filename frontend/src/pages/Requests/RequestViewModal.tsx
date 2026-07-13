@@ -79,8 +79,8 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
 
   const isMarkEntryTime = request?.requestType === 'DC Entry' && (request?.status?.toLowerCase() === 'mark entry time' || request?.status?.toLowerCase().includes('entry'));
   const isMarkExitTime = request?.requestType === 'DC Entry' && (request?.status?.toLowerCase() === 'mark exit time' || request?.status?.toLowerCase().includes('exit'));
-  const isVMCreationStage = request?.requestType === 'VM Creation' && (request?.status?.toLowerCase() === 'vm creation' || request?.status?.toLowerCase().includes('creation'));
-  const isVMBackupStage = request?.requestType === 'VM Creation' && (request?.status?.toLowerCase() === 'vm backup' || request?.status?.toLowerCase().includes('backup'));
+  const isVMCreationStage = (request?.requestType === 'VM Creation' || request?.requestType === 'VM Management') && (request?.status?.toLowerCase() === 'vm creation' || request?.status?.toLowerCase().includes('creation'));
+  const isVMBackupStage = (request?.requestType === 'VM Creation' || request?.requestType === 'VM Management') && (request?.status?.toLowerCase() === 'vm backup' || request?.status?.toLowerCase().includes('backup'));
 
   const [backupLocation, setBackupLocation] = useState('');
   const [backupError, setBackupError] = useState(false);
@@ -451,7 +451,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                 </Grid>
                 <Grid size={{xs: 12}}  ><Divider sx={{ opacity: 0.6 }} /></Grid>
 
-                {request.requestType === 'VM Creation' && (
+                {(request.requestType === 'VM Creation' || request.requestType === 'VM Management') && (
                   <>
                     <Grid size={{xs: 12, sm: 4}}   >
                       <Typography variant="caption" color="textSecondary">VM Name</Typography>

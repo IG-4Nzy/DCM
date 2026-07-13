@@ -1,6 +1,7 @@
 // @ts-nocheck
 export interface NodeData {
     id: string;
+    nodeId?: string;
     node?: string;
     remarks?: string;
     totalRam?: number;
@@ -24,6 +25,7 @@ export interface NodeData {
 }
 
 export interface CreateNodePayload {
+    nodeId?: string;
     node?: string;
     remarks?: string;
     totalRam?: number;
@@ -43,6 +45,7 @@ export interface CreateNodePayload {
 
 export interface UpdateNodePayload {
     id: string;
+    nodeId?: string;
     node?: string;
     remarks?: string;
     totalRam?: number;

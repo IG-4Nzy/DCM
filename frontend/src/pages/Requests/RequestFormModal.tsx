@@ -43,6 +43,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
   const [configuredStages, setConfiguredStages] = useState<string[]>([]);
   const [clustersList, setClustersList] = useState<any[]>([]);
   const [nodesList, setNodesList] = useState<any[]>([]);
+  const [vmsList, setVmsList] = useState<any[]>([]);
 
   const currentRequestType = editingRequest ? (editingRequest.requestType || editingRequest.category || '') : requestType;
 
@@ -59,8 +60,13 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
       request.get('/api/nodes/', { params: { pagination: false } })
         .then(res => setNodesList(res.data.data || []))
         .catch(err => console.error('Failed to load nodes for request', err));
+
+      // Fetch VMs for dropdown (only lists that user's VMs)
+      request.get('/api/vm-details/', { params: { pagination: false, admin: username } })
+        .then(res => setVmsList(res.data.data || []))
+        .catch(err => console.error('Failed to load VMs for request', err));
     }
-  }, [isModalOpen, dispatch]);
+  }, [isModalOpen, dispatch, username]);
 
   // Fetch stages whenever request type changes
   useEffect(() => {
@@ -207,6 +213,58 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                     <TextField label="HDD" fullWidth required value={details.hdd || ''} onChange={(e) => handleDetailChange('hdd', e.target.value)} />
                     <TextField label="CPU" fullWidth required value={details.cpu || ''} onChange={(e) => handleDetailChange('cpu', e.target.value)} />
                     <TextField label="IP (Optional)" fullWidth value={details.ip || ''} onChange={(e) => handleDetailChange('ip', e.target.value)} />
+                  </>
+                ) : (
+                  <>
+                    <TextField label="VM Name" fullWidth disabled value={details.vmName || ''} />
+                    <TextField label="OS and Version" fullWidth disabled value={details.osVersion || ''} />
+                    <TextField label="RAM" fullWidth disabled value={details.ram || ''} />
+                    <TextField label="HDD" fullWidth disabled value={details.hdd || ''} />
+                    <TextField label="CPU" fullWidth disabled value={details.cpu || ''} />
+                  </>
+                )}
+              </>
+            )}
+
+            {currentRequestType === 'VM Management' && (
+              <>
+                {!editingRequest ? (
+                  <>
+                    <FormControl fullWidth required>
+                      <InputLabel>Select VM</InputLabel>
+                      <Select
+                        value={details.vmId || ''}
+                        label="Select VM"
+                        onChange={(e) => {
+                          const selectedVm = vmsList.find(v => (v.id || v._id) === e.target.value);
+                          setDetails({
+                            vmId: e.target.value,
+                            vmName: selectedVm ? (selectedVm.applications || selectedVm.vmId || '') : '',
+                            osVersion: selectedVm ? (selectedVm.osAndExpiry || '') : '',
+                            ram: selectedVm ? (selectedVm.ram || '') : '',
+                            hdd: selectedVm ? (selectedVm.hdd || '') : '',
+                            cpu: selectedVm ? (selectedVm.cpu || '') : '',
+                            ip: selectedVm ? (selectedVm.ipAddress || '') : '',
+                          });
+                        }}
+                        MenuProps={{ disablePortal: true }}
+                      >
+                        {vmsList.map((vm: any) => (
+                          <MenuItem key={vm.id || vm._id} value={vm.id || vm._id}>
+                            {vm.vmId ? `[${vm.vmId}] ` : ''}{vm.applications || 'Unnamed VM'} {vm.ipAddress ? `(${vm.ipAddress})` : ''}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    {details.vmId && (
+                      <>
+                        <TextField label="OS and Version" fullWidth disabled value={details.osVersion || ''} />
+                        <TextField label="RAM" fullWidth disabled value={details.ram || ''} />
+                        <TextField label="HDD" fullWidth disabled value={details.hdd || ''} />
+                        <TextField label="CPU" fullWidth disabled value={details.cpu || ''} />
+                        <TextField label="IP Address" fullWidth disabled value={details.ip || ''} />
+                      </>
+                    )}
                   </>
                 ) : (
                   <>

@@ -85,6 +85,10 @@ const NodeDetailsViewModal: React.FC<NodeDetailsViewModalProps> = ({ open, onClo
                             <Divider sx={{ mb: 2 }} />
                             <Grid container spacing={2}>
                                 <Grid size={{xs: 6}}  >
+                                    <Typography variant="caption" color="textSecondary">Node ID</Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#1565c0' }}>{item.nodeId || '--'}</Typography>
+                                </Grid>
+                                <Grid size={{xs: 6}}  >
                                     <Typography variant="caption" color="textSecondary">SL Number</Typography>
                                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{item.slNumber}</Typography>
                                 </Grid>

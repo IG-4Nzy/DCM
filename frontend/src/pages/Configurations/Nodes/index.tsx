@@ -154,6 +154,7 @@ const Nodes = () => {
     };
 
     const columns: Column<NodeData>[] = [
+        { id: 'nodeId', label: 'Node ID', sortable: true, render: (row) => <span style={{ fontWeight: 600, color: '#1565c0' }}>{row.nodeId || '--'}</span> },
         { 
             id: 'clusterId', 
             label: 'Cluster', 

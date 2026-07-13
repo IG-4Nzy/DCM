@@ -56,9 +56,10 @@ const Requests: React.FC = () => {
     const [editingType, setEditingType] = useState<{id: string, name: string} | null>(null);
     const [requestTypesObj, setRequestTypesObj] = useState<{id: string, name: string}[]>([
         { id: '1', name: 'VM Creation' },
-        { id: '2', name: 'DC Entry' },
-        { id: '3', name: 'Hardware Issuance' },
-        { id: '4', name: 'Hardware Replacement' }
+        { id: '2', name: 'VM Management' },
+        { id: '3', name: 'DC Entry' },
+        { id: '4', name: 'Hardware Issuance' },
+        { id: '5', name: 'Hardware Replacement' }
     ]);
     const requestTypes = requestTypesObj.map(t => t.name);
     const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
@@ -372,7 +373,7 @@ const Requests: React.FC = () => {
                 }
 
                 if (row.details) {
-                    if (row.requestType === 'VM Creation') {
+                    if (row.requestType === 'VM Creation' || row.requestType === 'VM Management') {
                         if (row.details.vmName) parts.push(`VM: ${row.details.vmName}`);
                         if (row.details.osVersion) parts.push(`OS: ${row.details.osVersion}`);
                         if (row.details.ram) parts.push(`RAM: ${row.details.ram}`);

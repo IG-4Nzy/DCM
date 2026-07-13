@@ -62,7 +62,7 @@ async def compute_node_details_available_resources(doc: dict):
     
     return doc
 
-@router.get("/", response_description="List all node details", response_model=PaginatedNodeDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "Create Request", "Update Request", "View Request"]))])
+@router.get("/", response_description="List all node details", response_model=PaginatedNodeDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details", "Nodes View", "Create Request", "Update Request", "View Request"]))])
 async def list_items(
     clusterId: Optional[str] = Query(None, description="The ID of the cluster"),
     skip: int = Query(0, ge=0),
@@ -71,9 +71,16 @@ async def list_items(
     search: Optional[str] = None,
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
-    order: str = Query("asc")
+    order: str = Query("asc"),
+    current_user: dict = Depends(get_current_user)
 ):
     query = {}
+    
+    privs = current_user.get("privileges", [])
+    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Create Server Details" in privs or "Create Request" in privs or "Update Request" in privs or "View Request" in privs
+    if not can_view_all:
+        query["admin"] = current_user.get("sub")
+    
     if clusterId:
         query["clusterId"] = clusterId
     
@@ -132,6 +139,7 @@ async def list_items(
                     {"redundancyPower": {"$regex": escaped_term, "$options": "i"}},
                     {"remarks": {"$regex": escaped_term, "$options": "i"}},
                     {"slNumber": {"$regex": escaped_term, "$options": "i"}},
+                    {"nodeId": {"$regex": escaped_term, "$options": "i"}},
                     {"createdBy": {"$regex": escaped_term, "$options": "i"}},
                     {"updatedAt": {"$regex": escaped_term, "$options": "i"}},
                 ] + numeric_match + resource_str_queries
@@ -200,6 +208,19 @@ async def create_item(
         max_sl = max(max_sl, parse_sl_number(doc.get("slNumber", "0")))
     
     item_dict["slNumber"] = str(max_sl + 1)
+    
+    max_node_id = 0
+    nodes_collection = db.get_collection("nodes")
+    cursor = nodes_collection.find({"nodeId": {"$regex": "^NODE-"}}, {"nodeId": 1})
+    async for doc in cursor:
+        nid = doc.get("nodeId", "")
+        if nid.startswith("NODE-"):
+            try:
+                num = int(nid.replace("NODE-", ""))
+                max_node_id = max(max_node_id, num)
+            except:
+                pass
+    item_dict["nodeId"] = f"NODE-{max_node_id + 1:02d}"
 
     new_item = await collection.insert_one(item_dict)
     created = await collection.find_one({"_id": new_item.inserted_id})
@@ -211,6 +232,7 @@ async def create_item(
         existing_node = await nodes_collection.find_one({"node": {"$regex": f"^{host_name}$", "$options": "i"}})
         node_payload = {
             "node": host_name,
+            "nodeId": item_dict.get("nodeId"),
             "remarks": item_dict.get("remarks", ""),
             "totalRam": item_dict.get("totalRam"),
             "totalHardisk": item_dict.get("totalHardisk"),
@@ -222,6 +244,7 @@ async def create_item(
             await nodes_collection.update_one(
                 {"_id": existing_node["_id"]},
                 {"$set": {
+                    "nodeId": item_dict.get("nodeId"),
                     "totalRam": item_dict.get("totalRam"),
                     "totalHardisk": item_dict.get("totalHardisk"),
                     "totalCpu": item_dict.get("totalCpu"),
@@ -326,6 +349,19 @@ async def bulk_create_node_details(
             
     next_sl = max_sl + 1
     current_time = datetime.now(timezone.utc).isoformat()
+    
+    nodes_collection = db.get_collection("nodes")
+    max_node_id = 0
+    node_id_cursor = nodes_collection.find({"nodeId": {"$regex": "^NODE-"}}, {"nodeId": 1})
+    async for doc in node_id_cursor:
+        nid = doc.get("nodeId", "")
+        if nid.startswith("NODE-"):
+            try:
+                num = int(nid.replace("NODE-", ""))
+                max_node_id = max(max_node_id, num)
+            except:
+                pass
+    next_node_id = max_node_id + 1
     
     try:
         if file.filename.endswith(".xlsx"):
@@ -432,6 +468,7 @@ async def bulk_create_node_details(
             node_dict = {
                 "clusterId": clusterId,
                 "slNumber": str(next_sl),
+                "nodeId": f"NODE-{next_node_id:02d}",
                 "rack": rack_val,
                 "hostName": hostname_val,
                 "ipAddress": ip_val,
@@ -457,6 +494,7 @@ async def bulk_create_node_details(
             
             items_to_insert.append(node_dict)
             next_sl += 1
+            next_node_id += 1
             
         if items_to_insert:
             await collection.insert_many(items_to_insert)
@@ -469,6 +507,7 @@ async def bulk_create_node_details(
                     existing_node = await nodes_collection.find_one({"node": {"$regex": f"^{host_name}$", "$options": "i"}})
                     node_payload = {
                         "node": host_name,
+                        "nodeId": item.get("nodeId"),
                         "remarks": item.get("remarks", ""),
                         "totalRam": item.get("totalRam"),
                         "totalHardisk": item.get("totalHardisk"),
@@ -480,6 +519,7 @@ async def bulk_create_node_details(
                         await nodes_collection.update_one(
                             {"_id": existing_node["_id"]},
                             {"$set": {
+                                "nodeId": item.get("nodeId"),
                                 "totalRam": item.get("totalRam"),
                                 "totalHardisk": item.get("totalHardisk"),
                                 "totalCpu": item.get("totalCpu"),

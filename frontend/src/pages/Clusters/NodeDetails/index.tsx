@@ -177,6 +177,7 @@ const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
     };
 
     const columns: Column<NodeDetailsData>[] = [
+        { id: 'nodeId', label: 'Node ID', sortable: true, render: (row) => <span style={{ fontWeight: 600, color: '#1565c0' }}>{row.nodeId || '--'}</span> },
         { id: 'slNumber', label: 'SL No', sortable: true },
         { id: 'rack', label: 'Rack', sortable: true },
         { id: 'hostName', label: 'Host Name', sortable: true },

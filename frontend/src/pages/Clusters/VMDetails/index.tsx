@@ -176,6 +176,7 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                     <Table size="medium">
                         <TableHead>
                             <TableRow className={styles.tableWrapper__headerRow}>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>VM ID</TableCell>
                                 {!clusterId && (
                                     <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Cluster</TableCell>
                                 )}
@@ -201,15 +202,16 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                         <TableBody>
                             {loading && data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 12 : 13} align="center" sx={{ py: 3 }}>Loading...</TableCell>
+                                    <TableCell colSpan={clusterId ? 13 : 14} align="center" sx={{ py: 3 }}>Loading...</TableCell>
                                 </TableRow>
                             ) : data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 12 : 13} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
+                                    <TableCell colSpan={clusterId ? 13 : 14} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
                                 </TableRow>
                             ) : (
                                 data.map((row) => (
                                     <TableRow key={row.id} hover>
+                                        <TableCell className={styles.tableWrapper__cell} sx={{ fontWeight: 600, color: '#1565c0' }}>{row.vmId || '--'}</TableCell>
                                         {!clusterId && (
                                             <TableCell className={styles.tableWrapper__cell}>{getClusterName(row.clusterId || '')}</TableCell>
                                         )}

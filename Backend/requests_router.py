@@ -105,6 +105,7 @@ async def get_routing_for_type(request_type: str):
     fallbacks = {
         "VM Creation": ["VM Request", "VM_Request", "VM_Creation"],
         "VM Request": ["VM Creation", "VM_Creation", "VM_Request"],
+        "VM Management": ["VM Creation", "VM Request", "VM_Request", "VM_Creation"],
         "DC Entry": ["DC_Entry", "Datacentre Entry", "Datacentre_Entry"],
         "Datacentre Entry": ["DC Entry", "DC_Entry"],
         "Hardware Issuance": ["Hardware_Issuance", "Hardware Issuing", "Hardware_Issuing"],
@@ -436,6 +437,7 @@ async def get_request_types():
     if count == 0:
         default_types = [
             {"name": "VM Creation"},
+            {"name": "VM Management"},
             {"name": "DC Entry"},
             {"name": "Hardware Issuance"},
             {"name": "Hardware Replacement"}

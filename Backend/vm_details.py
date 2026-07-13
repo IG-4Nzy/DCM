@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
-from auth_utils import require_privilege, get_current_user
+from auth_utils import require_privilege, require_any_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional, List
 from database import db
@@ -72,18 +72,39 @@ async def sync_node_resources(node_name: str):
             }}
         )
 
-@router.get("/", response_description="List all VM details", response_model=PaginatedVMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
+@router.get("/", response_description="List all VM details", response_model=PaginatedVMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details", "VM View", "Create Request", "Update Request", "View Request"]))])
 async def list_items(
     clusterId: Optional[str] = Query(None, description="The ID of the cluster"),
+    admin: Optional[str] = Query(None, description="Filter by admin username"),
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),
     pagination: bool = Query(True),
     search: Optional[str] = None,
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
-    order: str = Query("desc")
+    order: str = Query("desc"),
+    current_user: dict = Depends(get_current_user)
 ):
     query = {}
+    
+    privs = current_user.get("privileges", [])
+    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Create Server Details" in privs or "Create Request" in privs or "Update Request" in privs or "View Request" in privs
+    
+    target_username = None
+    if not can_view_all:
+        target_username = current_user.get("sub")
+    elif admin:
+        target_username = admin
+
+    if target_username:
+        users_col = db.get_collection("users")
+        user_doc = await users_col.find_one({"username": target_username})
+        target_user_id = str(user_doc["_id"]) if user_doc else None
+        conditions = [{"admin": target_username}]
+        if target_user_id:
+            conditions.append({"admin": target_user_id})
+        query["$or"] = conditions
+    
     if clusterId:
         query["clusterId"] = clusterId
     
@@ -104,6 +125,7 @@ async def list_items(
                 
                 or_conditions = [
                     {"ipAddress": {"$regex": escaped_term, "$options": "i"}},
+                    {"vmId": {"$regex": escaped_term, "$options": "i"}},
                     {"applications": {"$regex": escaped_term, "$options": "i"}},
                     {"node": {"$regex": escaped_term, "$options": "i"}},
                     {"adminName": {"$regex": escaped_term, "$options": "i"}},
@@ -148,6 +170,18 @@ async def create_item(
     item_dict["createdBy"] = current_user.get("sub", "")
     item_dict["createdAt"] = datetime.now(timezone.utc).isoformat()
     item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    
+    max_vm_id = 0
+    cursor = collection.find({"vmId": {"$regex": "^VM-"}}, {"vmId": 1})
+    async for doc in cursor:
+        vid = doc.get("vmId", "")
+        if vid.startswith("VM-"):
+            try:
+                num = int(vid.replace("VM-", ""))
+                max_vm_id = max(max_vm_id, num)
+            except:
+                pass
+    item_dict["vmId"] = f"VM-{max_vm_id + 1:02d}"
 
     new_item = await collection.insert_one(item_dict)
     created = await collection.find_one({"_id": new_item.inserted_id})

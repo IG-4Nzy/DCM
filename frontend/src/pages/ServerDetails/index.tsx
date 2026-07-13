@@ -16,16 +16,18 @@ import { PRIVILEGES } from '../../helpers/privileges';
 const ServerDetails = () => {
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
 
-    const hasServerDetailsCreate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const hasRacksView = isSuperuser || hasPrivilege(PRIVILEGES.RACKS_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
+    const hasClusterView = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_VIEW_TAB) || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
+    const hasNodesView = isSuperuser || hasPrivilege(PRIVILEGES.NODES_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
+    const hasVMView = isSuperuser || hasPrivilege(PRIVILEGES.VM_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
+    const hasPhysicalServerView = isSuperuser || hasPrivilege(PRIVILEGES.PHYSICAL_SERVER_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
 
     const tabs: TabItem[] = [];
-    if (hasServerDetailsCreate) {
-        tabs.push({ id: 'racks', label: 'Racks', value: 'racks' });
-        tabs.push({ id: 'clusters', label: 'Clusters', value: 'clusters' });
-        tabs.push({ id: 'nodes', label: 'Nodes', value: 'nodes' });
-        tabs.push({ id: 'vms', label: 'VMs', value: 'vms' });
-        tabs.push({ id: 'physical_servers', label: 'Physical Servers', value: 'physical_servers' });
-    }
+    if (hasRacksView) tabs.push({ id: 'racks', label: 'Racks', value: 'racks' });
+    if (hasClusterView) tabs.push({ id: 'clusters', label: 'Clusters', value: 'clusters' });
+    if (hasNodesView) tabs.push({ id: 'nodes', label: 'Nodes', value: 'nodes' });
+    if (hasVMView) tabs.push({ id: 'vms', label: 'VMs', value: 'vms' });
+    if (hasPhysicalServerView) tabs.push({ id: 'physical_servers', label: 'Physical Servers', value: 'physical_servers' });
 
     const [activeTab, setActiveTab] = useState<string | number>(() => {
         const saved = localStorage.getItem('server_details_activeTab');
