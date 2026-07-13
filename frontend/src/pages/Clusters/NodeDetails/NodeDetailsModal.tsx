@@ -101,10 +101,10 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
         setFormData(prev => {
             const next = { ...prev, [field]: value };
             if (field === 'admin') {
-                const u = users.find(u => u.username === value || (u.firstName + ' ' + u.lastName) === value || u._id === value);
+                const u = users.find(u => u._id === value || u.id === value || u.username === value || (u.firstName + ' ' + u.lastName) === value);
                 if (u) {
                     next.adminCode = u.passnumber || u.passNumber || '--';
-                    next.admin = u.username;
+                    next.admin = u._id || u.id;
                 }
             }
             return next;
@@ -175,11 +175,12 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                     <Box>
                         <Dropdown
                             label="Admin"
+                            searchable
                             value={formData.admin}
                             onChange={(val) => handleChange('admin', val)}
                             options={users.map(u => {
                                 const fullName = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
-                                return { label: fullName || u.username, value: u.username };
+                                return { label: fullName || u.username, value: u._id || u.id };
                             })}
                             required
                             fullWidth

@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from 'react';
 import { Box } from '@mui/material';
+import { useLocation } from 'react-router-dom';
 import SliderTabSelector, { type TabItem } from '../../components/SliderTabSelector';
 import Racks from '../Configurations/Racks';
 import Clusters from '../Clusters';
@@ -33,6 +34,15 @@ const ServerDetails = () => {
         }
         return tabs.length > 0 ? tabs[0].value : "";
     });
+
+    const location = useLocation();
+
+    useEffect(() => {
+        const navTab = location.state?.tab;
+        if (navTab && tabs.some(tab => String(tab.value) === navTab)) {
+            setActiveTab(navTab);
+        }
+    }, [location.state]);
 
     useEffect(() => {
         if (activeTab) {

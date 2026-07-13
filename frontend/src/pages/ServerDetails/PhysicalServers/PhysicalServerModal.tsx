@@ -5,9 +5,9 @@ import Modal from '../../../components/Modal';
 import TextField from '../../../components/TextField';
 import Dropdown from '../../../components/Dropdown';
 import Button from '../../../components/Button';
-import { type PhysicalServerData, type CreatePhysicalServerPayload, type UpdatePhysicalServerPayload } from './model';
 import { fetchAllNodes } from './action';
 import { fetchClusters } from '../../Clusters/action';
+import request from '../../../services/request';
 import styles from './modal.module.scss';
 
 interface PhysicalServerModalProps {
@@ -29,11 +29,13 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
         ram: '',
         cpu: '',
         backupLocation: '',
-        addedToMonitoring: false
+        addedToMonitoring: false,
+        admin: ''
     });
 
     const [nodes, setNodes] = useState<any[]>([]);
     const [clusters, setClusters] = useState<any[]>([]);
+    const [users, setUsers] = useState<any[]>([]);
 
     useEffect(() => {
         if (open) {
@@ -45,6 +47,9 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
                     .then(res => setClusters(res.data || []))
                     .catch(err => console.error("Failed to load clusters", err));
             }
+            request.get('/api/users?pagination=false')
+                .then(res => setUsers(res.data?.data || []))
+                .catch(err => console.error("Failed to fetch users", err));
         }
     }, [open, clusterId]);
 
@@ -61,7 +66,8 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
                     ram: editingItem.ram || '',
                     cpu: editingItem.cpu || '',
                     backupLocation: editingItem.backupLocation || '',
-                    addedToMonitoring: editingItem.addedToMonitoring || false
+                    addedToMonitoring: editingItem.addedToMonitoring || false,
+                    admin: editingItem.admin || ''
                 });
             } else {
                 setFormData({
@@ -74,7 +80,8 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
                     ram: '',
                     cpu: '',
                     backupLocation: '',
-                    addedToMonitoring: false
+                    addedToMonitoring: false,
+                    admin: ''
                 });
             }
         }
@@ -103,6 +110,7 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
             if (formData.cpu !== editingItem.cpu) changedData.cpu = formData.cpu;
             if (formData.backupLocation !== editingItem.backupLocation) changedData.backupLocation = formData.backupLocation;
             if (formData.addedToMonitoring !== editingItem.addedToMonitoring) changedData.addedToMonitoring = formData.addedToMonitoring;
+            if (formData.admin !== editingItem.admin) changedData.admin = formData.admin;
             onSubmit(changedData);
         } else {
             onSubmit(formData);
@@ -164,6 +172,15 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
                         className={styles.formGrid__field}
                         value={formData.backupLocation} 
                         onChange={(e) => handleChange('backupLocation', e.target.value)} 
+                    />
+                    <Dropdown 
+                        label="Admin" 
+                        size="small"
+                        fullWidth
+                        searchable
+                        value={formData.admin} 
+                        onChange={(val) => handleChange('admin', val)} 
+                        options={users.map(u => ({ label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username, value: u._id || u.id }))}
                     />
                     <FormControlLabel
                         control={

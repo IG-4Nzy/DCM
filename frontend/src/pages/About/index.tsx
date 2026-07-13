@@ -37,6 +37,15 @@ const About: React.FC = () => {
   
   const canEdit = isSuperuser || privileges.includes("Edit About App");
   const canViewBugs = isSuperuser || privileges.includes("View Bug Reports");
+  const canViewAbout = isSuperuser || privileges.includes("View About App");
+
+  if (!canViewAbout) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f8fafc' }}>
+        <Typography variant="h6" color="error">You do not have permission to view this page.</Typography>
+      </Box>
+    );
+  }
 
   const [loading, setLoading] = useState(true);
   const [appName, setAppName] = useState("");

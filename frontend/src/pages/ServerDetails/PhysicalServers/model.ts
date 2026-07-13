@@ -11,6 +11,7 @@ export interface PhysicalServerData {
     cpu?: string;
     backupLocation?: string;
     addedToMonitoring?: boolean;
+    admin?: string;
     createdAt?: string;
     updatedAt?: string;
     createdBy?: string;
@@ -27,6 +28,7 @@ export interface CreatePhysicalServerPayload {
     cpu?: string;
     backupLocation?: string;
     addedToMonitoring?: boolean;
+    admin?: string;
 }
 
 export interface UpdatePhysicalServerPayload extends Partial<CreatePhysicalServerPayload> {}

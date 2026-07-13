@@ -142,6 +142,32 @@ const Dashboard: React.FC = () => {
             onClick={() => navigate(ROUTE_CONSTANTS.WORKS)}
           />
         )}
+        {canViewRequests && (
+          <KpiCard
+            title={data.isDepartmentHead ? "Pending Requests" : "My Pending Requests"}
+            value={data.pendingRequests?.length || 0}
+            icon={<Icons.RequestsIcon size={18} />}
+            accentColor={colors.amber}
+            accentBg={colors.amberLight}
+            onClick={() => navigate(ROUTE_CONSTANTS.REQUESTS)}
+          />
+        )}
+        <KpiCard
+          title="My VMs"
+          value={data.myVMsCount || 0}
+          icon={<Icons.ClusterIcon size={18} />}
+          accentColor={colors.purple}
+          accentBg={colors.purpleLight}
+          onClick={() => navigate(ROUTE_CONSTANTS.SERVER_DETAILS, { state: { tab: 'vms' } })}
+        />
+        <KpiCard
+          title="My Servers"
+          value={data.myServersCount || 0}
+          icon={<Icons.ServerDetailsIcon size={18} />}
+          accentColor={colors.indigo}
+          accentBg={colors.indigoLight}
+          onClick={() => navigate(ROUTE_CONSTANTS.SERVER_DETAILS, { state: { tab: 'nodes' } })}
+        />
         {canViewObservations && (
           <KpiCard
             title="Open Observations"

@@ -5,9 +5,9 @@ import Modal from '../../../components/Modal';
 import TextField from '../../../components/TextField';
 import Dropdown from '../../../components/Dropdown';
 import Button from '../../../components/Button';
-import { type VMDetailsData, type CreateVMDetailsPayload, type UpdateVMDetailsPayload } from './model';
 import { fetchAllNodes } from './action';
 import { fetchClusters } from '../action';
+import request from '../../../services/request';
 import styles from './modal.module.scss';
 
 interface VMDetailsModalProps {
@@ -29,14 +29,15 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         ram: '',
         cpu: '',
         backupLocation: '',
-        addedToMonitoring: false,
         adminName: '',
         adminContact: '',
+        admin: '',
         powerStatus: 'on'
     });
 
     const [nodes, setNodes] = useState<any[]>([]);
     const [clusters, setClusters] = useState<any[]>([]);
+    const [users, setUsers] = useState<any[]>([]);
 
     useEffect(() => {
         if (open) {
@@ -48,6 +49,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     .then(res => setClusters(res.data || []))
                     .catch(err => console.error("Failed to load clusters", err));
             }
+            request.get('/api/users?pagination=false')
+                .then(res => setUsers(res.data?.data || []))
+                .catch(err => console.error("Failed to fetch users", err));
         }
     }, [open, clusterId]);
 
@@ -67,6 +71,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     addedToMonitoring: editingItem.addedToMonitoring || false,
                     adminName: editingItem.adminName || '',
                     adminContact: editingItem.adminContact || '',
+                    admin: editingItem.admin || '',
                     powerStatus: editingItem.powerStatus || 'on'
                 });
             } else {
@@ -83,6 +88,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     addedToMonitoring: false,
                     adminName: '',
                     adminContact: '',
+                    admin: '',
                     powerStatus: 'on'
                 });
             }
@@ -90,7 +96,17 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
     }, [open, editingItem, clusterId]);
 
     const handleChange = (field: keyof CreateVMDetailsPayload, value: string) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
+        setFormData(prev => {
+            const next = { ...prev, [field]: value };
+            if (field === 'admin') {
+                const u = users.find(u => u._id === value || u.id === value);
+                if (u) {
+                    next.adminName = [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || u.username;
+                    next.adminContact = u.mobile || u.phoneNumber || '';
+                }
+            }
+            return next;
+        });
     };
 
     const handleCheckboxChange = (field: keyof CreateVMDetailsPayload, checked: boolean) => {
@@ -113,6 +129,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
             if (formData.addedToMonitoring !== editingItem.addedToMonitoring) changedData.addedToMonitoring = formData.addedToMonitoring;
             if (formData.adminName !== editingItem.adminName) changedData.adminName = formData.adminName;
             if (formData.adminContact !== editingItem.adminContact) changedData.adminContact = formData.adminContact;
+            if (formData.admin !== editingItem.admin) changedData.admin = formData.admin;
             if (formData.powerStatus !== editingItem.powerStatus) changedData.powerStatus = formData.powerStatus;
             onSubmit(changedData);
         } else {
@@ -199,12 +216,22 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         className={styles.formGrid__field}
                     />
 
+                    <Dropdown 
+                        label="Admin" 
+                        size="small"
+                        fullWidth
+                        searchable
+                        value={formData.admin} 
+                        onChange={(val) => handleChange('admin', val)} 
+                        options={users.map(u => ({ label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username, value: u._id || u.id }))}
+                    />
                     <TextField 
-                        label="Admin Name" 
+                        label="Admin Name (Auto-filled)" 
                         size="small"
                         className={styles.formGrid__field}
                         value={formData.adminName} 
                         onChange={(e) => handleChange('adminName', e.target.value)} 
+                        disabled
                     />
                     <TextField 
                         label="Admin Contact Number" 

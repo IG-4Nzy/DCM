@@ -170,6 +170,7 @@ export const SIDEBAR_OPTIONS = [
     {
         label: wordings.about,
         icon: Icons.InfoIcon,
-        route: ROUTE_CONSTANTS.ABOUT
+        route: ROUTE_CONSTANTS.ABOUT,
+        privileges: [PRIVILEGES.ABOUT_VIEW]
     }
 ]

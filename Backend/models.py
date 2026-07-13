@@ -989,6 +989,7 @@ class VMDetailsModel(BaseModel):
     addedToMonitoring: Optional[bool] = False
     adminName: Optional[str] = None
     adminContact: Optional[str] = None
+    admin: Optional[str] = None
     powerStatus: Optional[str] = None
     
     model_config = ConfigDict(
@@ -1009,6 +1010,7 @@ class CreateVMDetailsModel(BaseModel):
     addedToMonitoring: Optional[bool] = False
     adminName: Optional[str] = None
     adminContact: Optional[str] = None
+    admin: Optional[str] = None
     powerStatus: Optional[str] = None
 
 class UpdateVMDetailsModel(BaseModel):
@@ -1023,6 +1025,7 @@ class UpdateVMDetailsModel(BaseModel):
     addedToMonitoring: Optional[bool] = None
     adminName: Optional[str] = None
     adminContact: Optional[str] = None
+    admin: Optional[str] = None
     powerStatus: Optional[str] = None
 
     model_config = ConfigDict(
@@ -1227,6 +1230,7 @@ class PhysicalServerModel(BaseModel):
     cpu: Optional[str] = None
     backupLocation: Optional[str] = ""
     addedToMonitoring: Optional[bool] = False
+    admin: Optional[str] = None
     
     model_config = ConfigDict(
         populate_by_name=True,
@@ -1244,6 +1248,7 @@ class CreatePhysicalServerModel(BaseModel):
     cpu: Optional[str] = None
     backupLocation: Optional[str] = ""
     addedToMonitoring: Optional[bool] = False
+    admin: Optional[str] = None
 
 class UpdatePhysicalServerModel(BaseModel):
     clusterId: Optional[str] = None
@@ -1256,6 +1261,7 @@ class UpdatePhysicalServerModel(BaseModel):
     cpu: Optional[str] = None
     backupLocation: Optional[str] = None
     addedToMonitoring: Optional[bool] = None
+    admin: Optional[str] = None
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

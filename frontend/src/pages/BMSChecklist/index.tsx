@@ -274,6 +274,7 @@ const BMSChecklist: React.FC = () => {
   const canUpdate = hasPrivilege(PRIVILEGES.BMS_CHECKLIST_UPDATE);
   const canDelete = hasPrivilege(PRIVILEGES.BMS_CHECKLIST_DELETE);
   const canEditFields = hasPrivilege(PRIVILEGES.BMS_CHECKLIST_FIELD_EDIT);
+  const canViewAllDept = isSuperuser || hasPrivilege(PRIVILEGES.BMS_CHECKLIST_VIEW_ALL_DEPT, privileges || []);
   const canOpenForEdit = canUpdate || canEditFields;
   const canSaveDraft = canUpdate || canEditFields || canCreate;
 
@@ -397,7 +398,6 @@ const BMSChecklist: React.FC = () => {
   // ─── Load History ───
   const refreshHistory = useCallback(async () => {
     try {
-      const canViewAllDept = isSuperuser || hasPrivilege(PRIVILEGES.BMS_CHECKLIST_VIEW_ALL_DEPT, privileges || []);
       const res = await fetchBMSChecklists({ department: canViewAllDept ? undefined : userDepartment });
       setHistory(res.data || []);
     } catch {
@@ -574,7 +574,7 @@ const BMSChecklist: React.FC = () => {
     if (!canOpenForEdit) return;
     const cl = history.find(c => c.id === id || (c as any)._id === id);
     if (cl) {
-      if (cl.department && cl.department !== userDepartment) {
+      if (cl.department && cl.department !== userDepartment && !isSuperuser) {
         showToast('Access Denied: This checklist belongs to another department.', 'error');
         return;
       }
@@ -593,7 +593,7 @@ const BMSChecklist: React.FC = () => {
     if (!canView) return;
     const cl = history.find(c => c.id === id || (c as any)._id === id);
     if (cl) {
-      if (cl.department && cl.department !== userDepartment) {
+      if (cl.department && cl.department !== userDepartment && !canViewAllDept) {
         showToast('Access Denied: This checklist belongs to another department.', 'error');
         return;
       }

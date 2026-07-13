@@ -9,6 +9,7 @@ import { type NodeData, type CreateNodePayload, type UpdateNodePayload } from '.
 import { fetchServerRacks } from '../Racks/action';
 import { fetchClusters } from '../../Clusters/action';
 import { fetchServerModels } from '../ServerModels/action';
+import request from '../../../services/request';
 
 interface NodeModalProps {
     open: boolean;
@@ -37,6 +38,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
     const [racks, setRacks] = useState<any[]>([]);
     const [clusters, setClusters] = useState<any[]>([]);
     const [serverModels, setServerModels] = useState<any[]>([]);
+    const [users, setUsers] = useState<any[]>([]);
 
     useEffect(() => {
         if (open) {
@@ -49,6 +51,9 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
             fetchServerModels({ pagination: false })
                 .then(res => setServerModels(res.data || []))
                 .catch(err => console.error("Failed to fetch server models", err));
+            request.get('/api/users?pagination=false')
+                .then(res => setUsers(res.data?.data || []))
+                .catch(err => console.error("Failed to fetch users", err));
         }
     }, [open]);
 
@@ -192,12 +197,13 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                             />
                         </Grid>
                         <Grid size={{xs: 12, sm: 4}}   >
-                            <TextField
-                                fullWidth
+                            <Dropdown
                                 label="Admin"
-                                placeholder="e.g. Admin User"
+                                fullWidth
+                                searchable
                                 value={admin}
-                                onChange={(e) => setAdmin(e.target.value)}
+                                onChange={(val) => setAdmin(val)}
+                                options={users.map(u => ({ label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username, value: u._id || u.id }))}
                             />
                         </Grid>
                     </Grid>
