@@ -1,6 +1,5 @@
 
 
-in nodes page,give server model filter,admin filter,rack filter,search by all fields.
 
 
 remove cluster selection from add node modal and give nodes selection on cluster add and edit modal,also give migration script for the new change.
