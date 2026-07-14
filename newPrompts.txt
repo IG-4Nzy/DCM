@@ -1,0 +1,19 @@
+in VM Management request create,add a option to choose Migration,Clone,Snapshot,Template,Backup, and resource upgrace and others
+
+if it is resource updgrade,then give option to new add new resources - ram,hdd,cpu
+
+if it is migration,give option to choose cluster and node
+
+if it is clone,snapshot,template,backup then give option to add clone name,or snapshot name or template name or backup name
+
+
+
+
+
+
+in node details modal ,admin is showing id instead of name.
+
+
+add server details view,view all server details privileges to layout server details
+if user has only view server details ,then show only that user's vm and node list in the server details page.
+

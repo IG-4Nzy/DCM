@@ -97,6 +97,18 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
         }
     }, [open, editingItem, clusterId]);
 
+    useEffect(() => {
+        if (users.length > 0 && formData.admin) {
+            const foundUser = users.find(u => u.username === formData.admin || u._id === formData.admin || u.id === formData.admin);
+            if (foundUser) {
+                const targetId = foundUser.id || foundUser._id;
+                if (targetId && formData.admin !== targetId) {
+                    setFormData(prev => ({ ...prev, admin: targetId }));
+                }
+            }
+        }
+    }, [users, formData.admin]);
+
     const handleChange = (field: keyof CreateNodeDetailsPayload, value: any) => {
         setFormData(prev => {
             const next = { ...prev, [field]: value };

@@ -18,6 +18,8 @@ import { type NodeData } from './model';
 import NodeModal from './NodeModal';
 import NodeViewModal from './NodeViewModal';
 
+import request from '../../../services/request';
+
 type Order = 'asc' | 'desc';
 
 const Nodes = () => {
@@ -25,11 +27,26 @@ const Nodes = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [clusters, setClusters] = useState<any[]>([]);
+    const [usersMap, setUsersMap] = useState<Record<string, string>>({});
 
     useEffect(() => {
         fetchClusters({ pagination: false })
             .then(res => setClusters(res.data || []))
             .catch(err => console.error("Failed to load clusters", err));
+    }, []);
+
+    useEffect(() => {
+        request.get('/api/users/', { params: { pagination: false } }).then(res => {
+            const map: Record<string, string> = {};
+            res.data.data.forEach((u: any) => {
+                const fullName = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
+                const displayName = fullName || u.username;
+                if (u._id) map[u._id] = displayName;
+                if (u.id) map[u.id] = displayName;
+                if (u.username) map[u.username] = displayName;
+            });
+            setUsersMap(map);
+        }).catch(err => console.error("Failed to load users:", err));
     }, []);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -296,6 +313,7 @@ const Nodes = () => {
                 open={isViewOpen}
                 onClose={() => setIsViewOpen(false)}
                 node={selectedViewItem}
+                adminName={selectedViewItem ? usersMap[selectedViewItem.admin] : undefined}
             />
         </Box>
     );

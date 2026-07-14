@@ -95,6 +95,18 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         }
     }, [open, editingItem]);
 
+    useEffect(() => {
+        if (users.length > 0 && admin) {
+            const foundUser = users.find(u => u.username === admin || u._id === admin || u.id === admin);
+            if (foundUser) {
+                const targetId = foundUser.id || foundUser._id;
+                if (targetId && admin !== targetId) {
+                    setAdmin(targetId);
+                }
+            }
+        }
+    }, [users, admin]);
+
     const handleRaidChange = (level: string, checked: boolean) => {
         if (checked) {
             setRaidConfiguration([...raidConfiguration, level]);

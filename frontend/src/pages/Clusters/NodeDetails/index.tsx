@@ -86,7 +86,10 @@ const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
             const map: Record<string, string> = {};
             res.data.data.forEach((u: any) => {
                 const fullName = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
-                map[u.username] = fullName || u.username;
+                const displayName = fullName || u.username;
+                if (u._id) map[u._id] = displayName;
+                if (u.id) map[u.id] = displayName;
+                if (u.username) map[u.username] = displayName;
             });
             setUsersMap(map);
         }).catch(err => console.error("Failed to load users:", err));

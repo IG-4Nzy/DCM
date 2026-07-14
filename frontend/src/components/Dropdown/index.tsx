@@ -105,17 +105,16 @@ const Dropdown: React.FC<DropdownProps> = ({
         onChange={handleChange}
         onClose={() => setSearchTerm('')}
         label={label}
-        renderValue={
-          multiple
-            ? (selected) =>
-              options
-                .filter((opt) =>
-                  (selected as any[]).includes(opt.value)
-                )
-                .map((opt) => opt.label)
-                .join(', ')
-            : undefined
-        }
+        renderValue={(selected) => {
+          if (multiple) {
+            return options
+              .filter((opt) => (selected as any[]).includes(opt.value))
+              .map((opt) => opt.label)
+              .join(', ');
+          }
+          const found = options.find((opt) => opt.value === selected);
+          return found ? found.label : selected;
+        }}
         MenuProps={{
           disablePortal: true,
           anchorOrigin: {

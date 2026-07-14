@@ -8,9 +8,10 @@ interface NodeViewModalProps {
     open: boolean;
     onClose: () => void;
     node: NodeData | null;
+    adminName?: string;
 }
 
-const NodeViewModal: React.FC<NodeViewModalProps> = ({ open, onClose, node }) => {
+const NodeViewModal: React.FC<NodeViewModalProps> = ({ open, onClose, node, adminName }) => {
     if (!node) return null;
 
     return (
@@ -68,7 +69,7 @@ const NodeViewModal: React.FC<NodeViewModalProps> = ({ open, onClose, node }) =>
                                 </Grid>
                                 <Grid size={{xs: 12, sm: 6}}   >
                                     <Typography variant="caption" color="textSecondary">Admin</Typography>
-                                    <Typography variant="body2">{node.admin || '-'}</Typography>
+                                    <Typography variant="body2">{adminName || node.admin || '-'}</Typography>
                                 </Grid>
                                 <Grid size={{xs: 12, sm: 6}}   >
                                     <Typography variant="caption" color="textSecondary">Asset Number</Typography>
