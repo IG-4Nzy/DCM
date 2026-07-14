@@ -87,7 +87,14 @@ async def list_items(
     privs = current_user.get("privileges", [])
     can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Create Server Details" in privs or "Create Request" in privs or "Update Request" in privs or "View Request" in privs
     if not can_view_all:
-        query["admin"] = current_user.get("sub")
+        target_username = current_user.get("sub")
+        users_col = db.get_collection("users")
+        user_doc = await users_col.find_one({"username": target_username})
+        target_user_id = str(user_doc["_id"]) if user_doc else None
+        admin_conditions = [{"admin": target_username}]
+        if target_user_id:
+            admin_conditions.append({"admin": target_user_id})
+        query["$or"] = admin_conditions
     
     if clusterId:
         query["clusterId"] = clusterId

@@ -64,7 +64,9 @@ export const SIDEBAR_OPTIONS = [
         icon: Icons.ServerDetailsIcon,
         route: ROUTE_CONSTANTS.SERVER_DETAILS,
         privileges: [
-            PRIVILEGES.SERVER_DETAILS_CREATE
+            PRIVILEGES.SERVER_DETAILS_CREATE,
+            PRIVILEGES.VIEW_SERVER_DETAILS,
+            PRIVILEGES.VIEW_ALL_SERVER_DETAILS
         ]
     },
     {

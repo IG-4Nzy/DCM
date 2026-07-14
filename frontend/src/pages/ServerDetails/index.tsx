@@ -16,11 +16,15 @@ import { PRIVILEGES } from '../../helpers/privileges';
 const ServerDetails = () => {
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
 
-    const hasRacksView = isSuperuser || hasPrivilege(PRIVILEGES.RACKS_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
-    const hasClusterView = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_VIEW_TAB) || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
-    const hasNodesView = isSuperuser || hasPrivilege(PRIVILEGES.NODES_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
-    const hasVMView = isSuperuser || hasPrivilege(PRIVILEGES.VM_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
-    const hasPhysicalServerView = isSuperuser || hasPrivilege(PRIVILEGES.PHYSICAL_SERVER_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
+    const hasViewAll = hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
+    const hasViewOwn = hasPrivilege(PRIVILEGES.VIEW_SERVER_DETAILS);
+    const hasCreatePerm = hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+
+    const hasRacksView = isSuperuser || hasPrivilege(PRIVILEGES.RACKS_VIEW) || hasViewAll || hasCreatePerm;
+    const hasClusterView = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_VIEW_TAB) || hasViewAll || hasCreatePerm;
+    const hasNodesView = isSuperuser || hasPrivilege(PRIVILEGES.NODES_VIEW) || hasViewAll || hasViewOwn || hasCreatePerm;
+    const hasVMView = isSuperuser || hasPrivilege(PRIVILEGES.VM_VIEW) || hasViewAll || hasViewOwn || hasCreatePerm;
+    const hasPhysicalServerView = isSuperuser || hasPrivilege(PRIVILEGES.PHYSICAL_SERVER_VIEW) || hasViewAll || hasCreatePerm;
 
     const tabs: TabItem[] = [];
     if (hasRacksView) tabs.push({ id: 'racks', label: 'Racks', value: 'racks' });
