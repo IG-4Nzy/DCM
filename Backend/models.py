@@ -612,7 +612,7 @@ class NodeModel(BaseModel):
     serverModel: Optional[str] = None
     serialNumber: Optional[str] = None
     custodian: Optional[str] = None
-    admin: Optional[str] = None
+    admin: Optional[Union[str, List[str]]] = None
     assetNumber: Optional[str] = None
     raidConfiguration: List[str] = Field(default_factory=list)
     createdBy: Optional[str] = None
@@ -637,7 +637,7 @@ class CreateNodeModel(BaseModel):
     serverModel: Optional[str] = None
     serialNumber: Optional[str] = None
     custodian: Optional[str] = None
-    admin: Optional[str] = None
+    admin: Optional[Union[str, List[str]]] = None
     assetNumber: Optional[str] = None
     raidConfiguration: Optional[List[str]] = Field(default_factory=list)
 
@@ -655,7 +655,7 @@ class UpdateNodeModel(BaseModel):
     serverModel: Optional[str] = None
     serialNumber: Optional[str] = None
     custodian: Optional[str] = None
-    admin: Optional[str] = None
+    admin: Optional[Union[str, List[str]]] = None
     assetNumber: Optional[str] = None
     raidConfiguration: Optional[List[str]] = None
     

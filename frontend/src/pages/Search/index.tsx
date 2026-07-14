@@ -582,7 +582,11 @@ const Search: React.FC = () => {
                         <Grid container spacing={2}>
                           <Grid size={{xs: 6, md: 3}}   >
                             <Typography variant="caption" color="textSecondary">Admin</Typography>
-                            <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedItem.data.admin || '--'}</Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                              {Array.isArray(selectedItem.data.admin)
+                                ? selectedItem.data.admin.join(', ')
+                                : (selectedItem.data.admin || '--')}
+                            </Typography>
                           </Grid>
                           <Grid size={{xs: 6, md: 3}}   >
                             <Typography variant="caption" color="textSecondary">Admin Code</Typography>

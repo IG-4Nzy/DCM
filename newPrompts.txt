@@ -1,15 +1,7 @@
-in VM Management request create,add a option to choose Migration,Clone,Snapshot,Template,Backup, and resource upgrace and others
+in server details view based on admin,there also change needed as the admin field changed to array
+check and change if required
 
-if it is resource updgrade,then give option to new add new resources - ram,hdd,cpu
-
-if it is migration,give option to choose cluster and node
-
-if it is clone,snapshot,template,backup then give option to add clone name,or snapshot name or template name or backup name
+in nodes page,give server model filter,admin filter,rack filter,search by all fields.
 
 
-
-
-
-add server details view,view all server details privileges to layout server details
-if user has only view server details ,then show only that user's vm and node list in the server details page.
-
+remove cluster selection from add node modal and give nodes selection on cluster add and edit modal,also give migration script for the new change.

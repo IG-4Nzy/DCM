@@ -313,7 +313,13 @@ const Nodes = () => {
                 open={isViewOpen}
                 onClose={() => setIsViewOpen(false)}
                 node={selectedViewItem}
-                adminName={selectedViewItem ? usersMap[selectedViewItem.admin] : undefined}
+                adminName={
+                    selectedViewItem
+                        ? Array.isArray(selectedViewItem.admin)
+                            ? selectedViewItem.admin.map((a: string) => usersMap[a] || a).join(', ')
+                            : (usersMap[selectedViewItem.admin] || selectedViewItem.admin)
+                        : undefined
+                }
             />
         </Box>
     );

@@ -31,7 +31,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
     const [serverModel, setServerModel] = useState('');
     const [serialNumber, setSerialNumber] = useState('');
     const [custodian, setCustodian] = useState('');
-    const [admin, setAdmin] = useState('');
+    const [admin, setAdmin] = useState<string[]>([]);
     const [assetNumber, setAssetNumber] = useState('');
     const [raidConfiguration, setRaidConfiguration] = useState<string[]>([]);
     
@@ -72,7 +72,11 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setServerModel(editingItem.serverModel || '');
                 setSerialNumber(editingItem.serialNumber || '');
                 setCustodian(editingItem.custodian || '');
-                setAdmin(editingItem.admin || '');
+                setAdmin(
+                    Array.isArray(editingItem.admin)
+                        ? editingItem.admin
+                        : (editingItem.admin ? [editingItem.admin] : [])
+                );
                 setAssetNumber(editingItem.assetNumber || '');
                 setRaidConfiguration(editingItem.raidConfiguration || []);
             } else {
@@ -88,7 +92,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setServerModel('');
                 setSerialNumber('');
                 setCustodian('');
-                setAdmin('');
+                setAdmin([]);
                 setAssetNumber('');
                 setRaidConfiguration([]);
             }
@@ -96,13 +100,21 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
     }, [open, editingItem]);
 
     useEffect(() => {
-        if (users.length > 0 && admin) {
-            const foundUser = users.find(u => u.username === admin || u._id === admin || u.id === admin);
-            if (foundUser) {
-                const targetId = foundUser.id || foundUser._id;
-                if (targetId && admin !== targetId) {
-                    setAdmin(targetId);
+        if (users.length > 0 && Array.isArray(admin) && admin.length > 0) {
+            let changed = false;
+            const updatedAdmin = admin.map(adVal => {
+                const foundUser = users.find(u => u.username === adVal || u._id === adVal || u.id === adVal);
+                if (foundUser) {
+                    const targetId = foundUser.id || foundUser._id;
+                    if (targetId && adVal !== targetId) {
+                        changed = true;
+                        return targetId;
+                    }
                 }
+                return adVal;
+            });
+            if (changed) {
+                setAdmin(updatedAdmin);
             }
         }
     }, [users, admin]);
@@ -131,7 +143,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
             serverModel: serverModel || undefined,
             serialNumber: serialNumber || undefined,
             custodian: custodian || undefined,
-            admin: admin || undefined,
+            admin: admin && admin.length > 0 ? admin : undefined,
             assetNumber: assetNumber || undefined,
             raidConfiguration: raidConfiguration
         };
@@ -213,6 +225,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 label="Admin"
                                 fullWidth
                                 searchable
+                                multiple
                                 value={admin}
                                 onChange={(val) => setAdmin(val)}
                                 options={users.map(u => ({ label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username, value: u._id || u.id }))}
