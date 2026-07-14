@@ -237,7 +237,8 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                         label="Select VM"
                         onChange={(e) => {
                           const selectedVm = vmsList.find(v => (v.id || v._id) === e.target.value);
-                          setDetails({
+                          setDetails((prev: any) => ({
+                            ...prev,
                             vmId: e.target.value,
                             vmName: selectedVm ? (selectedVm.applications || selectedVm.vmId || '') : '',
                             osVersion: selectedVm ? (selectedVm.osAndExpiry || '') : '',
@@ -245,7 +246,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                             hdd: selectedVm ? (selectedVm.hdd || '') : '',
                             cpu: selectedVm ? (selectedVm.cpu || '') : '',
                             ip: selectedVm ? (selectedVm.ipAddress || '') : '',
-                          });
+                          }));
                         }}
                         MenuProps={{ disablePortal: true }}
                       >
@@ -258,21 +259,198 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                     </FormControl>
                     {details.vmId && (
                       <>
-                        <TextField label="OS and Version" fullWidth disabled value={details.osVersion || ''} />
-                        <TextField label="RAM" fullWidth disabled value={details.ram || ''} />
-                        <TextField label="HDD" fullWidth disabled value={details.hdd || ''} />
-                        <TextField label="CPU" fullWidth disabled value={details.cpu || ''} />
-                        <TextField label="IP Address" fullWidth disabled value={details.ip || ''} />
+                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                          <TextField label="OS and Version" fullWidth disabled value={details.osVersion || ''} sx={{ flex: 1, minWidth: 150 }} />
+                          <TextField label="IP Address" fullWidth disabled value={details.ip || ''} sx={{ flex: 1, minWidth: 150 }} />
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                          <TextField label="Current RAM" disabled value={details.ram || ''} sx={{ flex: 1, minWidth: 100 }} />
+                          <TextField label="Current HDD" disabled value={details.hdd || ''} sx={{ flex: 1, minWidth: 100 }} />
+                          <TextField label="Current CPU" disabled value={details.cpu || ''} sx={{ flex: 1, minWidth: 100 }} />
+                        </Box>
+
+                        <FormControl fullWidth required>
+                          <InputLabel>Operation Type</InputLabel>
+                          <Select
+                            value={details.operationType || ''}
+                            label="Operation Type"
+                            onChange={(e) => {
+                              const opType = e.target.value;
+                              setDetails((prev: any) => ({
+                                ...prev,
+                                operationType: opType,
+                                // Reset operation-specific fields
+                                newRam: undefined,
+                                newHdd: undefined,
+                                newCpu: undefined,
+                                migrationCluster: undefined,
+                                migrationNode: undefined,
+                                cloneName: undefined,
+                                snapshotName: undefined,
+                                templateName: undefined,
+                                backupName: undefined,
+                              }));
+                            }}
+                            MenuProps={{ disablePortal: true }}
+                          >
+                            <MenuItem value="Migration">Migration</MenuItem>
+                            <MenuItem value="Clone">Clone</MenuItem>
+                            <MenuItem value="Snapshot">Snapshot</MenuItem>
+                            <MenuItem value="Template">Template</MenuItem>
+                            <MenuItem value="Backup">Backup</MenuItem>
+                            <MenuItem value="Resource Upgrade">Resource Upgrade</MenuItem>
+                            <MenuItem value="Others">Others</MenuItem>
+                          </Select>
+                        </FormControl>
+
+                        {/* Resource Upgrade: new RAM, HDD, CPU fields */}
+                        {details.operationType === 'Resource Upgrade' && (
+                          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                            <TextField
+                              label="New RAM"
+                              required
+                              value={details.newRam || ''}
+                              onChange={(e) => handleDetailChange('newRam', e.target.value)}
+                              placeholder="e.g. 16 GB"
+                              sx={{ flex: 1, minWidth: 100 }}
+                            />
+                            <TextField
+                              label="New HDD"
+                              required
+                              value={details.newHdd || ''}
+                              onChange={(e) => handleDetailChange('newHdd', e.target.value)}
+                              placeholder="e.g. 500 GB"
+                              sx={{ flex: 1, minWidth: 100 }}
+                            />
+                            <TextField
+                              label="New CPU"
+                              required
+                              value={details.newCpu || ''}
+                              onChange={(e) => handleDetailChange('newCpu', e.target.value)}
+                              placeholder="e.g. 8 Cores"
+                              sx={{ flex: 1, minWidth: 100 }}
+                            />
+                          </Box>
+                        )}
+
+                        {/* Migration: choose cluster and node */}
+                        {details.operationType === 'Migration' && (
+                          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                            <FormControl required sx={{ flex: 1, minWidth: 200 }}>
+                              <InputLabel>Target Cluster</InputLabel>
+                              <Select
+                                value={details.migrationCluster || ''}
+                                label="Target Cluster"
+                                onChange={(e) => {
+                                  handleDetailChange('migrationCluster', e.target.value);
+                                  handleDetailChange('migrationNode', '');
+                                }}
+                                MenuProps={{ disablePortal: true }}
+                              >
+                                {clustersList.map((c: any) => (
+                                  <MenuItem key={c.id || c._id} value={c.id || c._id}>
+                                    {c.clusterName}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                            <FormControl required sx={{ flex: 1, minWidth: 200 }} disabled={!details.migrationCluster}>
+                              <InputLabel>Target Node</InputLabel>
+                              <Select
+                                value={details.migrationNode || ''}
+                                label="Target Node"
+                                onChange={(e) => handleDetailChange('migrationNode', e.target.value)}
+                                MenuProps={{ disablePortal: true }}
+                              >
+                                {nodesList
+                                  .filter((n: any) => !details.migrationCluster || n.clusterId === details.migrationCluster)
+                                  .map((n: any) => (
+                                    <MenuItem key={n.id || n._id} value={n.node || n.hostName}>
+                                      {n.node || n.hostName}
+                                    </MenuItem>
+                                  ))}
+                              </Select>
+                            </FormControl>
+                          </Box>
+                        )}
+
+                        {/* Clone: clone name */}
+                        {details.operationType === 'Clone' && (
+                          <TextField
+                            label="Clone Name"
+                            fullWidth
+                            required
+                            value={details.cloneName || ''}
+                            onChange={(e) => handleDetailChange('cloneName', e.target.value)}
+                            placeholder="Enter clone name"
+                          />
+                        )}
+
+                        {/* Snapshot: snapshot name */}
+                        {details.operationType === 'Snapshot' && (
+                          <TextField
+                            label="Snapshot Name"
+                            fullWidth
+                            required
+                            value={details.snapshotName || ''}
+                            onChange={(e) => handleDetailChange('snapshotName', e.target.value)}
+                            placeholder="Enter snapshot name"
+                          />
+                        )}
+
+                        {/* Template: template name */}
+                        {details.operationType === 'Template' && (
+                          <TextField
+                            label="Template Name"
+                            fullWidth
+                            required
+                            value={details.templateName || ''}
+                            onChange={(e) => handleDetailChange('templateName', e.target.value)}
+                            placeholder="Enter template name"
+                          />
+                        )}
+
+                        {/* Backup: backup name */}
+                        {details.operationType === 'Backup' && (
+                          <TextField
+                            label="Backup Name"
+                            fullWidth
+                            required
+                            value={details.backupName || ''}
+                            onChange={(e) => handleDetailChange('backupName', e.target.value)}
+                            placeholder="Enter backup name"
+                          />
+                        )}
                       </>
                     )}
                   </>
                 ) : (
                   <>
                     <TextField label="VM Name" fullWidth disabled value={details.vmName || ''} />
+                    <TextField label="Operation Type" fullWidth disabled value={details.operationType || '-'} />
+                    {details.operationType === 'Resource Upgrade' && (
+                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                        <TextField label="New RAM" disabled value={details.newRam || ''} sx={{ flex: 1 }} />
+                        <TextField label="New HDD" disabled value={details.newHdd || ''} sx={{ flex: 1 }} />
+                        <TextField label="New CPU" disabled value={details.newCpu || ''} sx={{ flex: 1 }} />
+                      </Box>
+                    )}
+                    {details.operationType === 'Migration' && (
+                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                        <TextField label="Target Cluster" disabled value={details.migrationCluster || ''} sx={{ flex: 1 }} />
+                        <TextField label="Target Node" disabled value={details.migrationNode || ''} sx={{ flex: 1 }} />
+                      </Box>
+                    )}
+                    {details.operationType === 'Clone' && <TextField label="Clone Name" fullWidth disabled value={details.cloneName || ''} />}
+                    {details.operationType === 'Snapshot' && <TextField label="Snapshot Name" fullWidth disabled value={details.snapshotName || ''} />}
+                    {details.operationType === 'Template' && <TextField label="Template Name" fullWidth disabled value={details.templateName || ''} />}
+                    {details.operationType === 'Backup' && <TextField label="Backup Name" fullWidth disabled value={details.backupName || ''} />}
                     <TextField label="OS and Version" fullWidth disabled value={details.osVersion || ''} />
-                    <TextField label="RAM" fullWidth disabled value={details.ram || ''} />
-                    <TextField label="HDD" fullWidth disabled value={details.hdd || ''} />
-                    <TextField label="CPU" fullWidth disabled value={details.cpu || ''} />
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                      <TextField label="RAM" disabled value={details.ram || ''} sx={{ flex: 1 }} />
+                      <TextField label="HDD" disabled value={details.hdd || ''} sx={{ flex: 1 }} />
+                      <TextField label="CPU" disabled value={details.cpu || ''} sx={{ flex: 1 }} />
+                    </Box>
                   </>
                 )}
               </>

@@ -457,6 +457,12 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                       <Typography variant="caption" color="textSecondary">VM Name</Typography>
                       <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.vmName || '-'}</Typography>
                     </Grid>
+                    {request.requestType === 'VM Management' && request.details?.operationType && (
+                      <Grid size={{xs: 12, sm: 4}}   >
+                        <Typography variant="caption" color="textSecondary">Operation Type</Typography>
+                        <Chip label={request.details.operationType} size="small" color="info" sx={{ fontWeight: 600 }} />
+                      </Grid>
+                    )}
                     <Grid size={{xs: 12, sm: 4}}   >
                       <Typography variant="caption" color="textSecondary">OS and Version</Typography>
                       <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.osVersion || '-'}</Typography>
@@ -473,6 +479,80 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                       <Typography variant="caption" color="textSecondary">CPU (Cores)</Typography>
                       <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.cpu || '-'}</Typography>
                     </Grid>
+
+                    {/* Resource Upgrade: show new resources */}
+                    {request.details?.operationType === 'Resource Upgrade' && (
+                      <>
+                        <Grid size={{xs: 12}}  ><Divider sx={{ opacity: 0.6 }} /></Grid>
+                        <Grid size={{xs: 12, sm: 4}}   >
+                          <Typography variant="caption" color="textSecondary">New RAM</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>{request.details?.newRam || '-'}</Typography>
+                        </Grid>
+                        <Grid size={{xs: 12, sm: 4}}   >
+                          <Typography variant="caption" color="textSecondary">New HDD</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>{request.details?.newHdd || '-'}</Typography>
+                        </Grid>
+                        <Grid size={{xs: 12, sm: 4}}   >
+                          <Typography variant="caption" color="textSecondary">New CPU</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>{request.details?.newCpu || '-'}</Typography>
+                        </Grid>
+                      </>
+                    )}
+
+                    {/* Migration: show target cluster and node */}
+                    {request.details?.operationType === 'Migration' && (
+                      <>
+                        <Grid size={{xs: 12}}  ><Divider sx={{ opacity: 0.6 }} /></Grid>
+                        <Grid size={{xs: 12, sm: 6}}   >
+                          <Typography variant="caption" color="textSecondary">Target Cluster</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>{request.details?.migrationCluster || '-'}</Typography>
+                        </Grid>
+                        <Grid size={{xs: 12, sm: 6}}   >
+                          <Typography variant="caption" color="textSecondary">Target Node</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>{request.details?.migrationNode || '-'}</Typography>
+                        </Grid>
+                      </>
+                    )}
+
+                    {/* Clone/Snapshot/Template/Backup: show name */}
+                    {request.details?.operationType === 'Clone' && (
+                      <>
+                        <Grid size={{xs: 12}}  ><Divider sx={{ opacity: 0.6 }} /></Grid>
+                        <Grid size={{xs: 12, sm: 6}}   >
+                          <Typography variant="caption" color="textSecondary">Clone Name</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>{request.details?.cloneName || '-'}</Typography>
+                        </Grid>
+                      </>
+                    )}
+                    {request.details?.operationType === 'Snapshot' && (
+                      <>
+                        <Grid size={{xs: 12}}  ><Divider sx={{ opacity: 0.6 }} /></Grid>
+                        <Grid size={{xs: 12, sm: 6}}   >
+                          <Typography variant="caption" color="textSecondary">Snapshot Name</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>{request.details?.snapshotName || '-'}</Typography>
+                        </Grid>
+                      </>
+                    )}
+                    {request.details?.operationType === 'Template' && (
+                      <>
+                        <Grid size={{xs: 12}}  ><Divider sx={{ opacity: 0.6 }} /></Grid>
+                        <Grid size={{xs: 12, sm: 6}}   >
+                          <Typography variant="caption" color="textSecondary">Template Name</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>{request.details?.templateName || '-'}</Typography>
+                        </Grid>
+                      </>
+                    )}
+                    {request.details?.operationType === 'Backup' && (
+                      <>
+                        <Grid size={{xs: 12}}  ><Divider sx={{ opacity: 0.6 }} /></Grid>
+                        <Grid size={{xs: 12, sm: 6}}   >
+                          <Typography variant="caption" color="textSecondary">Backup Name</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>{request.details?.backupName || '-'}</Typography>
+                        </Grid>
+                      </>
+                    )}
+
+                    <Grid size={{xs: 12}}  ><Divider sx={{ opacity: 0.6 }} /></Grid>
                     <Grid size={{xs: 12, sm: 4}}   >
                       <Typography variant="caption" color="textSecondary">IP Address</Typography>
                       <Typography variant="body2" sx={{ fontWeight: 600, color: request.details?.ip ? '#2e7d32' : 'inherit' }}>
