@@ -14,6 +14,7 @@ import { fetchPhysicalServers, createPhysicalServer, updatePhysicalServer, delet
 import { fetchClusters } from '../../Clusters/action';
 import { type PhysicalServerData } from './model';
 import PhysicalServerModal from './PhysicalServerModal';
+import request from '../../../services/request';
 import styles from './index.module.scss';
 
 interface PhysicalServersProps {
@@ -40,6 +41,7 @@ const PhysicalServers = ({ clusterId = '' }: PhysicalServersProps) => {
     const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
 
     const [clusters, setClusters] = useState<any[]>([]);
+    const [usersMap, setUsersMap] = useState<Record<string, string>>({});
 
     useEffect(() => {
         if (!clusterId) {
@@ -48,6 +50,20 @@ const PhysicalServers = ({ clusterId = '' }: PhysicalServersProps) => {
                 .catch(err => console.error("Failed to load clusters", err));
         }
     }, [clusterId]);
+
+    useEffect(() => {
+        request.get('/api/users/', { params: { pagination: false } }).then(res => {
+            const map: Record<string, string> = {};
+            res.data.data.forEach((u: any) => {
+                const fullName = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
+                const displayName = fullName || u.username;
+                if (u._id) map[u._id] = displayName;
+                if (u.id) map[u.id] = displayName;
+                if (u.username) map[u.username] = displayName;
+            });
+            setUsersMap(map);
+        }).catch(err => console.error("Failed to load users:", err));
+    }, []);
 
     const getClusterName = (cid: string) => {
         const found = clusters.find(c => c.id === cid);
@@ -163,6 +179,7 @@ const PhysicalServers = ({ clusterId = '' }: PhysicalServersProps) => {
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Node</TableCell>
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>OS and Expiry</TableCell>
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Backup Location</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Admin</TableCell>
                                 <TableCell colSpan={3} align="center" className={styles.tableWrapper__headerCell}>Resource Allotter</TableCell>
                                 {(hasUpdate || hasDelete) && (
                                     <TableCell rowSpan={2} align="right" className={styles.tableWrapper__headerCellLast}>Actions</TableCell>
@@ -177,11 +194,11 @@ const PhysicalServers = ({ clusterId = '' }: PhysicalServersProps) => {
                         <TableBody>
                             {loading && data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 9 : 10} align="center" sx={{ py: 3 }}>Loading...</TableCell>
+                                    <TableCell colSpan={clusterId ? 10 : 11} align="center" sx={{ py: 3 }}>Loading...</TableCell>
                                 </TableRow>
                             ) : data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 9 : 10} align="center" sx={{ py: 3, color: 'text.secondary' }}>No Physical Server Details found</TableCell>
+                                    <TableCell colSpan={clusterId ? 10 : 11} align="center" sx={{ py: 3, color: 'text.secondary' }}>No Physical Server Details found</TableCell>
                                 </TableRow>
                             ) : (
                                 data.map((row) => (
@@ -194,6 +211,11 @@ const PhysicalServers = ({ clusterId = '' }: PhysicalServersProps) => {
                                         <TableCell className={styles.tableWrapper__cell}>{row.node || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.osAndExpiry || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.backupLocation || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{
+                                            Array.isArray(row.admin)
+                                                ? (row.admin.map((a: string) => usersMap[a] || a).join(', ') || '--')
+                                                : (usersMap[row.admin] || row.admin || '--')
+                                        }</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.hdd || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.ram || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.cpu || '--'}</TableCell>

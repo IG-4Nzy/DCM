@@ -9,7 +9,7 @@ export interface NodeDetailsData {
     ipAddress: string;
     serverModel: string;
     serialNumber: string;
-    admin: string;
+    admin: string | string[];
     adminCode: string;
     hypervisor: string;
     applications: string;

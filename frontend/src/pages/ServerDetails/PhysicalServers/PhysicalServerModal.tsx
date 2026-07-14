@@ -30,7 +30,7 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
         cpu: '',
         backupLocation: '',
         addedToMonitoring: false,
-        admin: ''
+        admin: []
     });
 
     const [nodes, setNodes] = useState<any[]>([]);
@@ -67,7 +67,9 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
                     cpu: editingItem.cpu || '',
                     backupLocation: editingItem.backupLocation || '',
                     addedToMonitoring: editingItem.addedToMonitoring || false,
-                    admin: editingItem.admin || ''
+                    admin: Array.isArray(editingItem.admin)
+                        ? editingItem.admin
+                        : (editingItem.admin ? [editingItem.admin] : [])
                 });
             } else {
                 setFormData({
@@ -81,13 +83,33 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
                     cpu: '',
                     backupLocation: '',
                     addedToMonitoring: false,
-                    admin: ''
+                    admin: []
                 });
             }
         }
     }, [open, editingItem, clusterId]);
 
-    const handleChange = (field: keyof CreatePhysicalServerPayload, value: string) => {
+    useEffect(() => {
+        if (users.length > 0 && Array.isArray(formData.admin) && formData.admin.length > 0) {
+            let changed = false;
+            const updatedAdmin = formData.admin.map(adVal => {
+                const foundUser = users.find(u => u.username === adVal || u._id === adVal || u.id === adVal);
+                if (foundUser) {
+                    const targetId = foundUser.id || foundUser._id;
+                    if (targetId && adVal !== targetId) {
+                        changed = true;
+                        return targetId;
+                    }
+                }
+                return adVal;
+            });
+            if (changed) {
+                setFormData(prev => ({ ...prev, admin: updatedAdmin }));
+            }
+        }
+    }, [users, formData.admin]);
+
+    const handleChange = (field: keyof CreatePhysicalServerPayload, value: string | string[]) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
@@ -110,7 +132,9 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
             if (formData.cpu !== editingItem.cpu) changedData.cpu = formData.cpu;
             if (formData.backupLocation !== editingItem.backupLocation) changedData.backupLocation = formData.backupLocation;
             if (formData.addedToMonitoring !== editingItem.addedToMonitoring) changedData.addedToMonitoring = formData.addedToMonitoring;
-            if (formData.admin !== editingItem.admin) changedData.admin = formData.admin;
+            const origAdmin = Array.isArray(editingItem.admin) ? editingItem.admin : (editingItem.admin ? [editingItem.admin] : []);
+            const newAdmin = Array.isArray(formData.admin) ? formData.admin : (formData.admin ? [formData.admin] : []);
+            if (JSON.stringify(origAdmin.sort()) !== JSON.stringify(newAdmin.sort())) changedData.admin = formData.admin;
             onSubmit(changedData);
         } else {
             onSubmit(formData);
@@ -178,6 +202,7 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
                         size="small"
                         fullWidth
                         searchable
+                        multiple
                         value={formData.admin} 
                         onChange={(val) => handleChange('admin', val)} 
                         options={users.map(u => ({ label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username, value: u._id || u.id }))}

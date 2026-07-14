@@ -16,6 +16,7 @@ import { PRIVILEGES } from '../../helpers/privileges';
 import { getServerTime } from '../../helpers/time';
 import request from '../../services/request';
 import { useTableState } from '../../hooks/useTableState';
+import { jwtDecode } from 'jwt-decode';
 import styles from "./index.module.scss";
 
 // Import fetchUsers from users action to populate assignee dropdown
@@ -25,6 +26,19 @@ import { fetchWorks, createWork, updateWork, deleteWork, transferWork } from './
 import type { WorkData } from './model';
 
 type Order = 'asc' | 'desc';
+
+const getLoggedInUserDepartment = (): string => {
+  try {
+    const token = localStorage.getItem('token');
+    if (token) {
+      const decoded: any = jwtDecode(token);
+      return decoded.department || 'All Departments';
+    }
+  } catch (e) {
+    console.error("Error decoding token:", e);
+  }
+  return 'All Departments';
+};
 
 const Works: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -61,7 +75,7 @@ const Works: React.FC = () => {
   const canFilterByAssignee = isSuperuser || hasPrivilege(PRIVILEGES.WORK_VIEW) || hasPrivilege(PRIVILEGES.WORK_VIEW_ALL_DEPARTMENTS);
   const canViewEmergency = isSuperuser || hasPrivilege(PRIVILEGES.EMERGENCY_WORK_VIEW);
 
-  const [selectedDepartment, setSelectedDepartment] = useTableState('work_selectedDepartment', 'All Departments');
+  const [selectedDepartment, setSelectedDepartment] = useTableState('work_selectedDepartment', getLoggedInUserDepartment());
 
   const filteredUsersForAssignee = React.useMemo(() => {
     if (!currentUser || !users) return [];

@@ -409,11 +409,12 @@ async def get_dashboard_summary(
     nodes_col = db.get_collection("node_details")
     physical_servers_col = db.get_collection("physical_servers")
     
-    admin_vm_count = await vms_col.count_documents({"admin": user_id_str})
-    admin_node_count = await nodes_col.count_documents({"admin": user_id_str})
+    admin_query = {"admin": {"$in": [username, user_id_str]}}
+    admin_vm_count = await vms_col.count_documents(admin_query)
+    admin_node_count = await nodes_col.count_documents(admin_query)
     admin_config_nodes_col = db.get_collection("nodes")
-    admin_config_node_count = await admin_config_nodes_col.count_documents({"admin": user_id_str})
-    admin_physical_count = await physical_servers_col.count_documents({"admin": user_id_str})
+    admin_config_node_count = await admin_config_nodes_col.count_documents(admin_query)
+    admin_physical_count = await physical_servers_col.count_documents(admin_query)
     total_admin_servers = admin_node_count + admin_config_node_count + admin_physical_count
 
     return {

@@ -209,7 +209,12 @@ const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
             id: 'admin', 
             label: 'Admin', 
             sortable: true,
-            render: (row) => usersMap[row.admin] || row.admin || '--'
+            render: (row) => {
+                if (Array.isArray(row.admin)) {
+                    return row.admin.map((a: string) => usersMap[a] || a).join(', ') || '--';
+                }
+                return usersMap[row.admin] || row.admin || '--';
+            }
         },
         { id: 'hypervisor', label: 'Hypervisor', sortable: true },
         { id: 'applications', label: 'Applications', sortable: true },
@@ -313,7 +318,13 @@ const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
                 open={isViewOpen}
                 onClose={() => setIsViewOpen(false)}
                 item={selectedViewItem}
-                adminName={selectedViewItem ? usersMap[selectedViewItem.admin] : undefined}
+                adminName={
+                    selectedViewItem
+                        ? Array.isArray(selectedViewItem.admin)
+                            ? selectedViewItem.admin.map((a: string) => usersMap[a] || a).join(', ')
+                            : (usersMap[selectedViewItem.admin] || selectedViewItem.admin)
+                        : undefined
+                }
             />
         </Box>
     );

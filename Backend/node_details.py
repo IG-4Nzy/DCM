@@ -83,10 +83,10 @@ async def list_items(
         users_col = db.get_collection("users")
         user_doc = await users_col.find_one({"username": target_username})
         target_user_id = str(user_doc["_id"]) if user_doc else None
-        admin_conditions = [{"admin": target_username}]
+        admins = [target_username]
         if target_user_id:
-            admin_conditions.append({"admin": target_user_id})
-        query["$or"] = admin_conditions
+            admins.append(target_user_id)
+        query["admin"] = {"$in": admins}
     
     if clusterId:
         query["clusterId"] = clusterId

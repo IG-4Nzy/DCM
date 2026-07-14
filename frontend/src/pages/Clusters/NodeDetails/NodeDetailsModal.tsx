@@ -26,7 +26,7 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
         ipAddress: '',
         serverModel: '',
         serialNumber: '',
-        admin: '',
+        admin: [],
         adminCode: '',
         hypervisor: '',
         applications: '',
@@ -71,7 +71,9 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                     ipAddress: editingItem.ipAddress,
                     serverModel: editingItem.serverModel,
                     serialNumber: editingItem.serialNumber,
-                    admin: editingItem.admin,
+                    admin: Array.isArray(editingItem.admin)
+                        ? editingItem.admin
+                        : (editingItem.admin ? [editingItem.admin] : []),
                     adminCode: editingItem.adminCode,
                     hypervisor: editingItem.hypervisor,
                     applications: editingItem.applications,
@@ -89,7 +91,7 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
             } else {
                 setFormData({
                     clusterId: clusterId,
-                    slNumber: '', rack: '', hostName: '', ipAddress: '', serverModel: '', serialNumber: '', admin: '',
+                    slNumber: '', rack: '', hostName: '', ipAddress: '', serverModel: '', serialNumber: '', admin: [],
                     adminCode: '', hypervisor: '', applications: '', clusterType: '', indentor: '', poNum: '', assetNum: '',
                     custodian: '', redundancyPower: 'No', totalRam: undefined, totalHardisk: undefined, totalCpu: undefined, remarks: ''
                 });
@@ -98,13 +100,21 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
     }, [open, editingItem, clusterId]);
 
     useEffect(() => {
-        if (users.length > 0 && formData.admin) {
-            const foundUser = users.find(u => u.username === formData.admin || u._id === formData.admin || u.id === formData.admin);
-            if (foundUser) {
-                const targetId = foundUser.id || foundUser._id;
-                if (targetId && formData.admin !== targetId) {
-                    setFormData(prev => ({ ...prev, admin: targetId }));
+        if (users.length > 0 && Array.isArray(formData.admin) && formData.admin.length > 0) {
+            let changed = false;
+            const updatedAdmin = formData.admin.map(adVal => {
+                const foundUser = users.find(u => u.username === adVal || u._id === adVal || u.id === adVal);
+                if (foundUser) {
+                    const targetId = foundUser.id || foundUser._id;
+                    if (targetId && adVal !== targetId) {
+                        changed = true;
+                        return targetId;
+                    }
                 }
+                return adVal;
+            });
+            if (changed) {
+                setFormData(prev => ({ ...prev, admin: updatedAdmin }));
             }
         }
     }, [users, formData.admin]);
@@ -113,11 +123,10 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
         setFormData(prev => {
             const next = { ...prev, [field]: value };
             if (field === 'admin') {
-                const u = users.find(u => u._id === value || u.id === value || u.username === value || (u.firstName + ' ' + u.lastName) === value);
-                if (u) {
-                    next.adminCode = u.passnumber || u.passNumber || '--';
-                    next.admin = u._id || u.id;
-                }
+                const adminArr = Array.isArray(value) ? value : [value];
+                const selectedUsers = adminArr.map(id => users.find(u => (u._id || u.id) === id)).filter(Boolean);
+                next.adminCode = selectedUsers.map(u => u.passnumber || u.passNumber || '--').join(', ');
+                next.admin = adminArr;
             }
             return next;
         });
@@ -188,6 +197,7 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                         <Dropdown
                             label="Admin"
                             searchable
+                            multiple
                             value={formData.admin}
                             onChange={(val) => handleChange('admin', val)}
                             options={users.map(u => {

@@ -14,7 +14,7 @@ export interface VMDetailsData {
     addedToMonitoring?: boolean;
     adminName?: string;
     adminContact?: string;
-    admin?: string;
+    admin?: string | string[];
     powerStatus?: string;
     createdAt?: string;
     updatedAt?: string;
@@ -34,7 +34,7 @@ export interface CreateVMDetailsPayload {
     addedToMonitoring?: boolean;
     adminName?: string;
     adminContact?: string;
-    admin?: string;
+    admin?: string | string[];
     powerStatus?: string;
 }
 

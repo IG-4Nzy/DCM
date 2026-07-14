@@ -31,7 +31,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         backupLocation: '',
         adminName: '',
         adminContact: '',
-        admin: '',
+        admin: [],
         powerStatus: 'on'
     });
 
@@ -71,7 +71,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     addedToMonitoring: editingItem.addedToMonitoring || false,
                     adminName: editingItem.adminName || '',
                     adminContact: editingItem.adminContact || '',
-                    admin: editingItem.admin || '',
+                    admin: Array.isArray(editingItem.admin) ? editingItem.admin : (editingItem.admin ? [editingItem.admin] : []),
                     powerStatus: editingItem.powerStatus || 'on'
                 });
             } else {
@@ -88,22 +88,41 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     addedToMonitoring: false,
                     adminName: '',
                     adminContact: '',
-                    admin: '',
+                    admin: [],
                     powerStatus: 'on'
                 });
             }
         }
     }, [open, editingItem, clusterId]);
 
-    const handleChange = (field: keyof CreateVMDetailsPayload, value: string) => {
+    useEffect(() => {
+        if (users.length > 0 && Array.isArray(formData.admin) && formData.admin.length > 0) {
+            let changed = false;
+            const updatedAdmin = formData.admin.map(adVal => {
+                const foundUser = users.find(u => u.username === adVal || u._id === adVal || u.id === adVal);
+                if (foundUser) {
+                    const targetId = foundUser.id || foundUser._id;
+                    if (targetId && adVal !== targetId) {
+                        changed = true;
+                        return targetId;
+                    }
+                }
+                return adVal;
+            });
+            if (changed) {
+                setFormData(prev => ({ ...prev, admin: updatedAdmin }));
+            }
+        }
+    }, [users, formData.admin]);
+
+    const handleChange = (field: keyof CreateVMDetailsPayload, value: any) => {
         setFormData(prev => {
             const next = { ...prev, [field]: value };
             if (field === 'admin') {
-                const u = users.find(u => u._id === value || u.id === value);
-                if (u) {
-                    next.adminName = [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || u.username;
-                    next.adminContact = u.mobile || u.phoneNumber || '';
-                }
+                const selectedIds = Array.isArray(value) ? value : [value];
+                const selectedUsers = users.filter(u => selectedIds.includes(u._id || u.id));
+                next.adminName = selectedUsers.map(u => [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || u.username).join(', ');
+                next.adminContact = selectedUsers.map(u => u.mobile || u.phoneNumber || '').filter(Boolean).join(', ');
             }
             return next;
         });
@@ -129,7 +148,12 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
             if (formData.addedToMonitoring !== editingItem.addedToMonitoring) changedData.addedToMonitoring = formData.addedToMonitoring;
             if (formData.adminName !== editingItem.adminName) changedData.adminName = formData.adminName;
             if (formData.adminContact !== editingItem.adminContact) changedData.adminContact = formData.adminContact;
-            if (formData.admin !== editingItem.admin) changedData.admin = formData.admin;
+            
+            const oldAdmin = Array.isArray(editingItem.admin) ? editingItem.admin : (editingItem.admin ? [editingItem.admin] : []);
+            const newAdmin = Array.isArray(formData.admin) ? formData.admin : (formData.admin ? [formData.admin] : []);
+            const adminChanged = oldAdmin.length !== newAdmin.length || oldAdmin.some((val, idx) => val !== newAdmin[idx]);
+            if (adminChanged) changedData.admin = formData.admin;
+            
             if (formData.powerStatus !== editingItem.powerStatus) changedData.powerStatus = formData.powerStatus;
             onSubmit(changedData);
         } else {
@@ -221,6 +245,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         size="small"
                         fullWidth
                         searchable
+                        multiple
                         value={formData.admin} 
                         onChange={(val) => handleChange('admin', val)} 
                         options={users.map(u => ({ label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username, value: u._id || u.id }))}
