@@ -1,4 +1,5 @@
 
+in nodes page,give server model filter,admin filter,rack filter,search by all fields.
 
 
 

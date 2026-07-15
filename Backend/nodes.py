@@ -54,6 +54,9 @@ async def list_items(
     pagination: bool = Query(True),
     search: Optional[str] = None,
     clusterId: Optional[str] = Query(None),
+    serverModel: Optional[str] = Query(None),
+    admin: Optional[str] = Query(None),
+    rack: Optional[str] = Query(None),
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
     order: str = Query("asc"),
@@ -77,6 +80,17 @@ async def list_items(
     if clusterId:
         query["clusterId"] = clusterId
     
+    if serverModel:
+        query["serverModel"] = serverModel
+    
+    if admin:
+        if "admin" not in query:
+            query["admin"] = {"$in": [admin]}
+        # If admin filter is already set by permission scope, intersect with the requested admin
+    
+    if rack:
+        query["rack"] = rack
+    
     if search:
         query["$or"] = [
             {"node": {"$regex": search, "$options": "i"}},
@@ -84,7 +98,11 @@ async def list_items(
             {"custodian": {"$regex": search, "$options": "i"}},
             {"admin": {"$regex": search, "$options": "i"}},
             {"assetNumber": {"$regex": search, "$options": "i"}},
-            {"serialNumber": {"$regex": search, "$options": "i"}}
+            {"serialNumber": {"$regex": search, "$options": "i"}},
+            {"serverModel": {"$regex": search, "$options": "i"}},
+            {"rack": {"$regex": search, "$options": "i"}},
+            {"rackPosition": {"$regex": search, "$options": "i"}},
+            {"remarks": {"$regex": search, "$options": "i"}}
         ]
 
     actual_sort_by = sortBy or sort_by or "node"

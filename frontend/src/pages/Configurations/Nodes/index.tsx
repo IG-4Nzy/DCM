@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Box, Paper, Tooltip, IconButton, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import Button from '../../../components/Button';
@@ -28,6 +28,9 @@ const Nodes = () => {
     const [loading, setLoading] = useState(false);
     const [clusters, setClusters] = useState<any[]>([]);
     const [usersMap, setUsersMap] = useState<Record<string, string>>({});
+    const [nodeAdminIds, setNodeAdminIds] = useState<Set<string>>(new Set());
+    const [serverModelsList, setServerModelsList] = useState<string[]>([]);
+    const [racksList, setRacksList] = useState<string[]>([]);
 
     useEffect(() => {
         fetchClusters({ pagination: false })
@@ -38,7 +41,8 @@ const Nodes = () => {
     useEffect(() => {
         request.get('/api/users/', { params: { pagination: false } }).then(res => {
             const map: Record<string, string> = {};
-            res.data.data.forEach((u: any) => {
+            const list = res.data.data || [];
+            list.forEach((u: any) => {
                 const fullName = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
                 const displayName = fullName || u.username;
                 if (u._id) map[u._id] = displayName;
@@ -47,6 +51,32 @@ const Nodes = () => {
             });
             setUsersMap(map);
         }).catch(err => console.error("Failed to load users:", err));
+    }, []);
+
+    // Fetch all nodes (lightweight) to extract unique admin IDs for the filter
+    const loadNodeAdminIds = useCallback(() => {
+        fetchNodes({ pagination: false }).then(res => {
+            const ids = new Set<string>();
+            (res.data || []).forEach((n: any) => {
+                const admins = Array.isArray(n.admin) ? n.admin : (n.admin ? [n.admin] : []);
+                admins.forEach((a: string) => ids.add(a));
+            });
+            setNodeAdminIds(ids);
+        }).catch(err => console.error("Failed to load node admin IDs:", err));
+    }, []);
+
+    useEffect(() => {
+        request.get('/api/server-models/', { params: { pagination: false } }).then(res => {
+            const models = (res.data.data || []).map((m: any) => m.serverModel).filter(Boolean).sort();
+            setServerModelsList(models);
+        }).catch(err => console.error("Failed to load server models:", err));
+    }, []);
+
+    useEffect(() => {
+        request.get('/api/server-racks/', { params: { pagination: false } }).then(res => {
+            const racks = (res.data.data || []).map((r: any) => r.serverRack).filter(Boolean).sort();
+            setRacksList(racks);
+        }).catch(err => console.error("Failed to load racks:", err));
     }, []);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -65,6 +95,9 @@ const Nodes = () => {
 
     const [searchQuery, setSearchQuery] = useTableState('Nodes_search', '');
     const [clusterFilter, setClusterFilter] = useTableState('Nodes_clusterFilter', '');
+    const [serverModelFilter, setServerModelFilter] = useTableState('Nodes_serverModelFilter', '');
+    const [adminFilter, setAdminFilter] = useTableState('Nodes_adminFilter', '');
+    const [rackFilter, setRackFilter] = useTableState('Nodes_rackFilter', '');
     const [page, setPage] = useTableState('Nodes_page', 0);
     const [rowsPerPage, setRowsPerPage] = useTableState('Nodes_rowsPerPage', 5);
     const [order, setOrder] = useTableState<Order>('Nodes_order', 'asc');
@@ -80,6 +113,9 @@ const Nodes = () => {
                 order,
                 search: searchQuery,
                 clusterId: clusterFilter || undefined,
+                serverModel: serverModelFilter || undefined,
+                admin: adminFilter || undefined,
+                rack: rackFilter || undefined,
                 pagination: true
             });
             setData(result.data);
@@ -95,7 +131,7 @@ const Nodes = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, rowsPerPage, orderBy, order, searchQuery, clusterFilter, showToast, isViewOpen, selectedViewItem]);
+    }, [page, rowsPerPage, orderBy, order, searchQuery, clusterFilter, serverModelFilter, adminFilter, rackFilter, showToast, isViewOpen, selectedViewItem]);
 
     useEffect(() => {
         loadData();
@@ -184,6 +220,16 @@ const Nodes = () => {
         { id: 'assetNumber', label: 'Asset Number', sortable: true, render: (row) => row.assetNumber || '-' },
         { id: 'custodian', label: 'Custodian', sortable: true, render: (row) => row.custodian || '-' },
         { 
+            id: 'admin',
+            label: 'Admin',
+            sortable: true,
+            render: (row) => {
+                if (!row.admin) return '-';
+                const adminArr = Array.isArray(row.admin) ? row.admin : [row.admin];
+                return adminArr.map(a => usersMap[a] || a).join(', ') || '-';
+            }
+        },
+        { 
             id: 'totalRam', 
             label: 'Total RAM', 
             sortable: true,
@@ -249,21 +295,62 @@ const Nodes = () => {
         });
     }
 
+    const filterSelectSx = { minWidth: 160, bgcolor: 'white', '& .MuiOutlinedInput-root': { borderRadius: '8px' } };
+
     return (
         <Box sx={{ mt: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
                 <Box sx={{ flexGrow: 1 }} />
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                    <FormControl size="small" sx={{ minWidth: 200, bgcolor: 'white', '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}>
-                        <InputLabel>Filter by Cluster</InputLabel>
+                    <FormControl size="small" sx={filterSelectSx}>
+                        <InputLabel>Cluster</InputLabel>
                         <Select
                             value={clusterFilter}
-                            label="Filter by Cluster"
+                            label="Cluster"
                             onChange={(e) => { setClusterFilter(e.target.value); setPage(0); }}
                         >
                             <MenuItem value="">All Clusters</MenuItem>
                             {clusters.map(c => (
                                 <MenuItem key={c.id} value={c.id}>{c.clusterName}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={filterSelectSx}>
+                        <InputLabel>Server Model</InputLabel>
+                        <Select
+                            value={serverModelFilter}
+                            label="Server Model"
+                            onChange={(e) => { setServerModelFilter(e.target.value); setPage(0); }}
+                        >
+                            <MenuItem value="">All Models</MenuItem>
+                            {serverModelsList.map(m => (
+                                <MenuItem key={m} value={m}>{m}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={filterSelectSx}>
+                        <InputLabel>Admin</InputLabel>
+                        <Select
+                            value={adminFilter}
+                            label="Admin"
+                            onChange={(e) => { setAdminFilter(e.target.value); setPage(0); }}
+                        >
+                            <MenuItem value="">All Admins</MenuItem>
+                            {Array.from(nodeAdminIds).sort((a, b) => (usersMap[a] || a).localeCompare(usersMap[b] || b)).map(adminId => (
+                                <MenuItem key={adminId} value={adminId}>{usersMap[adminId] || adminId}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={filterSelectSx}>
+                        <InputLabel>Rack</InputLabel>
+                        <Select
+                            value={rackFilter}
+                            label="Rack"
+                            onChange={(e) => { setRackFilter(e.target.value); setPage(0); }}
+                        >
+                            <MenuItem value="">All Racks</MenuItem>
+                            {racksList.map(r => (
+                                <MenuItem key={r} value={r}>{r}</MenuItem>
                             ))}
                         </Select>
                     </FormControl>
