@@ -25,3 +25,9 @@ export const fetchAllNodes = async () => {
     const response = await request.get('/api/nodes/', { params: { pagination: false } });
     return response.data.data;
 };
+
+export const fetchVMHistory = async (id: string) => {
+    const response = await request.get(`/api/vm-details/${id}/history`);
+    return response.data;
+};
+

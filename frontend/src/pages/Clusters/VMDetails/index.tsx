@@ -14,6 +14,7 @@ import { fetchVMDetails, createVMDetails, updateVMDetails, deleteVMDetails } fro
 import { fetchClusters } from '../action';
 import { type VMDetailsData } from './model';
 import VMDetailsModal from './VMDetailsModal';
+import VMHistoryModal from './VMHistoryModal';
 import styles from './index.module.scss';
 
 interface VMDetailsProps {
@@ -30,6 +31,9 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<VMDetailsData | null>(null);
+
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [selectedHistoryVm, setSelectedHistoryVm] = useState<VMDetailsData | null>(null);
 
     const { showToast } = useToast();
     const { confirm } = useConfirm();
@@ -91,6 +95,16 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingItem(null);
+    };
+
+    const handleOpenHistoryModal = (item: VMDetailsData) => {
+        setSelectedHistoryVm(item);
+        setIsHistoryModalOpen(true);
+    };
+
+    const handleCloseHistoryModal = () => {
+        setIsHistoryModalOpen(false);
+        setSelectedHistoryVm(null);
     };
 
     const handleSubmit = async (formData: any) => {
@@ -210,7 +224,12 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                                 </TableRow>
                             ) : (
                                 data.map((row) => (
-                                    <TableRow key={row.id} hover>
+                                    <TableRow 
+                                        key={row.id} 
+                                        hover 
+                                        onClick={() => handleOpenHistoryModal(row)} 
+                                        sx={{ cursor: 'pointer' }}
+                                    >
                                         <TableCell className={styles.tableWrapper__cell} sx={{ fontWeight: 600, color: '#1565c0' }}>{row.vmId || '--'}</TableCell>
                                         {!clusterId && (
                                             <TableCell className={styles.tableWrapper__cell}>{getClusterName(row.clusterId || '')}</TableCell>
@@ -235,7 +254,7 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                                         <TableCell className={styles.tableWrapper__cell}>{row.ram || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.cpu || '--'}</TableCell>
                                         {(hasUpdate || hasDelete) && (
-                                            <TableCell align="right">
+                                            <TableCell align="right" onClick={(e) => e.stopPropagation()}>
                                                 <Box className={styles.tableWrapper__actions}>
                                                     {hasUpdate && (
                                                         <Tooltip title="Edit">
@@ -255,6 +274,7 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                                             </TableCell>
                                         )}
                                     </TableRow>
+
                                 ))
                             )}
                         </TableBody>
@@ -280,6 +300,12 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                 onSubmit={handleSubmit}
                 editingItem={editingItem}
                 clusterId={clusterId}
+            />
+
+            <VMHistoryModal
+                open={isHistoryModalOpen}
+                onClose={handleCloseHistoryModal}
+                vm={selectedHistoryVm}
             />
         </Box>
     );

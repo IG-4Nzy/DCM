@@ -66,7 +66,7 @@ export const bulkCreateInventory = createAsyncThunk(
 
 export const giveInventoryItem = createAsyncThunk(
   'inventory/giveInventoryItem',
-  async ({ id, data }: { id: string; data: { givenTo: string; date: string } }, { rejectWithValue }) => {
+  async ({ id, data }: { id: string; data: { givenTo: string; date: string; quantity?: number } }, { rejectWithValue }) => {
     try {
       const response = await request.put(`/api/inventory/${id}/give`, data);
       return response.data;

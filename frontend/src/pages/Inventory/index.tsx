@@ -153,6 +153,7 @@ const Inventory: React.FC = () => {
 
   const columns: Column<InventoryData>[] = [
     { id: 'itemName', label: 'Item Name', sortable: true },
+    { id: 'department', label: 'Department', sortable: true },
     { id: 'almiraNumber', label: 'Almira Number', sortable: true },
     { id: 'rackNumber', label: 'Rack Number', sortable: true },
     { 
@@ -162,8 +163,8 @@ const Inventory: React.FC = () => {
       render: (row: InventoryData) => {
         if (row.isReturnable) {
           const out = row.currentHolders?.length || 0;
-          const avail = row.quantity - out;
-          return `${avail} / ${row.quantity} Available`;
+          const total = row.quantity + out;
+          return `${row.quantity} / ${total} Available`;
         }
         return row.quantity;
       }
@@ -177,10 +178,9 @@ const Inventory: React.FC = () => {
       sortable: false,
       render: (row: InventoryData) => {
         const out = row.currentHolders?.length || 0;
-        const avail = row.quantity - out;
         if (out === 0) {
           return <Chip label="In Stock" color="success" size="small" variant="outlined" />;
-        } else if (avail === 0) {
+        } else if (row.quantity === 0) {
           return <Chip label="All Checked Out" color="error" size="small" />;
         } else {
           return <Chip label={`${out} Out`} color="warning" size="small" />;

@@ -529,6 +529,8 @@ class EditInventoryModel(BaseModel):
 class InventoryGiveModel(BaseModel):
     givenTo: str
     date: str
+    quantity: int = 1
+
 
 class InventoryReturnModel(BaseModel):
     holderId: str

@@ -21,6 +21,7 @@ export interface InventoryData {
   itemName: string;
   quantity: number;
   description?: string;
+  department?: string;
   lastUpdatedDate: string;
   lastUpdatedBy: string;
   history: InventoryHistory[];

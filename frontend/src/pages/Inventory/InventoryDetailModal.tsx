@@ -73,6 +73,7 @@ const InventoryDetailModal: React.FC<PropType> = ({
   const [activeTab, setActiveTab] = useState<'status' | 'history'>('status');
   const [givenTo, setGivenTo] = useState('');
   const [giveDate, setGiveDate] = useState(getLocalDatetime());
+  const [giveQuantity, setGiveQuantity] = useState(1);
   const [returningHolderId, setReturningHolderId] = useState<string | null>(null);
   const [returnDate, setReturnDate] = useState(getLocalDatetime());
 
@@ -83,13 +84,18 @@ const InventoryDetailModal: React.FC<PropType> = ({
       showToast('Please specify who the item is being given to', 'error');
       return;
     }
+    if (giveQuantity <= 0 || giveQuantity > item.quantity) {
+      showToast('Invalid quantity specified', 'error');
+      return;
+    }
     const result = await dispatch(giveInventoryItem({
       id: (item.id || item._id) as string,
-      data: { givenTo: givenTo.trim(), date: giveDate }
+      data: { givenTo: givenTo.trim(), date: giveDate, quantity: giveQuantity }
     }));
     if (giveInventoryItem.fulfilled.match(result)) {
-      showToast(`Successfully checked out item to ${givenTo}`, 'success');
+      showToast(`Successfully checked out ${giveQuantity} item(s) to ${givenTo}`, 'success');
       setGivenTo('');
+      setGiveQuantity(1);
       setGiveDate(getLocalDatetime());
     } else {
       showToast((result.payload as string) || 'Failed to check out item', 'error');
@@ -178,7 +184,7 @@ const InventoryDetailModal: React.FC<PropType> = ({
   };
 
   const totalHoldersCount = item.currentHolders?.length || 0;
-  const availableQuantity = item.quantity - totalHoldersCount;
+  const availableQuantity = item.quantity;
 
   return (
     <Modal open={isModalOpen} handleClose={handleCloseModal} title={`Inventory: ${item.itemName}`}>
@@ -189,7 +195,7 @@ const InventoryDetailModal: React.FC<PropType> = ({
             Total Stock Quantity
           </Typography>
           <Typography variant="h6" sx={{ fontWeight: "bold", fontSize: "1.5rem" }} color="primary.main">
-            {item.quantity}
+            {item.isReturnable ? (item.quantity + totalHoldersCount) : item.quantity}
           </Typography>
         </Box>
 
@@ -240,7 +246,7 @@ const InventoryDetailModal: React.FC<PropType> = ({
           <Typography variant="body2" color="text.secondary">By {getUserFullName(item.lastUpdatedBy)}</Typography>
         </Box>
 
-        {!item.isReturnable && hasUpdatePrivilege && (
+        {hasUpdatePrivilege && (
           <Box sx={{ ml: 'auto' }}>
             <Button 
               variant={showUpdateForm ? "outlined" : "contained"} 
@@ -266,32 +272,35 @@ const InventoryDetailModal: React.FC<PropType> = ({
 
       {/* Tab Panel 1: Status & Actions */}
       {activeTab === 'status' && (
-        <Box>
-          {!item.isReturnable ? (
-            /* Non-returnable Update Stock Form */
-            hasUpdatePrivilege && showUpdateForm ? (
-              <Paper elevation={0} sx={{ p: 2.5, mb: 4, bgcolor: 'background.default', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-                <Typography variant="subtitle2" fontWeight="600" mb={2} color="text.primary">Record Stock Change</Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {/* Give Item form for EVERY item */}
+          {hasUpdatePrivilege && (
+            <Paper elevation={0} sx={{ p: 2.5, bgcolor: 'background.default', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="subtitle2" fontWeight="600" mb={2} color="text.primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <GiveIcon color="#ed6c02" /> Give Item (Check-out / Dispatch)
+              </Typography>
+              {item.quantity <= 0 ? (
+                <Typography variant="body2" color="error" sx={{ fontStyle: 'italic' }}>
+                  No stock quantity currently available to give out.
+                </Typography>
+              ) : (
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <FormControl size="small" sx={{ minWidth: 150 }}>
-                    <InputLabel>Action</InputLabel>
-                    <Select
-                      value={actionType}
-                      label="Action"
-                      onChange={(e) => setActionType(e.target.value as any)}
-                    >
-                      <MenuItem value="add">Add Stock</MenuItem>
-                      <MenuItem value="subtract">Subtract Stock</MenuItem>
-                    </Select>
-                  </FormControl>
-                  
+                  <TextField
+                    label="Given To (Receiver Name)"
+                    size="small"
+                    value={givenTo}
+                    onChange={(e) => setGivenTo(e.target.value)}
+                    sx={{ minWidth: 200 }}
+                    required
+                  />
+
                   <TextField
                     type="number"
                     label="Quantity"
                     size="small"
-                    value={quantity}
-                    onChange={(e) => setQuantity(Number(e.target.value))}
-                    slotProps={{ htmlInput: { min: 1 } }}
+                    value={giveQuantity}
+                    onChange={(e) => setGiveQuantity(Math.max(1, Number(e.target.value)))}
+                    slotProps={{ htmlInput: { min: 1, max: item.quantity } }}
                     sx={{ width: 100 }}
                   />
 
@@ -299,173 +308,173 @@ const InventoryDetailModal: React.FC<PropType> = ({
                     type="datetime-local"
                     label="Date & Time"
                     size="small"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
+                    value={giveDate}
+                    onChange={(e) => setGiveDate(e.target.value)}
                     slotProps={{ inputLabel: { shrink: true } }}
                   />
 
-                  <Tooltip title="Submit Update">
-                    <span>
-                      <IconButton 
-                        color="primary" 
-                        onClick={handleUpdate}
-                        sx={{ bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' }, width: 40, height: 40 }}
-                        disabled={quantity <= 0 || (actionType !== 'add' && quantity > item.quantity)}
-                      >
-                        <CheckIcon />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
+                  <Button
+                    variant="contained"
+                    color="warning"
+                    onClick={handleGiveItemSubmit}
+                    disabled={!givenTo.trim() || giveQuantity <= 0 || giveQuantity > item.quantity}
+                    sx={{ height: 40, textTransform: 'none', borderRadius: 2 }}
+                    startIcon={<GiveIcon />}
+                  >
+                    Give Item
+                  </Button>
                 </Box>
-              </Paper>
-            ) : (
-              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                Click "Update Stock" above to add or remove quantity.
-              </Typography>
-            )
-          ) : (
-            /* Returnable Item Status & Actions */
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {/* checkout form */}
-              {hasUpdatePrivilege && (
-                <Paper elevation={0} sx={{ p: 2.5, bgcolor: 'background.default', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-                  <Typography variant="subtitle2" fontWeight="600" mb={2} color="text.primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <GiveIcon color="#ed6c02" /> Give Item (Check-out)
-                  </Typography>
-                  {availableQuantity <= 0 ? (
-                    <Typography variant="body2" color="error" sx={{ fontStyle: 'italic' }}>
-                      All stock quantity currently given out. Increase total stock or return items first.
-                    </Typography>
-                  ) : (
-                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <TextField
-                        label="Given To (Receiver Name)"
-                        size="small"
-                        value={givenTo}
-                        onChange={(e) => setGivenTo(e.target.value)}
-                        sx={{ minWidth: 200 }}
-                        required
-                      />
-
-                      <TextField
-                        type="datetime-local"
-                        label="Date & Time"
-                        size="small"
-                        value={giveDate}
-                        onChange={(e) => setGiveDate(e.target.value)}
-                        slotProps={{ inputLabel: { shrink: true } }}
-                      />
-
-                      <Button
-                        variant="contained"
-                        color="warning"
-                        onClick={handleGiveItemSubmit}
-                        disabled={!givenTo.trim()}
-                        sx={{ height: 40, textTransform: 'none', borderRadius: 2 }}
-                        startIcon={<GiveIcon />}
-                      >
-                        Give Item
-                      </Button>
-                    </Box>
-                  )}
-                </Paper>
               )}
+            </Paper>
+          )}
 
-              {/* current holders section */}
-              <Box>
-                <Typography variant="subtitle1" fontWeight="bold" mb={2} color="text.primary">
-                  Current Holders (Checked Out Items)
+          {/* Current Holders list (only for Returnable items) */}
+          {item.isReturnable && (
+            <Box>
+              <Typography variant="subtitle1" fontWeight="bold" mb={2} color="text.primary">
+                Current Holders (Checked Out Items)
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+
+              {(!item.currentHolders || item.currentHolders.length === 0) ? (
+                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                  No active checkouts. All items are currently in stock.
                 </Typography>
-                <Divider sx={{ mb: 2 }} />
-
-                {(!item.currentHolders || item.currentHolders.length === 0) ? (
-                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                    No active checkouts. All items are currently in stock.
-                  </Typography>
-                ) : (
-                  <List sx={{ bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider', p: 0 }}>
-                    {item.currentHolders.map((holder, idx) => (
-                      <ListItem
-                        key={holder.id}
-                        divider={idx !== item.currentHolders!.length - 1}
-                        sx={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          flexWrap: 'wrap',
-                          gap: 2,
-                          py: 1.5,
-                          px: 2
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Avatar sx={{ bgcolor: 'warning.light' }}>
-                            <GiveIcon />
-                          </Avatar>
-                          <Box>
-                            <Typography variant="body2" fontWeight="600">
-                              {holder.givenTo}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >
-                              Checked out: {formatDate(holder.givenDate)} (by {getUserFullName(holder.givenBy)})
-                            </Typography>
-                          </Box>
+              ) : (
+                <List sx={{ bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider', p: 0 }}>
+                  {item.currentHolders.map((holder, idx) => (
+                    <ListItem
+                      key={holder.id}
+                      divider={idx !== item.currentHolders!.length - 1}
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: 2,
+                        py: 1.5,
+                        px: 2
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Avatar sx={{ bgcolor: 'warning.light' }}>
+                          <GiveIcon />
+                        </Avatar>
+                        <Box>
+                          <Typography variant="body2" fontWeight="600">
+                            {holder.givenTo}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                            Checked out: {formatDate(holder.givenDate)} (by {getUserFullName(holder.givenBy)})
+                          </Typography>
                         </Box>
+                      </Box>
 
-                        {hasUpdatePrivilege && (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            {returningHolderId === holder.id ? (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-                                <TextField
-                                  type="datetime-local"
-                                  label="Return Date & Time"
-                                  size="small"
-                                  value={returnDate}
-                                  onChange={(e) => setReturnDate(e.target.value)}
-                                  slotProps={{ inputLabel: { shrink: true } }}
-                                />
-                                <Button
-                                  variant="contained"
-                                  color="success"
-                                  size="small"
-                                  onClick={() => handleReturnItemSubmit(holder.id)}
-                                  sx={{ textTransform: 'none' }}
-                                >
-                                  Confirm Return
-                                </Button>
-                                <Button
-                                  variant="outlined"
-                                  color="inherit"
-                                  size="small"
-                                  onClick={() => setReturningHolderId(null)}
-                                  sx={{ textTransform: 'none' }}
-                                >
-                                  Cancel
-                                </Button>
-                              </Box>
-                            ) : (
+                      {hasUpdatePrivilege && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          {returningHolderId === holder.id ? (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                              <TextField
+                                type="datetime-local"
+                                label="Return Date & Time"
+                                size="small"
+                                value={returnDate}
+                                onChange={(e) => setReturnDate(e.target.value)}
+                                slotProps={{ inputLabel: { shrink: true } }}
+                              />
                               <Button
-                                variant="outlined"
+                                variant="contained"
                                 color="success"
                                 size="small"
-                                startIcon={<ReturnIcon />}
-                                onClick={() => {
-                                  setReturningHolderId(holder.id);
-                                  setReturnDate(getLocalDatetime());
-                                }}
-                                sx={{ textTransform: 'none', borderRadius: 2 }}
+                                onClick={() => handleReturnItemSubmit(holder.id)}
+                                sx={{ textTransform: 'none' }}
                               >
-                                Return Item
+                                Confirm Return
                               </Button>
-                            )}
-                          </Box>
-                        )}
-                      </ListItem>
-                    ))}
-                  </List>
-                )}
-              </Box>
+                              <Button
+                                variant="outlined"
+                                color="inherit"
+                                size="small"
+                                onClick={() => setReturningHolderId(null)}
+                                sx={{ textTransform: 'none' }}
+                              >
+                                Cancel
+                              </Button>
+                            </Box>
+                          ) : (
+                            <Button
+                              variant="outlined"
+                              color="success"
+                              size="small"
+                              startIcon={<ReturnIcon />}
+                              onClick={() => {
+                                setReturningHolderId(holder.id);
+                                setReturnDate(getLocalDatetime());
+                              }}
+                              sx={{ textTransform: 'none', borderRadius: 2 }}
+                            >
+                              Return Item
+                            </Button>
+                          )}
+                        </Box>
+                      )}
+                    </ListItem>
+                  ))}
+                </List>
+              )}
             </Box>
+          )}
+
+          {/* Update Stock Form (collapsible for all items) */}
+          {hasUpdatePrivilege && showUpdateForm && (
+            <Paper elevation={0} sx={{ p: 2.5, mb: 4, bgcolor: 'background.default', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="subtitle2" fontWeight="600" mb={2} color="text.primary">Record Stock Change</Typography>
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel>Action</InputLabel>
+                  <Select
+                    value={actionType}
+                    label="Action"
+                    onChange={(e) => setActionType(e.target.value as any)}
+                  >
+                    <MenuItem value="add">Add Stock</MenuItem>
+                    <MenuItem value="subtract">Subtract Stock</MenuItem>
+                  </Select>
+                </FormControl>
+                
+                <TextField
+                  type="number"
+                  label="Quantity"
+                  size="small"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Number(e.target.value))}
+                  slotProps={{ htmlInput: { min: 1 } }}
+                  sx={{ width: 100 }}
+                />
+
+                <TextField
+                  type="datetime-local"
+                  label="Date & Time"
+                  size="small"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                />
+
+                <Tooltip title="Submit Update">
+                  <span>
+                    <IconButton 
+                      color="primary" 
+                      onClick={handleUpdate}
+                      sx={{ bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' }, width: 40, height: 40 }}
+                      disabled={quantity <= 0 || (actionType !== 'add' && quantity > item.quantity)}
+                    >
+                      <CheckIcon />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              </Box>
+            </Paper>
           )}
         </Box>
       )}

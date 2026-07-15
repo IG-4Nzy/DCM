@@ -220,6 +220,117 @@ async def update_item(id: str, payload: UpdateVMDetailsModel = Body(...)):
 
     raise HTTPException(status_code=404, detail="VM Details not found")
 
+@router.get("/{id}/history", dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details", "VM View", "View Request"]))])
+async def get_vm_history(id: str):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    vm = await collection.find_one({"_id": ObjectId(id)})
+    if not vm:
+        raise HTTPException(status_code=404, detail="VM Details not found")
+
+    vm_db_id = str(vm["_id"])
+    vm_id_field = vm.get("vmId")
+    vm_name = vm.get("applications")
+    vm_ip = vm.get("ipAddress")
+
+    match_conditions = []
+    if vm_db_id:
+        match_conditions.append({"details.vmId": vm_db_id})
+    if vm_id_field:
+        match_conditions.append({"details.vmId": vm_id_field})
+        match_conditions.append({"details.vmName": vm_id_field})
+    if vm_name:
+        match_conditions.append({"details.vmName": vm_name})
+        match_conditions.append({"details.applications": vm_name})
+    if vm_ip:
+        match_conditions.append({"details.ip": vm_ip})
+        match_conditions.append({"details.ipAddress": vm_ip})
+
+    if not match_conditions:
+        return {"history": []}
+
+    query = {
+        "requestType": {"$in": ["VM Creation", "VM Management"]},
+        "$or": match_conditions
+    }
+
+    requests_col = db.get_collection("requests")
+    cursor = requests_col.find(query)
+    requests_list = await cursor.to_list(length=None)
+
+    if not requests_list:
+        return {"history": []}
+
+    req_map = {str(r["_id"]): r for r in requests_list}
+    request_ids = list(req_map.keys())
+
+    logs_col = db.get_collection("request_logs")
+    logs_cursor = logs_col.find({"requestId": {"$in": request_ids}})
+    logs_list = await logs_cursor.to_list(length=None)
+
+    # Collect usernames to resolve full names
+    usernames = set()
+    for r in requests_list:
+        if r.get("createdBy"):
+            usernames.add(r["createdBy"])
+    for l in logs_list:
+        if l.get("user"):
+            usernames.add(l["user"])
+
+    users_col = db.get_collection("users")
+    user_map = {}
+    if usernames:
+        users = await users_col.find({"username": {"$in": list(usernames)}}).to_list(length=None)
+        for u in users:
+            name = f"{u.get('firstName', '')} {u.get('lastName', '')}".strip()
+            user_map[u.get("username")] = name or u.get("username")
+
+    history = []
+    for log in logs_list:
+        req_id = log.get("requestId")
+        req = req_map.get(req_id)
+        if not req:
+            continue
+
+        req_type = req.get("requestType") or req.get("category") or "VM Request"
+        req_seq_id = req.get("requestId") or "REQ"
+        
+        who_requested = user_map.get(req.get("createdBy"), req.get("createdBy"))
+        who_did = user_map.get(log.get("user"), log.get("user"))
+        what_did = log.get("action")
+        timestamp = log.get("timestamp")
+        
+        log_details = log.get("details") or ""
+        remarks = log.get("remarks")
+        if remarks:
+            log_details += f" (Remarks: {remarks})"
+
+        req_details = req.get("details") or {}
+        operation_type = req_details.get("operationType")
+        
+        op_info = ""
+        if req_type == "VM Management" and operation_type:
+            op_info = f" [{operation_type}"
+            if operation_type == "Migration" and req_details.get("migrationNode"):
+                op_info += f" to Node: {req_details.get('migrationNode')}"
+            elif operation_type == "Resource Upgrade":
+                op_info += f" (RAM: {req_details.get('newRam')}, HDD: {req_details.get('newHdd')}, CPU: {req_details.get('newCpu')})"
+            op_info += "]"
+
+        history.append({
+            "requestId": req_seq_id,
+            "requestType": f"{req_type}{op_info}",
+            "whoRequested": who_requested,
+            "whoDid": who_did,
+            "whatDid": what_did,
+            "time": timestamp,
+            "details": log_details
+        })
+
+    history.sort(key=lambda x: x.get("time") or "", reverse=True)
+    return {"history": history}
+
 @router.delete("/{id}", response_description="Delete VM details", dependencies=[Depends(require_privilege("Create Server Details"))])
 async def delete_item(id: str):
     if not ObjectId.is_valid(id):

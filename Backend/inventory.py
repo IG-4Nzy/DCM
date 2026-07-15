@@ -142,7 +142,10 @@ async def update_inventory(id: str, update_data: UpdateInventoryModel = Body(...
 
     is_superuser = current_user.get("isSuperuser", False)
     user_dept = current_user.get("department", "")
-    if not is_superuser and user_dept and existing_inv.get("department") != user_dept:
+    user_privileges = current_user.get("privileges", [])
+    has_view_all = "View All Inventory" in user_privileges
+
+    if not is_superuser and not has_view_all and user_dept and existing_inv.get("department") != user_dept:
         raise HTTPException(status_code=403, detail="Cannot update another department's inventory item")
 
     username = current_user.get("sub", "Unknown")
@@ -192,7 +195,10 @@ async def edit_inventory_item(id: str, edit_data: EditInventoryModel = Body(...)
 
     is_superuser = current_user.get("isSuperuser", False)
     user_dept = current_user.get("department", "")
-    if not is_superuser and user_dept and existing_inv.get("department") != user_dept:
+    user_privileges = current_user.get("privileges", [])
+    has_view_all = "View All Inventory" in user_privileges
+
+    if not is_superuser and not has_view_all and user_dept and existing_inv.get("department") != user_dept:
         raise HTTPException(status_code=403, detail="Cannot edit another department's inventory item")
 
     if edit_data.quantity < 0:
@@ -252,7 +258,10 @@ async def delete_inventory(id: str, current_user: dict = Depends(require_privile
 
     is_superuser = current_user.get("isSuperuser", False)
     user_dept = current_user.get("department", "")
-    if not is_superuser and user_dept and existing_inv.get("department") != user_dept:
+    user_privileges = current_user.get("privileges", [])
+    has_view_all = "View All Inventory" in user_privileges
+
+    if not is_superuser and not has_view_all and user_dept and existing_inv.get("department") != user_dept:
         raise HTTPException(status_code=403, detail="Cannot delete another department's inventory item")
 
     delete_result = await inventory_collection.delete_one({"_id": ObjectId(id)})
@@ -393,7 +402,7 @@ async def bulk_create_inventory(file: UploadFile = File(...), current_user: dict
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error parsing file: {str(e)}")
 
-@router.put("/{id}/give", response_description="Give returnable inventory item to user", response_model=InventoryModel, response_model_by_alias=False)
+@router.put("/{id}/give", response_description="Give inventory item to user", response_model=InventoryModel, response_model_by_alias=False)
 async def give_inventory_item(id: str, give_data: InventoryGiveModel = Body(...), current_user: dict = Depends(require_privilege("Update Inventory"))):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -402,50 +411,61 @@ async def give_inventory_item(id: str, give_data: InventoryGiveModel = Body(...)
     if existing_inv is None:
         raise HTTPException(status_code=404, detail=f"Item {id} not found")
 
-    if not existing_inv.get("isReturnable"):
-        raise HTTPException(status_code=400, detail="Item is not returnable")
+    is_superuser = current_user.get("isSuperuser", False)
+    user_dept = current_user.get("department", "")
+    user_privileges = current_user.get("privileges", [])
+    has_view_all = "View All Inventory" in user_privileges
 
-    current_holders = existing_inv.get("currentHolders", [])
+    if not is_superuser and not has_view_all and user_dept and existing_inv.get("department") != user_dept:
+        raise HTTPException(status_code=403, detail="Cannot update another department's inventory item")
+
     total_qty = existing_inv.get("quantity", 0)
-    
-    if len(current_holders) >= total_qty:
-        raise HTTPException(status_code=400, detail="Insufficient quantity available to give out")
+    give_qty = give_data.quantity if hasattr(give_data, "quantity") and give_data.quantity is not None else 1
+    if give_qty <= 0:
+        raise HTTPException(status_code=400, detail="Quantity to give must be greater than 0")
+
+    if total_qty < give_qty:
+        raise HTTPException(status_code=400, detail="Insufficient quantity available in inventory")
 
     username = current_user.get("sub", "Unknown")
-    session_id = str(ObjectId())
+    new_holders = []
     
-    new_holder = {
-        "id": session_id,
-        "givenTo": give_data.givenTo,
-        "givenDate": give_data.date,
-        "givenBy": username
-    }
-    
-    remaining_qty = total_qty - len(current_holders) - 1
+    if existing_inv.get("isReturnable"):
+        for _ in range(give_qty):
+            session_id = str(ObjectId())
+            new_holders.append({
+                "id": session_id,
+                "givenTo": give_data.givenTo,
+                "givenDate": give_data.date,
+                "givenBy": username
+            })
+
+    new_quantity = total_qty - give_qty
 
     history_entry = {
         "date": give_data.date,
         "action": "given",
-        "quantityChange": -1,
-        "remainingQuantity": remaining_qty,
+        "quantityChange": -give_qty,
+        "remainingQuantity": new_quantity,
         "user": username,
         "givenTo": give_data.givenTo
     }
 
-    await inventory_collection.update_one(
-        {"_id": ObjectId(id)},
-        {
-            "$push": {
-                "currentHolders": new_holder,
-                "history": history_entry
-            },
-            "$set": {
-                "lastUpdatedDate": give_data.date,
-                "lastUpdatedBy": username
-            }
+    update_query = {
+        "$set": {
+            "quantity": new_quantity,
+            "lastUpdatedDate": give_data.date,
+            "lastUpdatedBy": username
+        },
+        "$push": {
+            "history": history_entry
         }
-    )
+    }
 
+    if new_holders:
+        update_query["$push"]["currentHolders"] = {"$each": new_holders}
+
+    await inventory_collection.update_one({"_id": ObjectId(id)}, update_query)
     updated_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
     return updated_inv
 
@@ -458,6 +478,14 @@ async def return_inventory_item(id: str, return_data: InventoryReturnModel = Bod
     if existing_inv is None:
         raise HTTPException(status_code=404, detail=f"Item {id} not found")
 
+    is_superuser = current_user.get("isSuperuser", False)
+    user_dept = current_user.get("department", "")
+    user_privileges = current_user.get("privileges", [])
+    has_view_all = "View All Inventory" in user_privileges
+
+    if not is_superuser and not has_view_all and user_dept and existing_inv.get("department") != user_dept:
+        raise HTTPException(status_code=403, detail="Cannot update another department's inventory item")
+
     current_holders = existing_inv.get("currentHolders", [])
     holder = next((h for h in current_holders if h["id"] == return_data.holderId), None)
     if not holder:
@@ -465,14 +493,13 @@ async def return_inventory_item(id: str, return_data: InventoryReturnModel = Bod
 
     username = current_user.get("sub", "Unknown")
     total_qty = existing_inv.get("quantity", 0)
-    
-    remaining_qty = total_qty - len(current_holders) + 1
+    new_quantity = total_qty + 1
 
     history_entry = {
         "date": return_data.date,
         "action": "returned",
         "quantityChange": 1,
-        "remainingQuantity": remaining_qty,
+        "remainingQuantity": new_quantity,
         "user": username,
         "givenTo": holder["givenTo"]
     }
@@ -483,12 +510,13 @@ async def return_inventory_item(id: str, return_data: InventoryReturnModel = Bod
             "$pull": {
                 "currentHolders": {"id": return_data.holderId}
             },
-            "$push": {
-                "history": history_entry
-            },
             "$set": {
+                "quantity": new_quantity,
                 "lastUpdatedDate": return_data.date,
                 "lastUpdatedBy": username
+            },
+            "$push": {
+                "history": history_entry
             }
         }
     )

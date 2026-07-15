@@ -1,11 +1,5 @@
 
-in nodes page,give server model filter,admin filter,rack filter,search by all fields.
-
 remove cluster selection from add node modal and give nodes selection on cluster add and edit modal,also give migration script for the new change.
-
-when clicked on VM ,show detailed view modal and show history of logs - history of VM management requests (who requested,who did,what did,time,details).
-
-in inventory,for every item,give option to give item ,time,quantity,name and substract the total quantity.
 
 need to migrate inventory,currently showing error - cannot edit other department inventory.
 
