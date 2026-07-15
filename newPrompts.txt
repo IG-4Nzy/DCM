@@ -1,5 +1,5 @@
 
 remove cluster selection from add node modal and give nodes selection on cluster add and edit modal,also give migration script for the new change.
 
-need to migrate inventory,currently showing error - cannot edit other department inventory.
+i have changed the department to id from name in db for inventory.need to change the inventory page frontend and backend for adapt to it.
 
