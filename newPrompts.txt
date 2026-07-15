@@ -7,5 +7,5 @@ when clicked on VM ,show detailed view modal and show history of logs - history 
 
 in inventory,for every item,give option to give item ,time,quantity,name and substract the total quantity.
 
-
+need to migrate inventory,currently showing error - cannot edit other department inventory.
 
