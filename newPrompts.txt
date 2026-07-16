@@ -1,5 +1,4 @@
 
 remove cluster selection from add node modal and give nodes selection on cluster add and edit modal,also give migration script for the new change.
 
-i have changed the department to id from name in db for inventory.need to change the inventory page frontend and backend for adapt to it.
-
+when clicked on nodes,go to vm, when clicked on rack go to nodes

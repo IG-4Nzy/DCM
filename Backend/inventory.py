@@ -17,6 +17,42 @@ import csv
 router = APIRouter()
 inventory_collection = db.get_collection("inventory")
 
+def match_dept(dept1, dept2) -> bool:
+    if dept1 is None or dept2 is None:
+        return False
+    return str(dept1).strip() == str(dept2).strip()
+
+async def resolve_departments(items):
+    if items is None:
+        return items
+    is_list = isinstance(items, list)
+    docs = items if is_list else [items]
+    
+    dept_ids = []
+    for doc in docs:
+        d = doc.get("department")
+        if d:
+            if isinstance(d, ObjectId):
+                dept_ids.append(d)
+            elif ObjectId.is_valid(str(d)):
+                dept_ids.append(ObjectId(str(d)))
+                
+    if dept_ids:
+        departments_col = db.get_collection("departments")
+        depts = await departments_col.find({"_id": {"$in": dept_ids}}).to_list(length=None)
+        dept_map = {str(d["_id"]): d["name"] for d in depts}
+        
+        for doc in docs:
+            d = doc.get("department")
+            if d:
+                d_str = str(d)
+                if d_str in dept_map:
+                    doc["department"] = dept_map[d_str]
+                elif isinstance(d, ObjectId):
+                    doc["department"] = d_str
+                    
+    return docs if is_list else docs[0]
+
 @router.get("/", response_description="List all inventory items", response_model=PaginatedInventoryModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["View All Inventory", "View Department Inventory"]))])
 async def list_inventory(
     skip: int = Query(0, ge=0),
@@ -36,7 +72,11 @@ async def list_inventory(
     only_dept_scoped = not (is_superuser or "View All Inventory" in user_privileges)
 
     if only_dept_scoped:
-        query["department"] = current_user.get("department") or "None"
+        user_dept = current_user.get("department") or "None"
+        if ObjectId.is_valid(user_dept):
+            query["department"] = {"$in": [ObjectId(user_dept), user_dept]}
+        else:
+            query["department"] = user_dept
 
     if isReturnable is not None:
         if isReturnable:
@@ -48,20 +88,29 @@ async def list_inventory(
         terms = search.strip().split()
         if terms:
             term_queries = []
+            departments_col = db.get_collection("departments")
             for term in terms:
                 escaped_term = term.replace('\\', '\\\\')
-                term_queries.append({
-                    "$or": [
-                        {"itemName": {"$regex": escaped_term, "$options": "i"}},
-                        {"description": {"$regex": escaped_term, "$options": "i"}},
-                        {"lastUpdatedBy": {"$regex": escaped_term, "$options": "i"}},
-                        {"department": {"$regex": escaped_term, "$options": "i"}},
-                        {"almiraNumber": {"$regex": escaped_term, "$options": "i"}},
-                        {"rackNumber": {"$regex": escaped_term, "$options": "i"}},
-                        {"history.givenTo": {"$regex": escaped_term, "$options": "i"}},
-                        {"history.user": {"$regex": escaped_term, "$options": "i"}},
-                    ]
-                })
+                # Find matching department IDs
+                matching_depts = await departments_col.find({"name": {"$regex": escaped_term, "$options": "i"}}).to_list(length=None)
+                dept_ids = []
+                for d in matching_depts:
+                    dept_ids.append(d["_id"])
+                    dept_ids.append(str(d["_id"]))
+                
+                or_clause = [
+                    {"itemName": {"$regex": escaped_term, "$options": "i"}},
+                    {"description": {"$regex": escaped_term, "$options": "i"}},
+                    {"lastUpdatedBy": {"$regex": escaped_term, "$options": "i"}},
+                    {"department": {"$regex": escaped_term, "$options": "i"}},
+                    {"almiraNumber": {"$regex": escaped_term, "$options": "i"}},
+                    {"rackNumber": {"$regex": escaped_term, "$options": "i"}},
+                    {"history.givenTo": {"$regex": escaped_term, "$options": "i"}},
+                    {"history.user": {"$regex": escaped_term, "$options": "i"}},
+                ]
+                if dept_ids:
+                    or_clause.append({"department": {"$in": dept_ids}})
+                term_queries.append({"$or": or_clause})
             query["$and"] = term_queries
         
     actual_sort_by = sortBy or sort_by or "lastUpdatedDate"
@@ -75,12 +124,14 @@ async def list_inventory(
     else:
         items = await cursor.to_list(length=None)
             
+    items = await resolve_departments(items)
     return {"data": items, "total": total}
 
 @router.post("/", response_description="Create a new inventory item", response_model=InventoryModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False)
 async def create_inventory(item: CreateInventoryModel = Body(...), current_user: dict = Depends(require_privilege("Create Inventory"))):
     username = current_user.get("sub", "Unknown")
     user_dept = current_user.get("department", "General")
+    dept_val = ObjectId(user_dept) if ObjectId.is_valid(user_dept) else user_dept
     
     history_entry = {
         "date": item.date,
@@ -95,7 +146,7 @@ async def create_inventory(item: CreateInventoryModel = Body(...), current_user:
         "itemName": item.itemName,
         "quantity": item.quantity,
         "description": item.description,
-        "department": user_dept,
+        "department": dept_val,
         "lastUpdatedDate": item.date,
         "lastUpdatedBy": username,
         "history": [history_entry],
@@ -107,6 +158,7 @@ async def create_inventory(item: CreateInventoryModel = Body(...), current_user:
     
     new_inv = await inventory_collection.insert_one(inv_dict)
     created_inv = await inventory_collection.find_one({"_id": new_inv.inserted_id})
+    created_inv = await resolve_departments(created_inv)
     
     from notification_helper import log_page_update
     await log_page_update("inventory", department=user_dept, username=current_user.get("sub"))
@@ -126,9 +178,10 @@ async def show_inventory(id: str, current_user: dict = Depends(require_any_privi
     user_privileges = current_user.get("privileges", [])
     only_dept_scoped = not (is_superuser or "View All Inventory" in user_privileges)
 
-    if only_dept_scoped and inv.get("department") != current_user.get("department"):
+    if only_dept_scoped and not match_dept(inv.get("department"), current_user.get("department")):
         raise HTTPException(status_code=403, detail="Access denied to this department's inventory item")
 
+    inv = await resolve_departments(inv)
     return inv
 
 @router.put("/{id}", response_description="Update an inventory item", response_model=InventoryModel, response_model_by_alias=False)
@@ -145,7 +198,7 @@ async def update_inventory(id: str, update_data: UpdateInventoryModel = Body(...
     user_privileges = current_user.get("privileges", [])
     has_view_all = "View All Inventory" in user_privileges
 
-    if not is_superuser and not has_view_all and user_dept and existing_inv.get("department") != user_dept:
+    if not is_superuser and not has_view_all and user_dept and not match_dept(existing_inv.get("department"), user_dept):
         raise HTTPException(status_code=403, detail="Cannot update another department's inventory item")
 
     username = current_user.get("sub", "Unknown")
@@ -178,9 +231,10 @@ async def update_inventory(id: str, update_data: UpdateInventoryModel = Body(...
     )
 
     updated_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
+    updated_inv = await resolve_departments(updated_inv)
     
     from notification_helper import log_page_update
-    await log_page_update("inventory", department=updated_inv.get("department"), username=current_user.get("sub"))
+    await log_page_update("inventory", department=user_dept, username=current_user.get("sub"))
 
     return updated_inv
 
@@ -198,7 +252,7 @@ async def edit_inventory_item(id: str, edit_data: EditInventoryModel = Body(...)
     user_privileges = current_user.get("privileges", [])
     has_view_all = "View All Inventory" in user_privileges
 
-    if not is_superuser and not has_view_all and user_dept and existing_inv.get("department") != user_dept:
+    if not is_superuser and not has_view_all and user_dept and not match_dept(existing_inv.get("department"), user_dept):
         raise HTTPException(status_code=403, detail="Cannot edit another department's inventory item")
 
     if edit_data.quantity < 0:
@@ -241,9 +295,10 @@ async def edit_inventory_item(id: str, edit_data: EditInventoryModel = Body(...)
 
     await inventory_collection.update_one({"_id": ObjectId(id)}, update_query)
     updated_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
+    updated_inv = await resolve_departments(updated_inv)
 
     from notification_helper import log_page_update
-    await log_page_update("inventory", department=updated_inv.get("department"), username=current_user.get("sub"))
+    await log_page_update("inventory", department=user_dept, username=current_user.get("sub"))
 
     return updated_inv
 
@@ -261,7 +316,7 @@ async def delete_inventory(id: str, current_user: dict = Depends(require_privile
     user_privileges = current_user.get("privileges", [])
     has_view_all = "View All Inventory" in user_privileges
 
-    if not is_superuser and not has_view_all and user_dept and existing_inv.get("department") != user_dept:
+    if not is_superuser and not has_view_all and user_dept and not match_dept(existing_inv.get("department"), user_dept):
         raise HTTPException(status_code=403, detail="Cannot delete another department's inventory item")
 
     delete_result = await inventory_collection.delete_one({"_id": ObjectId(id)})
@@ -275,6 +330,7 @@ async def delete_inventory(id: str, current_user: dict = Depends(require_privile
 async def bulk_create_inventory(file: UploadFile = File(...), current_user: dict = Depends(require_privilege("Create Inventory"))):
     username = current_user.get("sub", "Unknown")
     user_dept = current_user.get("department", "General")
+    dept_val = ObjectId(user_dept) if ObjectId.is_valid(user_dept) else user_dept
     
     if not file.filename.endswith((".xlsx", ".csv")):
         raise HTTPException(status_code=400, detail="Only .xlsx or .csv files are supported")
@@ -321,7 +377,7 @@ async def bulk_create_inventory(file: UploadFile = File(...), current_user: dict
                     "itemName": str(name),
                     "quantity": qty_val,
                     "description": str(desc) if desc else "",
-                    "department": user_dept,
+                    "department": dept_val,
                     "lastUpdatedDate": current_time,
                     "lastUpdatedBy": username,
                     "history": [{
@@ -377,7 +433,7 @@ async def bulk_create_inventory(file: UploadFile = File(...), current_user: dict
                     "itemName": str(name),
                     "quantity": qty_val,
                     "description": str(desc) if desc else "",
-                    "department": user_dept,
+                    "department": dept_val,
                     "lastUpdatedDate": current_time,
                     "lastUpdatedBy": username,
                     "history": [{
@@ -416,7 +472,7 @@ async def give_inventory_item(id: str, give_data: InventoryGiveModel = Body(...)
     user_privileges = current_user.get("privileges", [])
     has_view_all = "View All Inventory" in user_privileges
 
-    if not is_superuser and not has_view_all and user_dept and existing_inv.get("department") != user_dept:
+    if not is_superuser and not has_view_all and user_dept and not match_dept(existing_inv.get("department"), user_dept):
         raise HTTPException(status_code=403, detail="Cannot update another department's inventory item")
 
     total_qty = existing_inv.get("quantity", 0)
@@ -467,6 +523,7 @@ async def give_inventory_item(id: str, give_data: InventoryGiveModel = Body(...)
 
     await inventory_collection.update_one({"_id": ObjectId(id)}, update_query)
     updated_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
+    updated_inv = await resolve_departments(updated_inv)
     return updated_inv
 
 @router.put("/{id}/return", response_description="Return a returnable inventory item", response_model=InventoryModel, response_model_by_alias=False)
@@ -483,7 +540,7 @@ async def return_inventory_item(id: str, return_data: InventoryReturnModel = Bod
     user_privileges = current_user.get("privileges", [])
     has_view_all = "View All Inventory" in user_privileges
 
-    if not is_superuser and not has_view_all and user_dept and existing_inv.get("department") != user_dept:
+    if not is_superuser and not has_view_all and user_dept and not match_dept(existing_inv.get("department"), user_dept):
         raise HTTPException(status_code=403, detail="Cannot update another department's inventory item")
 
     current_holders = existing_inv.get("currentHolders", [])
@@ -522,4 +579,5 @@ async def return_inventory_item(id: str, return_data: InventoryReturnModel = Bod
     )
 
     updated_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
+    updated_inv = await resolve_departments(updated_inv)
     return updated_inv
