@@ -12,6 +12,7 @@ import csv
 
 router = APIRouter()
 collection = db.get_collection("clusters")
+node_collection = db.get_collection("nodes")
 
 def parse_sl_number(value) -> int:
     if value is None:
@@ -25,7 +26,33 @@ def parse_sl_number(value) -> int:
         digits = "".join(c for c in value_str if c.isdigit())
         return int(digits) if digits else 0
 
-@router.get("/", response_description="List all clusters", response_model=PaginatedClustersModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details", "Cluster View", "Create Request", "Update Request", "View Request"]))])
+async def resolve_node_names(items):
+    """Resolve node IDs in clusters to node names for display, adding a nodeNames field."""
+    all_node_ids = set()
+    for item in items:
+        for nid in item.get("nodes", []):
+            if ObjectId.is_valid(nid):
+                all_node_ids.add(nid)
+
+    if not all_node_ids:
+        for item in items:
+            item["nodeNames"] = []
+        return items
+
+    # Batch fetch all referenced nodes
+    object_ids = [ObjectId(nid) for nid in all_node_ids]
+    nodes = await node_collection.find(
+        {"_id": {"$in": object_ids}},
+        {"node": 1}
+    ).to_list(length=None)
+    id_to_name = {str(n["_id"]): n.get("node", str(n["_id"])) for n in nodes}
+
+    for item in items:
+        item["nodeNames"] = [id_to_name.get(nid, nid) for nid in item.get("nodes", [])]
+
+    return items
+
+@router.get("/", response_description="List all clusters", response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details", "Cluster View", "Create Request", "Update Request", "View Request"]))])
 async def list_items(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),
@@ -89,6 +116,8 @@ async def list_items(
         else:
             items = await cursor.to_list(length=None)
 
+    items = await resolve_node_names(items)
+
     return {"data": items, "total": total}
 
 @router.post("/", response_description="Create cluster", response_model=ClusterModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
@@ -114,6 +143,18 @@ async def create_item(
 
     new_item = await collection.insert_one(item_dict)
     created = await collection.find_one({"_id": new_item.inserted_id})
+
+    # Sync clusterId on assigned nodes
+    node_ids = item_dict.get("nodes", [])
+    if node_ids:
+        cluster_id_str = str(new_item.inserted_id)
+        for nid in node_ids:
+            if ObjectId.is_valid(nid):
+                await node_collection.update_one(
+                    {"_id": ObjectId(nid)},
+                    {"$set": {"clusterId": cluster_id_str}}
+                )
+
     return created
 
 @router.put("/{id}", response_description="Update cluster", response_model=ClusterModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
@@ -130,6 +171,35 @@ async def update_item(id: str, payload: UpdateClusterModel = Body(...)):
         })
         if existing:
             raise HTTPException(status_code=400, detail=f"Cluster with name '{item_dict['clusterName']}' already exists")
+
+    # Sync clusterId on nodes if nodes list is being updated
+    if "nodes" in item_dict:
+        old_cluster = await collection.find_one({"_id": ObjectId(id)})
+        old_nodes = set(old_cluster.get("nodes", [])) if old_cluster else set()
+        new_nodes = set(item_dict.get("nodes", []))
+
+        # Nodes removed from this cluster: clear their clusterId
+        removed = old_nodes - new_nodes
+        for nid in removed:
+            if ObjectId.is_valid(nid):
+                await node_collection.update_one(
+                    {"_id": ObjectId(nid)},
+                    {"$set": {"clusterId": ""}}
+                )
+
+        # Nodes added to this cluster: set their clusterId
+        added = new_nodes - old_nodes
+        for nid in added:
+            if ObjectId.is_valid(nid):
+                # Remove from any other cluster's nodes list first
+                await collection.update_many(
+                    {"nodes": nid, "_id": {"$ne": ObjectId(id)}},
+                    {"$pull": {"nodes": nid}}
+                )
+                await node_collection.update_one(
+                    {"_id": ObjectId(nid)},
+                    {"$set": {"clusterId": id}}
+                )
 
     if len(item_dict) >= 1:
         item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
@@ -151,6 +221,16 @@ async def update_item(id: str, payload: UpdateClusterModel = Body(...)):
 async def delete_item(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    # Clear clusterId from nodes that belong to this cluster
+    cluster_doc = await collection.find_one({"_id": ObjectId(id)})
+    if cluster_doc:
+        for nid in cluster_doc.get("nodes", []):
+            if ObjectId.is_valid(nid):
+                await node_collection.update_one(
+                    {"_id": ObjectId(nid)},
+                    {"$set": {"clusterId": ""}}
+                )
 
     delete_result = await collection.delete_one({"_id": ObjectId(id)})
 

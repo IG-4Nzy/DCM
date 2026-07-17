@@ -1,4 +1,14 @@
 
 remove cluster selection from add node modal and give nodes selection on cluster add and edit modal,also give migration script for the new change.
 
-when clicked on nodes,go to vm, when clicked on rack go to nodes
+continue
+
+
+time validation in visitor log  entry and exit time -> should allow to add all times of that current day,dont allow previous day. 
+
+node id should store as 011,012,013....
+
+give download options for attachments in work .
+
+if clicked on my vms or my servers in dashboard,show only that user's servers and vms.
+

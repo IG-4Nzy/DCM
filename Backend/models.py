@@ -844,6 +844,7 @@ class ClusterModel(BaseModel):
     ipAddress: Optional[str] = None
     racks: List[str] = Field(default_factory=list)
     clusterType: Optional[str] = None
+    nodes: List[str] = Field(default_factory=list)
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -855,12 +856,14 @@ class CreateClusterModel(BaseModel):
     ipAddress: Optional[str] = None
     racks: Optional[List[str]] = Field(default_factory=list)
     clusterType: Optional[str] = None
+    nodes: Optional[List[str]] = Field(default_factory=list)
 
 class UpdateClusterModel(BaseModel):
     clusterName: Optional[str] = None
     ipAddress: Optional[str] = None
     racks: Optional[List[str]] = None
     clusterType: Optional[str] = None
+    nodes: Optional[List[str]] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

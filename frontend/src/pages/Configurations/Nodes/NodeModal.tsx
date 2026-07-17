@@ -7,7 +7,6 @@ import Dropdown from '../../../components/Dropdown';
 import Button from '../../../components/Button';
 import { type NodeData, type CreateNodePayload, type UpdateNodePayload } from './model';
 import { fetchServerRacks } from '../Racks/action';
-import { fetchClusters } from '../../Clusters/action';
 import { fetchServerModels } from '../ServerModels/action';
 import request from '../../../services/request';
 
@@ -27,7 +26,6 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
     const [rack, setRack] = useState('');
     const [rackPosition, setRackPosition] = useState('');
     const [rackUnits, setRackUnits] = useState('');
-    const [clusterId, setClusterId] = useState('');
     const [serverModel, setServerModel] = useState('');
     const [serialNumber, setSerialNumber] = useState('');
     const [custodian, setCustodian] = useState('');
@@ -36,7 +34,6 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
     const [raidConfiguration, setRaidConfiguration] = useState<string[]>([]);
     
     const [racks, setRacks] = useState<any[]>([]);
-    const [clusters, setClusters] = useState<any[]>([]);
     const [serverModels, setServerModels] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
 
@@ -45,9 +42,6 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
             fetchServerRacks({ pagination: false })
                 .then(res => setRacks(res.data || []))
                 .catch(err => console.error("Failed to fetch server racks", err));
-            fetchClusters({ pagination: false })
-                .then(res => setClusters(res.data || []))
-                .catch(err => console.error("Failed to fetch clusters", err));
             fetchServerModels({ pagination: false })
                 .then(res => setServerModels(res.data || []))
                 .catch(err => console.error("Failed to fetch server models", err));
@@ -68,7 +62,6 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setRack(editingItem.rack || '');
                 setRackPosition(editingItem.rackPosition || '');
                 setRackUnits(editingItem.rackUnits !== undefined && editingItem.rackUnits !== null ? String(editingItem.rackUnits) : '');
-                setClusterId(editingItem.clusterId || '');
                 setServerModel(editingItem.serverModel || '');
                 setSerialNumber(editingItem.serialNumber || '');
                 setCustodian(editingItem.custodian || '');
@@ -88,7 +81,6 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setRack('');
                 setRackPosition('');
                 setRackUnits('');
-                setClusterId('');
                 setServerModel('');
                 setSerialNumber('');
                 setCustodian('');
@@ -139,7 +131,6 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
             rack: rack || undefined,
             rackPosition: rackPosition || undefined,
             rackUnits: rackUnits.trim() !== '' ? Number(rackUnits) : undefined,
-            clusterId: clusterId || undefined,
             serverModel: serverModel || undefined,
             serialNumber: serialNumber || undefined,
             custodian: custodian || undefined,
@@ -164,14 +155,6 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         >
             <form onSubmit={handleSubmit}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
-                    <Dropdown
-                        label="Cluster"
-                        fullWidth
-                        value={clusterId}
-                        onChange={(val) => setClusterId(val)}
-                        options={clusters.map(c => ({ label: c.clusterName, value: c.id }))}
-                    />
-
                     <TextField
                         fullWidth
                         label="Node Name"

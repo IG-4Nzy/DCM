@@ -8,6 +8,7 @@ import Button from '../../../components/Button';
 import { type ClusterData, type CreateClusterPayload, type UpdateClusterPayload } from '../model';
 import { fetchServerRacks } from '../../Configurations/Racks/action';
 import { fetchClusterTypes } from '../../Configurations/ClusterTypes/action';
+import request from '../../../services/request';
 import styles from "./index.module.scss";
 
 interface ClusterModalProps {
@@ -22,11 +23,13 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
         clusterName: '',
         ipAddress: '',
         racks: [],
-        clusterType: ''
+        clusterType: '',
+        nodes: []
     });
 
     const [racks, setRacks] = useState<any[]>([]);
     const [clusterTypes, setClusterTypes] = useState<any[]>([]);
+    const [nodes, setNodes] = useState<any[]>([]);
 
     useEffect(() => {
         if (open) {
@@ -36,6 +39,9 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
             fetchClusterTypes({ pagination: false })
                 .then(res => setClusterTypes(res.data || []))
                 .catch(err => console.error("Failed to load cluster types", err));
+            request.get('/api/nodes?pagination=false')
+                .then(res => setNodes(res.data?.data || []))
+                .catch(err => console.error("Failed to fetch nodes", err));
         }
     }, [open]);
 
@@ -46,14 +52,16 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
                     clusterName: editingItem.clusterName || '',
                     ipAddress: editingItem.ipAddress || '',
                     racks: editingItem.racks || [],
-                    clusterType: editingItem.clusterType || ''
+                    clusterType: editingItem.clusterType || '',
+                    nodes: editingItem.nodes || []
                 });
             } else {
                 setFormData({
                     clusterName: '',
                     ipAddress: '',
                     racks: [],
-                    clusterType: ''
+                    clusterType: '',
+                    nodes: []
                 });
             }
         }
@@ -73,6 +81,9 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
             if (formData.clusterType !== editingItem.clusterType) changedData.clusterType = formData.clusterType;
             if (JSON.stringify(formData.racks || []) !== JSON.stringify(editingItem.racks || [])) {
                 changedData.racks = formData.racks;
+            }
+            if (JSON.stringify(formData.nodes || []) !== JSON.stringify(editingItem.nodes || [])) {
+                changedData.nodes = formData.nodes;
             }
             onSubmit(changedData);
         } else {
@@ -123,6 +134,17 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
                             value={formData.racks || []}
                             onChange={(val) => handleChange('racks', val)}
                             options={racks.map(r => ({ label: r.serverRack, value: r.serverRack }))}
+                        />
+                    </Box>
+                    <Box sx={{ mt: 1 }}>
+                        <Dropdown
+                            label="Nodes"
+                            fullWidth
+                            multiple
+                            searchable
+                            value={formData.nodes || []}
+                            onChange={(val) => handleChange('nodes', val)}
+                            options={nodes.map(n => ({ label: n.node, value: n.id || n._id }))}
                         />
                     </Box>
                 </Box>

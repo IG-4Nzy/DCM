@@ -78,7 +78,21 @@ async def list_items(
     
     
     if clusterId:
-        query["clusterId"] = clusterId
+        cluster_doc = await db.get_collection("clusters").find_one({"_id": ObjectId(clusterId) if ObjectId.is_valid(clusterId) else clusterId})
+        if cluster_doc:
+            node_ids = cluster_doc.get("nodes", [])
+            object_ids = []
+            for nid in node_ids:
+                if ObjectId.is_valid(nid):
+                    object_ids.append(ObjectId(nid))
+                else:
+                    object_ids.append(nid)
+            query["$or"] = [
+                {"_id": {"$in": object_ids}},
+                {"clusterId": clusterId}
+            ]
+        else:
+            query["clusterId"] = clusterId
     
     if serverModel:
         query["serverModel"] = serverModel
@@ -190,6 +204,12 @@ async def delete_item(id: str):
     delete_result = await collection.delete_one({"_id": ObjectId(id)})
 
     if delete_result.deleted_count == 1:
+        # Remove this node from any cluster's nodes list
+        clusters_col = db.get_collection("clusters")
+        await clusters_col.update_many(
+            {"nodes": id},
+            {"$pull": {"nodes": id}}
+        )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     raise HTTPException(status_code=404, detail=f"Node {id} not found")

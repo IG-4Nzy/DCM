@@ -160,6 +160,12 @@ const Clusters = () => {
             label: 'Racks Assigned',
             sortable: false,
             render: (row) => row.racks && row.racks.length > 0 ? row.racks.join(', ') : '--'
+        },
+        {
+            id: 'nodes',
+            label: 'Nodes',
+            sortable: false,
+            render: (row) => row.nodeNames && row.nodeNames.length > 0 ? row.nodeNames.join(', ') : '--'
         }
     ];
 

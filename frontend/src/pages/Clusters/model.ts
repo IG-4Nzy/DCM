@@ -6,6 +6,8 @@ export interface ClusterData {
     ipAddress?: string;
     racks?: string[];
     clusterType?: string;
+    nodes?: string[];
+    nodeNames?: string[];
 }
 
 export interface CreateClusterPayload {
@@ -13,6 +15,7 @@ export interface CreateClusterPayload {
     ipAddress?: string;
     racks?: string[];
     clusterType?: string;
+    nodes?: string[];
 }
 
 export interface UpdateClusterPayload {
@@ -20,6 +23,7 @@ export interface UpdateClusterPayload {
     ipAddress?: string;
     racks?: string[];
     clusterType?: string;
+    nodes?: string[];
 }
 
 export interface FetchClustersParams {
