@@ -99,8 +99,17 @@ async def list_items(
     
     if admin:
         if "admin" not in query:
-            query["admin"] = {"$in": [admin]}
-        # If admin filter is already set by permission scope, intersect with the requested admin
+            users_col_adm = db.get_collection("users")
+            adm_doc = await users_col_adm.find_one({"username": admin})
+            if not adm_doc and ObjectId.is_valid(admin):
+                adm_doc = await users_col_adm.find_one({"_id": ObjectId(admin)})
+            admin_vals = set()
+            admin_vals.add(admin)
+            if adm_doc:
+                admin_vals.add(str(adm_doc["_id"]))
+                if adm_doc.get("username"):
+                    admin_vals.add(adm_doc["username"])
+            query["admin"] = {"$in": list(admin_vals)}
     
     if rack:
         query["rack"] = rack
@@ -150,16 +159,16 @@ async def create_item(
     item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
     
     max_node_id = 0
-    cursor = collection.find({"nodeId": {"$regex": "^NODE-"}}, {"nodeId": 1})
+    cursor = collection.find({}, {"nodeId": 1})
     async for doc in cursor:
-        nid = doc.get("nodeId", "")
-        if nid.startswith("NODE-"):
+        nid = str(doc.get("nodeId", ""))
+        digits = "".join(c for c in nid if c.isdigit())
+        if digits:
             try:
-                num = int(nid.replace("NODE-", ""))
-                max_node_id = max(max_node_id, num)
+                max_node_id = max(max_node_id, int(digits))
             except:
                 pass
-    item_dict["nodeId"] = f"NODE-{max_node_id + 1:02d}"
+    item_dict["nodeId"] = f"{max_node_id + 1:03d}"
 
     new_item = await collection.insert_one(item_dict)
     created = await collection.find_one({"_id": new_item.inserted_id})

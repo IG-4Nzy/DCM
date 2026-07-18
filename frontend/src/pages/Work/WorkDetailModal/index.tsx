@@ -267,6 +267,27 @@ const WorkDetailModal = ({
     }
   };
 
+  const handleDownloadAttachment = async (url: string, filename: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    try {
+      const response = await fetch(`${API_BASE_URL}${url}`);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      window.open(`${API_BASE_URL}${url}`, "_blank");
+    }
+  };
+
   const handleMenuClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -583,7 +604,7 @@ const WorkDetailModal = ({
                         size="small"
                         variant="outlined"
                         onClick={() =>
-                          window.open(`${API_BASE_URL}${url}`, "_blank")
+                          handleDownloadAttachment(url, filename)
                         }
                         sx={{
                           borderRadius: "6px",
@@ -651,7 +672,7 @@ const WorkDetailModal = ({
                           icon={<MdAttachFile />}
                           label={comment.attachment.name || "Attachment"}
                           size="small"
-                          onClick={() => window.open(`${API_BASE_URL}${comment.attachment?.url}`, "_blank")}
+                          onClick={() => handleDownloadAttachment(comment.attachment?.url, comment.attachment.name || "Attachment")}
                           sx={{ mt: 1, backgroundColor: 'rgba(0,0,0,0.05)', cursor: 'pointer' }}
                         />
                       )}

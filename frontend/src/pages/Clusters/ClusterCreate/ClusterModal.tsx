@@ -40,10 +40,16 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
                 .then(res => setClusterTypes(res.data || []))
                 .catch(err => console.error("Failed to load cluster types", err));
             request.get('/api/nodes?pagination=false')
-                .then(res => setNodes(res.data?.data || []))
+                .then(res => {
+                    const allNodes = res.data?.data || [];
+                    const filteredNodes = allNodes.filter((n: any) => 
+                        !n.clusterId || (editingItem && n.clusterId === editingItem.id)
+                    );
+                    setNodes(filteredNodes);
+                })
                 .catch(err => console.error("Failed to fetch nodes", err));
         }
-    }, [open]);
+    }, [open, editingItem]);
 
     useEffect(() => {
         if (open) {

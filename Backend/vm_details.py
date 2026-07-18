@@ -99,11 +99,15 @@ async def list_items(
     if target_username:
         users_col = db.get_collection("users")
         user_doc = await users_col.find_one({"username": target_username})
-        target_user_id = str(user_doc["_id"]) if user_doc else None
-        admins = [target_username]
-        if target_user_id:
-            admins.append(target_user_id)
-        query["admin"] = {"$in": admins}
+        if not user_doc and ObjectId.is_valid(target_username):
+            user_doc = await users_col.find_one({"_id": ObjectId(target_username)})
+        admins = set()
+        admins.add(target_username)
+        if user_doc:
+            admins.add(str(user_doc["_id"]))
+            if user_doc.get("username"):
+                admins.add(user_doc["username"])
+        query["admin"] = {"$in": list(admins)}
     
     if clusterId:
         query["clusterId"] = clusterId

@@ -12,6 +12,7 @@ import { hasPrivilege } from '../../../helpers/authUtils';
 import { PRIVILEGES } from '../../../helpers/privileges';
 import { fetchVMDetails, createVMDetails, updateVMDetails, deleteVMDetails } from './action';
 import { fetchClusters } from '../action';
+import { useTableState } from '../../../hooks/useTableState';
 import { type VMDetailsData } from './model';
 import VMDetailsModal from './VMDetailsModal';
 import VMHistoryModal from './VMHistoryModal';
@@ -39,12 +40,14 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
     const { confirm } = useConfirm();
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
+    const { users } = useSelector((state: RootState) => state.users || { users: [] });
     const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
     const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
     const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
 
     const [clusters, setClusters] = useState<any[]>([]);
     const [selectedClusterFilter, setSelectedClusterFilter] = useState<string>('All');
+    const [adminFilter, setAdminFilter] = useTableState("VMDetails_adminFilter", "");
 
     useEffect(() => {
         if (!clusterId) {
@@ -73,6 +76,9 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
             } else if (selectedClusterFilter !== 'All') {
                 params.clusterId = selectedClusterFilter;
             }
+            if (adminFilter) {
+                params.admin = adminFilter;
+            }
             const result = await fetchVMDetails(params);
             setData(result.data);
             setTotalCount(result.total);
@@ -81,7 +87,7 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
         } finally {
             setLoading(false);
         }
-    }, [clusterId, selectedClusterFilter, page, rowsPerPage, searchQuery, showToast]);
+    }, [clusterId, selectedClusterFilter, adminFilter, page, rowsPerPage, searchQuery, showToast]);
 
     useEffect(() => {
         loadData();
@@ -150,22 +156,42 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                 <Typography variant="h6" className={styles.container__header__label}>VM Details</Typography>
                 <Box className={styles.container__header__search} sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                     {!clusterId && (
-                        <FormControl size="small" sx={{ minWidth: 200, bgcolor: '#fff' }}>
-                            <InputLabel>Cluster Filter</InputLabel>
-                            <Select
-                                value={selectedClusterFilter}
-                                label="Cluster Filter"
-                                onChange={(e) => {
-                                    setSelectedClusterFilter(e.target.value);
-                                    setPage(0);
-                                }}
-                            >
-                                <MenuItem value="All">All Clusters</MenuItem>
-                                {clusters.map((c: any) => (
-                                    <MenuItem key={c.id || c._id} value={c.id || c._id}>{c.clusterName || c.id}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+                        <>
+                            <FormControl size="small" sx={{ minWidth: 150, bgcolor: '#fff' }}>
+                                <InputLabel>Cluster Filter</InputLabel>
+                                <Select
+                                    value={selectedClusterFilter}
+                                    label="Cluster Filter"
+                                    onChange={(e) => {
+                                        setSelectedClusterFilter(e.target.value);
+                                        setPage(0);
+                                    }}
+                                >
+                                    <MenuItem value="All">All Clusters</MenuItem>
+                                    {clusters.map((c: any) => (
+                                        <MenuItem key={c.id || c._id} value={c.id || c._id}>{c.clusterName || c.id}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                            <FormControl size="small" sx={{ minWidth: 150, bgcolor: '#fff' }}>
+                                <InputLabel>Admin Filter</InputLabel>
+                                <Select
+                                    value={adminFilter}
+                                    label="Admin Filter"
+                                    onChange={(e) => {
+                                        setAdminFilter(e.target.value);
+                                        setPage(0);
+                                    }}
+                                >
+                                    <MenuItem value="">All Admins</MenuItem>
+                                    {users && users.map((u: any) => (
+                                        <MenuItem key={u._id || u.id} value={u._id || u.id || u.username}>
+                                            {`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </>
                     )}
                     <SearchBar
                         value={searchQuery}

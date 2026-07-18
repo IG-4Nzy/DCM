@@ -845,6 +845,7 @@ class ClusterModel(BaseModel):
     racks: List[str] = Field(default_factory=list)
     clusterType: Optional[str] = None
     nodes: List[str] = Field(default_factory=list)
+    nodeNames: List[str] = Field(default_factory=list)
 
     model_config = ConfigDict(
         populate_by_name=True,

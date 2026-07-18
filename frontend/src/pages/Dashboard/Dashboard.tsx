@@ -41,6 +41,7 @@ const Dashboard: React.FC = () => {
   const todayStr = useMemo(() => dayjs().format('YYYY-MM-DD'), []);
 
   const isSuperuser = useSelector((state: RootState) => state.auth?.user?.isSuperuser);
+  const currentUser = useSelector((state: RootState) => state.auth?.user);
   
   const canViewWorks = isSuperuser || hasPrivilege(PRIVILEGES.WORK_VIEW) || hasPrivilege(PRIVILEGES.WORK_VIEW_ALL_DEPARTMENTS) || hasPrivilege(PRIVILEGES.WORK_VIEW_ASSIGNED);
   const canViewObservations = isSuperuser || hasPrivilege(PRIVILEGES.OBSERVATION_VIEW) || hasPrivilege(PRIVILEGES.OBSERVATION_VIEW_ALL_DEPT);
@@ -158,7 +159,14 @@ const Dashboard: React.FC = () => {
           icon={<Icons.ClusterIcon size={18} />}
           accentColor={colors.purple}
           accentBg={colors.purpleLight}
-          onClick={() => navigate(ROUTE_CONSTANTS.SERVER_DETAILS, { state: { tab: 'vms' } })}
+          onClick={() => {
+            const userId = currentUser?._id || currentUser?.id || currentUser?.username;
+            if (userId) {
+              window.localStorage.setItem('VM_adminFilter', JSON.stringify(userId));
+              window.localStorage.setItem('VMDetails_adminFilter', JSON.stringify(userId));
+            }
+            navigate(ROUTE_CONSTANTS.SERVER_DETAILS, { state: { tab: 'vms' } });
+          }}
         />
         <KpiCard
           title="My Servers"
@@ -166,7 +174,13 @@ const Dashboard: React.FC = () => {
           icon={<Icons.ServerDetailsIcon size={18} />}
           accentColor={colors.indigo}
           accentBg={colors.indigoLight}
-          onClick={() => navigate(ROUTE_CONSTANTS.SERVER_DETAILS, { state: { tab: 'nodes' } })}
+          onClick={() => {
+            const userId = currentUser?._id || currentUser?.id || currentUser?.username;
+            if (userId) {
+              window.localStorage.setItem('Nodes_adminFilter', JSON.stringify(userId));
+            }
+            navigate(ROUTE_CONSTANTS.SERVER_DETAILS, { state: { tab: 'nodes' } });
+          }}
         />
         {canViewObservations && (
           <KpiCard

@@ -192,6 +192,21 @@ const VisitorLogs: React.FC = () => {
             return;
         }
 
+        const entryDate = dayjs(formFields.entryTime);
+        const startOfToday = dayjs().startOf('day');
+        if (!editingLog && entryDate.isBefore(startOfToday)) {
+            showToast('Entry time cannot be from a previous day', 'error');
+            return;
+        }
+
+        if (formFields.exitTime) {
+            const exitDate = dayjs(formFields.exitTime);
+            if (exitDate.isBefore(entryDate)) {
+                showToast('Exit time cannot be before entry time', 'error');
+                return;
+            }
+        }
+
         const payload = {
             visitorName: formFields.visitorName.trim(),
             division: formFields.division.trim(),
@@ -401,7 +416,7 @@ const VisitorLogs: React.FC = () => {
                                 fullWidth
                                 slotProps={{ 
                                     inputLabel: { shrink: true },
-                                    htmlInput: { min: editingLog ? undefined : dayjs().format('YYYY-MM-DDTHH:mm') }
+                                    htmlInput: { min: editingLog ? undefined : dayjs().startOf('day').format('YYYY-MM-DDTHH:mm') }
                                 }}
                             />
                         </Grid>
@@ -414,7 +429,7 @@ const VisitorLogs: React.FC = () => {
                                 fullWidth
                                 slotProps={{ 
                                     inputLabel: { shrink: true },
-                                    htmlInput: { min: editingLog ? undefined : dayjs().format('YYYY-MM-DDTHH:mm') }
+                                    htmlInput: { min: editingLog ? undefined : dayjs().startOf('day').format('YYYY-MM-DDTHH:mm') }
                                 }}
                             />
                         </Grid>
