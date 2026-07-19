@@ -3,3 +3,7 @@ if clicked on my vms or my servers in dashboard,show only that user's servers an
 
 continue
 
+in announcements,department selection not working
+
+
+
