@@ -20,6 +20,8 @@ interface VMDetailsModalProps {
 
 const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit, editingItem, clusterId }) => {
     const [formData, setFormData] = useState<CreateVMDetailsPayload>({
+        vmId: '',
+        vmName: '',
         clusterId: clusterId,
         ipAddress: '',
         applications: '',
@@ -59,6 +61,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         if (open) {
             if (editingItem) {
                 setFormData({
+                    vmId: editingItem.vmId || '',
+                    vmName: editingItem.vmName || '',
                     clusterId: editingItem.clusterId,
                     ipAddress: editingItem.ipAddress || '',
                     applications: editingItem.applications || '',
@@ -76,6 +80,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                 });
             } else {
                 setFormData({
+                    vmId: '',
+                    vmName: '',
                     clusterId: clusterId,
                     ipAddress: '',
                     applications: '',
@@ -137,6 +143,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         
         if (editingItem) {
             const changedData: UpdateVMDetailsPayload = {};
+            if (formData.vmName !== editingItem.vmName) changedData.vmName = formData.vmName;
             if (formData.ipAddress !== editingItem.ipAddress) changedData.ipAddress = formData.ipAddress;
             if (formData.applications !== editingItem.applications) changedData.applications = formData.applications;
             if (formData.node !== editingItem.node) changedData.node = formData.node;
@@ -169,6 +176,23 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         >
             <form onSubmit={handleSubmit}>
                 <Box className={styles.formGrid}>
+                    {!!editingItem && (
+                        <TextField 
+                            label="VM ID" 
+                            size="small"
+                            className={styles.formGrid__field}
+                            value={formData.vmId} 
+                            onChange={(e) => handleChange('vmId', e.target.value)} 
+                            disabled={true}
+                        />
+                    )}
+                    <TextField 
+                        label="VM Name" 
+                        size="small"
+                        className={styles.formGrid__field}
+                        value={formData.vmName} 
+                        onChange={(e) => handleChange('vmName', e.target.value)} 
+                    />
                     {(!clusterId || clusterId === '') && (
                         <Dropdown 
                             label="Cluster" 

@@ -160,12 +160,8 @@ const Dashboard: React.FC = () => {
           accentColor={colors.purple}
           accentBg={colors.purpleLight}
           onClick={() => {
-            const userId = currentUser?._id || currentUser?.id || currentUser?.username;
-            if (userId) {
-              window.localStorage.setItem('VM_adminFilter', JSON.stringify(userId));
-              window.localStorage.setItem('VMDetails_adminFilter', JSON.stringify(userId));
-            }
-            navigate(ROUTE_CONSTANTS.SERVER_DETAILS, { state: { tab: 'vms' } });
+            const userId = data.userId || currentUser?.username;
+            navigate(ROUTE_CONSTANTS.SERVER_DETAILS, { state: { tab: 'vms', adminFilter: userId || '' } });
           }}
         />
         <KpiCard
@@ -175,11 +171,8 @@ const Dashboard: React.FC = () => {
           accentColor={colors.indigo}
           accentBg={colors.indigoLight}
           onClick={() => {
-            const userId = currentUser?._id || currentUser?.id || currentUser?.username;
-            if (userId) {
-              window.localStorage.setItem('Nodes_adminFilter', JSON.stringify(userId));
-            }
-            navigate(ROUTE_CONSTANTS.SERVER_DETAILS, { state: { tab: 'nodes' } });
+            const userId = data.userId || currentUser?.username;
+            navigate(ROUTE_CONSTANTS.SERVER_DETAILS, { state: { tab: 'nodes', adminFilter: userId || '' } });
           }}
         />
         {canViewObservations && (

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box } from '@mui/material';
 import { useLocation } from 'react-router-dom';
 import SliderTabSelector, { type TabItem } from '../../components/SliderTabSelector';
@@ -33,7 +33,13 @@ const ServerDetails = () => {
     if (hasVMView) tabs.push({ id: 'vms', label: 'VMs', value: 'vms' });
     if (hasPhysicalServerView) tabs.push({ id: 'physical_servers', label: 'Physical Servers', value: 'physical_servers' });
 
+    const location = useLocation();
+
     const [activeTab, setActiveTab] = useState<string | number>(() => {
+        const navTab = location.state?.tab;
+        if (navTab && tabs.some(tab => String(tab.value) === navTab)) {
+            return navTab;
+        }
         const saved = localStorage.getItem('server_details_activeTab');
         if (saved && tabs.some(tab => String(tab.value) === saved)) {
             return saved;
@@ -41,12 +47,19 @@ const ServerDetails = () => {
         return tabs.length > 0 ? tabs[0].value : "";
     });
 
-    const location = useLocation();
+    const [dashboardAdminFilter, setDashboardAdminFilter] = useState<string>(() => {
+        return location.state?.adminFilter || '';
+    });
 
     useEffect(() => {
         const navTab = location.state?.tab;
         if (navTab && tabs.some(tab => String(tab.value) === navTab)) {
             setActiveTab(navTab);
+        }
+        if (location.state?.adminFilter) {
+            setDashboardAdminFilter(location.state.adminFilter);
+        } else {
+            setDashboardAdminFilter('');
         }
     }, [location.state]);
 
@@ -88,8 +101,8 @@ const ServerDetails = () => {
             <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
                 {activeTab === 'racks' && <Racks />}
                 {activeTab === 'clusters' && <Clusters />}
-                {activeTab === 'nodes' && <Nodes />}
-                {activeTab === 'vms' && <VMs />}
+                {activeTab === 'nodes' && <Nodes dashboardAdminFilter={dashboardAdminFilter} />}
+                {activeTab === 'vms' && <VMs dashboardAdminFilter={dashboardAdminFilter} />}
                 {activeTab === 'physical_servers' && <PhysicalServers />}
             </Box>
         </Box>

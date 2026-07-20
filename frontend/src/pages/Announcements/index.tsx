@@ -352,7 +352,7 @@ const Announcements: React.FC = () => {
 
                   let mentionLabel = 'All Staffs';
                   if (ann.mentionType === 'department') {
-                    const deptName = departments.find(d => d._id === ann.mentionedDepartment)?.name || ann.mentionedDepartment;
+                    const deptName = departments.find(d => (d.id || d._id) === ann.mentionedDepartment)?.name || ann.mentionedDepartment;
                     mentionLabel = `Dept: ${deptName}`;
                   } else if (ann.mentionType === 'staff') {
                     mentionLabel = `Staff: @${ann.mentionedStaff}`;
@@ -516,7 +516,7 @@ const Announcements: React.FC = () => {
                 >
                   <MenuItem value="">-- Select Department --</MenuItem>
                   {departments.map((dept) => (
-                    <MenuItem key={dept._id} value={dept._id}>
+                    <MenuItem key={dept.id || dept._id} value={dept.id || dept._id}>
                       {dept.name}
                     </MenuItem>
                   ))}
@@ -534,7 +534,7 @@ const Announcements: React.FC = () => {
                 >
                   <MenuItem value="">-- Select Username --</MenuItem>
                   {users.map((u) => (
-                    <MenuItem key={u._id} value={u.username}>
+                    <MenuItem key={u.id || u._id} value={u.username}>
                       @{u.username} ({u.firstName} {u.lastName})
                     </MenuItem>
                   ))}

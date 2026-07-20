@@ -1,13 +1,5 @@
+dont overlap or clash the alarms,only play single time and repeat.
 
-if clicked on my vms or my servers in dashboard,show only that user's servers and vms.
-
-continue
-
-in announcements,department selection not working
-
-add ip field for every nodes
-
-add "add to monitoring option for every nodes and vms",through it we can add those servers to the ping monitoring page for monitoring.
 
 
 

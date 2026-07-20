@@ -34,6 +34,10 @@ const NodeViewModal: React.FC<NodeViewModalProps> = ({ open, onClose, node, admi
                                       <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.node}</Typography>
                                   </Grid>
                                   <Grid size={{xs: 12, sm: 6}}   >
+                                      <Typography variant="caption" color="textSecondary">IP Address</Typography>
+                                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#3182ce' }}>{node.ip || '-'}</Typography>
+                                  </Grid>
+                                  <Grid size={{xs: 12, sm: 6}}   >
                                       <Typography variant="caption" color="textSecondary">Created By</Typography>
                                       <Typography variant="body2">{node.createdBy || '-'}</Typography>
                                   </Grid>

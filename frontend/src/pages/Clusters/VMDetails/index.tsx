@@ -1,7 +1,8 @@
 // @ts-nocheck
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Tooltip, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
-import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
+import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdMonitor as MonitorIcon } from 'react-icons/md';
+import request from '../../../services/request';
 import Button from '../../../components/Button';
 import SearchBar from '../../../components/SearchBar';
 import { useToast } from '../../../contexts/ToastContext';
@@ -20,9 +21,10 @@ import styles from './index.module.scss';
 
 interface VMDetailsProps {
     clusterId?: string;
+    dashboardAdminFilter?: string;
 }
 
-const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
+const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => {
     const [data, setData] = useState<VMDetailsData[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(false);
@@ -47,7 +49,31 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
 
     const [clusters, setClusters] = useState<any[]>([]);
     const [selectedClusterFilter, setSelectedClusterFilter] = useState<string>('All');
-    const [adminFilter, setAdminFilter] = useTableState("VMDetails_adminFilter", "");
+    const [adminFilter, setAdminFilter] = useTableState("VMDetails_adminFilter", dashboardAdminFilter || "");
+    const [monitoredIps, setMonitoredIps] = useState<Set<string>>(new Set());
+
+    const fetchMonitoredIps = useCallback(async () => {
+        try {
+            const res = await request.get('/api/server-ping-monitoring/', { params: { limit: 1000 } });
+            const ips = new Set((res.data?.data || []).map((s: any) => s.ipAddress));
+            setMonitoredIps(ips);
+        } catch (err) {
+            console.error("Failed to load monitored IPs:", err);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchMonitoredIps();
+    }, [fetchMonitoredIps]);
+
+    // Reset page when dashboard filter changes
+    useEffect(() => {
+        if (dashboardAdminFilter) {
+            setAdminFilter(dashboardAdminFilter);
+            setPage(0);
+        }
+    }, [dashboardAdminFilter]);
+
 
     useEffect(() => {
         if (!clusterId) {
@@ -69,7 +95,9 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                 skip: page * rowsPerPage,
                 limit: rowsPerPage,
                 search: searchQuery,
-                pagination: true
+                pagination: true,
+                sortBy: 'vmId',
+                order: 'asc'
             };
             if (clusterId) {
                 params.clusterId = clusterId;
@@ -92,6 +120,10 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
     useEffect(() => {
         loadData();
     }, [loadData]);
+
+    useEffect(() => {
+        loadData();
+    }, [adminFilter]);
 
     const handleOpenModal = (item?: VMDetailsData) => {
         setEditingItem(item || null);
@@ -130,6 +162,43 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
             loadData();
         } catch (e: any) {
             showToast(e?.response?.data?.detail || 'Operation failed', 'error');
+        }
+    };
+
+    const handleAddToMonitoring = async (row: VMDetailsData) => {
+        if (!row.ipAddress) {
+            showToast("This VM does not have an IP address configured. Edit the VM to set an IP first.", "warning");
+            return;
+        }
+        const isConfirmed = await confirm(
+            `Are you sure you want to add VM ${row.vmId || "this VM"} (${row.ipAddress}) to Ping Monitoring?`,
+            "Add to Monitoring"
+        );
+        if (isConfirmed) {
+            try {
+                await request.post('/api/server-ping-monitoring/', {
+                    name: row.vmId || "Unnamed VM",
+                    ipAddress: row.ipAddress,
+                    adminName: row.adminName || "Admin",
+                    monitoringType: "ping",
+                    interval: 60,
+                    timeout: 5,
+                    retryCount: 3,
+                    ports: [],
+                    isEnabled: true
+                });
+                setMonitoredIps(prev => {
+                    const next = new Set(prev);
+                    next.add(row.ipAddress);
+                    return next;
+                });
+                showToast("VM added to ping monitoring successfully", "success");
+            } catch (e: any) {
+                showToast(
+                    e?.response?.data?.detail || "Failed to add VM to monitoring",
+                    "error"
+                );
+            }
         }
     };
 
@@ -217,6 +286,7 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                         <TableHead>
                             <TableRow className={styles.tableWrapper__headerRow}>
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>VM ID</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>VM Name</TableCell>
                                 {!clusterId && (
                                     <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Cluster</TableCell>
                                 )}
@@ -242,11 +312,11 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                         <TableBody>
                             {loading && data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 13 : 14} align="center" sx={{ py: 3 }}>Loading...</TableCell>
+                                    <TableCell colSpan={clusterId ? 14 : 15} align="center" sx={{ py: 3 }}>Loading...</TableCell>
                                 </TableRow>
                             ) : data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 13 : 14} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
+                                    <TableCell colSpan={clusterId ? 14 : 15} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
                                 </TableRow>
                             ) : (
                                 data.map((row) => (
@@ -257,6 +327,7 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                                         sx={{ cursor: 'pointer' }}
                                     >
                                         <TableCell className={styles.tableWrapper__cell} sx={{ fontWeight: 600, color: '#1565c0' }}>{row.vmId || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.vmName || '--'}</TableCell>
                                         {!clusterId && (
                                             <TableCell className={styles.tableWrapper__cell}>{getClusterName(row.clusterId || '')}</TableCell>
                                         )}
@@ -282,6 +353,21 @@ const VMDetails = ({ clusterId = '' }: VMDetailsProps) => {
                                         {(hasUpdate || hasDelete) && (
                                             <TableCell align="right" onClick={(e) => e.stopPropagation()}>
                                                 <Box className={styles.tableWrapper__actions}>
+                                                    {row.ipAddress && monitoredIps.has(row.ipAddress) ? (
+                                                        <Tooltip title="Already Monitored">
+                                                            <span>
+                                                                <IconButton size="small" disabled className={styles.tableWrapper__actions__editBtn} sx={{ mr: 0.5, color: '#2e7d32', backgroundColor: 'rgba(46, 125, 50, 0.08)', '&.Mui-disabled': { color: '#2e7d32' } }}>
+                                                                    <MonitorIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </span>
+                                                        </Tooltip>
+                                                    ) : (
+                                                        <Tooltip title="Add to Monitoring">
+                                                            <IconButton size="small" color="info" className={styles.tableWrapper__actions__editBtn} onClick={() => handleAddToMonitoring(row)} sx={{ mr: 0.5 }}>
+                                                                <MonitorIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
                                                     {hasUpdate && (
                                                         <Tooltip title="Edit">
                                                             <IconButton size="small" color="primary" className={styles.tableWrapper__actions__editBtn} onClick={() => handleOpenModal(row)}>

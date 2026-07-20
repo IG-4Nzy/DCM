@@ -2,6 +2,7 @@
 export interface VMDetailsData {
     id: string;
     vmId?: string;
+    vmName?: string;
     clusterId?: string;
     ipAddress?: string;
     applications?: string;
@@ -22,6 +23,8 @@ export interface VMDetailsData {
 }
 
 export interface CreateVMDetailsPayload {
+    vmId?: string;
+    vmName?: string;
     clusterId?: string;
     ipAddress?: string;
     applications?: string;

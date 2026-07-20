@@ -20,6 +20,7 @@ export interface NodeData {
     admin?: string | string[];
     assetNumber?: string;
     raidConfiguration?: string[];
+    ip?: string;
     createdBy?: string;
     updatedAt?: string;
 }
@@ -41,6 +42,7 @@ export interface CreateNodePayload {
     admin?: string | string[];
     assetNumber?: string;
     raidConfiguration?: string[];
+    ip?: string;
 }
 
 export interface UpdateNodePayload {
@@ -61,4 +63,5 @@ export interface UpdateNodePayload {
     admin?: string | string[];
     assetNumber?: string;
     raidConfiguration?: string[];
+    ip?: string;
 }

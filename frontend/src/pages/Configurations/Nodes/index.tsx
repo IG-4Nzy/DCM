@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Box,
   Paper,
@@ -14,6 +14,7 @@ import {
   MdAdd as AddIcon,
   MdEdit as EditIcon,
   MdDelete as DeleteIcon,
+  MdMonitor as MonitorIcon,
 } from "react-icons/md";
 import Button from "../../../components/Button";
 import SearchBar from "../../../components/SearchBar";
@@ -35,7 +36,7 @@ import request from "../../../services/request";
 
 type Order = "asc" | "desc";
 
-const Nodes = () => {
+const Nodes = ({ dashboardAdminFilter }: { dashboardAdminFilter?: string }) => {
   const [data, setData] = useState<NodeData[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -44,6 +45,21 @@ const Nodes = () => {
   const [nodeAdminIds, setNodeAdminIds] = useState<Set<string>>(new Set());
   const [serverModelsList, setServerModelsList] = useState<string[]>([]);
   const [racksList, setRacksList] = useState<string[]>([]);
+  const [monitoredIps, setMonitoredIps] = useState<Set<string>>(new Set());
+
+  const fetchMonitoredIps = useCallback(async () => {
+    try {
+      const res = await request.get('/api/server-ping-monitoring/', { params: { limit: 1000 } });
+      const ips = new Set((res.data?.data || []).map((s: any) => s.ipAddress));
+      setMonitoredIps(ips);
+    } catch (err) {
+      console.error("Failed to load monitored IPs:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMonitoredIps();
+  }, [fetchMonitoredIps]);
 
   useEffect(() => {
     fetchClusters({ pagination: false })
@@ -148,12 +164,21 @@ const Nodes = () => {
     "Nodes_serverModelFilter",
     "",
   );
-  const [adminFilter, setAdminFilter] = useTableState("Nodes_adminFilter", "");
+  const [adminFilter, setAdminFilter] = useTableState("Nodes_adminFilter", dashboardAdminFilter || "");
   const [rackFilter, setRackFilter] = useTableState("Nodes_rackFilter", "");
   const [page, setPage] = useTableState("Nodes_page", 0);
   const [rowsPerPage, setRowsPerPage] = useTableState("Nodes_rowsPerPage", 5);
   const [order, setOrder] = useTableState<Order>("Nodes_order", "asc");
-  const [orderBy, setOrderBy] = useTableState<string>("Nodes_orderBy", "node");
+  const [orderBy, setOrderBy] = useTableState<string>("Nodes_orderBy", "nodeId");
+
+  // Reset page when dashboard filter changes
+  useEffect(() => {
+    if (dashboardAdminFilter) {
+      setAdminFilter(dashboardAdminFilter);
+      setPage(0);
+    }
+  }, [dashboardAdminFilter]);
+
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -202,6 +227,10 @@ const Nodes = () => {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    loadData();
+  }, [adminFilter]);
+
   const handleOpenModal = (item?: NodeData) => {
     setEditingItem(item || null);
     setIsModalOpen(true);
@@ -230,6 +259,47 @@ const Nodes = () => {
       loadData();
     } catch (e: any) {
       showToast(e?.response?.data?.detail || "Failed to save node", "error");
+    }
+  };
+
+  const handleAddToMonitoring = async (item: NodeData) => {
+    if (!item.ip) {
+      showToast("This server does not have an IP address configured. Edit the node to set an IP first.", "warning");
+      return;
+    }
+    const isConfirmed = await confirm(
+      `Are you sure you want to add ${item.node || "this node"} (${item.ip}) to Ping Monitoring?`,
+      "Add to Monitoring"
+    );
+    if (isConfirmed) {
+      try {
+        const adminArr = Array.isArray(item.admin) ? item.admin : [item.admin];
+        const primaryAdminId = adminArr[0] || "";
+        const adminDisplayName = usersMap[primaryAdminId] || "";
+
+        await request.post('/api/server-ping-monitoring/', {
+          name: item.node || "Unnamed Node",
+          ipAddress: item.ip,
+          adminName: adminDisplayName || "Admin",
+          monitoringType: "ping",
+          interval: 60,
+          timeout: 5,
+          retryCount: 3,
+          ports: [],
+          isEnabled: true
+        });
+        setMonitoredIps(prev => {
+          const next = new Set(prev);
+          next.add(item.ip);
+          return next;
+        });
+        showToast("Node added to ping monitoring successfully", "success");
+      } catch (e: any) {
+        showToast(
+          e?.response?.data?.detail || "Failed to add node to monitoring",
+          "error"
+        );
+      }
     }
   };
 
@@ -297,6 +367,12 @@ const Nodes = () => {
       render: (row) => getClusterName(row.clusterId || ""),
     },
     { id: "node", label: "Node", sortable: true },
+    {
+      id: "ip",
+      label: "IP Address",
+      sortable: true,
+      render: (row) => row.ip || "-",
+    },
     {
       id: "serverModel",
       label: "Server Model",
@@ -388,8 +464,37 @@ const Nodes = () => {
       label: "Actions",
       align: "right",
       sortable: false,
-      render: (row) => (
-        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+      render: (row) => {
+        const isMonitored = row.ip ? monitoredIps.has(row.ip) : false;
+        return (
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+            {isMonitored ? (
+              <Tooltip title="Already Monitored">
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled
+                    sx={{ color: '#2e7d32', backgroundColor: 'rgba(46, 125, 50, 0.08)', '&.Mui-disabled': { color: '#2e7d32' } }}
+                  >
+                    <MonitorIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            ) : (
+              <Tooltip title="Add to Monitoring">
+                <IconButton
+                  size="small"
+                  color="info"
+                  sx={{ backgroundColor: "rgba(2, 136, 209, 0.04)" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAddToMonitoring(row);
+                  }}
+                >
+                  <MonitorIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
           {hasUpdate && (
             <Tooltip title="Edit">
               <IconButton
@@ -421,7 +526,8 @@ const Nodes = () => {
             </Tooltip>
           )}
         </Box>
-      ),
+        );
+      },
     });
   }
 

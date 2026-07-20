@@ -19,6 +19,7 @@ interface NodeModalProps {
 
 const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingItem }) => {
     const [node, setField] = useState('');
+    const [ip, setIp] = useState('');
     const [remarks, setRemarks] = useState('');
     const [totalRam, setTotalRam] = useState<string>('');
     const [totalHardisk, setTotalHardisk] = useState<string>('');
@@ -55,6 +56,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         if (open) {
             if (editingItem) {
                 setField(editingItem.node || '');
+                setIp(editingItem.ip || '');
                 setRemarks(editingItem.remarks || '');
                 setTotalRam(editingItem.totalRam !== undefined && editingItem.totalRam !== null ? String(editingItem.totalRam) : '');
                 setTotalHardisk(editingItem.totalHardisk !== undefined && editingItem.totalHardisk !== null ? String(editingItem.totalHardisk) : '');
@@ -66,7 +68,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setSerialNumber(editingItem.serialNumber || '');
                 setCustodian(editingItem.custodian || '');
                 setAdmin(
-                    Array.isArray(editingItem.admin)
+                     Array.isArray(editingItem.admin)
                         ? editingItem.admin
                         : (editingItem.admin ? [editingItem.admin] : [])
                 );
@@ -74,6 +76,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setRaidConfiguration(editingItem.raidConfiguration || []);
             } else {
                 setField('');
+                setIp('');
                 setRemarks('');
                 setTotalRam('');
                 setTotalHardisk('');
@@ -124,6 +127,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         
         const payload: any = {
             node: node.trim() ? node : undefined,
+            ip: ip.trim() ? ip : undefined,
             remarks,
             totalRam: totalRam.trim() !== '' ? totalRam.trim() : undefined,
             totalHardisk: totalHardisk.trim() !== '' ? totalHardisk.trim() : undefined,
@@ -155,13 +159,26 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         >
             <form onSubmit={handleSubmit}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
-                    <TextField
-                        fullWidth
-                        label="Node Name"
-                        placeholder="e.g. Node-01"
-                        value={node}
-                        onChange={(e) => setField(e.target.value)}
-                    />
+                    <Grid container spacing={2}>
+                        <Grid size={{xs: 12, sm: 6}}>
+                            <TextField
+                                fullWidth
+                                label="Node Name"
+                                placeholder="e.g. Node-01"
+                                value={node}
+                                onChange={(e) => setField(e.target.value)}
+                            />
+                        </Grid>
+                        <Grid size={{xs: 12, sm: 6}}>
+                            <TextField
+                                fullWidth
+                                label="IP Address"
+                                placeholder="e.g. 192.168.1.10"
+                                value={ip}
+                                onChange={(e) => setIp(e.target.value)}
+                            />
+                        </Grid>
+                    </Grid>
 
                     <Grid container spacing={2}>
                         <Grid size={{xs: 12, sm: 6}}   >
