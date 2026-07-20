@@ -130,7 +130,7 @@ async def list_items(
             {"remarks": {"$regex": search, "$options": "i"}}
         ]
 
-    actual_sort_by = sortBy or sort_by or "node"
+    actual_sort_by = sortBy or sort_by or "nodeId"
     sort_order = 1 if order == "asc" else -1
 
     total = await collection.count_documents(query)
@@ -181,6 +181,11 @@ async def update_item(id: str, payload: UpdateNodeModel = Body(...)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
+    # Fetch the old node document before updating (to get old IP for monitoring sync)
+    old_doc = await collection.find_one({"_id": ObjectId(id)})
+    if not old_doc:
+        raise HTTPException(status_code=404, detail=f"Node {id} not found")
+
     item_dict = {k: v for k, v in payload.model_dump().items() if v is not None}
 
     if len(item_dict) >= 1:
@@ -198,7 +203,41 @@ async def update_item(id: str, payload: UpdateNodeModel = Body(...)):
             {"_id": ObjectId(id)}, {"$set": item_dict}
         )
 
+        # Sync name/ip changes to monitored_servers and monitoring_status collections
         if update_result.modified_count == 1:
+            old_ip = old_doc.get("ip")
+            old_name = old_doc.get("node")
+            new_name = item_dict.get("node")
+            new_ip = item_dict.get("ip")
+
+            if old_ip or old_name:
+                monitoring_col = db.get_collection("monitored_servers")
+                query = {}
+                if old_ip:
+                    query["ipAddress"] = old_ip
+                elif old_name:
+                    query["name"] = old_name
+
+                monitored_srv = await monitoring_col.find_one(query)
+                if monitored_srv:
+                    srv_id = str(monitored_srv["_id"])
+                    monitor_update = {}
+                    if new_name:
+                        monitor_update["name"] = new_name
+                    if new_ip:
+                        monitor_update["ipAddress"] = new_ip
+
+                    if monitor_update:
+                        await monitoring_col.update_one({"_id": monitored_srv["_id"]}, {"$set": monitor_update})
+                        
+                        status_col = db.get_collection("monitoring_status")
+                        status_update = {}
+                        if "name" in monitor_update:
+                            status_update["name"] = monitor_update["name"]
+                        if "ipAddress" in monitor_update:
+                            status_update["ipAddress"] = monitor_update["ipAddress"]
+                        await status_col.update_one({"serverId": srv_id}, {"$set": status_update})
+
             if (updated := await collection.find_one({"_id": ObjectId(id)})) is not None:
                 return await compute_available_resources(updated)
 

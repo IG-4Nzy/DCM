@@ -617,6 +617,7 @@ class NodeModel(BaseModel):
     admin: Optional[Union[str, List[str]]] = None
     assetNumber: Optional[str] = None
     raidConfiguration: List[str] = Field(default_factory=list)
+    ip: Optional[str] = None
     createdBy: Optional[str] = None
     updatedAt: Optional[str] = None
 
@@ -642,6 +643,7 @@ class CreateNodeModel(BaseModel):
     admin: Optional[Union[str, List[str]]] = None
     assetNumber: Optional[str] = None
     raidConfiguration: Optional[List[str]] = Field(default_factory=list)
+    ip: Optional[str] = None
 
 class UpdateNodeModel(BaseModel):
     nodeId: Optional[str] = None
@@ -660,6 +662,7 @@ class UpdateNodeModel(BaseModel):
     admin: Optional[Union[str, List[str]]] = None
     assetNumber: Optional[str] = None
     raidConfiguration: Optional[List[str]] = None
+    ip: Optional[str] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -990,6 +993,7 @@ class PaginatedVCenterDetailsModel(BaseModel):
 class VMDetailsModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     vmId: Optional[str] = None
+    vmName: Optional[str] = None
     clusterId: Optional[str] = None
     ipAddress: Optional[str] = None
     applications: Optional[str] = None
@@ -1012,6 +1016,7 @@ class VMDetailsModel(BaseModel):
 
 class CreateVMDetailsModel(BaseModel):
     vmId: Optional[str] = None
+    vmName: Optional[str] = None
     clusterId: Optional[str] = None
     ipAddress: Optional[str] = None
     applications: Optional[str] = None
@@ -1029,6 +1034,7 @@ class CreateVMDetailsModel(BaseModel):
 
 class UpdateVMDetailsModel(BaseModel):
     vmId: Optional[str] = None
+    vmName: Optional[str] = None
     ipAddress: Optional[str] = None
     applications: Optional[str] = None
     node: Optional[str] = None
