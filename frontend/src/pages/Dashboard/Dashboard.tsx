@@ -40,8 +40,8 @@ const Dashboard: React.FC = () => {
 
   const todayStr = useMemo(() => dayjs().format('YYYY-MM-DD'), []);
 
-  const isSuperuser = useSelector((state: RootState) => state.auth?.user?.isSuperuser);
-  const currentUser = useSelector((state: RootState) => state.auth?.user);
+  const isSuperuser = useSelector((state: RootState) => state.auth?.isSuperuser);
+  const currentUser = useSelector((state: RootState) => state.auth);
   
   const canViewWorks = isSuperuser || hasPrivilege(PRIVILEGES.WORK_VIEW) || hasPrivilege(PRIVILEGES.WORK_VIEW_ALL_DEPARTMENTS) || hasPrivilege(PRIVILEGES.WORK_VIEW_ASSIGNED);
   const canViewObservations = isSuperuser || hasPrivilege(PRIVILEGES.OBSERVATION_VIEW) || hasPrivilege(PRIVILEGES.OBSERVATION_VIEW_ALL_DEPT);

@@ -5,5 +5,11 @@ continue
 
 in announcements,department selection not working
 
+add ip field for every nodes
+
+add "add to monitoring option for every nodes and vms",through it we can add those servers to the ping monitoring page for monitoring.
+
+
+
 
 
