@@ -66,6 +66,7 @@ async def list_items(
     
     privs = current_user.get("privileges", [])
     can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Create Server Details" in privs
+    
     if not can_view_all:
         target_username = current_user.get("sub")
         users_col = db.get_collection("users")
@@ -75,6 +76,19 @@ async def list_items(
         if target_user_id:
             admins.append(target_user_id)
         query["admin"] = {"$in": admins}
+    elif admin:
+        # If the user has view all privileges but explicitly wants to filter by an admin (e.g. from dashboard click)
+        users_col_adm = db.get_collection("users")
+        adm_doc = await users_col_adm.find_one({"username": admin})
+        if not adm_doc and ObjectId.is_valid(admin):
+            adm_doc = await users_col_adm.find_one({"_id": ObjectId(admin)})
+        admin_vals = set()
+        admin_vals.add(admin)
+        if adm_doc:
+            admin_vals.add(str(adm_doc["_id"]))
+            if adm_doc.get("username"):
+                admin_vals.add(adm_doc["username"])
+        query["admin"] = {"$in": list(admin_vals)}
     
     
     if clusterId:
@@ -97,19 +111,7 @@ async def list_items(
     if serverModel:
         query["serverModel"] = serverModel
     
-    if admin:
-        if "admin" not in query:
-            users_col_adm = db.get_collection("users")
-            adm_doc = await users_col_adm.find_one({"username": admin})
-            if not adm_doc and ObjectId.is_valid(admin):
-                adm_doc = await users_col_adm.find_one({"_id": ObjectId(admin)})
-            admin_vals = set()
-            admin_vals.add(admin)
-            if adm_doc:
-                admin_vals.add(str(adm_doc["_id"]))
-                if adm_doc.get("username"):
-                    admin_vals.add(adm_doc["username"])
-            query["admin"] = {"$in": list(admin_vals)}
+
     
     if rack:
         query["rack"] = rack

@@ -439,6 +439,7 @@ async def get_dashboard_summary(
         "announcements": enriched_announcements,
         "openOperationLogs": enriched_op_logs,
         "myVMsCount": admin_vm_count,
-        "myServersCount": total_admin_servers
+        "myServersCount": total_admin_servers,
+        "userId": user_id_str
     }
 
