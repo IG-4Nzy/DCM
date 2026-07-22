@@ -14,6 +14,8 @@ in visitors log edit,show the keep items on exit option everytime instead of sho
 
 morning checklist is marked complete,but for admin(superuser)/department head ,in dashboard its showing 60% but for other users,its showing 100% as fine
 
+Salary splitup should be in landscape mode.
+
 
 
 
