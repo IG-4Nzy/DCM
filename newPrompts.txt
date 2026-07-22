@@ -16,6 +16,8 @@ morning checklist is marked complete,but for admin(superuser)/department head ,i
 
 Salary splitup should be in landscape mode.
 
+in salary configuration,need cancel button for edit, and give delete confirmation modal for template deletion.
+
 
 
 
