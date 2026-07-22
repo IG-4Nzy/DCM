@@ -10,6 +10,10 @@ in salary calculation configuration tab, give option to add purchase order start
 
 in salary calculation,for each group,based on the allotted amount configured in the configuration tab,show total amount,consumed amount and remaining amount,and remaining month based on the purchase order end date.
 
+in visitors log edit,show the keep items on exit option everytime instead of showing only when tools.items to bring has value
+
+morning checklist is marked complete,but for admin(superuser)/department head ,in dashboard its showing 60% but for other users,its showing 100% as fine
+
 
 
 
