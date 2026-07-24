@@ -63,9 +63,11 @@ const Dropdown: React.FC<DropdownProps> = ({
   const [searchTerm, setSearchTerm] = React.useState('');
 
   const filteredOptions = React.useMemo(() => {
-    if (!searchable || !searchTerm) return options;
-    return options.filter((opt) =>
-      opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+    if (!searchable || !searchTerm) return options || [];
+    return (options || []).filter((opt) =>
+      opt && opt.label
+        ? String(opt.label).toLowerCase().includes(searchTerm.toLowerCase())
+        : false
     );
   }, [options, searchable, searchTerm]);
 

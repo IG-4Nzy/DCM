@@ -72,7 +72,6 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     ram: editingItem.ram || '',
                     cpu: editingItem.cpu || '',
                     backupLocation: editingItem.backupLocation || '',
-                    addedToMonitoring: editingItem.addedToMonitoring || false,
                     adminName: editingItem.adminName || '',
                     adminContact: editingItem.adminContact || '',
                     admin: Array.isArray(editingItem.admin) ? editingItem.admin : (editingItem.admin ? [editingItem.admin] : []),
@@ -91,7 +90,6 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     ram: '',
                     cpu: '',
                     backupLocation: '',
-                    addedToMonitoring: false,
                     adminName: '',
                     adminContact: '',
                     admin: [],
@@ -152,7 +150,6 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
             if (formData.ram !== editingItem.ram) changedData.ram = formData.ram;
             if (formData.cpu !== editingItem.cpu) changedData.cpu = formData.cpu;
             if (formData.backupLocation !== editingItem.backupLocation) changedData.backupLocation = formData.backupLocation;
-            if (formData.addedToMonitoring !== editingItem.addedToMonitoring) changedData.addedToMonitoring = formData.addedToMonitoring;
             if (formData.adminName !== editingItem.adminName) changedData.adminName = formData.adminName;
             if (formData.adminContact !== editingItem.adminContact) changedData.adminContact = formData.adminContact;
             
@@ -251,17 +248,6 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                             { label: 'On', value: 'on' },
                             { label: 'Off', value: 'off' }
                         ]}
-                    />
-                    <FormControlLabel
-                        control={
-                            <Checkbox
-                                  checked={!!formData.addedToMonitoring}
-                                onChange={(e) => handleCheckboxChange('addedToMonitoring', e.target.checked)}
-                                color="primary"
-                            />
-                        }
-                        label="VM added to monitoring confirmation"
-                        className={styles.formGrid__field}
                     />
 
                     <Dropdown 

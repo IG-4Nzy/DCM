@@ -268,7 +268,7 @@ const VisitorLogs: React.FC = () => {
             id: 'keptItemsOnExit',
             label: 'Kept on Exit?',
             sortable: false,
-            render: (row) => row.itemsToBring ? (row.keptItemsOnExit ? 'Yes' : 'No') : '-'
+            render: (row) => row.keptItemsOnExit ? 'Yes' : 'No'
         },
         { 
             id: 'entryTime', 
@@ -433,7 +433,6 @@ const VisitorLogs: React.FC = () => {
                                 }}
                             />
                         </Grid>
-                        {formFields.itemsToBring.trim() && (
                             <Grid size={{xs: 12}}  >
                                 <FormControlLabel
                                     control={
@@ -446,7 +445,6 @@ const VisitorLogs: React.FC = () => {
                                     label={<Typography sx={{ fontSize: '0.85rem' }}>Kept tools / items on exit?</Typography>}
                                 />
                             </Grid>
-                        )}
                     </Grid>
 
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 3 }}>

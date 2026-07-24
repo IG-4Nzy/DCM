@@ -682,6 +682,7 @@ const Nodes = ({ dashboardAdminFilter }: { dashboardAdminFilter?: string }) => {
         onClose={handleCloseModal}
         onSubmit={handleSubmit}
         editingItem={editingItem}
+        activeRackFilter={rackFilter}
       />
 
       <NodeViewModal

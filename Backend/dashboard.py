@@ -95,7 +95,7 @@ async def get_dashboard_summary(
     user_privs = current_user.get("privileges", [])
     
     async def get_checklist_overall_status(collection, view_all_priv):
-        if is_superuser or (view_all_priv and view_all_priv in user_privs):
+        if view_all_priv and (is_superuser or view_all_priv in user_privs):
             total_depts = await depts_col.count_documents({})
             completed = await collection.count_documents({"date": date, "status": "Completed"})
             draft = await collection.count_documents({"date": date, "status": "Draft"})

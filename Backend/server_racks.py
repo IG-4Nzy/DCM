@@ -13,6 +13,14 @@ import csv
 router = APIRouter()
 collection = db.get_collection("server_racks")
 
+def clean_int(value) -> int:
+    if value is None:
+        return 0
+    if isinstance(value, (int, float)):
+        return int(value)
+    digits = "".join([c for c in str(value) if c.isdigit()])
+    return int(digits) if digits else 0
+
 async def compute_remaining_capacity(rack_doc: dict):
     if not rack_doc:
         return rack_doc
@@ -20,12 +28,18 @@ async def compute_remaining_capacity(rack_doc: dict):
     nodes_collection = db.get_collection("nodes")
     cursor = nodes_collection.find({"rack": {"$regex": f"^{rack_name}$", "$options": "i"}})
     nodes = await cursor.to_list(length=None)
-    used_units = sum(n.get("rackUnits") or 0 for n in nodes)
-    total_capacity = rack_doc.get("rackCapacity")
-    if total_capacity is not None:
-        rack_doc["remainingCapacity"] = max(0, total_capacity - used_units)
-    else:
-        rack_doc["remainingCapacity"] = None
+    used_units = 0
+    for n in nodes:
+        ru = clean_int(n.get("rackUnits"))
+        if ru > 0:
+            used_units += ru
+        elif n.get("rackPosition"):
+            pos_str = str(n.get("rackPosition"))
+            used_units += len([p for p in pos_str.split(",") if p.strip()])
+    
+    total_capacity = rack_doc.get("rackCapacity") if (rack_doc.get("rackCapacity") is not None and rack_doc.get("rackCapacity") != 0) else 42
+    rack_doc["rackCapacity"] = total_capacity
+    rack_doc["remainingCapacity"] = max(0, total_capacity - used_units)
     return rack_doc
 
 @router.get("/", response_description="List all server racks", response_model=PaginatedServerRacksModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details", "Racks View", "Create Request", "Update Request", "View Request"]))])

@@ -39,7 +39,8 @@ import {
   MdChevronRight as ChevronRightIcon,
   MdAccountBalanceWallet as WalletIcon,
   MdSettings as SettingsIcon,
-  MdPrint as PrintIcon
+  MdPrint as PrintIcon,
+  MdClose as CloseIcon
 } from 'react-icons/md';
 import dayjs from 'dayjs';
 import request from '../../services/request';
@@ -53,18 +54,22 @@ type Activity = {
   id: string;
   name: string;
   rate: number | string;
+  maxUnits?: number | string;
 };
 
 type Template = {
   id: string;
   title: string;
   activities: Activity[];
+  allottedAmount?: number | string;
+  maxStaffs?: number | string;
 };
 
 type Member = {
   id: string;
   name: string;
   days: number | string;
+  otHours?: number | string;
 };
 
 type Group = {
@@ -93,6 +98,13 @@ const Salary = () => {
 
   const [globalCompanyName, setGlobalCompanyName] = useState('');
   const [globalPoNumber, setGlobalPoNumber] = useState('');
+  const [globalPoStartDate, setGlobalPoStartDate] = useState('');
+  const [globalPoEndDate, setGlobalPoEndDate] = useState('');
+  const [isEditingGeneral, setIsEditingGeneral] = useState(false);
+  const [tempCompanyName, setTempCompanyName] = useState('');
+  const [tempPoNumber, setTempPoNumber] = useState('');
+  const [tempPoStartDate, setTempPoStartDate] = useState('');
+  const [tempPoEndDate, setTempPoEndDate] = useState('');
   
   const [splitupGroup, setSplitupGroup] = useState<Group | null>(null);
   const [showSalaryPrint, setShowSalaryPrint] = useState(false);
@@ -115,6 +127,8 @@ const Salary = () => {
         if (salaryConfigRes.data) {
           setGlobalCompanyName(salaryConfigRes.data.companyName || '');
           setGlobalPoNumber(salaryConfigRes.data.poNumber || '');
+          setGlobalPoStartDate(salaryConfigRes.data.poStartDate || '');
+          setGlobalPoEndDate(salaryConfigRes.data.poEndDate || '');
         }
         if (templatesRes.data) {
           setTemplates(templatesRes.data);
@@ -136,6 +150,8 @@ const Salary = () => {
   const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
   const [editingGroupIds, setEditingGroupIds] = useState<string[]>([]);
   const [editingTemplateIds, setEditingTemplateIds] = useState<string[]>([]);
+  const [originalGroups, setOriginalGroups] = useState<Record<string, Group>>({});
+  const [originalTemplates, setOriginalTemplates] = useState<Record<string, Template>>({});
 
   // loadData() was removed because fetchAll() already fetches all months' data on mount
 
@@ -237,6 +253,19 @@ const Salary = () => {
       updateGroupsInState(updatedGroups);
       await saveGroupsToDB(currentMonth, updatedGroups);
       showToast('Group saved successfully', 'success');
+      setOriginalGroups(prev => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
+    } else {
+      const groupToEdit = groups.find(g => g.id === id);
+      if (groupToEdit) {
+        setOriginalGroups(prev => ({
+          ...prev,
+          [id]: JSON.parse(JSON.stringify(groupToEdit))
+        }));
+      }
     }
 
     setEditingGroupIds(prev => 
@@ -245,6 +274,20 @@ const Salary = () => {
     if (!editingGroupIds.includes(id) && !expandedGroupIds.includes(id)) {
       setExpandedGroupIds(prev => [...prev, id]);
     }
+  };
+
+  const handleCancelEditGroup = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const original = originalGroups[id];
+    if (original) {
+      updateGroupsInState(groups.map(g => g.id === id ? original : g));
+      setOriginalGroups(prev => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
+    }
+    setEditingGroupIds(prev => prev.filter(gId => gId !== id));
   };
 
   const toggleExpandGroup = (id: string) => {
@@ -260,7 +303,7 @@ const Salary = () => {
           ...g,
           members: [
             ...g.members,
-            { id: Date.now().toString(), name: '', days: 0 }
+            { id: Date.now().toString(), name: '', days: 0, otHours: 0 }
           ]
         };
       }
@@ -293,11 +336,118 @@ const Salary = () => {
   };
 
   const calculateGroupTotal = (group: Group) => {
-    return group.members.reduce((sum, member) => sum + ((Number(member.days) || 0) * (Number(group.perDaySalary) || 0)), 0);
+    return group.members.reduce((sum, member) => {
+      const days = Number(member.days) || 0;
+      const otHours = Number(member.otHours) || 0;
+      const perDay = Number(group.perDaySalary) || 0;
+      return sum + (days * perDay) + ((perDay / 8) * otHours);
+    }, 0);
   };
 
   const calculateGrandTotal = () => {
     return groups.reduce((sum, group) => sum + calculateGroupTotal(group), 0);
+  };
+
+  const getTemplateStats = (templateId: string | undefined) => {
+    if (!templateId) return null;
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return null;
+
+    const totalAmount = template.activities.reduce((sum, act) => sum + (Number(act.rate) || 0) * (Number(act.maxUnits) || 0), 0);
+    const totalAllottedUnits = template.activities.reduce((sum, act) => sum + (Number(act.maxUnits) || 0), 0);
+
+    // Calculate consumed amount and units across all months in salaryData
+    let consumedAmount = 0;
+    let consumedUnits = 0;
+    Object.values(salaryData).forEach(gList => {
+      gList.forEach(g => {
+        if (g.templateId === templateId) {
+          g.members.forEach(m => {
+            const days = Number(m.days) || 0;
+            const otHours = Number(m.otHours) || 0;
+            const perDay = Number(g.perDaySalary) || 0;
+            consumedAmount += (days * perDay) + ((perDay / 8) * otHours);
+            consumedUnits += days + (otHours / 8);
+          });
+        }
+      });
+    });
+
+    const remainingAmount = totalAmount - consumedAmount;
+    const remainingUnits = totalAllottedUnits - consumedUnits;
+
+    return {
+      totalAmount,
+      consumedAmount,
+      remainingAmount,
+      totalAllottedUnits,
+      consumedUnits,
+      remainingUnits
+    };
+  };
+
+  const getTemplateActivitiesStats = (template: Template) => {
+    const sortedMonths = Object.keys(salaryData)
+      .filter(m => {
+        if (globalPoStartDate && m < dayjs(globalPoStartDate).format('YYYY-MM')) return false;
+        return true;
+      })
+      .sort();
+
+    const consumedUnitsMap: Record<string, number> = {};
+    template.activities.forEach(act => {
+      consumedUnitsMap[act.id] = 0;
+    });
+
+    sortedMonths.forEach(m => {
+      const templateGroups = salaryData[m]?.filter(g => g.templateId === template.id) || [];
+      templateGroups.forEach(g => {
+        const mTotal = calculateGroupTotal(g);
+        const remainingMonths = globalPoEndDate 
+          ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${m}-01`).startOf('month'), 'month') + 1) 
+          : 1;
+
+        let sumTargetCost = 0;
+        const targets = template.activities.map(act => {
+          const maxUnits = Number(act.maxUnits) || 0;
+          const prevConsumed = consumedUnitsMap[act.id] || 0;
+          const remUnits = Math.max(0, maxUnits - prevConsumed);
+          const targetUnits = remUnits / remainingMonths;
+          const rate = Number(act.rate) || 0;
+          const targetCost = targetUnits * rate;
+          sumTargetCost += targetCost;
+          return { id: act.id, rate, targetCost };
+        });
+
+        template.activities.forEach((act, idx) => {
+          const target = targets[idx];
+          let amount = 0;
+          if (sumTargetCost > 0) {
+            amount = (target.targetCost / sumTargetCost) * mTotal;
+          } else {
+            amount = mTotal / template.activities.length;
+          }
+          const units = target.rate > 0 ? (amount / target.rate) : 0;
+          consumedUnitsMap[act.id] += units;
+        });
+      });
+    });
+
+    const remainingMonthsNow = globalPoEndDate 
+      ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs().startOf('month'), 'month') + 1) 
+      : 1;
+    const requiredUnitsPerActivity = Number(template.maxStaffs || 0) * remainingMonthsNow * 30;
+
+    const stats: Record<string, { remainingUnits: number; isNotEnough: boolean }> = {};
+    template.activities.forEach(act => {
+      const maxUnits = Number(act.maxUnits) || 0;
+      const consumed = consumedUnitsMap[act.id] || 0;
+      const remainingUnits = maxUnits - consumed;
+      const isNotEnough = remainingUnits < requiredUnitsPerActivity;
+      stats[act.id] = { remainingUnits, isNotEnough };
+    });
+
+    return stats;
   };
 
   // Template functions
@@ -313,7 +463,9 @@ const Salary = () => {
     const newTemplate: Template = {
       id: Date.now().toString(),
       title: `Template ${templates.length + 1}`,
-      activities: []
+      activities: [],
+      allottedAmount: 0,
+      maxStaffs: 0
     };
     const newTemplates = [newTemplate, ...templates];
     setTemplates(newTemplates);
@@ -336,10 +488,36 @@ const Salary = () => {
     if (editingTemplateIds.includes(id)) {
       await saveTemplatesToDB(templates);
       showToast('Template saved successfully', 'success');
+      setOriginalTemplates(prev => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
+    } else {
+      const templateToEdit = templates.find(t => t.id === id);
+      if (templateToEdit) {
+        setOriginalTemplates(prev => ({
+          ...prev,
+          [id]: JSON.parse(JSON.stringify(templateToEdit))
+        }));
+      }
     }
     setEditingTemplateIds(prev => 
       prev.includes(id) ? prev.filter(tId => tId !== id) : [...prev, id]
     );
+  };
+
+  const handleCancelEditTemplate = (id: string) => {
+    const original = originalTemplates[id];
+    if (original) {
+      setTemplates(templates.map(t => t.id === id ? original : t));
+      setOriginalTemplates(prev => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
+    }
+    setEditingTemplateIds(prev => prev.filter(tId => tId !== id));
   };
 
   const addActivity = (templateId: string) => {
@@ -347,7 +525,7 @@ const Salary = () => {
       if (t.id === templateId) {
         return {
           ...t,
-          activities: [...t.activities, { id: Date.now().toString(), name: '', rate: 0 }]
+          activities: [...t.activities, { id: Date.now().toString(), name: '', rate: 0, maxUnits: 0 }]
         };
       }
       return t;
@@ -394,12 +572,31 @@ const Salary = () => {
   const cycleEndStr = cycleEndObj.format('DD MMM YYYY');
   const displayPeriod = `${cycleStartStr} - ${cycleEndStr}`;
 
+  const handleEditGeneral = () => {
+    setTempCompanyName(globalCompanyName);
+    setTempPoNumber(globalPoNumber);
+    setTempPoStartDate(globalPoStartDate);
+    setTempPoEndDate(globalPoEndDate);
+    setIsEditingGeneral(true);
+  };
+
+  const handleCancelGeneral = () => {
+    setIsEditingGeneral(false);
+  };
+
   const saveGlobalConfig = async () => {
     try {
       await request.post('/api/salary/config', {
-        companyName: globalCompanyName,
-        poNumber: globalPoNumber
+        companyName: tempCompanyName,
+        poNumber: tempPoNumber,
+        poStartDate: tempPoStartDate,
+        poEndDate: tempPoEndDate
       });
+      setGlobalCompanyName(tempCompanyName);
+      setGlobalPoNumber(tempPoNumber);
+      setGlobalPoStartDate(tempPoStartDate);
+      setGlobalPoEndDate(tempPoEndDate);
+      setIsEditingGeneral(false);
       showToast('Global configuration saved', 'success');
     } catch (e) {
       showToast('Failed to save configuration', 'error');
@@ -454,7 +651,7 @@ const Salary = () => {
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
               <Box sx={{ textAlign: 'right' }}>
-                <Typography variant="caption" color="text.secondary" textTransform="uppercase" fontWeight="500">
+                <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', fontWeight: 500 }}>
                   Grand Total
                 </Typography>
                 <Typography variant="h6" fontWeight="700" color="primary.main">
@@ -621,6 +818,18 @@ const Salary = () => {
                                 </IconButton>
                               </Tooltip>
                             )}
+                            {isEditing && (
+                              <Tooltip title="Cancel">
+                                <IconButton 
+                                  color="warning" 
+                                  onClick={(e) => handleCancelEditGroup(group.id, e)} 
+                                  size="small"
+                                  sx={{ backgroundColor: 'warning.50' }}
+                                >
+                                  <CloseIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
                             <Tooltip title={isEditing ? "Save" : "Edit"}>
                               <IconButton 
                                 color={isEditing ? "success" : "primary"} 
@@ -643,12 +852,55 @@ const Salary = () => {
                       {/* Group Body */}
                       <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                         <CardContent sx={{ p: 2, pb: '16px !important' }}>
+                          {group.templateId && (() => {
+                            const stats = getTemplateStats(group.templateId);
+                            if (!stats) return null;
+                            const remainingMonths = globalPoEndDate ? Math.max(0, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${currentMonth}-01`).startOf('month'), 'month')) : 0;
+                            return (
+                              <Box sx={{ mb: 2, p: 1.5, bgcolor: 'grey.50', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
+                                <Grid container spacing={2}>
+                                  <Grid item xs={6} sm={4}>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Allotted Amount</Typography>
+                                    <Typography variant="body2" fontWeight="700">₹ {stats.totalAmount.toLocaleString('en-IN')}</Typography>
+                                  </Grid>
+                                  <Grid item xs={6} sm={4}>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Consumed Amount</Typography>
+                                    <Typography variant="body2" fontWeight="700" color="primary.main">₹ {stats.consumedAmount.toLocaleString('en-IN')}</Typography>
+                                  </Grid>
+                                  <Grid item xs={6} sm={4}>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Remaining Amount</Typography>
+                                    <Typography variant="body2" fontWeight="700" color={stats.remainingAmount >= 0 ? "success.main" : "error.main"}>
+                                      ₹ {stats.remainingAmount.toLocaleString('en-IN')}
+                                    </Typography>
+                                  </Grid>
+                                  
+                                  <Grid item xs={6} sm={4}>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Consumed Units</Typography>
+                                    <Typography variant="body2" fontWeight="700" color="primary.main">{(stats.consumedUnits || 0).toFixed(2)}</Typography>
+                                  </Grid>
+                                  <Grid item xs={6} sm={4}>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Remaining Units</Typography>
+                                    <Typography variant="body2" fontWeight="700" color={(stats.remainingUnits || 0) >= 0 ? "success.main" : "error.main"}>
+                                      {(stats.remainingUnits || 0).toFixed(2)}
+                                    </Typography>
+                                  </Grid>
+                                  <Grid item xs={6} sm={4}>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Remaining Months</Typography>
+                                    <Typography variant="body2" fontWeight="700">
+                                      {globalPoEndDate ? `${remainingMonths} month(s)` : 'N/A'}
+                                    </Typography>
+                                  </Grid>
+                                </Grid>
+                              </Box>
+                            );
+                          })()}
                           <TableContainer component={Box} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1.5, overflow: 'hidden' }}>
                             <Table size="small">
                               <TableHead sx={{ backgroundColor: 'grey.50' }}>
                                 <TableRow>
                                   <TableCell sx={{ fontWeight: 600, py: 1 }}>Member Name</TableCell>
-                                  <TableCell sx={{ fontWeight: 600, py: 1, width: 140 }}>Days</TableCell>
+                                  <TableCell sx={{ fontWeight: 600, py: 1, width: 100 }}>Days</TableCell>
+                                  <TableCell sx={{ fontWeight: 600, py: 1, width: 100 }}>OT Hours</TableCell>
                                   <TableCell sx={{ fontWeight: 600, py: 1, width: 150, textAlign: 'right' }}>Total (₹)</TableCell>
                                   {isEditing && <TableCell sx={{ width: 60, py: 1, textAlign: 'center' }}>Action</TableCell>}
                                 </TableRow>
@@ -656,7 +908,7 @@ const Salary = () => {
                               <TableBody>
                                 {group.members.length === 0 ? (
                                   <TableRow>
-                                    <TableCell colSpan={isEditing ? 4 : 3} align="center" sx={{ py: 3 }}>
+                                    <TableCell colSpan={isEditing ? 5 : 4} align="center" sx={{ py: 3 }}>
                                       <Typography variant="body2" color="text.secondary">
                                         No members added yet. {isEditing && 'Click "Add Member" below.'}
                                       </Typography>
@@ -692,9 +944,23 @@ const Salary = () => {
                                           <Typography variant="body2">{member.days || 0}</Typography>
                                         )}
                                       </TableCell>
+                                      <TableCell sx={{ py: isEditing ? 1 : 1.5 }}>
+                                        {isEditing ? (
+                                          <TextField
+                                            size="small"
+                                            type="number"
+                                            fullWidth
+                                            value={member.otHours ?? 0}
+                                            onChange={(e) => updateMember(group.id, member.id, 'otHours', e.target.value)}
+                                            inputProps={{ min: 0 }}
+                                          />
+                                        ) : (
+                                          <Typography variant="body2">{member.otHours || 0}</Typography>
+                                        )}
+                                      </TableCell>
                                       <TableCell sx={{ textAlign: 'right', py: isEditing ? 1 : 1.5 }}>
                                         <Typography variant="body2" fontWeight="500">
-                                          ₹ {((Number(member.days) || 0) * displayPerDay).toLocaleString('en-IN')}
+                                          ₹ {(((Number(member.days) || 0) * displayPerDay) + ((displayPerDay / 8) * (Number(member.otHours) || 0))).toLocaleString('en-IN')}
                                         </Typography>
                                       </TableCell>
                                       {isEditing && (
@@ -751,8 +1017,9 @@ const Salary = () => {
                   fullWidth
                   size="small"
                   label="Common Company Name"
-                  value={globalCompanyName}
-                  onChange={(e) => setGlobalCompanyName(e.target.value)}
+                  value={isEditingGeneral ? tempCompanyName : globalCompanyName}
+                  onChange={(e) => setTempCompanyName(e.target.value)}
+                  disabled={!isEditingGeneral}
                   sx={{ backgroundColor: 'white' }}
                 />
               </Grid>
@@ -761,16 +1028,54 @@ const Salary = () => {
                   fullWidth
                   size="small"
                   label="Common PO Number"
-                  value={globalPoNumber}
-                  onChange={(e) => setGlobalPoNumber(e.target.value)}
+                  value={isEditingGeneral ? tempPoNumber : globalPoNumber}
+                  onChange={(e) => setTempPoNumber(e.target.value)}
+                  disabled={!isEditingGeneral}
+                  sx={{ backgroundColor: 'white' }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField 
+                  fullWidth
+                  size="small"
+                  type="date"
+                  label="PO Start Date"
+                  value={isEditingGeneral ? tempPoStartDate : globalPoStartDate}
+                  onChange={(e) => setTempPoStartDate(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  disabled={!isEditingGeneral}
+                  sx={{ backgroundColor: 'white' }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField 
+                  fullWidth
+                  size="small"
+                  type="date"
+                  label="PO End Date"
+                  value={isEditingGeneral ? tempPoEndDate : globalPoEndDate}
+                  onChange={(e) => setTempPoEndDate(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  disabled={!isEditingGeneral}
                   sx={{ backgroundColor: 'white' }}
                 />
               </Grid>
             </Grid>
-            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-              <Button variant="contained" size="small" onClick={saveGlobalConfig} disableElevation>
-                Save Settings
-              </Button>
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+              {isEditingGeneral ? (
+                <>
+                  <Button variant="outlined" size="small" onClick={handleCancelGeneral}>
+                    Cancel
+                  </Button>
+                  <Button variant="contained" size="small" onClick={saveGlobalConfig} disableElevation>
+                    Save
+                  </Button>
+                </>
+              ) : (
+                <Button variant="contained" size="small" onClick={handleEditGeneral} disableElevation>
+                  Edit
+                </Button>
+              )}
             </Box>
           </Paper>
 
@@ -813,20 +1118,57 @@ const Salary = () => {
                     <Card variant="outlined" sx={{ borderRadius: 2 }}>
                       <Box sx={{ p: 2, backgroundColor: 'grey.50', borderBottom: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         {isEditing ? (
-                          <TextField 
-                            size="small" 
-                            label="Template Title" 
-                            value={template.title} 
-                            onChange={(e) => updateTemplate(template.id, 'title', e.target.value)} 
-                            sx={{ backgroundColor: 'white' }}
-                          />
-                        ) : (
-                          <Box>
-                            <Typography variant="subtitle1" fontWeight="600">{template.title}</Typography>
-                            <Typography variant="caption" color="text.secondary">Total Rate: ₹{totalRate} / day</Typography>
+                          <Box sx={{ display: 'flex', gap: 2 }}>
+                            <TextField 
+                              size="small" 
+                              label="Template Title" 
+                              value={template.title} 
+                              onChange={(e) => updateTemplate(template.id, 'title', e.target.value)} 
+                              sx={{ backgroundColor: 'white' }}
+                            />
+                            <TextField 
+                              size="small" 
+                              type="number"
+                              label="Max Staffs" 
+                              value={template.maxStaffs ?? 0} 
+                              onChange={(e) => updateTemplate(template.id, 'maxStaffs', e.target.value)} 
+                              sx={{ backgroundColor: 'white', width: 120 }}
+                              inputProps={{ min: 0 }}
+                            />
+                            <TextField 
+                              size="small" 
+                              disabled
+                              label="Calculated Allotted (₹)" 
+                              value={template.activities.reduce((sum, act) => sum + (Number(act.rate) || 0) * (Number(act.maxUnits) || 0), 0)} 
+                              sx={{ backgroundColor: 'grey.100', width: 180 }}
+                            />
                           </Box>
-                        )}
+                        ) : (() => {
+                          const stats = getTemplateStats(template.id);
+                          const allotted = stats?.totalAmount ?? 0;
+                          const remaining = stats?.remainingAmount ?? 0;
+                          return (
+                            <Box>
+                              <Typography variant="subtitle1" fontWeight="600">{template.title}</Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                Allotted Amount: ₹{allotted.toLocaleString('en-IN')} &nbsp;&bull;&nbsp; Remaining Amount: ₹{remaining.toLocaleString('en-IN')} &nbsp;&bull;&nbsp; Max Staffs: {template.maxStaffs || 0}
+                              </Typography>
+                            </Box>
+                          );
+                        })()}
                         <Box sx={{ display: 'flex', gap: 1 }}>
+                          {isEditing && (
+                            <Tooltip title="Cancel">
+                              <IconButton 
+                                color="warning" 
+                                onClick={() => handleCancelEditTemplate(template.id)} 
+                                size="small"
+                                sx={{ backgroundColor: 'warning.50' }}
+                              >
+                                <CloseIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
                           <Tooltip title={isEditing ? "Save" : "Edit"}>
                             <IconButton 
                               color={isEditing ? "success" : "primary"} 
@@ -851,58 +1193,93 @@ const Salary = () => {
                             <TableHead sx={{ backgroundColor: 'grey.50' }}>
                               <TableRow>
                                 <TableCell sx={{ fontWeight: 600, py: 1 }}>Activity Name</TableCell>
-                                <TableCell sx={{ fontWeight: 600, py: 1, width: 120 }}>Rate (₹)</TableCell>
+                                <TableCell sx={{ fontWeight: 600, py: 1, width: 100 }}>Rate (₹)</TableCell>
+                                <TableCell sx={{ fontWeight: 600, py: 1, width: 100 }}>Max Units</TableCell>
+                                <TableCell sx={{ fontWeight: 600, py: 1, width: 120 }}>Remaining Units</TableCell>
+                                <TableCell sx={{ fontWeight: 600, py: 1, width: 120, textAlign: 'right' }}>Total (₹)</TableCell>
                                 {isEditing && <TableCell sx={{ width: 60, py: 1 }}></TableCell>}
                               </TableRow>
                             </TableHead>
                             <TableBody>
                               {template.activities.length === 0 ? (
                                 <TableRow>
-                                  <TableCell colSpan={isEditing ? 3 : 2} align="center" sx={{ py: 3 }}>
+                                  <TableCell colSpan={isEditing ? 6 : 5} align="center" sx={{ py: 3 }}>
                                     <Typography variant="body2" color="text.secondary">
                                       No activities added.
                                     </Typography>
                                   </TableCell>
                                 </TableRow>
-                              ) : (
-                                template.activities.map(act => (
-                                  <TableRow key={act.id}>
-                                    <TableCell>
-                                      {isEditing ? (
-                                        <TextField 
-                                          size="small" 
-                                          fullWidth 
-                                          value={act.name} 
-                                          onChange={(e) => updateActivity(template.id, act.id, 'name', e.target.value)} 
-                                          placeholder="Activity"
-                                        />
-                                      ) : (
-                                        <Typography variant="body2">{act.name}</Typography>
-                                      )}
-                                    </TableCell>
-                                    <TableCell>
-                                      {isEditing ? (
-                                        <TextField 
-                                          size="small" 
-                                          type="number"
-                                          fullWidth 
-                                          value={act.rate} 
-                                          onChange={(e) => updateActivity(template.id, act.id, 'rate', e.target.value)} 
-                                        />
-                                      ) : (
-                                        <Typography variant="body2">₹{act.rate}</Typography>
-                                      )}
-                                    </TableCell>
-                                    {isEditing && (
+                              ) : (() => {
+                                const activityStats = getTemplateActivitiesStats(template);
+                                return template.activities.map(act => {
+                                  const stats = activityStats[act.id] || { remainingUnits: Number(act.maxUnits) || 0, isNotEnough: false };
+                                  return (
+                                    <TableRow key={act.id}>
                                       <TableCell>
-                                        <IconButton size="small" color="error" onClick={() => deleteActivity(template.id, act.id)}>
-                                          <DeleteIcon fontSize="small" />
-                                        </IconButton>
+                                        {isEditing ? (
+                                          <TextField 
+                                            size="small" 
+                                            fullWidth 
+                                            value={act.name} 
+                                            onChange={(e) => updateActivity(template.id, act.id, 'name', e.target.value)} 
+                                            placeholder="Activity"
+                                          />
+                                        ) : (
+                                          <Typography variant="body2">{act.name}</Typography>
+                                        )}
                                       </TableCell>
-                                    )}
-                                  </TableRow>
-                                ))
-                              )}
+                                      <TableCell>
+                                        {isEditing ? (
+                                          <TextField 
+                                            size="small" 
+                                            type="number"
+                                            fullWidth 
+                                            value={act.rate} 
+                                            onChange={(e) => updateActivity(template.id, act.id, 'rate', e.target.value)} 
+                                          />
+                                        ) : (
+                                          <Typography variant="body2">₹{act.rate}</Typography>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        {isEditing ? (
+                                          <TextField 
+                                            size="small" 
+                                            type="number"
+                                            fullWidth 
+                                            value={act.maxUnits ?? 0} 
+                                            onChange={(e) => updateActivity(template.id, act.id, 'maxUnits', e.target.value)} 
+                                            inputProps={{ min: 0 }}
+                                          />
+                                        ) : (
+                                          <Typography variant="body2">{act.maxUnits || 0}</Typography>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Typography 
+                                          variant="body2" 
+                                          fontWeight="600" 
+                                          color={stats.isNotEnough ? 'error.main' : 'text.primary'}
+                                        >
+                                          {stats.remainingUnits.toFixed(2)}
+                                        </Typography>
+                                      </TableCell>
+                                      <TableCell sx={{ textAlign: 'right' }}>
+                                        <Typography variant="body2" fontWeight="500">
+                                          ₹ {((Number(act.rate) || 0) * (Number(act.maxUnits) || 0)).toLocaleString('en-IN')}
+                                        </Typography>
+                                      </TableCell>
+                                      {isEditing && (
+                                        <TableCell>
+                                          <IconButton size="small" color="error" onClick={() => deleteActivity(template.id, act.id)}>
+                                            <DeleteIcon fontSize="small" />
+                                          </IconButton>
+                                        </TableCell>
+                                      )}
+                                    </TableRow>
+                                  );
+                                });
+                              })()}
                             </TableBody>
                           </Table>
                         </TableContainer>
@@ -941,6 +1318,9 @@ const Salary = () => {
         <DialogContent dividers className="print-area">
           <style>
             {`
+              @page {
+                size: landscape;
+              }
               @media print {
                 body * {
                   visibility: hidden;
@@ -967,14 +1347,69 @@ const Salary = () => {
 
             const groupTotal = calculateGroupTotal(splitupGroup);
             
-            // Generate random weights for each activity to split the amounts randomly
-            // We use seeded random or just Math.random. Since it's a print dialog, 
-            // recalculating on open is fine.
-            let totalWeight = 0;
-            const weights = template.activities.map(() => {
-              const w = Math.random() * 0.8 + 0.2; // random weight between 0.2 and 1.0
-              totalWeight += w;
-              return w;
+            // Calculate deterministic splitup based on remaining units for each activity,
+            // shared equally till the contract period ends.
+            const monthSet = new Set(Object.keys(salaryData));
+            monthSet.add(currentMonth);
+            const sortedMonths = Array.from(monthSet)
+              .filter(m => {
+                if (m > currentMonth) return false;
+                if (globalPoStartDate && m < dayjs(globalPoStartDate).format('YYYY-MM')) return false;
+                return true;
+              })
+              .sort();
+
+            const consumedUnitsMap: Record<string, number> = {};
+            template.activities.forEach(act => {
+              consumedUnitsMap[act.id] = 0;
+            });
+
+            let finalSplitupResults: Record<string, { amount: number; units: number }> = {};
+
+            sortedMonths.forEach(m => {
+              const g = (m === currentMonth) 
+                ? splitupGroup 
+                : salaryData[m]?.find(group => group.name === splitupGroup.name);
+              
+              if (!g) return;
+
+              const mTotal = calculateGroupTotal(g);
+              const remainingMonths = globalPoEndDate 
+                ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${m}-01`).startOf('month'), 'month') + 1) 
+                : 1;
+
+              // 1. Calculate target units and cost for each activity
+              let sumTargetCost = 0;
+              const targets = template.activities.map(act => {
+                const maxUnits = Number(act.maxUnits) || 0;
+                const prevConsumed = consumedUnitsMap[act.id] || 0;
+                const remUnits = Math.max(0, maxUnits - prevConsumed);
+                const targetUnits = remUnits / remainingMonths;
+                const rate = Number(act.rate) || 0;
+                const targetCost = targetUnits * rate;
+                sumTargetCost += targetCost;
+                return { id: act.id, rate, targetCost };
+              });
+
+              // 2. Allocate the month's group total
+              const monthResults: Record<string, { amount: number; units: number }> = {};
+              template.activities.forEach((act, idx) => {
+                const target = targets[idx];
+                let amount = 0;
+                if (sumTargetCost > 0) {
+                  amount = (target.targetCost / sumTargetCost) * mTotal;
+                } else {
+                  amount = mTotal / template.activities.length;
+                }
+                const units = target.rate > 0 ? (amount / target.rate) : 0;
+                monthResults[act.id] = { amount, units };
+                
+                consumedUnitsMap[act.id] += units;
+              });
+
+              if (m === currentMonth) {
+                finalSplitupResults = monthResults;
+              }
             });
 
             return (
@@ -997,17 +1432,16 @@ const Salary = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {template.activities.map((act, index) => {
+                      {template.activities.map((act) => {
                         const rate = Number(act.rate) || 0;
-                        const amount = (weights[index] / totalWeight) * groupTotal;
-                        const units = rate > 0 ? (amount / rate) : 0;
+                        const result = finalSplitupResults[act.id] || { amount: 0, units: 0 };
                         
                         return (
                           <TableRow key={act.id}>
                             <TableCell>{act.name}</TableCell>
                             <TableCell sx={{ textAlign: 'right' }}>{rate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell sx={{ textAlign: 'right' }}>{Math.round(units).toLocaleString('en-IN')}</TableCell>
-                            <TableCell sx={{ textAlign: 'right' }}>{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                            <TableCell sx={{ textAlign: 'right' }}>{result.units.toFixed(2)}</TableCell>
+                            <TableCell sx={{ textAlign: 'right' }}>{result.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                           </TableRow>
                         );
                       })}
@@ -1038,6 +1472,9 @@ const Salary = () => {
         <DialogContent dividers className="print-area-salary">
           <style>
             {`
+              @page {
+                size: landscape;
+              }
               @media print {
                 body * {
                   visibility: hidden;
@@ -1073,6 +1510,7 @@ const Salary = () => {
                     <TableCell sx={{ fontWeight: 'bold', width: '50px' }}>Sl No.</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Name of the contract person</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Days</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>OT Hours</TableCell>
                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Total Amount (Rs)</TableCell>
                   </TableRow>
                 </TableHead>
@@ -1086,20 +1524,22 @@ const Salary = () => {
                           const perDay = Number(group.perDaySalary) || 0;
                           return group.members.map((member) => {
                             const days = Number(member.days) || 0;
-                            const amount = days * perDay;
+                            const otHours = Number(member.otHours) || 0;
+                            const amount = (days * perDay) + ((perDay / 8) * otHours);
                             totalGrandAmount += amount;
                             return (
                               <TableRow key={member.id}>
                                 <TableCell>{slNo++}</TableCell>
                                 <TableCell>{member.name}</TableCell>
                                 <TableCell sx={{ textAlign: 'center' }}>{days.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</TableCell>
+                                <TableCell sx={{ textAlign: 'center' }}>{otHours.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</TableCell>
                                 <TableCell sx={{ textAlign: 'right' }}>{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                               </TableRow>
                             );
                           });
                         })}
                         <TableRow>
-                          <TableCell colSpan={3} sx={{ fontWeight: 'bold', textAlign: 'right' }}>Grand Total</TableCell>
+                          <TableCell colSpan={4} sx={{ fontWeight: 'bold', textAlign: 'right' }}>Grand Total</TableCell>
                           <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>{totalGrandAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         </TableRow>
                       </>

@@ -1,23 +1,41 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { Box, Grid, Checkbox, FormControlLabel, FormGroup, FormLabel } from '@mui/material';
+import { Box, Grid, Checkbox, FormControlLabel, FormGroup, FormLabel, Dialog, DialogTitle, DialogContent, DialogActions, IconButton } from '@mui/material';
+import { MdAdd as AddIcon } from 'react-icons/md';
 import Modal from '../../../components/Modal';
 import TextField from '../../../components/TextField';
 import Dropdown from '../../../components/Dropdown';
 import Button from '../../../components/Button';
 import { type NodeData, type CreateNodePayload, type UpdateNodePayload } from './model';
 import { fetchServerRacks } from '../Racks/action';
-import { fetchServerModels } from '../ServerModels/action';
+import { fetchServerModels, createServerModel } from '../ServerModels/action';
 import request from '../../../services/request';
+
+const matchesPosition = (nodeRackPosition: string | undefined, posIndex: number) => {
+    if (!nodeRackPosition) return false;
+    const parts = nodeRackPosition.split(',').map(p => p.trim().toLowerCase());
+    const pad2 = String(posIndex).padStart(2, '0');
+    return parts.some(norm =>
+        norm === `m ${posIndex}` || 
+        norm === `m${posIndex}` || 
+        norm === `m-${posIndex}` || 
+        norm === `m ${pad2}` || 
+        norm === `m${pad2}` || 
+        norm === `m-${pad2}` || 
+        norm === `${posIndex}` || 
+        norm === pad2
+    );
+};
 
 interface NodeModalProps {
     open: boolean;
     onClose: () => void;
     onSubmit: (data: CreateNodePayload | UpdateNodePayload) => void;
     editingItem: NodeData | null;
+    activeRackFilter?: string;
 }
 
-const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingItem }) => {
+const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingItem, activeRackFilter }) => {
     const [node, setField] = useState('');
     const [ip, setIp] = useState('');
     const [remarks, setRemarks] = useState('');
@@ -25,7 +43,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
     const [totalHardisk, setTotalHardisk] = useState<string>('');
     const [totalCpu, setTotalCpu] = useState<string>('');
     const [rack, setRack] = useState('');
-    const [rackPosition, setRackPosition] = useState('');
+    const [rackPosition, setRackPosition] = useState<string[]>([]);
     const [rackUnits, setRackUnits] = useState('');
     const [serverModel, setServerModel] = useState('');
     const [serialNumber, setSerialNumber] = useState('');
@@ -37,6 +55,11 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
     const [racks, setRacks] = useState<any[]>([]);
     const [serverModels, setServerModels] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
+    const [allNodes, setAllNodes] = useState<any[]>([]);
+
+    const [showNewModelModal, setShowNewModelModal] = useState(false);
+    const [newModelName, setNewModelName] = useState('');
+    const [newModelRemarks, setNewModelRemarks] = useState('');
 
     useEffect(() => {
         if (open) {
@@ -49,6 +72,9 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
             request.get('/api/users?pagination=false')
                 .then(res => setUsers(res.data?.data || []))
                 .catch(err => console.error("Failed to fetch users", err));
+            request.get('/api/nodes?pagination=false')
+                .then(res => setAllNodes(res.data?.data || []))
+                .catch(err => console.error("Failed to fetch nodes", err));
         }
     }, [open]);
 
@@ -62,7 +88,11 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setTotalHardisk(editingItem.totalHardisk !== undefined && editingItem.totalHardisk !== null ? String(editingItem.totalHardisk) : '');
                 setTotalCpu(editingItem.totalCpu !== undefined && editingItem.totalCpu !== null ? String(editingItem.totalCpu) : '');
                 setRack(editingItem.rack || '');
-                setRackPosition(editingItem.rackPosition || '');
+                setRackPosition(
+                    editingItem.rackPosition
+                        ? editingItem.rackPosition.split(',').map(p => p.trim())
+                        : []
+                );
                 setRackUnits(editingItem.rackUnits !== undefined && editingItem.rackUnits !== null ? String(editingItem.rackUnits) : '');
                 setServerModel(editingItem.serverModel || '');
                 setSerialNumber(editingItem.serialNumber || '');
@@ -81,8 +111,8 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setTotalRam('');
                 setTotalHardisk('');
                 setTotalCpu('');
-                setRack('');
-                setRackPosition('');
+                setRack(activeRackFilter || '');
+                setRackPosition([]);
                 setRackUnits('');
                 setServerModel('');
                 setSerialNumber('');
@@ -92,7 +122,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setRaidConfiguration([]);
             }
         }
-    }, [open, editingItem]);
+    }, [open, editingItem, activeRackFilter]);
 
     useEffect(() => {
         if (users.length > 0 && Array.isArray(admin) && admin.length > 0) {
@@ -114,6 +144,12 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         }
     }, [users, admin]);
 
+    useEffect(() => {
+        if (Array.isArray(rackPosition) && rackPosition.length > 0) {
+            setRackUnits(String(rackPosition.length));
+        }
+    }, [rackPosition]);
+
     const handleRaidChange = (level: string, checked: boolean) => {
         if (checked) {
             setRaidConfiguration([...raidConfiguration, level]);
@@ -125,6 +161,10 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
+        const computedRackUnits = rackUnits.trim() !== '' 
+            ? Number(rackUnits) 
+            : (rackPosition && rackPosition.length > 0 ? rackPosition.length : undefined);
+
         const payload: any = {
             node: node.trim() ? node : undefined,
             ip: ip.trim() ? ip : undefined,
@@ -133,8 +173,8 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
             totalHardisk: totalHardisk.trim() !== '' ? totalHardisk.trim() : undefined,
             totalCpu: totalCpu.trim() !== '' ? totalCpu.trim() : undefined,
             rack: rack || undefined,
-            rackPosition: rackPosition || undefined,
-            rackUnits: rackUnits.trim() !== '' ? Number(rackUnits) : undefined,
+            rackPosition: rackPosition && rackPosition.length > 0 ? rackPosition.join(', ') : undefined,
+            rackUnits: computedRackUnits,
             serverModel: serverModel || undefined,
             serialNumber: serialNumber || undefined,
             custodian: custodian || undefined,
@@ -150,7 +190,48 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         }
     };
 
+    const availablePositions = Array.from({ length: 42 }, (_, idx) => idx + 1)
+        .filter(pos => {
+            const isTaken = allNodes.some(n => {
+                if (editingItem && n.id === editingItem.id) return false;
+                return n.rack === rack && matchesPosition(n.rackPosition, pos);
+            });
+            return !isTaken;
+        })
+        .map(pos => {
+            const label = `M ${String(pos).padStart(2, '0')}`;
+            return { label, value: label };
+        });
+
+    if (Array.isArray(rackPosition)) {
+        rackPosition.forEach(posVal => {
+            if (posVal && !availablePositions.some(opt => opt.value === posVal)) {
+                availablePositions.push({ label: posVal, value: posVal });
+            }
+        });
+    }
+
+    const handleSaveNewModel = async () => {
+        if (!newModelName.trim()) return;
+        try {
+            const result = await createServerModel({
+                serverModel: newModelName.trim(),
+                remarks: newModelRemarks.trim() || undefined
+            });
+            const res = await fetchServerModels({ pagination: false });
+            setServerModels(res.data || []);
+            setServerModel(result.serverModel);
+            setNewModelName('');
+            setNewModelRemarks('');
+            setShowNewModelModal(false);
+        } catch (err: any) {
+            console.error("Failed to create server model", err);
+            alert(err?.response?.data?.detail || "Failed to create server model");
+        }
+    };
+
     return (
+        <>
         <Modal
             open={open}
             handleClose={onClose}
@@ -181,14 +262,25 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                     </Grid>
 
                     <Grid container spacing={2}>
-                        <Grid size={{xs: 12, sm: 6}}   >
-                            <Dropdown
-                                label="Server Model"
-                                fullWidth
-                                value={serverModel}
-                                onChange={(val) => setServerModel(val)}
-                                options={serverModels.map(sm => ({ label: sm.serverModel, value: sm.serverModel }))}
-                            />
+                        <Grid size={{xs: 12, sm: 6}}>
+                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                                <Dropdown
+                                    label="Server Model"
+                                    fullWidth
+                                    searchable
+                                    value={serverModel}
+                                    onChange={(val) => setServerModel(val)}
+                                    options={serverModels.map(sm => ({ label: sm.serverModel, value: sm.serverModel }))}
+                                />
+                                <IconButton 
+                                    color="primary" 
+                                    onClick={() => setShowNewModelModal(true)}
+                                    sx={{ mt: 1.5, border: '1px solid #1976d2', borderRadius: '8px', padding: '10px' }}
+                                    title="Add New Server Model"
+                                >
+                                    <AddIcon />
+                                </IconButton>
+                            </Box>
                         </Grid>
                         <Grid size={{xs: 12, sm: 6}}   >
                             <TextField
@@ -288,18 +380,22 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                             <Dropdown
                                 label="Server Rack"
                                 fullWidth
+                                required
                                 value={rack}
                                 onChange={(val) => setRack(val)}
                                 options={racks.map(r => ({ label: r.serverRack, value: r.serverRack }))}
                             />
                         </Grid>
                         <Grid size={{xs: 12, sm: 4}}   >
-                            <TextField
-                                fullWidth
+                            <Dropdown
                                 label="Rack Position"
-                                placeholder="e.g. U10"
+                                fullWidth
+                                required
+                                multiple
+                                searchable
                                 value={rackPosition}
-                                onChange={(e) => setRackPosition(e.target.value)}
+                                onChange={(val) => setRackPosition(val)}
+                                options={availablePositions}
                             />
                         </Grid>
                         <Grid size={{xs: 12, sm: 4}}   >
@@ -334,6 +430,60 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 </Box>
             </form>
         </Modal>
+        <Dialog 
+            open={showNewModelModal} 
+            onClose={() => {
+                setShowNewModelModal(false);
+                setNewModelName('');
+                setNewModelRemarks('');
+            }}
+            maxWidth="xs"
+            fullWidth
+        >
+            <DialogTitle sx={{ fontWeight: 'bold', color: '#333' }}>Add New Server Model</DialogTitle>
+            <DialogContent>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+                    <TextField
+                        fullWidth
+                        label="Server Model Name"
+                        placeholder="e.g. Dell PowerEdge R740"
+                        value={newModelName}
+                        onChange={(e) => setNewModelName(e.target.value)}
+                    />
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={2}
+                        label="Remarks"
+                        placeholder="Optional remarks..."
+                        value={newModelRemarks}
+                        onChange={(e) => setNewModelRemarks(e.target.value)}
+                    />
+                </Box>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+                <Button 
+                    variant="text" 
+                    onClick={() => {
+                        setShowNewModelModal(false);
+                        setNewModelName('');
+                        setNewModelRemarks('');
+                    }} 
+                    style={{ color: '#637381' }}
+                >
+                    Cancel
+                </Button>
+                <Button 
+                    variant="contained" 
+                    color="primary"
+                    onClick={handleSaveNewModel}
+                    disabled={!newModelName.trim()}
+                >
+                    Save Model
+                </Button>
+            </DialogActions>
+        </Dialog>
+        </>
     );
 };
 

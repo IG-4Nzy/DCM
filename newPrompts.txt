@@ -1,24 +1,3 @@
-dont overlap or clash the alarms,only play single time and repeat.
-
-attendance verification showing all months instead of selected range.
-
-need option for adding OT hours in salary calculation -> (amount per day / 8 ) * ot hrs.
-
-in salary calculation,for all templates,give option to add total amount alloted for that group.
-
-in salary calculation configuration tab, give option to add purchase order start and end date inside the general settings section,and give a edit button for general settings section instead of it is being editable all the time without clicking the edit button.
-
-in salary calculation,for each group,based on the allotted amount configured in the configuration tab,show total amount,consumed amount and remaining amount,and remaining month based on the purchase order end date.
-
-in visitors log edit,show the keep items on exit option everytime instead of showing only when tools.items to bring has value
-
-morning checklist is marked complete,but for admin(superuser)/department head ,in dashboard its showing 60% but for other users,its showing 100% as fine
-
-Salary splitup should be in landscape mode.
-
-in salary configuration,need cancel button for edit, and give delete confirmation modal for template deletion.
-
-
 
 
 

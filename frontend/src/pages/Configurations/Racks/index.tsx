@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
-import { Box, Paper, Tooltip, IconButton, Button as MuiButton } from '@mui/material';
+import { Box, Paper, Tooltip, IconButton, Button as MuiButton, ToggleButton, ToggleButtonGroup, Table as MuiTable, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Chip } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdUploadFile as UploadIcon } from 'react-icons/md';
 import Button from '../../../components/Button';
 import SearchBar from '../../../components/SearchBar';
@@ -15,8 +15,26 @@ import { useTableState } from '../../../hooks/useTableState';
 import { fetchServerRacks, createServerRack, updateServerRack, deleteServerRack, bulkCreateServerRacks } from './action';
 import { type ServerRackData } from './model';
 import ServerRackModal from './ServerRackModal';
+import NodeViewModal from '../Nodes/NodeViewModal';
+import request from '../../../services/request';
 
 type Order = 'asc' | 'desc';
+
+const matchesPosition = (nodeRackPosition: string | undefined, posIndex: number) => {
+    if (!nodeRackPosition) return false;
+    const parts = nodeRackPosition.split(',').map(p => p.trim().toLowerCase());
+    const pad2 = String(posIndex).padStart(2, '0');
+    return parts.some(norm =>
+        norm === `m ${posIndex}` || 
+        norm === `m${posIndex}` || 
+        norm === `m-${posIndex}` || 
+        norm === `m ${pad2}` || 
+        norm === `m${pad2}` || 
+        norm === `m-${pad2}` || 
+        norm === `${posIndex}` || 
+        norm === pad2
+    );
+};
 
 const Racks = () => {
     const [data, setData] = useState<ServerRackData[]>([]);
@@ -41,6 +59,30 @@ const Racks = () => {
     const [order, setOrder] = useTableState<Order>('Racks_order', 'asc');
     const [orderBy, setOrderBy] = useTableState<string>('Racks_orderBy', 'serverRack');
 
+    const [viewMode, setViewMode] = useState<'list' | 'layout'>('list');
+    const [nodes, setNodes] = useState<any[]>([]);
+    const [allRacks, setAllRacks] = useState<ServerRackData[]>([]);
+    const [selectedNodeForView, setSelectedNodeForView] = useState<any | null>(null);
+    const [isNodeViewModalOpen, setIsNodeViewModalOpen] = useState(false);
+
+    const loadNodes = useCallback(async () => {
+        try {
+            const res = await request.get('/api/nodes/', { params: { pagination: false } });
+            setNodes(res.data.data || []);
+        } catch (err) {
+            console.error("Failed to load nodes", err);
+        }
+    }, []);
+
+    const loadAllRacks = useCallback(async () => {
+        try {
+            const result = await fetchServerRacks({ pagination: false, sortBy: 'serverRack', order: 'asc' });
+            setAllRacks(result.data || []);
+        } catch (err) {
+            console.error("Failed to load all racks", err);
+        }
+    }, []);
+
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
@@ -63,7 +105,9 @@ const Racks = () => {
 
     useEffect(() => {
         loadData();
-    }, [loadData]);
+        loadNodes();
+        loadAllRacks();
+    }, [loadData, loadNodes, loadAllRacks]);
 
     const handleOpenModal = (item?: ServerRackData) => {
         setEditingItem(item || null);
@@ -158,7 +202,7 @@ const Racks = () => {
             id: 'rackCapacity', 
             label: 'Capacity', 
             sortable: true,
-            render: (row) => row.rackCapacity !== undefined && row.rackCapacity !== null ? `${row.remainingCapacity ?? row.rackCapacity} U / ${row.rackCapacity} U` : '-'
+            render: (row) => `${row.remainingCapacity ?? (row.rackCapacity || 42)} U / ${row.rackCapacity || 42} U`
         },
         { 
             id: 'temperature', 
@@ -223,10 +267,27 @@ const Racks = () => {
         );
     }
 
+    const positions = Array.from({ length: 42 }, (_, idx) => idx + 1);
+
     return (
         <Box sx={{ mt: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-                <Box sx={{ flexGrow: 1 }} />
+                <Box>
+                    <ToggleButtonGroup
+                        value={viewMode}
+                        exclusive
+                        onChange={(e, val) => val && setViewMode(val)}
+                        size="small"
+                        color="primary"
+                    >
+                        <ToggleButton value="list" sx={{ textTransform: 'none', fontWeight: 'bold' }}>
+                            List View
+                        </ToggleButton>
+                        <ToggleButton value="layout" sx={{ textTransform: 'none', fontWeight: 'bold' }}>
+                            Nodes Placement View
+                        </ToggleButton>
+                    </ToggleButtonGroup>
+                </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                     <SearchBar
                         value={searchQuery}
@@ -263,27 +324,161 @@ const Racks = () => {
                 </Box>
             </Box>
 
-            <Paper sx={{ width: '100%', mb: 2, p: 0, boxShadow: 'none', background: 'transparent' }}>
-                <Table
-                    columns={columns}
-                    data={data}
-                    totalCount={totalCount}
-                    page={page}
-                    rowsPerPage={rowsPerPage}
-                    orderBy={orderBy}
-                    order={order}
-                    onSort={handleRequestSort}
-                    onPageChange={handleChangePage}
-                    onRowsPerPageChange={handleChangeRowsPerPage}
-                    loading={loading}
-                />
-            </Paper>
+            {viewMode === 'list' ? (
+                <Paper sx={{ width: '100%', mb: 2, p: 0, boxShadow: 'none', background: 'transparent' }}>
+                    <Table
+                        columns={columns}
+                        data={data}
+                        totalCount={totalCount}
+                        page={page}
+                        rowsPerPage={rowsPerPage}
+                        orderBy={orderBy}
+                        order={order}
+                        onSort={handleRequestSort}
+                        onPageChange={handleChangePage}
+                        onRowsPerPageChange={handleChangeRowsPerPage}
+                        loading={loading}
+                        onRowClick={(row) => {
+                            localStorage.setItem('Nodes_rackFilter', JSON.stringify(row.serverRack));
+                            window.dispatchEvent(new CustomEvent('changeServerDetailsTab', { detail: 'nodes' }));
+                        }}
+                    />
+                </Paper>
+            ) : (
+                <Paper
+                    elevation={0}
+                    sx={{
+                        width: '100%',
+                        overflow: 'hidden',
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '12px',
+                        padding: "0px",
+                        display: 'flex',
+                        flexDirection: 'column',
+                        mb: 2
+                    }}
+                >
+                    <TableContainer sx={{ overflow: 'auto', maxHeight: 600 }}>
+                        <MuiTable stickyHeader sx={{ minWidth: 650 }}>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell
+                                        sx={{
+                                            backgroundColor: '#f4f6f8',
+                                            color: '#637381',
+                                            fontWeight: 600,
+                                            fontSize: '0.75rem',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.5px',
+                                            borderBottom: 'none',
+                                            whiteSpace: 'nowrap',
+                                            width: 150,
+                                            position: 'sticky',
+                                            left: 0,
+                                            zIndex: 3
+                                        }}
+                                    >
+                                        Position / U
+                                    </TableCell>
+                                    {allRacks.map((rack) => (
+                                        <TableCell
+                                            key={rack.id}
+                                            align="center"
+                                            sx={{
+                                                backgroundColor: '#f4f6f8',
+                                                color: '#212b36',
+                                                fontWeight: 600,
+                                                fontSize: '0.875rem',
+                                                borderBottom: 'none',
+                                                whiteSpace: 'nowrap',
+                                                minWidth: 150
+                                            }}
+                                        >
+                                            {rack.serverRack}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {positions.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={allRacks.length + 1} align="center" sx={{ py: 6 }}>
+                                            <span style={{ color: '#919eab', fontWeight: 500 }}>No racks to display</span>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    positions.map((pos) => {
+                                        const posLabel = `M ${String(pos).padStart(2, '0')}`;
+                                        return (
+                                            <TableRow
+                                                key={pos}
+                                                hover
+                                                sx={{
+                                                    '&:hover': { backgroundColor: '#f9fafb !important' },
+                                                    transition: 'background-color 0.2s ease',
+                                                    '& td': { borderBottom: '1px solid #f1f3f4' }
+                                                }}
+                                            >
+                                                <TableCell sx={{ color: '#637381', fontWeight: 500, fontSize: '0.875rem', position: 'sticky', left: 0, backgroundColor: '#fff', zIndex: 1 }}>
+                                                    {posLabel}
+                                                </TableCell>
+                                                {allRacks.map((rack) => {
+                                                    const matchingNodes = nodes.filter(node => node.rack === rack.serverRack && matchesPosition(node.rackPosition, pos));
+
+                                                    return (
+                                                        <TableCell key={rack.id} align="center">
+                                                            {matchingNodes.length > 0 ? (
+                                                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center' }}>
+                                                                    {matchingNodes.map(n => (
+                                                                        <Chip
+                                                                            key={n.id}
+                                                                            label={n.node || n.nodeId}
+                                                                            size="small"
+                                                                            color="primary"
+                                                                            variant="outlined"
+                                                                            clickable
+                                                                            onClick={() => {
+                                                                                setSelectedNodeForView(n);
+                                                                                setIsNodeViewModalOpen(true);
+                                                                            }}
+                                                                            sx={{
+                                                                                fontWeight: 600,
+                                                                                borderRadius: '6px',
+                                                                                backgroundColor: 'rgba(25, 118, 210, 0.04)',
+                                                                                borderColor: 'rgba(25, 118, 210, 0.2)',
+                                                                                cursor: 'pointer'
+                                                                            }}
+                                                                        />
+                                                                    ))}
+                                                                </Box>
+                                                            ) : null}
+                                                        </TableCell>
+                                                    );
+                                                })}
+                                            </TableRow>
+                                        );
+                                    })
+                                )}
+                            </TableBody>
+                        </MuiTable>
+                    </TableContainer>
+                </Paper>
+            )}
 
             <ServerRackModal
                 open={isModalOpen}
                 onClose={handleCloseModal}
                 onSubmit={handleSubmit}
                 editingItem={editingItem}
+            />
+
+            <NodeViewModal
+                open={isNodeViewModalOpen}
+                onClose={() => {
+                    setIsNodeViewModalOpen(false);
+                    setSelectedNodeForView(null);
+                }}
+                node={selectedNodeForView}
             />
         </Box>
     );

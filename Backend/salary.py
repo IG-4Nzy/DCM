@@ -10,16 +10,20 @@ class ActivityModel(BaseModel):
     id: str
     name: str
     rate: Union[float, str]
+    maxUnits: Optional[Union[float, str]] = 0
 
 class TemplateModel(BaseModel):
     id: str
     title: str
     activities: List[ActivityModel] = []
+    allottedAmount: Optional[Union[float, str]] = 0
+    maxStaffs: Optional[Union[int, str]] = 0
 
 class MemberModel(BaseModel):
     id: str
     name: str
     days: Union[float, str]
+    otHours: Optional[Union[float, str]] = 0
 
 class GroupModel(BaseModel):
     id: str
@@ -37,6 +41,8 @@ class SalaryMonthModel(BaseModel):
 class GlobalSalaryConfig(BaseModel):
     companyName: str = ""
     poNumber: str = ""
+    poStartDate: Optional[str] = ""
+    poEndDate: Optional[str] = ""
 
 @router.get("/config", response_model=GlobalSalaryConfig)
 async def get_config():

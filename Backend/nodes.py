@@ -151,10 +151,15 @@ async def create_item(
     payload: CreateNodeModel = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
-    if payload.node:
-        existing = await collection.find_one({ "node": {"$regex": f"^{payload.node}$", "$options": "i"} })
-        if existing:
-            raise HTTPException(status_code=400, detail="Node already exists")
+    if payload.ip:
+        import re
+        ip_parts = [ip.strip() for ip in payload.ip.split(",") if ip.strip()]
+        for ip_part in ip_parts:
+            escaped_ip = re.escape(ip_part)
+            pattern = rf"(^|,)\s*{escaped_ip}\s*(,|$)"
+            existing_ip = await collection.find_one({"ip": {"$regex": pattern}})
+            if existing_ip:
+                raise HTTPException(status_code=400, detail=f"IP address {ip_part} already exists")
 
     item_dict = payload.model_dump()
     item_dict["createdBy"] = current_user.get("sub", "")
@@ -189,13 +194,18 @@ async def update_item(id: str, payload: UpdateNodeModel = Body(...)):
     item_dict = {k: v for k, v in payload.model_dump().items() if v is not None}
 
     if len(item_dict) >= 1:
-        if "node" in item_dict and item_dict["node"]:
-            existing = await collection.find_one({
-                "node": {"$regex": f"^{item_dict['node']}$", "$options": "i"},
-                "_id": {"$ne": ObjectId(id)}
-            })
-            if existing:
-                raise HTTPException(status_code=400, detail="Node already exists")
+        if "ip" in item_dict and item_dict["ip"]:
+            import re
+            ip_parts = [ip.strip() for ip in item_dict["ip"].split(",") if ip.strip()]
+            for ip_part in ip_parts:
+                escaped_ip = re.escape(ip_part)
+                pattern = rf"(^|,)\s*{escaped_ip}\s*(,|$)"
+                existing_ip = await collection.find_one({
+                    "ip": {"$regex": pattern},
+                    "_id": {"$ne": ObjectId(id)}
+                })
+                if existing_ip:
+                    raise HTTPException(status_code=400, detail=f"IP address {ip_part} already exists")
 
         item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
         

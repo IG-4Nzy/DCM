@@ -72,7 +72,10 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, period, o
             const res = await request.get('/api/attendance/verification-data', {
                 params: { periodLabel: period.label }
             });
-            setCombinedData(res.data.data || []);
+            const filteredData = (res.data.data || []).filter((rec: any) => {
+                return !period || (rec.date >= period.startDate && rec.date <= period.endDate);
+            });
+            setCombinedData(filteredData);
             setIsLoadedVerified(true);
         } catch (err: any) {
             showToast('Failed to load verified data', 'error');
@@ -181,6 +184,7 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, period, o
         // 1. Add app records
         appRecords.forEach(appRecord => {
             const date = appRecord.date;
+            if (period && (date < period.startDate || date > period.endDate)) return;
             const username = appRecord.username;
             const rec = getOrCreateRecord(username, date);
             rec.appFirstLogin = appRecord.firstLogin;
@@ -219,6 +223,7 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, period, o
             if (!dateObj.isValid()) return;
 
             const normalizedDate = dateObj.format('YYYY-MM-DD');
+            if (period && (normalizedDate < period.startDate || normalizedDate > period.endDate)) return;
             const rec = getOrCreateRecord(user.username, normalizedDate);
 
             // Format firstIn and lastOut to extract just the time if it contains the date
