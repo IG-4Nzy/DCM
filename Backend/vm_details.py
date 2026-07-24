@@ -1,3 +1,5 @@
+import re
+import logging
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
 from auth_utils import require_privilege, require_any_privilege, get_current_user
 from fastapi.responses import JSONResponse
@@ -6,6 +8,8 @@ from database import db
 from models import VMDetailsModel, CreateVMDetailsModel, UpdateVMDetailsModel, PaginatedVMDetailsModel
 from bson import ObjectId
 from datetime import datetime, timezone
+
+logger = logging.getLogger("vm_details.router")
 
 router = APIRouter()
 collection = db.get_collection("vm_details")
@@ -192,6 +196,133 @@ async def create_item(
     if created and created.get("node"):
         await sync_node_resources(created["node"])
     return created
+
+@router.post("/import-vcenter", dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details"]))])
+async def import_vcenter_vms(
+    vcenterId: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user)
+):
+    vcenters_col = db.get_collection("vcenter_details")
+    snap_col = db.get_collection("vcenter_telemetry")
+    
+    query = {}
+    if vcenterId and ObjectId.is_valid(vcenterId):
+        query["_id"] = ObjectId(vcenterId)
+        
+    vcenters = await vcenters_col.find(query).to_list(length=None)
+    if not vcenters:
+        raise HTTPException(status_code=404, detail="No vCenter appliances found")
+        
+    max_vm_id = 0
+    cursor = collection.find({"vmId": {"$regex": "^VM-"}}, {"vmId": 1})
+    async for doc in cursor:
+        vid = doc.get("vmId", "")
+        if vid.startswith("VM-"):
+            try:
+                num = int(vid.replace("VM-", ""))
+                max_vm_id = max(max_vm_id, num)
+            except:
+                pass
+
+    inserted_count = 0
+    updated_count = 0
+
+    for vc in vcenters:
+        vc_id_str = str(vc["_id"])
+        cluster_id = vc.get("clusterId", "")
+        
+        snap = await snap_col.find_one({"vcenterId": vc_id_str})
+        vms = snap.get("vms", []) if snap else []
+        
+        if not vms and vc.get("ipAddress") and vc.get("username") and vc.get("password"):
+            try:
+                from services.vcenter.session_manager import vcenter_session_manager
+                from services.vcenter.inventory_service import vcenter_inventory_service
+                session_id = await vcenter_session_manager.get_session(vc["ipAddress"], vc["username"], vc["password"])
+                if session_id:
+                    live_vms = await vcenter_inventory_service.get_vms(vc["ipAddress"], session_id, cluster_id or None)
+                    vms = []
+                    for vm in live_vms:
+                        host_ref = vm.get("host") or vm.get("hostName") or ""
+                        vms.append({
+                            "id": vm.get("vm") or vm.get("vm_id") or vm.get("name", ""),
+                            "name": vm.get("name", ""),
+                            "ipAddress": vm.get("ipAddress") or "0.0.0.0",
+                            "node": host_ref or "Unassigned",
+                            "status": "Running" if vm.get("power_state") in ("POWERED_ON", "poweredOn") else "Stopped"
+                        })
+            except Exception as e:
+                logger.error(f"Error fetching live VMs during import for vCenter {vc_id_str}: {e}")
+
+        for vm in vms:
+            vm_name = (vm.get("name") or vm.get("id") or "").strip()
+            if not vm_name:
+                continue
+
+            raw_ip = str(vm.get("ipAddress") or "").strip()
+            ip_address = raw_ip if raw_ip and raw_ip != "0.0.0.0" else ""
+
+            raw_node = str(vm.get("node") or "").strip()
+            node = raw_node if raw_node and raw_node.lower() != "unassigned" else ""
+
+            status_str = str(vm.get("status") or "").lower()
+            power_status = "on" if status_str in ("running", "powered_on", "poweredon", "on") else "off"
+
+            vm_id_val = str(vm.get("id") or "").strip()
+
+            existing = await collection.find_one({
+                "$or": [
+                    {"vmName": {"$regex": f"^{re.escape(vm_name)}$", "$options": "i"}},
+                    {"vmId": vm_id_val} if vm_id_val else {"_id": None}
+                ]
+            })
+
+            if existing:
+                update_fields = {}
+                if ip_address and not existing.get("ipAddress"):
+                    update_fields["ipAddress"] = ip_address
+                if node and not existing.get("node"):
+                    update_fields["node"] = node
+                if power_status != existing.get("powerStatus"):
+                    update_fields["powerStatus"] = power_status
+                if cluster_id and not existing.get("clusterId"):
+                    update_fields["clusterId"] = cluster_id
+
+                if update_fields:
+                    update_fields["updatedAt"] = datetime.now(timezone.utc).isoformat()
+                    await collection.update_one({"_id": existing["_id"]}, {"$set": update_fields})
+                    updated_count += 1
+            else:
+                max_vm_id += 1
+                final_vm_id = vm_id_val if vm_id_val else f"VM-{max_vm_id:02d}"
+                new_vm_doc = {
+                    "vmId": final_vm_id,
+                    "vmName": vm_name,
+                    "clusterId": cluster_id,
+                    "ipAddress": ip_address,
+                    "applications": "",
+                    "node": node,
+                    "osAndExpiry": "",
+                    "backupLocation": "",
+                    "admin": [],
+                    "adminName": "",
+                    "adminContact": "",
+                    "powerStatus": power_status,
+                    "hdd": "",
+                    "ram": "",
+                    "cpu": "",
+                    "createdBy": current_user.get("sub", ""),
+                    "createdAt": datetime.now(timezone.utc).isoformat(),
+                    "updatedAt": datetime.now(timezone.utc).isoformat()
+                }
+                await collection.insert_one(new_vm_doc)
+                inserted_count += 1
+
+    return {
+        "message": f"Bulk import complete: {inserted_count} new VMs imported, {updated_count} existing VMs updated.",
+        "imported": inserted_count,
+        "updated": updated_count
+    }
 
 @router.put("/{id}", response_description="Update VM details", response_model=VMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
 async def update_item(id: str, payload: UpdateVMDetailsModel = Body(...)):

@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Tooltip, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
-import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdMonitor as MonitorIcon } from 'react-icons/md';
+import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdMonitor as MonitorIcon, MdCloudDownload as CloudDownloadIcon } from 'react-icons/md';
 import request from '../../../services/request';
 import Button from '../../../components/Button';
 import SearchBar from '../../../components/SearchBar';
@@ -51,6 +51,34 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
     const [selectedClusterFilter, setSelectedClusterFilter] = useState<string>('All');
     const [adminFilter, setAdminFilter] = useTableState("VMDetails_adminFilter", dashboardAdminFilter || "");
     const [monitoredIps, setMonitoredIps] = useState<Set<string>>(new Set());
+
+    const [vcenters, setVcenters] = useState<any[]>([]);
+    const [isImporting, setIsImporting] = useState<boolean>(false);
+
+    useEffect(() => {
+        request.get('/api/vcenter-details/?pagination=false')
+            .then(res => setVcenters(res.data?.data || []))
+            .catch(err => console.error("Failed to load vCenters", err));
+    }, []);
+
+    const handleBulkImportVcenter = async () => {
+        const isConfirmed = await confirm(
+            "Are you sure you want to import all VMs from registered vCenter appliances into VM Details? This will automatically add all new VMs and update status for existing VMs.",
+            "Import All VMs from vCenter"
+        );
+        if (isConfirmed) {
+            setIsImporting(true);
+            try {
+                const res = await request.post('/api/vm-details/import-vcenter');
+                showToast(res.data?.message || "Successfully imported VMs from vCenter", "success");
+                loadData();
+            } catch (err: any) {
+                showToast(err?.response?.data?.detail || "Failed to import VMs from vCenter", "error");
+            } finally {
+                setIsImporting(false);
+            }
+        }
+    };
 
     const fetchMonitoredIps = useCallback(async () => {
         try {
@@ -267,6 +295,17 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                         onChange={(val) => { setSearchQuery(val); setPage(0); }}
                         placeholder="Search IP, App or Node..."
                     />
+                    {hasCreate && vcenters.length > 0 && (
+                        <Button
+                            variant="outlined"
+                            color="primary"
+                            startIcon={<CloudDownloadIcon />}
+                            disabled={isImporting}
+                            onClick={handleBulkImportVcenter}
+                        >
+                            {isImporting ? "Importing VMs..." : "Import All VMs from vCenter"}
+                        </Button>
+                    )}
                     {hasCreate && (
                         <Button
                             variant="contained"
