@@ -6,6 +6,7 @@ from database import db
 from models import ServerRackModel, CreateServerRackModel, UpdateServerRackModel, PaginatedServerRacksModel
 from bson import ObjectId
 from datetime import datetime, timezone
+import re
 import openpyxl
 import io
 import csv
@@ -59,7 +60,7 @@ async def list_items(
         if terms:
             term_queries = []
             for term in terms:
-                escaped_term = term.replace('\\', '\\\\')
+                escaped_term = re.escape(term)
                 numeric_match = []
                 try:
                     # If term is numeric, allow exact match on numeric fields

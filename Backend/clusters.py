@@ -6,6 +6,7 @@ from database import db
 from models import ClusterModel, CreateClusterModel, UpdateClusterModel, PaginatedClustersModel
 from bson import ObjectId
 from datetime import datetime, timezone
+import re
 import openpyxl
 import io
 import csv
@@ -80,7 +81,7 @@ async def list_items(
         if terms:
             term_queries = []
             for term in terms:
-                escaped_term = term.replace('\\', '\\\\')
+                escaped_term = re.escape(term)
                 term_queries.append({
                     "$or": [
                         {"clusterName": {"$regex": escaped_term, "$options": "i"}},

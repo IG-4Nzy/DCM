@@ -6,6 +6,7 @@ from database import db
 from models import NodeDetailsModel, CreateNodeDetailsModel, UpdateNodeDetailsModel, PaginatedNodeDetailsModel
 from bson import ObjectId
 from datetime import datetime, timezone
+import re
 import openpyxl
 import io
 import csv
@@ -112,13 +113,13 @@ async def list_items(
             # Cross-entity lookup: find clusters matching any search term
             cluster_queries = []
             for term in terms:
-                cluster_queries.append({"clusterName": {"$regex": term.replace('\\', '\\\\'), "$options": "i"}})
+                cluster_queries.append({"clusterName": {"$regex": re.escape(term), "$options": "i"}})
             clusters_col = db.get_collection("clusters")
             matching_clusters = await clusters_col.find({"$or": cluster_queries}, {"_id": 1}).to_list(length=None)
             matching_cluster_ids = [str(doc["_id"]) for doc in matching_clusters]
 
             for term in terms:
-                escaped_term = term.replace('\\', '\\\\')
+                escaped_term = re.escape(term)
                 numeric_match = []
                 try:
                     num_val = int(term)

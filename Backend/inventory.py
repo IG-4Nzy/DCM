@@ -1,4 +1,5 @@
 import os
+import re
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, UploadFile, File, Response
 from auth_utils import require_privilege, get_current_user, require_any_privilege
 from fastapi.responses import JSONResponse
@@ -90,7 +91,7 @@ async def list_inventory(
             term_queries = []
             departments_col = db.get_collection("departments")
             for term in terms:
-                escaped_term = term.replace('\\', '\\\\')
+                escaped_term = re.escape(term)
                 # Find matching department IDs
                 matching_depts = await departments_col.find({"name": {"$regex": escaped_term, "$options": "i"}}).to_list(length=None)
                 dept_ids = []
