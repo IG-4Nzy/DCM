@@ -167,7 +167,7 @@ async def list_users(
         user["isDepartmentHead"] = user.get("username") in dept_heads
         
         # Override lastActive for the current user to prevent page refresh race conditions
-        if current_user and user.get("username") == current_user.get("sub"):
+        if current_user and user.get("username") == current_user.get("sub") and user.get("status") is not False:
             from datetime import datetime, timezone
             user["lastActive"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             
@@ -223,7 +223,7 @@ async def show_user(id: str, current_user: dict = Depends(get_current_user)):
         user["isDepartmentHead"] = is_head
         
         # Override lastActive for the current user to prevent page refresh race conditions
-        if current_user and user.get("username") == current_user.get("sub"):
+        if current_user and user.get("username") == current_user.get("sub") and user.get("status") is not False:
             from datetime import datetime, timezone
             user["lastActive"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             

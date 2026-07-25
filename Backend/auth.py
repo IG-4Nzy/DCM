@@ -366,6 +366,15 @@ async def logout(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Invalid session")
         
     try:
+        users_collection = db.get_collection("users")
+        await users_collection.update_one(
+            {"username": username},
+            {"$set": {"lastActive": None}}
+        )
+    except Exception as e:
+        print(f"Error clearing lastActive on logout: {e}")
+
+    try:
         config_collection = db.get_collection("attendance_config")
         config = await config_collection.find_one({}) or {}
         tracked_role = config.get("trackedRole")

@@ -47,8 +47,8 @@ class VCenterInventoryService:
         
         # Scoped filters to avoid massive overhead
         params = {}
-        if cluster_id:
-            params["filter.clusters"] = cluster_id
+        if cluster_id and not (len(str(cluster_id)) == 24 and all(c in "0123456789abcdefABCDEF" for c in str(cluster_id))):
+            params["filter.clusters"] = str(cluster_id)
 
         async def fetch():
             try:
@@ -73,13 +73,14 @@ class VCenterInventoryService:
             revalidate_ttl=60.0
         )
 
-    async def get_vms(self, ip_address: str, session_id: str, cluster_id: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
+    async def get_vms(self, ip_address: str, session_id: str, cluster_id: Optional[str] = None, limit: int = 5000) -> List[Dict[str, Any]]:
         client = vcenter_http_client.get_client()
         headers = {"vmware-api-session-id": session_id}
 
         params = {}
-        if cluster_id:
-            params["filter.clusters"] = cluster_id
+        # Only pass cluster filter if cluster_id is a vCenter cluster moref (not a 24-char MongoDB ObjectID)
+        if cluster_id and not (len(str(cluster_id)) == 24 and all(c in "0123456789abcdefABCDEF" for c in str(cluster_id))):
+            params["filter.clusters"] = str(cluster_id)
 
         async def fetch():
             try:

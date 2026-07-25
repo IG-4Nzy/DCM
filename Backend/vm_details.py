@@ -232,6 +232,8 @@ async def import_vcenter_vms(
     vcenterId: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
+    if not current_user.get("isSuperuser"):
+        raise HTTPException(status_code=403, detail="Only superusers can import VMs from vCenter")
     try:
         vcenters_col = db.get_collection("vcenter_details")
         snap_col = db.get_collection("vcenter_telemetry")
@@ -349,43 +351,144 @@ async def import_vcenter_vms(
             vms = snap.get("vms", []) if snap else []
             
             session_id = None
+            vcenter_host_to_node = {}     # Maps vCenter host moref/name → DB node name
+            vcenter_host_to_cluster = {}  # Maps vCenter host moref → vCenter cluster moref/name
+
             if vc.get("ipAddress") and vc.get("username") and vc.get("password"):
                 try:
                     from services.vcenter.session_manager import vcenter_session_manager
                     from services.vcenter.inventory_service import vcenter_inventory_service
                     session_id = await vcenter_session_manager.get_session(vc["ipAddress"], vc["username"], vc["password"])
-                    if session_id and not vms:
-                        live_vms = await vcenter_inventory_service.get_vms(vc["ipAddress"], session_id, vc_cluster_id or None)
-                        vms = []
-                        for vm in live_vms:
-                            host_ref = vm.get("host") or vm.get("hostName") or ""
-                            cpu_cnt = vm.get("cpu_count") or vm.get("num_cpu") or vm.get("cpu")
-                            cpu_v = ""
-                            if cpu_cnt:
-                                count_val = cpu_cnt.get("count") if isinstance(cpu_cnt, dict) else cpu_cnt
-                                if count_val:
-                                    cpu_v = f"{count_val} vCPU" if int(count_val) > 1 else "1 vCPU"
+                    if session_id:
+                        # --- Fetch ALL ESXi hosts across ALL clusters in vCenter ---
+                        try:
+                            vc_hosts = await vcenter_inventory_service.get_hosts(vc["ipAddress"], session_id)
+                            nodes_col = db.get_collection("nodes")
+                            node_details_col = db.get_collection("node_details")
 
-                            mem_mb = vm.get("memory_size_MiB") or vm.get("memory_mb") or vm.get("ram")
-                            if isinstance(mem_mb, dict):
-                                mem_mb = mem_mb.get("size_MiB") or mem_mb.get("size")
-                            ram_v = f"{round(mem_mb / 1024)} GB" if isinstance(mem_mb, (int, float)) and mem_mb >= 512 else str(mem_mb or "")
-                            
-                            hdd_v = str(vm.get("hdd") or vm.get("disk_gb") or vm.get("storage") or "")
-                            os_v = str(vm.get("guest_OS") or vm.get("os") or vm.get("osAndExpiry") or "")
-                            
-                            vms.append({
-                                "id": vm.get("vm") or vm.get("vm_id") or vm.get("name", ""),
-                                "name": vm.get("name", ""),
-                                "cluster": vm.get("cluster") or vm.get("clusterId") or "",
-                                "ipAddress": vm.get("ipAddress") or "0.0.0.0",
-                                "node": host_ref or "Unassigned",
-                                "status": "Running" if vm.get("power_state") in ("POWERED_ON", "poweredOn") else "Stopped",
-                                "cpu": cpu_v,
-                                "ram": ram_v,
-                                "hdd": hdd_v,
-                                "osAndExpiry": os_v
-                            })
+                            all_db_nodes = await nodes_col.find({}, {"node": 1, "nodeId": 1, "ip": 1, "ipAddress": 1, "managementIp": 1}).to_list(length=None)
+                            all_db_node_details = await node_details_col.find({}, {"hostName": 1, "nodeId": 1, "ipAddress": 1}).to_list(length=None)
+
+                            # Build lookup indices from DB nodes & node_details: by name/hostName/nodeId (lowercase) and by IP
+                            node_by_name = {}
+                            node_by_ip = {}
+
+                            for db_node in all_db_nodes:
+                                n_name = db_node.get("node") or db_node.get("nodeId") or ""
+                                if n_name:
+                                    node_by_name[n_name.lower()] = n_name
+                                if db_node.get("nodeId"):
+                                    node_by_name[str(db_node["nodeId"]).lower()] = n_name or str(db_node["nodeId"])
+                                for ip_field in ["ip", "ipAddress", "managementIp"]:
+                                    ip_val = db_node.get(ip_field)
+                                    if ip_val:
+                                        for single_ip in str(ip_val).split(","):
+                                            single_ip = single_ip.strip()
+                                            if single_ip:
+                                                node_by_ip[single_ip] = n_name
+
+                            for db_nd in all_db_node_details:
+                                nd_name = db_nd.get("hostName") or db_nd.get("nodeId") or ""
+                                if nd_name:
+                                    node_by_name[nd_name.lower()] = nd_name
+                                if db_nd.get("nodeId"):
+                                    node_by_name[str(db_nd["nodeId"]).lower()] = nd_name or str(db_nd["nodeId"])
+                                if db_nd.get("ipAddress"):
+                                    for single_ip in str(db_nd["ipAddress"]).split(","):
+                                        single_ip = single_ip.strip()
+                                        if single_ip:
+                                            node_by_ip[single_ip] = nd_name
+
+                            for h in (vc_hosts or []):
+                                h_moref = h.get("host") or h.get("host_id") or ""
+                                h_name = h.get("name") or ""
+                                h_ip = h.get("ip_address") or h.get("ipAddress") or ""
+                                h_cluster = h.get("cluster") or h.get("cluster_id") or ""
+
+                                # Build host -> cluster map
+                                if h_cluster:
+                                    if h_moref:
+                                        vcenter_host_to_cluster[h_moref] = h_cluster
+                                    if h_name:
+                                        vcenter_host_to_cluster[h_name] = h_cluster
+                                        vcenter_host_to_cluster[h_name.lower()] = h_cluster
+
+                                resolved_node_name = ""
+                                # Try matching by hostname / hostName
+                                if h_name:
+                                    resolved_node_name = node_by_name.get(h_name.lower(), "")
+                                # Try matching by IP
+                                if not resolved_node_name and h_ip:
+                                    resolved_node_name = node_by_ip.get(h_ip, "")
+                                # Try matching by moref
+                                if not resolved_node_name and h_moref:
+                                    resolved_node_name = node_by_name.get(h_moref.lower(), "")
+                                # Try partial match: DB node name contained in vCenter hostname or vice versa
+                                if not resolved_node_name and h_name:
+                                    for db_n_lower, db_n_actual in node_by_name.items():
+                                        if db_n_lower in h_name.lower() or h_name.lower() in db_n_lower:
+                                            resolved_node_name = db_n_actual
+                                            break
+
+                                target_mapped_node = resolved_node_name if resolved_node_name else (h_name or h_ip or h_moref or "Unassigned")
+                                if h_moref:
+                                    vcenter_host_to_node[h_moref] = target_mapped_node
+                                if h_name:
+                                    vcenter_host_to_node[h_name] = target_mapped_node
+                                    vcenter_host_to_node[h_name.lower()] = target_mapped_node
+                                if h_ip:
+                                    vcenter_host_to_node[h_ip] = target_mapped_node
+
+                            logger.info(f"Built host-to-node map ({len(vcenter_host_to_node)}) and host-to-cluster map ({len(vcenter_host_to_cluster)}) for vCenter {vc_id_str}")
+                        except Exception as e:
+                            logger.warning(f"Failed building host maps for vCenter {vc_id_str}: {e}")
+
+                        # --- Fetch ALL live VMs across ALL clusters in vCenter appliance ---
+                        try:
+                            live_vms = await vcenter_inventory_service.get_vms(vc["ipAddress"], session_id, cluster_id=None)
+
+                            if live_vms:
+                                parsed_vms = []
+                                for vm in live_vms:
+                                    host_ref = vm.get("host") or vm.get("host_id") or vm.get("hostName") or vm.get("node") or ""
+                                    
+                                    # Determine VM cluster: directly from VM or via host-to-cluster map
+                                    vm_cluster_ref = vm.get("cluster") or vm.get("cluster_id") or vm.get("clusterId") or ""
+                                    if not vm_cluster_ref and host_ref:
+                                        vm_cluster_ref = vcenter_host_to_cluster.get(host_ref) or vcenter_host_to_cluster.get(str(host_ref).lower()) or ""
+
+                                    cpu_cnt = vm.get("cpu_count") or vm.get("num_cpu") or vm.get("cpu")
+                                    cpu_v = ""
+                                    if cpu_cnt:
+                                        count_val = cpu_cnt.get("count") if isinstance(cpu_cnt, dict) else cpu_cnt
+                                        if count_val:
+                                            cpu_v = f"{count_val} vCPU" if int(count_val) > 1 else "1 vCPU"
+
+                                    mem_mb = vm.get("memory_size_MiB") or vm.get("memory_mb") or vm.get("ram")
+                                    if isinstance(mem_mb, dict):
+                                        mem_mb = mem_mb.get("size_MiB") or mem_mb.get("size")
+                                    ram_v = f"{round(mem_mb / 1024)} GB" if isinstance(mem_mb, (int, float)) and mem_mb >= 512 else str(mem_mb or "")
+                                    
+                                    hdd_v = str(vm.get("hdd") or vm.get("disk_gb") or vm.get("storage") or "")
+                                    os_v = str(vm.get("guest_OS") or vm.get("os") or vm.get("osAndExpiry") or "")
+                                    
+                                    parsed_vms.append({
+                                        "id": vm.get("vm") or vm.get("vm_id") or vm.get("name", ""),
+                                        "name": vm.get("name", ""),
+                                        "cluster": vm_cluster_ref,
+                                        "host": host_ref,
+                                        "ipAddress": vm.get("ipAddress") or "0.0.0.0",
+                                        "node": host_ref or "Unassigned",
+                                        "status": "Running" if vm.get("power_state") in ("POWERED_ON", "poweredOn") else "Stopped",
+                                        "cpu": cpu_v,
+                                        "ram": ram_v,
+                                        "hdd": hdd_v,
+                                        "osAndExpiry": os_v
+                                    })
+                                if parsed_vms:
+                                    vms = parsed_vms
+                        except Exception as e:
+                            logger.warning(f"Failed live VM retrieval during import for vCenter {vc_id_str}, using snapshot: {e}")
                 except Exception as e:
                     logger.error(f"Error fetching live VMs during import for vCenter {vc_id_str}: {e}")
 
@@ -399,8 +502,14 @@ async def import_vcenter_vms(
                     raw_ip = str(vm.get("ipAddress") or "").strip()
                     ip_address = raw_ip if raw_ip and raw_ip != "0.0.0.0" else ""
 
-                    raw_node = str(vm.get("node") or "").strip()
-                    node = raw_node if raw_node and raw_node.lower() != "unassigned" else ""
+                    raw_node = str(vm.get("node") or vm.get("host") or "").strip()
+                    node = raw_node if raw_node else "Unassigned"
+                    if raw_node and raw_node.lower() != "unassigned":
+                        mapped = vcenter_host_to_node.get(raw_node) or vcenter_host_to_node.get(raw_node.lower())
+                        if mapped:
+                            node = mapped
+                        else:
+                            node = node_by_name.get(raw_node.lower(), raw_node)
 
                     status_str = str(vm.get("status") or "").lower()
                     power_status = "on" if status_str in ("running", "powered_on", "poweredon", "on") else "off"
@@ -442,7 +551,11 @@ async def import_vcenter_vms(
                             logger.warning(f"Failed to fetch live hardware details for {vm_id_val}: {e}")
 
                     # Resolve specific cluster for this VM
-                    vm_raw_cluster = vm.get("cluster") or vm.get("clusterId") or ""
+                    vm_host_ref = str(vm.get("host") or vm.get("node") or "").strip()
+                    vm_raw_cluster = vm.get("cluster") or ""
+                    if not vm_raw_cluster and vm_host_ref:
+                        vm_raw_cluster = vcenter_host_to_cluster.get(vm_host_ref) or vcenter_host_to_cluster.get(vm_host_ref.lower()) or ""
+
                     vm_cluster_id = ""
                     if vm_raw_cluster and vcenter_cluster_map.get(vm_raw_cluster):
                         vm_cluster_id = vcenter_cluster_map[vm_raw_cluster]
@@ -486,7 +599,7 @@ async def import_vcenter_vms(
                         update_fields = {}
                         if ip_address and not existing.get("ipAddress"):
                             update_fields["ipAddress"] = ip_address
-                        if node and not existing.get("node"):
+                        if node and existing.get("node") != node:
                             update_fields["node"] = node
                         if power_status != existing.get("powerStatus"):
                             update_fields["powerStatus"] = power_status

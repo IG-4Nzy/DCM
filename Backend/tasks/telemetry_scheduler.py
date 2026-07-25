@@ -96,9 +96,10 @@ class VCenterTelemetryScheduler:
             # Pull metrics (every 30s-60s)
             metrics = await vcenter_metrics_service.get_live_metrics(ip, session_id)
             
-            # Pull hosts and VMs
-            hosts = await vcenter_inventory_service.get_hosts(ip, session_id, vc.get("clusterId"))
-            vms = await vcenter_inventory_service.get_vms(ip, session_id, vc.get("clusterId"))
+            # Pull clusters, hosts and VMs
+            clusters = await vcenter_inventory_service.get_clusters(ip, session_id)
+            hosts = await vcenter_inventory_service.get_hosts(ip, session_id, cluster_id=None)
+            vms = await vcenter_inventory_service.get_vms(ip, session_id, cluster_id=None)
             datastores = await vcenter_inventory_service.get_datastores(ip, session_id)
 
             if datastores:
@@ -114,6 +115,69 @@ class VCenterTelemetryScheduler:
             db_vms = await db_vms_cursor.to_list(length=None)
             db_vms_by_name = {v.get("name", "").lower(): v for v in db_vms if v.get("name")}
             db_vms_by_ip = {v.get("ipAddress", ""): v for v in db_vms if v.get("ipAddress")}
+
+            # Build host moref → DB node name map
+            vcenter_host_to_node = {}
+            try:
+                nodes_col = db.get_collection("nodes")
+                node_details_col = db.get_collection("node_details")
+                all_db_nodes = await nodes_col.find({}, {"node": 1, "nodeId": 1, "ip": 1, "ipAddress": 1, "managementIp": 1}).to_list(length=None)
+                all_db_node_details = await node_details_col.find({}, {"hostName": 1, "nodeId": 1, "ipAddress": 1}).to_list(length=None)
+
+                node_by_name = {}
+                node_by_ip = {}
+
+                for db_node in all_db_nodes:
+                    n_name = db_node.get("node") or db_node.get("nodeId") or ""
+                    if n_name:
+                        node_by_name[n_name.lower()] = n_name
+                    if db_node.get("nodeId"):
+                        node_by_name[str(db_node["nodeId"]).lower()] = n_name or str(db_node["nodeId"])
+                    for ip_field in ["ip", "ipAddress", "managementIp"]:
+                        ip_val = db_node.get(ip_field)
+                        if ip_val:
+                            for single_ip in str(ip_val).split(","):
+                                single_ip = single_ip.strip()
+                                if single_ip:
+                                    node_by_ip[single_ip] = n_name
+
+                for db_nd in all_db_node_details:
+                    nd_name = db_nd.get("hostName") or db_nd.get("nodeId") or ""
+                    if nd_name:
+                        node_by_name[nd_name.lower()] = nd_name
+                    if db_nd.get("nodeId"):
+                        node_by_name[str(db_nd["nodeId"]).lower()] = nd_name or str(db_nd["nodeId"])
+                    if db_nd.get("ipAddress"):
+                        for single_ip in str(db_nd["ipAddress"]).split(","):
+                            single_ip = single_ip.strip()
+                            if single_ip:
+                                node_by_ip[single_ip] = nd_name
+
+                for h in (hosts or []):
+                    h_moref = h.get("host") or h.get("host_id") or ""
+                    h_name = h.get("name") or ""
+                    h_ip = h.get("ip_address") or h.get("ipAddress") or ""
+
+                    resolved = ""
+                    if h_name:
+                        resolved = node_by_name.get(h_name.lower(), "")
+                    if not resolved and h_ip:
+                        resolved = node_by_ip.get(h_ip, "")
+                    if not resolved and h_moref:
+                        resolved = node_by_name.get(h_moref.lower(), "")
+                    if not resolved and h_name:
+                        for db_n_lower, db_n_actual in node_by_name.items():
+                            if db_n_lower in h_name.lower() or h_name.lower() in db_n_lower:
+                                resolved = db_n_actual
+                                break
+                    target_mapped = resolved if resolved else (h_name or h_ip or h_moref or "Unassigned")
+                    if h_moref: vcenter_host_to_node[h_moref] = target_mapped
+                    if h_name:
+                        vcenter_host_to_node[h_name] = target_mapped
+                        vcenter_host_to_node[h_name.lower()] = target_mapped
+                    if h_ip: vcenter_host_to_node[h_ip] = target_mapped
+            except Exception as e:
+                logger.warning(f"Failed building host-to-node map in telemetry: {e}")
 
             # Format Telemetry Arrays
             hosts_telemetry = []
@@ -162,6 +226,9 @@ class VCenterTelemetryScheduler:
 
                 final_ip = resolved_ip or (matching_db_vm.get("ipAddress") if matching_db_vm else None) or "0.0.0.0"
                 
+                # Resolve host_ref to DB node name
+                resolved_node = vcenter_host_to_node.get(host_ref) or vcenter_host_to_node.get(host_ref.lower() if host_ref else "") or host_ref or "Unassigned"
+
                 is_running = vm.get("power_state") in ("POWERED_ON", "poweredOn")
                 cpu_usage = round(random.uniform(5.0, 65.0), 1) if is_running else 0.0
                 ram_usage = round(random.uniform(10.0, 85.0), 1) if is_running else 0.0
@@ -197,7 +264,7 @@ class VCenterTelemetryScheduler:
                     "id": vm_id or vm.get("name", "vm-instance"),
                     "name": vm_name or "vm-instance",
                     "ipAddress": final_ip,
-                    "node": host_ref or "Unassigned",
+                    "node": resolved_node,
                     "hostId": host_ref,
                     "cpuUsage": cpu_usage,
                     "ramUsage": ram_usage,
@@ -292,6 +359,9 @@ class VCenterTelemetryScheduler:
                 "type": vc.get("vcenterType", "vCenter Server Appliance"),
                 "licenceExpiry": vc.get("licenceExpiry", "2029-12-31"),
                 "metrics": metrics,
+                "clusters": clusters or [],
+                "raw_hosts": hosts or [],
+                "vcenter_host_to_cluster": vcenter_host_to_cluster or {},
                 "hosts": hosts_telemetry,
                 "vms": vms_telemetry,
                 

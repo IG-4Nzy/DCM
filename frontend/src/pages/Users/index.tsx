@@ -102,7 +102,21 @@ const Users: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    const interval = setInterval(loadData, 15000);
+    return () => clearInterval(interval);
   }, [loadData]);
+
+  const isUserOnline = (user: UserData) => {
+    if (user.status === false) return false;
+    if (!user.lastActive) return false;
+    try {
+      const lastActiveTime = new Date(user.lastActive).getTime();
+      const now = Date.now();
+      return now - lastActiveTime < 45000;
+    } catch (e) {
+      return false;
+    }
+  };
 
   const loadSystemUsers = async () => {
     try {
@@ -274,18 +288,7 @@ const Users: React.FC = () => {
     setPage(0);
   };
 
-  const isUserOnline = (user: UserData) => {
-    if (user.username === currentUsername) return true;
-    if (!user.lastActive) return false;
-    try {
-      const lastActiveTime = new Date(user.lastActive).getTime();
-      // lastActive is stored as UTC with 'Z' suffix, so compare against UTC now
-      const now = Date.now();
-      return now - lastActiveTime < 45000;
-    } catch (e) {
-      return false;
-    }
-  };
+
 
   const columns: Column<UserData>[] = [
     { id: "username", label: "Username", sortable: true },

@@ -321,7 +321,7 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                         onChange={(val) => { setSearchQuery(val); setPage(0); }}
                         placeholder="Search IP, App or Node..."
                     />
-                    {hasCreate && vcenters.length > 0 && (
+                    {isSuperuser && vcenters.length > 0 && (
                         <Button
                             variant="outlined"
                             color="primary"
