@@ -6,7 +6,6 @@ import TextField from '../../../components/TextField';
 import Dropdown from '../../../components/Dropdown';
 import Button from '../../../components/Button';
 import { type ClusterData, type CreateClusterPayload, type UpdateClusterPayload } from '../model';
-import { fetchServerRacks } from '../../Configurations/Racks/action';
 import { fetchClusterTypes } from '../../Configurations/ClusterTypes/action';
 import request from '../../../services/request';
 import styles from "./index.module.scss";
@@ -22,20 +21,16 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
     const [formData, setFormData] = useState<CreateClusterPayload>({
         clusterName: '',
         ipAddress: '',
-        racks: [],
         clusterType: '',
-        nodes: []
+        nodes: [],
+        remarks: ''
     });
 
-    const [racks, setRacks] = useState<any[]>([]);
     const [clusterTypes, setClusterTypes] = useState<any[]>([]);
     const [nodes, setNodes] = useState<any[]>([]);
 
     useEffect(() => {
         if (open) {
-            fetchServerRacks({ pagination: false })
-                .then(res => setRacks(res.data || []))
-                .catch(err => console.error("Failed to load server racks", err));
             fetchClusterTypes({ pagination: false })
                 .then(res => setClusterTypes(res.data || []))
                 .catch(err => console.error("Failed to load cluster types", err));
@@ -57,17 +52,17 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
                 setFormData({
                     clusterName: editingItem.clusterName || '',
                     ipAddress: editingItem.ipAddress || '',
-                    racks: editingItem.racks || [],
                     clusterType: editingItem.clusterType || '',
-                    nodes: editingItem.nodes || []
+                    nodes: editingItem.nodes || [],
+                    remarks: editingItem.remarks || ''
                 });
             } else {
                 setFormData({
                     clusterName: '',
                     ipAddress: '',
-                    racks: [],
                     clusterType: '',
-                    nodes: []
+                    nodes: [],
+                    remarks: ''
                 });
             }
         }
@@ -85,9 +80,7 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
             if (formData.clusterName !== editingItem.clusterName) changedData.clusterName = formData.clusterName;
             if (formData.ipAddress !== editingItem.ipAddress) changedData.ipAddress = formData.ipAddress;
             if (formData.clusterType !== editingItem.clusterType) changedData.clusterType = formData.clusterType;
-            if (JSON.stringify(formData.racks || []) !== JSON.stringify(editingItem.racks || [])) {
-                changedData.racks = formData.racks;
-            }
+            if (formData.remarks !== editingItem.remarks) changedData.remarks = formData.remarks;
             if (JSON.stringify(formData.nodes || []) !== JSON.stringify(editingItem.nodes || [])) {
                 changedData.nodes = formData.nodes;
             }
@@ -95,6 +88,12 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
         } else {
             onSubmit(formData);
         }
+    };
+
+    const getNodeLabel = (n: any) => {
+        const name = n.node || n.hostName || n.nodeId || 'Node';
+        const ip = n.ipAddress || n.ip || n.managementIp || '';
+        return ip ? `${name} - ${ip}` : name;
     };
 
     return (
@@ -134,23 +133,22 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
                     </Box>
                     <Box sx={{ mt: 1 }}>
                         <Dropdown
-                            label="Server Racks"
-                            fullWidth
-                            multiple
-                            value={formData.racks || []}
-                            onChange={(val) => handleChange('racks', val)}
-                            options={racks.map(r => ({ label: r.serverRack, value: r.serverRack }))}
-                        />
-                    </Box>
-                    <Box sx={{ mt: 1 }}>
-                        <Dropdown
                             label="Nodes"
                             fullWidth
                             multiple
                             searchable
                             value={formData.nodes || []}
                             onChange={(val) => handleChange('nodes', val)}
-                            options={nodes.map(n => ({ label: n.node, value: n.id || n._id }))}
+                            options={nodes.map(n => ({ label: getNodeLabel(n), value: n.id || n._id }))}
+                        />
+                    </Box>
+                    <Box>
+                        <TextField
+                            fullWidth
+                            className={styles.container__field}
+                            label="Remarks"
+                            value={formData.remarks}
+                            onChange={(e) => handleChange('remarks', e.target.value)}
                         />
                     </Box>
                 </Box>

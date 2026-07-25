@@ -112,46 +112,58 @@ const VMHistoryModal: React.FC<VMHistoryModalProps> = ({ open, onClose, vm }) =>
               </Box>
 
               <Grid container spacing={1.5}>
+                {vm.applications && (
                 <Grid item xs={12}>
                   <DetailItem icon={MdBookmarkBorder} label="Applications / VM Name" value={vm.applications} />
                 </Grid>
+                )}
+                {vm.ipAddress && (
                 <Grid item xs={12} sm={6}>
                   <DetailItem icon={MdDns} label="IP Address" value={vm.ipAddress} />
                 </Grid>
+                )}
+                {vm.node && (
                 <Grid item xs={12} sm={6}>
                   <DetailItem icon={MdComputer} label="Host Node" value={vm.node} />
                 </Grid>
+                )}
+                {vm.osAndExpiry && (
                 <Grid item xs={12}>
                   <DetailItem icon={MdEvent} label="OS & Expiry" value={vm.osAndExpiry} />
                 </Grid>
+                )}
+                {vm.backupLocation && (
                 <Grid item xs={12}>
                   <DetailItem icon={MdBackup} label="Backup Location" value={vm.backupLocation} />
                 </Grid>
+                )}
                 
+                {vm.hdd && (
                 <Grid item xs={4}>
                   <DetailItem icon={MdStorage} label="HDD" value={vm.hdd} color="#ed6c02" />
                 </Grid>
+                )}
+                {vm.ram && (
                 <Grid item xs={4}>
                   <DetailItem icon={MdMemory} label="RAM" value={vm.ram} color="#2e7d32" />
                 </Grid>
+                )}
+                {vm.cpu && (
                 <Grid item xs={4}>
                   <DetailItem icon={MdDns} label="vCPU" value={vm.cpu} color="#9c27b0" />
                 </Grid>
+                )}
                 
+                {vm.adminName && (
                 <Grid item xs={12}>
                   <DetailItem icon={MdPerson} label="Admin Name" value={vm.adminName} />
                 </Grid>
+                )}
+                {vm.adminContact && (
                 <Grid item xs={12}>
                   <DetailItem icon={MdContactPhone} label="Admin Contact" value={vm.adminContact} />
                 </Grid>
-                <Grid item xs={12}>
-                  <DetailItem 
-                    icon={MdCheckCircle} 
-                    label="Monitoring Status" 
-                    value={vm.addedToMonitoring ? 'Added to Monitoring' : 'Not Monitored'} 
-                    color={vm.addedToMonitoring ? '#2e7d32' : '#757575'}
-                  />
-                </Grid>
+                )}
               </Grid>
             </Box>
           </Box>

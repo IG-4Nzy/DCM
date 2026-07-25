@@ -166,6 +166,33 @@ class VCenterTelemetryScheduler:
                 cpu_usage = round(random.uniform(5.0, 65.0), 1) if is_running else 0.0
                 ram_usage = round(random.uniform(10.0, 85.0), 1) if is_running else 0.0
 
+                cpu_v = ""
+                cpu_cnt = vm.get("cpu_count") or vm.get("num_cpu") or vm.get("cpu")
+                if cpu_cnt:
+                    count_val = cpu_cnt.get("count") if isinstance(cpu_cnt, dict) else cpu_cnt
+                    if count_val:
+                        cpu_v = f"{count_val} vCPU" if int(count_val) > 1 else "1 vCPU"
+
+                ram_v = ""
+                mem_mb = vm.get("memory_size_MiB") or vm.get("memory_mb") or vm.get("ram")
+                if isinstance(mem_mb, dict):
+                    mem_mb = mem_mb.get("size_MiB") or mem_mb.get("size")
+                if isinstance(mem_mb, (int, float)) and mem_mb > 0:
+                    ram_v = f"{round(mem_mb / 1024)} GB" if mem_mb >= 1024 else f"{int(mem_mb)} MB"
+
+                os_v = str(vm.get("guest_OS") or vm.get("os") or vm.get("osAndExpiry") or "").strip()
+                hdd_v = str(vm.get("hdd") or vm.get("disk_gb") or "").strip()
+
+                if vm_id and (not cpu_v or not ram_v or not hdd_v):
+                    try:
+                        hw = await vcenter_inventory_service.get_vm_hardware_details(ip, session_id, vm_id)
+                        if not cpu_v and hw.get("cpu"): cpu_v = hw["cpu"]
+                        if not ram_v and hw.get("ram"): ram_v = hw["ram"]
+                        if not hdd_v and hw.get("hdd"): hdd_v = hw["hdd"]
+                        if not os_v and hw.get("osAndExpiry"): os_v = hw["osAndExpiry"]
+                    except Exception as e:
+                        logger.warning(f"Error fetching hardware details for VM {vm_id}: {e}")
+
                 vm_data = {
                     "id": vm_id or vm.get("name", "vm-instance"),
                     "name": vm_name or "vm-instance",
@@ -174,17 +201,18 @@ class VCenterTelemetryScheduler:
                     "hostId": host_ref,
                     "cpuUsage": cpu_usage,
                     "ramUsage": ram_usage,
-                    "status": "Running" if is_running else "Stopped"
+                    "status": "Running" if is_running else "Stopped",
+                    "cpu": cpu_v,
+                    "ram": ram_v,
+                    "hdd": hdd_v,
+                    "osAndExpiry": os_v
                 }
 
                 if matching_db_vm:
-                    vm_data.update({
-                        "applications": matching_db_vm.get("applications", "Web Server"),
-                        "osAndExpiry": matching_db_vm.get("osAndExpiry", "Ubuntu Server 22.04 LTS"),
-                        "hdd": matching_db_vm.get("hdd", "120"),
-                        "ram": matching_db_vm.get("ram", "8"),
-                        "cpu": matching_db_vm.get("cpu", "4")
-                    })
+                    for field in ["applications", "osAndExpiry", "hdd", "ram", "cpu"]:
+                        val = matching_db_vm.get(field)
+                        if val and not vm_data.get(field):
+                            vm_data[field] = str(val)
                 
                 vms_telemetry.append(vm_data)
 
@@ -203,7 +231,13 @@ class VCenterTelemetryScheduler:
                             "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
                         })
 
-            
+            events = [
+                {
+                    "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                    "message": "Scheduled metrics sync successfully executed. Telemetry pipeline updated."
+                }
+            ]
+
             notifications = [
                 {
                     "id": "notif-1",
@@ -241,12 +275,11 @@ class VCenterTelemetryScheduler:
                         upsert=True
                     )
 
-            events = [
-                {
-                    "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-                    "message": f"Scheduled metrics sync successfully executed. Telemetry pipeline updated."
-                }
-            ]
+            if hosts_telemetry:
+                connected_hosts = [h for h in hosts_telemetry if h["status"] == "Connected"]
+                if connected_hosts:
+                    metrics["cpuUsage"] = round(sum(h["cpuUsage"] for h in connected_hosts) / len(connected_hosts), 1)
+                    metrics["ramUsage"] = round(sum(h["ramUsage"] for h in connected_hosts) / len(connected_hosts), 1)
 
             # 3. Store the live telemetry snapshot directly inside vcenter_telemetry collection
             snap_col = db.get_collection("vcenter_telemetry")

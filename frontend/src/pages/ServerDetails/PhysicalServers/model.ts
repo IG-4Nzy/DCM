@@ -13,6 +13,7 @@ export interface PhysicalServerData {
     addedToMonitoring?: boolean;
     admin?: string | string[];
     createdAt?: string;
+    updatedBy?: string;
     updatedAt?: string;
     createdBy?: string;
 }

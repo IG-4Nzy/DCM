@@ -14,6 +14,18 @@ logger = logging.getLogger("vm_details.router")
 router = APIRouter()
 collection = db.get_collection("vm_details")
 
+def parse_sl_number(value) -> int:
+    if value is None:
+        return 0
+    if isinstance(value, (int, float)):
+        return int(value)
+    value_str = str(value).strip()
+    try:
+        return int(float(value_str))
+    except ValueError:
+        digits = "".join(c for c in value_str if c.isdigit())
+        return int(digits) if digits else 0
+
 async def sync_node_resources(node_name: str):
     if not node_name:
         return
@@ -89,11 +101,19 @@ async def list_items(
     order: str = Query("desc"),
     current_user: dict = Depends(get_current_user)
 ):
-    query = {}
+    and_conditions = []
     
     privs = current_user.get("privileges", [])
     can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Create Server Details" in privs
     
+    # Conditions that match records with no admin assigned
+    no_admin_conditions = [
+        {"admin": None},
+        {"admin": ""},
+        {"admin": []},
+        {"admin": {"$exists": False}}
+    ]
+
     target_username = None
     if not can_view_all:
         target_username = current_user.get("sub")
@@ -111,10 +131,20 @@ async def list_items(
             admins.add(str(user_doc["_id"]))
             if user_doc.get("username"):
                 admins.add(user_doc["username"])
-        query["admin"] = {"$in": list(admins)}
+        if not can_view_all:
+            # Standard user: show VMs assigned to them OR VMs with no admin
+            and_conditions.append({
+                "$or": [
+                    {"admin": {"$in": list(admins)}},
+                    *no_admin_conditions
+                ]
+            })
+        else:
+            # Admin explicitly filtering by a specific user
+            and_conditions.append({"admin": {"$in": list(admins)}})
     
     if clusterId:
-        query["clusterId"] = clusterId
+        and_conditions.append({"clusterId": clusterId})
     
     if search:
         terms = search.strip().split()
@@ -127,7 +157,6 @@ async def list_items(
             matching_clusters = await clusters_col.find({"$or": cluster_queries}, {"_id": 1}).to_list(length=None)
             matching_cluster_ids = [str(doc["_id"]) for doc in matching_clusters]
 
-            term_queries = []
             for term in terms:
                 escaped_term = term.replace('\\', '\\\\')
                 
@@ -152,8 +181,9 @@ async def list_items(
                 if matching_cluster_ids:
                     or_conditions.append({"clusterId": {"$in": matching_cluster_ids}})
 
-                term_queries.append({"$or": or_conditions})
-            query["$and"] = term_queries
+                and_conditions.append({"$or": or_conditions})
+
+    query = {"$and": and_conditions} if len(and_conditions) > 1 else (and_conditions[0] if and_conditions else {})
 
     actual_sort_by = sortBy or sort_by or "vmId"
     sort_order = 1 if order == "asc" else -1
@@ -202,130 +232,322 @@ async def import_vcenter_vms(
     vcenterId: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
-    vcenters_col = db.get_collection("vcenter_details")
-    snap_col = db.get_collection("vcenter_telemetry")
-    
-    query = {}
-    if vcenterId and ObjectId.is_valid(vcenterId):
-        query["_id"] = ObjectId(vcenterId)
+    try:
+        vcenters_col = db.get_collection("vcenter_details")
+        snap_col = db.get_collection("vcenter_telemetry")
         
-    vcenters = await vcenters_col.find(query).to_list(length=None)
-    if not vcenters:
-        raise HTTPException(status_code=404, detail="No vCenter appliances found")
-        
-    max_vm_id = 0
-    cursor = collection.find({"vmId": {"$regex": "^VM-"}}, {"vmId": 1})
-    async for doc in cursor:
-        vid = doc.get("vmId", "")
-        if vid.startswith("VM-"):
-            try:
-                num = int(vid.replace("VM-", ""))
-                max_vm_id = max(max_vm_id, num)
-            except:
-                pass
+        query = {}
+        if vcenterId and ObjectId.is_valid(vcenterId):
+            query["_id"] = ObjectId(vcenterId)
+            
+        vcenters = await vcenters_col.find(query).to_list(length=None)
+        if not vcenters:
+            raise HTTPException(status_code=404, detail="No vCenter appliances found")
+            
+        max_vm_id = 0
+        cursor = collection.find({"vmId": {"$regex": "^VM-"}}, {"vmId": 1})
+        async for doc in cursor:
+            vid = doc.get("vmId", "")
+            if vid.startswith("VM-"):
+                try:
+                    num = int(vid.replace("VM-", ""))
+                    max_vm_id = max(max_vm_id, num)
+                except:
+                    pass
 
-    inserted_count = 0
-    updated_count = 0
+        inserted_count = 0
+        updated_count = 0
+        skipped_count = 0
 
-    for vc in vcenters:
-        vc_id_str = str(vc["_id"])
-        cluster_id = vc.get("clusterId", "")
-        
-        snap = await snap_col.find_one({"vcenterId": vc_id_str})
-        vms = snap.get("vms", []) if snap else []
-        
-        if not vms and vc.get("ipAddress") and vc.get("username") and vc.get("password"):
-            try:
-                from services.vcenter.session_manager import vcenter_session_manager
-                from services.vcenter.inventory_service import vcenter_inventory_service
-                session_id = await vcenter_session_manager.get_session(vc["ipAddress"], vc["username"], vc["password"])
-                if session_id:
-                    live_vms = await vcenter_inventory_service.get_vms(vc["ipAddress"], session_id, cluster_id or None)
-                    vms = []
-                    for vm in live_vms:
-                        host_ref = vm.get("host") or vm.get("hostName") or ""
-                        vms.append({
-                            "id": vm.get("vm") or vm.get("vm_id") or vm.get("name", ""),
-                            "name": vm.get("name", ""),
-                            "ipAddress": vm.get("ipAddress") or "0.0.0.0",
-                            "node": host_ref or "Unassigned",
-                            "status": "Running" if vm.get("power_state") in ("POWERED_ON", "poweredOn") else "Stopped"
+        clusters_col = db.get_collection("clusters")
+
+        for vc in vcenters:
+            vc_id_str = str(vc["_id"])
+            vc_cluster_id = vc.get("clusterId", "")
+            
+            vcenter_cluster_map = {}
+
+            # Attempt live cluster resolution from vCenter API if credentials exist
+            if vc.get("ipAddress") and vc.get("username") and vc.get("password"):
+                try:
+                    from services.vcenter.session_manager import vcenter_session_manager
+                    from services.vcenter.inventory_service import vcenter_inventory_service
+                    session_id = await vcenter_session_manager.get_session(vc["ipAddress"], vc["username"], vc["password"])
+                    if session_id:
+                        vc_clusters = await vcenter_inventory_service.get_clusters(vc["ipAddress"], session_id)
+                        for c_item in (vc_clusters or []):
+                            moref = c_item.get("cluster") or c_item.get("id") or ""
+                            c_name = c_item.get("name") or c_item.get("cluster_name") or moref
+                            if not c_name:
+                                continue
+                                
+                            db_cluster = await clusters_col.find_one({
+                                "$or": [
+                                    {"clusterName": {"$regex": f"^{re.escape(c_name)}$", "$options": "i"}},
+                                    {"vcenterClusterId": moref},
+                                    {"_id": ObjectId(moref)} if ObjectId.is_valid(moref) else {"_id": None}
+                                ]
+                            })
+                            
+                            if not db_cluster and c_name:
+                                cursor = clusters_col.find({}, {"slNumber": 1})
+                                max_sl = 0
+                                async for doc in cursor:
+                                    max_sl = max(max_sl, parse_sl_number(doc.get("slNumber", "0")))
+                                display_name = c_name if not c_name.startswith("domain-") else f"Cluster {c_name}"
+                                new_c_doc = {
+                                    "slNumber": str(max_sl + 1),
+                                    "clusterName": display_name,
+                                    "vcenterClusterId": moref,
+                                    "ipAddress": vc.get("ipAddress", ""),
+                                    "createdBy": current_user.get("sub", "vCenter Import"),
+                                    "updatedAt": datetime.now(timezone.utc).isoformat()
+                                }
+                                ins = await clusters_col.insert_one(new_c_doc)
+                                db_cluster = await clusters_col.find_one({"_id": ins.inserted_id})
+                            
+                            if db_cluster:
+                                db_c_id = str(db_cluster["_id"])
+                                if moref:
+                                    vcenter_cluster_map[moref] = db_c_id
+                                vcenter_cluster_map[c_name] = db_c_id
+                                vcenter_cluster_map[c_name.lower()] = db_c_id
+                except Exception as e:
+                    logger.warning(f"Failed resolving vCenter clusters during import: {e}")
+
+            # Determine fallback cluster ID for this vcenter appliance
+            fallback_cluster_id = ""
+            if vc_cluster_id:
+                if vcenter_cluster_map.get(vc_cluster_id):
+                    fallback_cluster_id = vcenter_cluster_map[vc_cluster_id]
+                else:
+                    db_c = await clusters_col.find_one({
+                        "$or": [
+                            {"_id": ObjectId(vc_cluster_id)} if ObjectId.is_valid(vc_cluster_id) else {"_id": None},
+                            {"clusterName": {"$regex": f"^{re.escape(vc_cluster_id)}$", "$options": "i"}},
+                            {"vcenterClusterId": vc_cluster_id}
+                        ]
+                    })
+                    if db_c:
+                        fallback_cluster_id = str(db_c["_id"])
+                    else:
+                        cursor = clusters_col.find({}, {"slNumber": 1})
+                        max_sl = 0
+                        async for doc in cursor:
+                            max_sl = max(max_sl, parse_sl_number(doc.get("slNumber", "0")))
+                        c_name = vc_cluster_id if not vc_cluster_id.startswith("domain-") else f"Cluster {vc_cluster_id}"
+                        ins = await clusters_col.insert_one({
+                            "slNumber": str(max_sl + 1),
+                            "clusterName": c_name,
+                            "vcenterClusterId": vc_cluster_id,
+                            "createdBy": current_user.get("sub", "vCenter Import"),
+                            "updatedAt": datetime.now(timezone.utc).isoformat()
                         })
-            except Exception as e:
-                logger.error(f"Error fetching live VMs during import for vCenter {vc_id_str}: {e}")
+                        fallback_cluster_id = str(ins.inserted_id)
 
-        for vm in vms:
-            vm_name = (vm.get("name") or vm.get("id") or "").strip()
-            if not vm_name:
-                continue
+            snap = await snap_col.find_one({"vcenterId": vc_id_str})
+            vms = snap.get("vms", []) if snap else []
+            
+            session_id = None
+            if vc.get("ipAddress") and vc.get("username") and vc.get("password"):
+                try:
+                    from services.vcenter.session_manager import vcenter_session_manager
+                    from services.vcenter.inventory_service import vcenter_inventory_service
+                    session_id = await vcenter_session_manager.get_session(vc["ipAddress"], vc["username"], vc["password"])
+                    if session_id and not vms:
+                        live_vms = await vcenter_inventory_service.get_vms(vc["ipAddress"], session_id, vc_cluster_id or None)
+                        vms = []
+                        for vm in live_vms:
+                            host_ref = vm.get("host") or vm.get("hostName") or ""
+                            cpu_cnt = vm.get("cpu_count") or vm.get("num_cpu") or vm.get("cpu")
+                            cpu_v = ""
+                            if cpu_cnt:
+                                count_val = cpu_cnt.get("count") if isinstance(cpu_cnt, dict) else cpu_cnt
+                                if count_val:
+                                    cpu_v = f"{count_val} vCPU" if int(count_val) > 1 else "1 vCPU"
 
-            raw_ip = str(vm.get("ipAddress") or "").strip()
-            ip_address = raw_ip if raw_ip and raw_ip != "0.0.0.0" else ""
+                            mem_mb = vm.get("memory_size_MiB") or vm.get("memory_mb") or vm.get("ram")
+                            if isinstance(mem_mb, dict):
+                                mem_mb = mem_mb.get("size_MiB") or mem_mb.get("size")
+                            ram_v = f"{round(mem_mb / 1024)} GB" if isinstance(mem_mb, (int, float)) and mem_mb >= 512 else str(mem_mb or "")
+                            
+                            hdd_v = str(vm.get("hdd") or vm.get("disk_gb") or vm.get("storage") or "")
+                            os_v = str(vm.get("guest_OS") or vm.get("os") or vm.get("osAndExpiry") or "")
+                            
+                            vms.append({
+                                "id": vm.get("vm") or vm.get("vm_id") or vm.get("name", ""),
+                                "name": vm.get("name", ""),
+                                "cluster": vm.get("cluster") or vm.get("clusterId") or "",
+                                "ipAddress": vm.get("ipAddress") or "0.0.0.0",
+                                "node": host_ref or "Unassigned",
+                                "status": "Running" if vm.get("power_state") in ("POWERED_ON", "poweredOn") else "Stopped",
+                                "cpu": cpu_v,
+                                "ram": ram_v,
+                                "hdd": hdd_v,
+                                "osAndExpiry": os_v
+                            })
+                except Exception as e:
+                    logger.error(f"Error fetching live VMs during import for vCenter {vc_id_str}: {e}")
 
-            raw_node = str(vm.get("node") or "").strip()
-            node = raw_node if raw_node and raw_node.lower() != "unassigned" else ""
+            for vm in vms:
+                try:
+                    vm_name = (vm.get("name") or vm.get("id") or "").strip()
+                    if not vm_name:
+                        skipped_count += 1
+                        continue
 
-            status_str = str(vm.get("status") or "").lower()
-            power_status = "on" if status_str in ("running", "powered_on", "poweredon", "on") else "off"
+                    raw_ip = str(vm.get("ipAddress") or "").strip()
+                    ip_address = raw_ip if raw_ip and raw_ip != "0.0.0.0" else ""
 
-            vm_id_val = str(vm.get("id") or "").strip()
+                    raw_node = str(vm.get("node") or "").strip()
+                    node = raw_node if raw_node and raw_node.lower() != "unassigned" else ""
 
-            existing = await collection.find_one({
-                "$or": [
-                    {"vmName": {"$regex": f"^{re.escape(vm_name)}$", "$options": "i"}},
-                    {"vmId": vm_id_val} if vm_id_val else {"_id": None}
-                ]
-            })
+                    status_str = str(vm.get("status") or "").lower()
+                    power_status = "on" if status_str in ("running", "powered_on", "poweredon", "on") else "off"
 
-            if existing:
-                update_fields = {}
-                if ip_address and not existing.get("ipAddress"):
-                    update_fields["ipAddress"] = ip_address
-                if node and not existing.get("node"):
-                    update_fields["node"] = node
-                if power_status != existing.get("powerStatus"):
-                    update_fields["powerStatus"] = power_status
-                if cluster_id and not existing.get("clusterId"):
-                    update_fields["clusterId"] = cluster_id
+                    vm_id_val = str(vm.get("id") or "").strip()
 
-                if update_fields:
-                    update_fields["updatedAt"] = datetime.now(timezone.utc).isoformat()
-                    await collection.update_one({"_id": existing["_id"]}, {"$set": update_fields})
-                    updated_count += 1
-            else:
-                max_vm_id += 1
-                final_vm_id = vm_id_val if vm_id_val else f"VM-{max_vm_id:02d}"
-                new_vm_doc = {
-                    "vmId": final_vm_id,
-                    "vmName": vm_name,
-                    "clusterId": cluster_id,
-                    "ipAddress": ip_address,
-                    "applications": "",
-                    "node": node,
-                    "osAndExpiry": "",
-                    "backupLocation": "",
-                    "admin": [],
-                    "adminName": "",
-                    "adminContact": "",
-                    "powerStatus": power_status,
-                    "hdd": "",
-                    "ram": "",
-                    "cpu": "",
-                    "createdBy": current_user.get("sub", ""),
-                    "createdAt": datetime.now(timezone.utc).isoformat(),
-                    "updatedAt": datetime.now(timezone.utc).isoformat()
-                }
-                await collection.insert_one(new_vm_doc)
-                inserted_count += 1
+                    # Extract CPU, RAM, HDD, OS specs
+                    raw_cpu = vm.get("cpu") or vm.get("cpu_count") or vm.get("vCPU") or vm.get("num_cpu") or vm.get("cpuCores") or ""
+                    vm_cpu = str(raw_cpu).strip() if raw_cpu and not isinstance(raw_cpu, dict) else ""
 
-    return {
-        "message": f"Bulk import complete: {inserted_count} new VMs imported, {updated_count} existing VMs updated.",
-        "imported": inserted_count,
-        "updated": updated_count
-    }
+                    raw_ram = vm.get("ram") or vm.get("memory_size_MiB") or vm.get("memory_mb") or vm.get("memory") or vm.get("memory_gb") or vm.get("memorySize") or ""
+                    if isinstance(raw_ram, (int, float)) and raw_ram > 0:
+                        if raw_ram >= 512:
+                            vm_ram = f"{round(raw_ram / 1024)} GB" if raw_ram >= 1024 else f"{int(raw_ram)} MB"
+                        else:
+                            vm_ram = f"{int(raw_ram)} GB"
+                    else:
+                        vm_ram = str(raw_ram).strip() if not isinstance(raw_ram, dict) else ""
+
+                    raw_hdd = vm.get("hdd") or vm.get("disk_gb") or vm.get("storage") or vm.get("storage_gb") or vm.get("capacity_gb") or vm.get("total_disk") or ""
+                    if isinstance(raw_hdd, (int, float)) and raw_hdd > 0:
+                        vm_hdd = f"{int(raw_hdd)} GB"
+                    else:
+                        vm_hdd = str(raw_hdd).strip() if not isinstance(raw_hdd, dict) else ""
+
+                    raw_os = vm.get("osAndExpiry") or vm.get("guest_OS") or vm.get("os") or vm.get("guest_family") or vm.get("guest_fullname") or ""
+                    vm_os = str(raw_os).strip()
+
+                    # Fetch live hardware details if any specs missing
+                    if session_id and vm_id_val and (not vm_cpu or not vm_ram or not vm_hdd or not vm_os):
+                        try:
+                            from services.vcenter.inventory_service import vcenter_inventory_service
+                            hw = await vcenter_inventory_service.get_vm_hardware_details(vc["ipAddress"], session_id, vm_id_val)
+                            if not vm_cpu and hw.get("cpu"): vm_cpu = hw["cpu"]
+                            if not vm_ram and hw.get("ram"): vm_ram = hw["ram"]
+                            if not vm_hdd and hw.get("hdd"): vm_hdd = hw["hdd"]
+                            if not vm_os and hw.get("osAndExpiry"): vm_os = hw["osAndExpiry"]
+                        except Exception as e:
+                            logger.warning(f"Failed to fetch live hardware details for {vm_id_val}: {e}")
+
+                    # Resolve specific cluster for this VM
+                    vm_raw_cluster = vm.get("cluster") or vm.get("clusterId") or ""
+                    vm_cluster_id = ""
+                    if vm_raw_cluster and vcenter_cluster_map.get(vm_raw_cluster):
+                        vm_cluster_id = vcenter_cluster_map[vm_raw_cluster]
+                    elif vm_raw_cluster:
+                        db_c = await clusters_col.find_one({
+                            "$or": [
+                                {"_id": ObjectId(vm_raw_cluster)} if ObjectId.is_valid(vm_raw_cluster) else {"_id": None},
+                                {"clusterName": {"$regex": f"^{re.escape(vm_raw_cluster)}$", "$options": "i"}},
+                                {"vcenterClusterId": vm_raw_cluster}
+                            ]
+                        })
+                        if db_c:
+                            vm_cluster_id = str(db_c["_id"])
+                        else:
+                            cursor = clusters_col.find({}, {"slNumber": 1})
+                            max_sl = 0
+                            async for doc in cursor:
+                                max_sl = max(max_sl, parse_sl_number(doc.get("slNumber", "0")))
+                            c_name = vm_raw_cluster if not vm_raw_cluster.startswith("domain-") else f"Cluster {vm_raw_cluster}"
+                            ins = await clusters_col.insert_one({
+                                "slNumber": str(max_sl + 1),
+                                "clusterName": c_name,
+                                "vcenterClusterId": vm_raw_cluster,
+                                "createdBy": current_user.get("sub", "vCenter Import"),
+                                "updatedAt": datetime.now(timezone.utc).isoformat()
+                            })
+                            vm_cluster_id = str(ins.inserted_id)
+
+                    if not vm_cluster_id:
+                        vm_cluster_id = fallback_cluster_id
+
+                    or_conditions = [
+                        {"vmName": {"$regex": f"^{re.escape(vm_name)}$", "$options": "i"}}
+                    ]
+                    if vm_id_val:
+                        or_conditions.append({"vmId": vm_id_val})
+
+                    existing = await collection.find_one({"$or": or_conditions})
+
+                    if existing:
+                        update_fields = {}
+                        if ip_address and not existing.get("ipAddress"):
+                            update_fields["ipAddress"] = ip_address
+                        if node and not existing.get("node"):
+                            update_fields["node"] = node
+                        if power_status != existing.get("powerStatus"):
+                            update_fields["powerStatus"] = power_status
+                        if vm_cluster_id and existing.get("clusterId") != vm_cluster_id:
+                            update_fields["clusterId"] = vm_cluster_id
+                        if vm_cpu and existing.get("cpu") != vm_cpu:
+                            update_fields["cpu"] = vm_cpu
+                        if vm_ram and existing.get("ram") != vm_ram:
+                            update_fields["ram"] = vm_ram
+                        if vm_hdd and existing.get("hdd") != vm_hdd:
+                            update_fields["hdd"] = vm_hdd
+                        if vm_os and existing.get("osAndExpiry") != vm_os:
+                            update_fields["osAndExpiry"] = vm_os
+
+                        if update_fields:
+                            update_fields["updatedAt"] = datetime.now(timezone.utc).isoformat()
+                            await collection.update_one({"_id": existing["_id"]}, {"$set": update_fields})
+                            updated_count += 1
+                    else:
+                        max_vm_id += 1
+                        final_vm_id = f"VM-{max_vm_id:02d}"
+                        new_vm_doc = {
+                            "vmId": final_vm_id,
+                            "vmName": vm_name,
+                            "clusterId": vm_cluster_id,
+                            "ipAddress": ip_address,
+                            "applications": "",
+                            "node": node,
+                            "osAndExpiry": vm_os,
+                            "backupLocation": "",
+                            "admin": [],
+                            "adminName": "",
+                            "adminContact": "",
+                            "powerStatus": power_status,
+                            "hdd": vm_hdd,
+                            "ram": vm_ram,
+                            "cpu": vm_cpu,
+                            "createdBy": current_user.get("sub", ""),
+                            "createdAt": datetime.now(timezone.utc).isoformat(),
+                            "updatedAt": datetime.now(timezone.utc).isoformat()
+                        }
+                        await collection.insert_one(new_vm_doc)
+                        inserted_count += 1
+                except Exception as e:
+                    logger.error(f"Error processing VM '{vm.get('name', 'unknown')}': {e}")
+                    skipped_count += 1
+
+        return {
+            "message": f"Bulk import complete: {inserted_count} new VMs imported, {updated_count} existing VMs updated." + (f" {skipped_count} skipped." if skipped_count else ""),
+            "imported": inserted_count,
+            "updated": updated_count,
+            "skipped": skipped_count
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in import_vcenter_vms: {e}")
+        raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
 
 @router.put("/{id}", response_description="Update VM details", response_model=VMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
-async def update_item(id: str, payload: UpdateVMDetailsModel = Body(...)):
+async def update_item(id: str, payload: UpdateVMDetailsModel = Body(...), current_user: dict = Depends(get_current_user)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -337,6 +559,7 @@ async def update_item(id: str, payload: UpdateVMDetailsModel = Body(...)):
     item_dict = {k: v for k, v in payload.model_dump().items() if v is not None}
 
     if len(item_dict) >= 1:
+        item_dict["updatedBy"] = current_user.get("sub", "")
         item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
         
         update_result = await collection.update_one(

@@ -41,11 +41,6 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
     const [clusters, setClusters] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
 
-    const [vcenterList, setVcenterList] = useState<any[]>([]);
-    const [selectedVcenterId, setSelectedVcenterId] = useState<string>('');
-    const [vcenterVms, setVcenterVms] = useState<any[]>([]);
-    const [selectedVcenterVmId, setSelectedVcenterVmId] = useState<string>('');
-    const [loadingVcenterVms, setLoadingVcenterVms] = useState<boolean>(false);
 
     useEffect(() => {
         if (open) {
@@ -60,59 +55,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
             request.get('/api/users?pagination=false')
                 .then(res => setUsers(res.data?.data || []))
                 .catch(err => console.error("Failed to fetch users", err));
-            if (!editingItem) {
-                setSelectedVcenterId('');
-                setVcenterVms([]);
-                setSelectedVcenterVmId('');
-                request.get('/api/vcenter-details/?pagination=false')
-                    .then(res => setVcenterList(res.data?.data || []))
-                    .catch(err => console.error("Failed to load vCenters", err));
-            }
         }
     }, [open, clusterId, editingItem]);
-
-    const handleVcenterChange = (vcId: string) => {
-        setSelectedVcenterId(vcId);
-        setSelectedVcenterVmId('');
-        setVcenterVms([]);
-        if (vcId) {
-            setLoadingVcenterVms(true);
-            request.get(`/api/vcenter-details/${vcId}/monitor`)
-                .then(res => {
-                    const fetchedVms = res.data?.vms || [];
-                    setVcenterVms(fetchedVms);
-                })
-                .catch(err => {
-                    console.error("Failed to fetch vCenter VMs", err);
-                })
-                .finally(() => setLoadingVcenterVms(false));
-        }
-    };
-
-    const handleVcenterVmChange = (vmIdVal: string) => {
-        setSelectedVcenterVmId(vmIdVal);
-        const selectedVm = vcenterVms.find(v => (v.id || v.name) === vmIdVal);
-        if (selectedVm) {
-            const selectedVc = vcenterList.find(v => (v.id || v._id) === selectedVcenterId);
-            setFormData({
-                vmId: selectedVm.id || '',
-                vmName: selectedVm.name || '',
-                clusterId: selectedVc?.clusterId || clusterId || formData.clusterId || '',
-                ipAddress: (selectedVm.ipAddress && selectedVm.ipAddress !== '0.0.0.0') ? selectedVm.ipAddress : '',
-                applications: '',
-                node: (selectedVm.node && selectedVm.node !== 'Unassigned') ? selectedVm.node : '',
-                osAndExpiry: '',
-                hdd: '',
-                ram: '',
-                cpu: '',
-                backupLocation: '',
-                adminName: '',
-                adminContact: '',
-                admin: [],
-                powerStatus: selectedVm.status?.toLowerCase() === 'running' ? 'on' : 'off'
-            });
-        }
-    };
 
     useEffect(() => {
         if (open) {
@@ -199,6 +143,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         if (editingItem) {
             const changedData: UpdateVMDetailsPayload = {};
             if (formData.vmName !== editingItem.vmName) changedData.vmName = formData.vmName;
+            if (formData.clusterId !== editingItem.clusterId) changedData.clusterId = formData.clusterId;
             if (formData.ipAddress !== editingItem.ipAddress) changedData.ipAddress = formData.ipAddress;
             if (formData.applications !== editingItem.applications) changedData.applications = formData.applications;
             if (formData.node !== editingItem.node) changedData.node = formData.node;
@@ -230,36 +175,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         >
             <form onSubmit={handleSubmit}>
                 <Box className={styles.formGrid}>
-                    {!editingItem && vcenterList.length > 0 && (
-                        <Box sx={{ gridColumn: '1 / -1', p: 2, mb: 1, backgroundColor: '#f0f7ff', borderRadius: '8px', border: '1px solid #cce3ff' }}>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#0056b3', mb: 1.5 }}>
-                                ⚡ Import VM Details from vCenter API
-                            </Typography>
-                            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-                                <Dropdown
-                                    label="Select vCenter Server"
-                                    size="small"
-                                    fullWidth
-                                    value={selectedVcenterId}
-                                    onChange={handleVcenterChange}
-                                    options={vcenterList.map(v => ({ label: `${v.name || 'vCenter'} (${v.ipAddress || ''})`, value: v.id || v._id }))}
-                                />
-                                <Dropdown
-                                    label={loadingVcenterVms ? "Fetching VMs..." : "Select VM from vCenter"}
-                                    size="small"
-                                    fullWidth
-                                    searchable
-                                    disabled={!selectedVcenterId || loadingVcenterVms}
-                                    value={selectedVcenterVmId}
-                                    onChange={handleVcenterVmChange}
-                                    options={vcenterVms.map(vm => ({
-                                        label: `${vm.name || vm.id} ${vm.ipAddress && vm.ipAddress !== '0.0.0.0' ? `(${vm.ipAddress})` : ''}`,
-                                        value: vm.id || vm.name
-                                    }))}
-                                />
-                            </Box>
-                        </Box>
-                    )}
+
                     {!!editingItem && (
                         <TextField 
                             label="VM ID" 
@@ -282,8 +198,11 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                             label="Cluster" 
                             size="small"
                             fullWidth
+                            searchable
                             value={formData.clusterId} 
-                            onChange={(val) => handleChange('clusterId', val)} 
+                            onChange={(val) => {
+                                setFormData(prev => ({ ...prev, clusterId: val, node: '' }));
+                            }} 
                             options={clusters.map(c => ({ label: c.clusterName, value: c.id || c._id }))}
                         />
                     )}
@@ -305,11 +224,17 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         label="Node" 
                         size="small"
                         fullWidth
+                        searchable
                         value={formData.node} 
                         onChange={(val) => handleChange('node', val)} 
                         options={nodes
-                            .filter(n => !formData.clusterId || n.clusterId === formData.clusterId)
-                            .map(n => ({ label: n.node, value: n.node }))}
+                            .filter(n => !formData.clusterId || n.clusterId === formData.clusterId || (n.clusterId && String(n.clusterId) === String(formData.clusterId)))
+                            .map(n => {
+                                const nodeName = n.node || n.hostName || n.nodeId || '';
+                                const ip = n.ipAddress || n.ip || n.managementIp || '';
+                                const label = ip ? `${nodeName} - ${ip}` : nodeName;
+                                return { label, value: n.node || n.hostName || label };
+                            })}
                     />
                     <TextField 
                         label="OS and Expiry" 

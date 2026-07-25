@@ -107,6 +107,7 @@ async def create_item(
 
     item_dict = payload.model_dump()
     item_dict["createdBy"] = current_user.get("sub", "")
+    item_dict["createdAt"] = datetime.now(timezone.utc).isoformat()
     item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
 
     new_item = await collection.insert_one(item_dict)
@@ -114,7 +115,7 @@ async def create_item(
     return await compute_remaining_capacity(created)
 
 @router.put("/{id}", response_description="Update a serverRack", response_model=ServerRackModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
-async def update_item(id: str, payload: UpdateServerRackModel = Body(...)):
+async def update_item(id: str, payload: UpdateServerRackModel = Body(...), current_user: dict = Depends(get_current_user)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -129,6 +130,7 @@ async def update_item(id: str, payload: UpdateServerRackModel = Body(...)):
             if existing:
                 raise HTTPException(status_code=400, detail="Server Rack already exists")
 
+        item_dict["updatedBy"] = current_user.get("sub", "")
         item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
         
         update_result = await collection.update_one(

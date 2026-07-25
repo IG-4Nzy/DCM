@@ -12,6 +12,8 @@ export interface ServerRackData {
     sparePowerC90?: string;
     remarks?: string;
     createdBy?: string;
+    createdAt?: string;
+    updatedBy?: string;
     updatedAt?: string;
 }
 

@@ -1,5 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
+import dayjs from 'dayjs';
+import request from '../../services/request';
 import { useNavigate } from 'react-router-dom';
 import { Box, Tooltip, IconButton, Button as MuiButton } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdUploadFile as UploadIcon } from 'react-icons/md';
@@ -28,6 +30,24 @@ const Clusters = () => {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<ClusterData | null>(null);
+    const [usersMap, setUsersMap] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        request.get('/api/users/?pagination=false')
+            .then((res) => {
+                const map: Record<string, string> = {};
+                const list = res.data?.data || [];
+                list.forEach((u: any) => {
+                    const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+                    const displayName = fullName || u.username;
+                    if (u._id) map[u._id] = displayName;
+                    if (u.id) map[u.id] = displayName;
+                    if (u.username) map[u.username] = displayName;
+                });
+                setUsersMap(map);
+            })
+            .catch((err) => console.error("Failed to load users:", err));
+    }, []);
 
     const { showToast } = useToast();
     const { confirm } = useConfirm();
@@ -166,6 +186,31 @@ const Clusters = () => {
             label: 'Nodes',
             sortable: false,
             render: (row) => row.nodeNames && row.nodeNames.length > 0 ? row.nodeNames.join(', ') : '--'
+        },
+        { id: 'remarks', label: 'Remarks', sortable: false, render: (row) => row.remarks || '--' },
+        {
+            id: 'createdBy',
+            label: 'Created By',
+            sortable: true,
+            render: (row) => usersMap[row.createdBy || ''] || row.createdBy || '--'
+        },
+        {
+            id: 'createdAt',
+            label: 'Created At',
+            sortable: true,
+            render: (row) => row.createdAt ? dayjs(row.createdAt).format('DD-MM-YYYY h:mm A') : '--'
+        },
+        {
+            id: 'updatedBy',
+            label: 'Updated By',
+            sortable: true,
+            render: (row) => usersMap[row.updatedBy || ''] || row.updatedBy || '--'
+        },
+        {
+            id: 'updatedAt',
+            label: 'Updated At',
+            sortable: true,
+            render: (row) => row.updatedAt ? dayjs(row.updatedAt).format('DD-MM-YYYY h:mm A') : '--'
         }
     ];
 

@@ -18,6 +18,7 @@ export interface VMDetailsData {
     admin?: string | string[];
     powerStatus?: string;
     createdAt?: string;
+    updatedBy?: string;
     updatedAt?: string;
     createdBy?: string;
 }

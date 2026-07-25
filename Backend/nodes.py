@@ -62,11 +62,19 @@ async def list_items(
     order: str = Query("asc"),
     current_user: dict = Depends(get_current_user)
 ):
-    query = {}
+    and_conditions = []
     
     privs = current_user.get("privileges", [])
     can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Create Server Details" in privs
     
+    # Conditions that match records with no admin assigned
+    no_admin_conditions = [
+        {"admin": None},
+        {"admin": ""},
+        {"admin": []},
+        {"admin": {"$exists": False}}
+    ]
+
     if not can_view_all:
         target_username = current_user.get("sub")
         users_col = db.get_collection("users")
@@ -75,7 +83,13 @@ async def list_items(
         admins = [target_username]
         if target_user_id:
             admins.append(target_user_id)
-        query["admin"] = {"$in": admins}
+        # Show nodes assigned to this user OR nodes with no admin
+        and_conditions.append({
+            "$or": [
+                {"admin": {"$in": admins}},
+                *no_admin_conditions
+            ]
+        })
     elif admin:
         # If the user has view all privileges but explicitly wants to filter by an admin (e.g. from dashboard click)
         users_col_adm = db.get_collection("users")
@@ -88,8 +102,7 @@ async def list_items(
             admin_vals.add(str(adm_doc["_id"]))
             if adm_doc.get("username"):
                 admin_vals.add(adm_doc["username"])
-        query["admin"] = {"$in": list(admin_vals)}
-    
+        and_conditions.append({"admin": {"$in": list(admin_vals)}})
     
     if clusterId:
         cluster_doc = await db.get_collection("clusters").find_one({"_id": ObjectId(clusterId) if ObjectId.is_valid(clusterId) else clusterId})
@@ -101,34 +114,41 @@ async def list_items(
                     object_ids.append(ObjectId(nid))
                 else:
                     object_ids.append(nid)
-            query["$or"] = [
-                {"_id": {"$in": object_ids}},
-                {"clusterId": clusterId}
-            ]
+            and_conditions.append({
+                "$or": [
+                    {"_id": {"$in": object_ids}},
+                    {"clusterId": clusterId}
+                ]
+            })
         else:
-            query["clusterId"] = clusterId
+            and_conditions.append({"clusterId": clusterId})
     
     if serverModel:
-        query["serverModel"] = serverModel
-    
-
+        and_conditions.append({"serverModel": serverModel})
     
     if rack:
-        query["rack"] = rack
+        and_conditions.append({"rack": rack})
     
     if search:
-        query["$or"] = [
-            {"node": {"$regex": search, "$options": "i"}},
-            {"nodeId": {"$regex": search, "$options": "i"}},
-            {"custodian": {"$regex": search, "$options": "i"}},
-            {"admin": {"$regex": search, "$options": "i"}},
-            {"assetNumber": {"$regex": search, "$options": "i"}},
-            {"serialNumber": {"$regex": search, "$options": "i"}},
-            {"serverModel": {"$regex": search, "$options": "i"}},
-            {"rack": {"$regex": search, "$options": "i"}},
-            {"rackPosition": {"$regex": search, "$options": "i"}},
-            {"remarks": {"$regex": search, "$options": "i"}}
-        ]
+        and_conditions.append({
+            "$or": [
+                {"node": {"$regex": search, "$options": "i"}},
+                {"nodeId": {"$regex": search, "$options": "i"}},
+                {"ipAddress": {"$regex": search, "$options": "i"}},
+                {"ip": {"$regex": search, "$options": "i"}},
+                {"managementIp": {"$regex": search, "$options": "i"}},
+                {"custodian": {"$regex": search, "$options": "i"}},
+                {"admin": {"$regex": search, "$options": "i"}},
+                {"assetNumber": {"$regex": search, "$options": "i"}},
+                {"serialNumber": {"$regex": search, "$options": "i"}},
+                {"serverModel": {"$regex": search, "$options": "i"}},
+                {"rack": {"$regex": search, "$options": "i"}},
+                {"rackPosition": {"$regex": search, "$options": "i"}},
+                {"remarks": {"$regex": search, "$options": "i"}}
+            ]
+        })
+
+    query = {"$and": and_conditions} if len(and_conditions) > 1 else (and_conditions[0] if and_conditions else {})
 
     actual_sort_by = sortBy or sort_by or "nodeId"
     sort_order = 1 if order == "asc" else -1
@@ -163,6 +183,7 @@ async def create_item(
 
     item_dict = payload.model_dump()
     item_dict["createdBy"] = current_user.get("sub", "")
+    item_dict["createdAt"] = datetime.now(timezone.utc).isoformat()
     item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
     
     max_node_id = 0
@@ -182,7 +203,7 @@ async def create_item(
     return await compute_available_resources(created)
 
 @router.put("/{id}", response_description="Update a node", response_model=NodeModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
-async def update_item(id: str, payload: UpdateNodeModel = Body(...)):
+async def update_item(id: str, payload: UpdateNodeModel = Body(...), current_user: dict = Depends(get_current_user)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -207,6 +228,7 @@ async def update_item(id: str, payload: UpdateNodeModel = Body(...)):
                 if existing_ip:
                     raise HTTPException(status_code=400, detail=f"IP address {ip_part} already exists")
 
+        item_dict["updatedBy"] = current_user.get("sub", "")
         item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
         
         update_result = await collection.update_one(

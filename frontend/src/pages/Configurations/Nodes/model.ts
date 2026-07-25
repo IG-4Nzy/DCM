@@ -22,6 +22,8 @@ export interface NodeData {
     raidConfiguration?: string[];
     ip?: string;
     createdBy?: string;
+    createdAt?: string;
+    updatedBy?: string;
     updatedAt?: string;
 }
 

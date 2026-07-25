@@ -1053,10 +1053,19 @@ const ServerMonitoring: React.FC = () => {
               totalHddGb = parseInt(selectedVcenter.hdd) || 0;
             }
 
-            const cpuUsed = ((monitorData.metrics.cpuUsage || 0) / 100) * totalCores;
+            const hostsCount = monitorData.hosts?.length || 0;
+            const dynamicCpuUsage = hostsCount > 0
+              ? Number((monitorData.hosts.reduce((acc: number, h: any) => acc + (h.cpuUsage || 0), 0) / hostsCount).toFixed(1))
+              : (monitorData.metrics.cpuUsage || 0);
+
+            const dynamicRamUsage = hostsCount > 0
+              ? Number((monitorData.hosts.reduce((acc: number, h: any) => acc + (h.ramUsage || 0), 0) / hostsCount).toFixed(1))
+              : (monitorData.metrics.ramUsage || 0);
+
+            const cpuUsed = (dynamicCpuUsage / 100) * totalCores;
             const cpuFree = Math.max(0, totalCores - cpuUsed);
 
-            const ramUsed = ((monitorData.metrics.ramUsage || 0) / 100) * totalRamGb;
+            const ramUsed = (dynamicRamUsage / 100) * totalRamGb;
             const ramFree = Math.max(0, totalRamGb - ramUsed);
 
             const hddUsed = ((monitorData.metrics.hddUsage || 0) / 100) * totalHddGb;
@@ -1078,19 +1087,19 @@ const ServerMonitoring: React.FC = () => {
                         <CpuIcon style={{ fontSize: '1.25rem' }} />
                       </div>
                       <div className={styles.container__metricCard__value}>
-                        {monitorData.hosts.length > 0 ? `${monitorData.metrics.cpuUsage}%` : '--'}
+                        {monitorData.hosts.length > 0 ? `${dynamicCpuUsage}%` : '--'}
                       </div>
                       <div className={styles.container__metricCard__progress}>
                         <div style={{ 
-                          width: monitorData.hosts.length > 0 ? `${monitorData.metrics.cpuUsage}%` : '0%', 
-                          backgroundColor: getMetricProgressColor(monitorData.metrics.cpuUsage) 
+                          width: monitorData.hosts.length > 0 ? `${dynamicCpuUsage}%` : '0%', 
+                          backgroundColor: getMetricProgressColor(dynamicCpuUsage) 
                         }} />
                       </div>
-                      {monitorData.hosts.length > 0 && (
+                      {monitorData.hosts.length > 0 && totalCores > 0 && (
                         <div style={{ marginTop: '12px', fontSize: '0.7rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span>Used CPU:</span>
-                            <span style={{ fontWeight: 700, color: '#1e293b' }}>{cpuUsed.toFixed(1)} Cores ({monitorData.metrics.cpuUsage.toFixed(0)}%)</span>
+                            <span style={{ fontWeight: 700, color: '#1e293b' }}>{cpuUsed.toFixed(1)} Cores ({dynamicCpuUsage.toFixed(0)}%)</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span>Free / Total:</span>
@@ -1107,19 +1116,19 @@ const ServerMonitoring: React.FC = () => {
                         <RamIcon style={{ fontSize: '1.25rem' }} />
                       </div>
                       <div className={styles.container__metricCard__value}>
-                        {monitorData.hosts.length > 0 ? `${monitorData.metrics.ramUsage}%` : '--'}
+                        {monitorData.hosts.length > 0 ? `${dynamicRamUsage}%` : '--'}
                       </div>
                       <div className={styles.container__metricCard__progress}>
                         <div style={{ 
-                          width: monitorData.hosts.length > 0 ? `${monitorData.metrics.ramUsage}%` : '0%', 
-                          backgroundColor: getMetricProgressColor(monitorData.metrics.ramUsage) 
+                          width: monitorData.hosts.length > 0 ? `${dynamicRamUsage}%` : '0%', 
+                          backgroundColor: getMetricProgressColor(dynamicRamUsage) 
                         }} />
                       </div>
-                      {monitorData.hosts.length > 0 && (
+                      {monitorData.hosts.length > 0 && totalRamGb > 0 && (
                         <div style={{ marginTop: '12px', fontSize: '0.7rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span>Used Memory:</span>
-                            <span style={{ fontWeight: 700, color: '#1e293b' }}>{ramUsed.toFixed(1)} GB ({monitorData.metrics.ramUsage.toFixed(0)}%)</span>
+                            <span style={{ fontWeight: 700, color: '#1e293b' }}>{ramUsed.toFixed(1)} GB ({dynamicRamUsage.toFixed(0)}%)</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span>Free / Total:</span>
@@ -1144,7 +1153,7 @@ const ServerMonitoring: React.FC = () => {
                           backgroundColor: getMetricProgressColor(monitorData.metrics.hddUsage) 
                         }} />
                       </div>
-                      {monitorData.hosts.length > 0 && (
+                      {monitorData.hosts.length > 0 && totalHddGb > 0 && (
                         <div style={{ marginTop: '12px', fontSize: '0.7rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span>Used Storage:</span>
@@ -1166,14 +1175,14 @@ const ServerMonitoring: React.FC = () => {
                       </div>
                       <div className={styles.container__metricCard__value}>
                         {monitorData.hosts.length > 0 ? `${monitorData.metrics.networkTraffic} Mbps` : '--'}
-                    </div>
-                    <div className={styles.container__metricCard__progress}>
-                      <div style={{ 
-                        width: monitorData.hosts.length > 0 ? `${Math.min(100, (monitorData.metrics.networkTraffic / 500) * 100)}%` : '0%', 
-                        backgroundColor: '#10b981' 
-                      }} />
-                    </div>
-                  </Box>
+                      </div>
+                      <div className={styles.container__metricCard__progress}>
+                        <div style={{ 
+                          width: monitorData.hosts.length > 0 ? `${Math.min(100, (monitorData.metrics.networkTraffic / 500) * 100)}%` : '0%', 
+                          backgroundColor: '#10b981' 
+                        }} />
+                      </div>
+                    </Box>
                 </Box>
 
                 {/* 2. ESXi hosts table */}
@@ -1649,51 +1658,57 @@ const ServerMonitoring: React.FC = () => {
                 </Grid>
               </Box>
 
-              {/* Hardware specifications */}
+              {/* Hardware specifications - only show if data exists in JSON response */}
+              {(selectedVm.cpu || selectedVm.ram || selectedVm.hdd || selectedVm.osAndExpiry || selectedVm.applications) && (
               <Box>
                 <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748b', display: 'block', mb: 1.5 }}>
                   SPECIFICATIONS & GUEST HARDWARE
                 </Typography>
                 
                 <Grid container spacing={1.5} sx={{ fontSize: '0.85rem' }}>
+                  {selectedVm.cpu && (
                   <Grid size={{xs: 6}}  >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid #f1f5f9' }}>
                       <span style={{ color: '#64748b' }}>Provisioned vCPU:</span>
-                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{Math.max(2, Math.round(selectedVm.cpuUsage / 10) || 4)} Cores</span>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{selectedVm.cpu} Cores</span>
                     </Box>
                   </Grid>
+                  )}
+                  {selectedVm.ram && (
                   <Grid size={{xs: 6}}  >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid #f1f5f9' }}>
                       <span style={{ color: '#64748b' }}>Memory Capacity:</span>
-                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{Math.max(4, Math.round(selectedVm.ramUsage / 8) || 8) * 2} GB RAM</span>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{selectedVm.ram} GB RAM</span>
                     </Box>
                   </Grid>
+                  )}
+                  {selectedVm.hdd && (
                   <Grid size={{xs: 6}}  >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid #f1f5f9' }}>
                       <span style={{ color: '#64748b' }}>Storage Volume:</span>
-                      <span style={{ fontWeight: 600, color: '#0f172a' }}>120 GB (vSAN)</span>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{selectedVm.hdd} GB</span>
                     </Box>
                   </Grid>
+                  )}
+                  {selectedVm.osAndExpiry && (
                   <Grid size={{xs: 6}}  >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid #f1f5f9' }}>
                       <span style={{ color: '#64748b' }}>Guest OS:</span>
-                      <span style={{ fontWeight: 600, color: '#0f172a' }}>Ubuntu Server 22.04 LTS</span>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{selectedVm.osAndExpiry}</span>
                     </Box>
                   </Grid>
+                  )}
+                  {selectedVm.applications && (
                   <Grid size={{xs: 6}}  >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid #f1f5f9' }}>
-                      <span style={{ color: '#64748b' }}>Network Adapter:</span>
-                      <span style={{ fontWeight: 600, color: '#0f172a' }}>1 vnic (VM Network)</span>
+                      <span style={{ color: '#64748b' }}>Applications:</span>
+                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{selectedVm.applications}</span>
                     </Box>
                   </Grid>
-                  <Grid size={{xs: 6}}  >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1, borderBottom: '1px solid #f1f5f9' }}>
-                      <span style={{ color: '#64748b' }}>Active Uptime:</span>
-                      <span style={{ fontWeight: 600, color: '#0f172a' }}>14 days, 6 hours</span>
-                    </Box>
-                  </Grid>
+                  )}
                 </Grid>
               </Box>
+              )}
 
 
 

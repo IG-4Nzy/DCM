@@ -182,5 +182,97 @@ class VCenterInventoryService:
             revalidate_ttl=60.0
         )
 
+    async def get_vm_hardware_details(self, ip_address: str, session_id: str, vm_id: str) -> Dict[str, Any]:
+        client = vcenter_http_client.get_client()
+        headers = {"vmware-api-session-id": session_id}
+
+        async def fetch():
+            details = {"cpu": "", "ram": "", "hdd": "", "osAndExpiry": ""}
+            # 1. Try modern /api/vcenter/vm/{vm_id}
+            try:
+                res = await client.get(f"https://{ip_address}/api/vcenter/vm/{vm_id}", headers=headers)
+                if res.status_code == 200:
+                    data = res.json()
+                    cpu_obj = data.get("cpu", {})
+                    count = cpu_obj.get("count") if isinstance(cpu_obj, dict) else cpu_obj
+                    if count:
+                        details["cpu"] = f"{count} vCPU" if int(count) > 1 else "1 vCPU"
+
+                    mem_obj = data.get("memory", {})
+                    size_mb = mem_obj.get("size_MiB") if isinstance(mem_obj, dict) else mem_obj
+                    if isinstance(size_mb, (int, float)) and size_mb > 0:
+                        if size_mb >= 1024:
+                            details["ram"] = f"{round(size_mb / 1024)} GB"
+                        else:
+                            details["ram"] = f"{int(size_mb)} MB"
+
+                    details["osAndExpiry"] = str(data.get("guest_OS") or data.get("guest_fullname") or "").strip()
+
+                    disks = data.get("disks", {})
+                    total_bytes = 0
+                    if isinstance(disks, dict):
+                        for d_info in disks.values():
+                            if isinstance(d_info, dict) and "capacity" in d_info:
+                                total_bytes += float(d_info.get("capacity") or 0)
+                    elif isinstance(disks, list):
+                        for d_info in disks:
+                            if isinstance(d_info, dict):
+                                val = d_info.get("value", d_info)
+                                cap = val.get("capacity", 0) if isinstance(val, dict) else 0
+                                total_bytes += float(cap or 0)
+
+                    if total_bytes > 0:
+                        gb = round(total_bytes / (1024 ** 3))
+                        details["hdd"] = f"{gb} GB" if gb >= 1 else f"{round(total_bytes / (1024 ** 2))} MB"
+                    return details
+            except Exception as e:
+                logger.debug(f"Failed modern vm details lookup for {vm_id}: {e}")
+
+            # 2. Try legacy /rest/vcenter/vm/{vm_id}
+            try:
+                res = await client.get(f"https://{ip_address}/rest/vcenter/vm/{vm_id}", headers=headers)
+                if res.status_code == 200:
+                    body = res.json()
+                    data = body.get("value", body) if isinstance(body, dict) else {}
+                    cpu_obj = data.get("cpu", {})
+                    count = cpu_obj.get("count") if isinstance(cpu_obj, dict) else cpu_obj
+                    if count:
+                        details["cpu"] = f"{count} vCPU" if int(count) > 1 else "1 vCPU"
+
+                    mem_obj = data.get("memory", {})
+                    size_mb = mem_obj.get("size_MiB") if isinstance(mem_obj, dict) else mem_obj
+                    if isinstance(size_mb, (int, float)) and size_mb > 0:
+                        if size_mb >= 1024:
+                            details["ram"] = f"{round(size_mb / 1024)} GB"
+                        else:
+                            details["ram"] = f"{int(size_mb)} MB"
+
+                    details["osAndExpiry"] = str(data.get("guest_OS") or data.get("guest_fullname") or "").strip()
+
+                    disks = data.get("disks", [])
+                    total_bytes = 0
+                    if isinstance(disks, list):
+                        for d_info in disks:
+                            if isinstance(d_info, dict):
+                                val = d_info.get("value", d_info)
+                                cap = val.get("capacity", 0) if isinstance(val, dict) else 0
+                                total_bytes += float(cap or 0)
+                    if total_bytes > 0:
+                        gb = round(total_bytes / (1024 ** 3))
+                        details["hdd"] = f"{gb} GB" if gb >= 1 else f"{round(total_bytes / (1024 ** 2))} MB"
+                    return details
+            except Exception as e:
+                logger.debug(f"Failed legacy vm details lookup for {vm_id}: {e}")
+
+            return details
+
+        key = f"vcenter:{ip_address}:vm:{vm_id}:hw_details"
+        return await global_cache.get_or_fetch(
+            key,
+            lambda: vcenter_rate_limiter.execute_request(ip_address, fetch),
+            ttl=300.0,
+            revalidate_ttl=60.0
+        )
+
 # Global Inventory Service
 vcenter_inventory_service = VCenterInventoryService()

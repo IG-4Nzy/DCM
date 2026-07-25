@@ -619,6 +619,8 @@ class NodeModel(BaseModel):
     raidConfiguration: List[str] = Field(default_factory=list)
     ip: Optional[str] = None
     createdBy: Optional[str] = None
+    createdAt: Optional[str] = None
+    updatedBy: Optional[str] = None
     updatedAt: Optional[str] = None
 
     model_config = ConfigDict(
@@ -685,6 +687,8 @@ class ServerRackModel(BaseModel):
     sparePowerC90: Optional[str] = None
     remarks: Optional[str] = None
     createdBy: Optional[str] = None
+    createdAt: Optional[str] = None
+    updatedBy: Optional[str] = None
     updatedAt: Optional[str] = None
 
     model_config = ConfigDict(
@@ -849,6 +853,11 @@ class ClusterModel(BaseModel):
     clusterType: Optional[str] = None
     nodes: List[str] = Field(default_factory=list)
     nodeNames: List[str] = Field(default_factory=list)
+    remarks: Optional[str] = None
+    createdBy: Optional[str] = None
+    createdAt: Optional[str] = None
+    updatedBy: Optional[str] = None
+    updatedAt: Optional[str] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -861,6 +870,7 @@ class CreateClusterModel(BaseModel):
     racks: Optional[List[str]] = Field(default_factory=list)
     clusterType: Optional[str] = None
     nodes: Optional[List[str]] = Field(default_factory=list)
+    remarks: Optional[str] = None
 
 class UpdateClusterModel(BaseModel):
     clusterName: Optional[str] = None
@@ -868,6 +878,7 @@ class UpdateClusterModel(BaseModel):
     racks: Optional[List[str]] = None
     clusterType: Optional[str] = None
     nodes: Optional[List[str]] = None
+    remarks: Optional[str] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -1008,6 +1019,10 @@ class VMDetailsModel(BaseModel):
     adminContact: Optional[str] = None
     admin: Optional[Union[str, List[str]]] = None
     powerStatus: Optional[str] = None
+    createdBy: Optional[str] = None
+    createdAt: Optional[str] = None
+    updatedBy: Optional[str] = None
+    updatedAt: Optional[str] = None
     
     model_config = ConfigDict(
         populate_by_name=True,
@@ -1035,6 +1050,7 @@ class CreateVMDetailsModel(BaseModel):
 class UpdateVMDetailsModel(BaseModel):
     vmId: Optional[str] = None
     vmName: Optional[str] = None
+    clusterId: Optional[str] = None
     ipAddress: Optional[str] = None
     applications: Optional[str] = None
     node: Optional[str] = None
@@ -1252,6 +1268,10 @@ class PhysicalServerModel(BaseModel):
     backupLocation: Optional[str] = ""
     addedToMonitoring: Optional[bool] = False
     admin: Optional[Union[str, List[str]]] = None
+    createdBy: Optional[str] = None
+    createdAt: Optional[str] = None
+    updatedBy: Optional[str] = None
+    updatedAt: Optional[str] = None
     
     model_config = ConfigDict(
         populate_by_name=True,

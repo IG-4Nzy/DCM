@@ -74,10 +74,19 @@ async def list_items(
     order: str = Query("asc"),
     current_user: dict = Depends(get_current_user)
 ):
-    query = {}
+    and_conditions = []
     
     privs = current_user.get("privileges", [])
     can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Create Server Details" in privs
+
+    # Conditions that match records with no admin assigned
+    no_admin_conditions = [
+        {"admin": None},
+        {"admin": ""},
+        {"admin": []},
+        {"admin": {"$exists": False}}
+    ]
+
     if not can_view_all:
         target_username = current_user.get("sub")
         users_col = db.get_collection("users")
@@ -86,10 +95,16 @@ async def list_items(
         admins = [target_username]
         if target_user_id:
             admins.append(target_user_id)
-        query["admin"] = {"$in": admins}
+        # Show nodes assigned to this user OR nodes with no admin
+        and_conditions.append({
+            "$or": [
+                {"admin": {"$in": admins}},
+                *no_admin_conditions
+            ]
+        })
     
     if clusterId:
-        query["clusterId"] = clusterId
+        and_conditions.append({"clusterId": clusterId})
     
     if search:
         terms = search.strip().split()
@@ -102,7 +117,6 @@ async def list_items(
             matching_clusters = await clusters_col.find({"$or": cluster_queries}, {"_id": 1}).to_list(length=None)
             matching_cluster_ids = [str(doc["_id"]) for doc in matching_clusters]
 
-            term_queries = []
             for term in terms:
                 escaped_term = term.replace('\\', '\\\\')
                 numeric_match = []
@@ -154,8 +168,9 @@ async def list_items(
                 if matching_cluster_ids:
                     or_conditions.append({"clusterId": {"$in": matching_cluster_ids}})
 
-                term_queries.append({"$or": or_conditions})
-            query["$and"] = term_queries
+                and_conditions.append({"$or": or_conditions})
+
+    query = {"$and": and_conditions} if len(and_conditions) > 1 else (and_conditions[0] if and_conditions else {})
 
     actual_sort_by = sortBy or sort_by or "slNumber"
     sort_order = 1 if order == "asc" else -1

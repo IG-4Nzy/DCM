@@ -133,65 +133,89 @@ const VCenterDetails = ({ clusterId }: VCenterDetailsProps) => {
                                 </Typography>
                                 
                                 <Box className={styles.card__grid}>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >IP Address</Typography>
-                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.ipAddress || '--'}</Typography>
-                                    </Box>
+                                    {item.ipAddress && (
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >IP Address</Typography>
+                                            <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.ipAddress}</Typography>
+                                        </Box>
+                                    )}
                                     
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >HDD</Typography>
-                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.hdd || '--'}</Typography>
-                                    </Box>
+                                    {item.hdd && (
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >HDD</Typography>
+                                            <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.hdd}</Typography>
+                                        </Box>
+                                    )}
                                     
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >RAM</Typography>
-                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.ram || '--'}</Typography>
-                                    </Box>
+                                    {item.ram && (
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >RAM</Typography>
+                                            <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.ram}</Typography>
+                                        </Box>
+                                    )}
                                     
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >CPU Cores</Typography>
-                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.cpuCores || '--'}</Typography>
-                                    </Box>
+                                    {item.cpuCores && (
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >CPU Cores</Typography>
+                                            <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.cpuCores}</Typography>
+                                        </Box>
+                                    )}
                                     
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >vCenter Type</Typography>
-                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.vcenterType || '--'}</Typography>
-                                    </Box>
+                                    {item.vcenterType && (
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >vCenter Type</Typography>
+                                            <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.vcenterType}</Typography>
+                                        </Box>
+                                    )}
 
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >vCenter Version</Typography>
-                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.vcenterVersion || '--'}</Typography>
-                                    </Box>
+                                    {item.vcenterVersion && (
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >vCenter Version</Typography>
+                                            <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.vcenterVersion}</Typography>
+                                        </Box>
+                                    )}
                                     
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >Licence Expiry</Typography>
-                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.licenceExpiry || '--'}</Typography>
-                                    </Box>
+                                    {item.licenceExpiry && (
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >Licence Expiry</Typography>
+                                            <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.licenceExpiry}</Typography>
+                                        </Box>
+                                    )}
 
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >HA</Typography>
-                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.ha || '--'}</Typography>
-                                    </Box>
+                                    {item.ha && (
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >HA</Typography>
+                                            <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.ha}</Typography>
+                                        </Box>
+                                    )}
 
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >DRS</Typography>
-                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.drs || '--'}</Typography>
-                                    </Box>
+                                    {item.drs && (
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >DRS</Typography>
+                                            <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.drs}</Typography>
+                                        </Box>
+                                    )}
 
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >Storage</Typography>
-                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.storage || '--'}</Typography>
-                                    </Box>
+                                    {item.storage && (
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >Storage</Typography>
+                                            <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.storage}</Typography>
+                                        </Box>
+                                    )}
 
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >Port Groups</Typography>
-                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.portGroups || '--'}</Typography>
-                                    </Box>
+                                    {item.portGroups && (
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >Port Groups</Typography>
+                                            <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.portGroups}</Typography>
+                                        </Box>
+                                    )}
 
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >VM Image Backup Location</Typography>
-                                        <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.vmImageBackupLocation || '--'}</Typography>
-                                    </Box>
+                                    {item.vmImageBackupLocation && (
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary"  sx={{ display: 'block' }} >VM Image Backup Location</Typography>
+                                            <Typography variant="body2" fontWeight="500" className={styles.card__grid__item__value}>{item.vmImageBackupLocation}</Typography>
+                                        </Box>
+                                    )}
                                 </Box>
 
                                 {(hasUpdate || hasDelete) && (

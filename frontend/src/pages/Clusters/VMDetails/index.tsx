@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback, useRef } from 'react';
+import dayjs from 'dayjs';
 import { Box, Tooltip, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdMonitor as MonitorIcon, MdCloudDownload as CloudDownloadIcon } from 'react-icons/md';
 import request from '../../../services/request';
@@ -54,6 +55,24 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
 
     const [vcenters, setVcenters] = useState<any[]>([]);
     const [isImporting, setIsImporting] = useState<boolean>(false);
+    const [usersMap, setUsersMap] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        request.get('/api/users/?pagination=false')
+            .then((res) => {
+                const map: Record<string, string> = {};
+                const list = res.data?.data || [];
+                list.forEach((u: any) => {
+                    const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+                    const displayName = fullName || u.username;
+                    if (u._id) map[u._id] = displayName;
+                    if (u.id) map[u.id] = displayName;
+                    if (u.username) map[u.username] = displayName;
+                });
+                setUsersMap(map);
+            })
+            .catch((err) => console.error("Failed to load users:", err));
+    }, []);
 
     useEffect(() => {
         request.get('/api/vcenter-details/?pagination=false')
@@ -69,11 +88,12 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
         if (isConfirmed) {
             setIsImporting(true);
             try {
-                const res = await request.post('/api/vm-details/import-vcenter');
+                const res = await request.post('/api/vm-details/import-vcenter', {}, { timeout: 60000 });
                 showToast(res.data?.message || "Successfully imported VMs from vCenter", "success");
                 loadData();
             } catch (err: any) {
-                showToast(err?.response?.data?.detail || "Failed to import VMs from vCenter", "error");
+                const detail = err?.response?.data?.detail || err?.response?.data?.message || (err?.code === 'ECONNABORTED' ? 'Request timed out. The vCenter import is taking longer than expected.' : "Failed to import VMs from vCenter");
+                showToast(detail, "error");
             } finally {
                 setIsImporting(false);
             }
@@ -112,8 +132,14 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
     }, [clusterId]);
 
     const getClusterName = (cid: string) => {
-        const found = clusters.find(c => c.id === cid || c._id === cid);
-        return found ? found.clusterName : cid || '--';
+        if (!cid) return '--';
+        const found = clusters.find(c => 
+            c.id === cid || 
+            c._id === cid || 
+            (c.vcenterClusterId && c.vcenterClusterId === cid) ||
+            (c.clusterName && c.clusterName.toLowerCase() === cid.toLowerCase())
+        );
+        return found ? found.clusterName : cid;
     };
 
     const loadData = useCallback(async () => {
@@ -338,6 +364,10 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Admin Contact</TableCell>
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Power Status</TableCell>
                                 <TableCell colSpan={3} align="center" className={styles.tableWrapper__headerCell}>Resource Allotter</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Created By</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Created At</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Updated By</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Updated At</TableCell>
                                 {(hasUpdate || hasDelete) && (
                                     <TableCell rowSpan={2} align="right" className={styles.tableWrapper__headerCellLast}>Actions</TableCell>
                                 )}
@@ -351,11 +381,11 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                         <TableBody>
                             {loading && data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 14 : 15} align="center" sx={{ py: 3 }}>Loading...</TableCell>
+                                    <TableCell colSpan={clusterId ? 18 : 19} align="center" sx={{ py: 3 }}>Loading...</TableCell>
                                 </TableRow>
                             ) : data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 14 : 15} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
+                                    <TableCell colSpan={clusterId ? 18 : 19} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
                                 </TableRow>
                             ) : (
                                 data.map((row) => (
@@ -389,6 +419,10 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                                         <TableCell className={styles.tableWrapper__cell}>{row.hdd || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.ram || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.cpu || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{usersMap[row.createdBy || ''] || row.createdBy || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.createdAt ? dayjs(row.createdAt).format('DD-MM-YYYY h:mm A') : '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{usersMap[row.updatedBy || ''] || row.updatedBy || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.updatedAt ? dayjs(row.updatedAt).format('DD-MM-YYYY h:mm A') : '--'}</TableCell>
                                         {(hasUpdate || hasDelete) && (
                                             <TableCell align="right" onClick={(e) => e.stopPropagation()}>
                                                 <Box className={styles.tableWrapper__actions}>

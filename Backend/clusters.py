@@ -31,7 +31,7 @@ async def resolve_node_names(items):
     all_node_ids = set()
     for item in items:
         for nid in item.get("nodes", []):
-            if ObjectId.is_valid(nid):
+            if nid and ObjectId.is_valid(nid):
                 all_node_ids.add(nid)
 
     if not all_node_ids:
@@ -45,10 +45,21 @@ async def resolve_node_names(items):
         {"_id": {"$in": object_ids}},
         {"node": 1}
     ).to_list(length=None)
-    id_to_name = {str(n["_id"]): n.get("node", str(n["_id"])) for n in nodes}
+    id_to_name = {}
+    for n in nodes:
+        node_val = n.get("node")
+        id_to_name[str(n["_id"])] = str(node_val) if node_val is not None else str(n["_id"])
 
     for item in items:
-        item["nodeNames"] = [id_to_name.get(nid, nid) for nid in item.get("nodes", [])]
+        raw_nodes = item.get("nodes", []) or []
+        resolved = []
+        for nid in raw_nodes:
+            if not nid:
+                continue
+            name = id_to_name.get(str(nid)) or str(nid)
+            if name:
+                resolved.append(name)
+        item["nodeNames"] = resolved
 
     return items
 
@@ -131,6 +142,7 @@ async def create_item(
 
     item_dict = payload.model_dump()
     item_dict["createdBy"] = current_user.get("sub", "")
+    item_dict["createdAt"] = datetime.now(timezone.utc).isoformat()
     item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
 
     # Auto-populate SL Number safely
@@ -158,7 +170,7 @@ async def create_item(
     return created
 
 @router.put("/{id}", response_description="Update cluster", response_model=ClusterModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
-async def update_item(id: str, payload: UpdateClusterModel = Body(...)):
+async def update_item(id: str, payload: UpdateClusterModel = Body(...), current_user: dict = Depends(get_current_user)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -202,6 +214,7 @@ async def update_item(id: str, payload: UpdateClusterModel = Body(...)):
                 )
 
     if len(item_dict) >= 1:
+        item_dict["updatedBy"] = current_user.get("sub", "")
         item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
         
         update_result = await collection.update_one(

@@ -404,12 +404,18 @@ async def get_dashboard_summary(
         l_dict["_id"] = str(l["_id"])
         enriched_op_logs.append(l_dict)
 
-    # 14. Count VMs and Servers where user is admin
+    # 14. Count VMs and Servers where user is admin (or no admin assigned)
     vms_col = db.get_collection("vm_details")
     nodes_col = db.get_collection("node_details")
     physical_servers_col = db.get_collection("physical_servers")
     
-    admin_query = {"admin": {"$in": [username, user_id_str]}}
+    no_admin_conditions = [
+        {"admin": None},
+        {"admin": ""},
+        {"admin": []},
+        {"admin": {"$exists": False}}
+    ]
+    admin_query = {"$or": [{"admin": {"$in": [username, user_id_str]}}, *no_admin_conditions]}
     admin_vm_count = await vms_col.count_documents(admin_query)
     admin_node_count = await nodes_col.count_documents(admin_query)
     admin_config_nodes_col = db.get_collection("nodes")

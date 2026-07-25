@@ -167,7 +167,7 @@ async def create_item(
     return created
 
 @router.put("/{id}", response_description="Update physical server details", response_model=PhysicalServerModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
-async def update_item(id: str, payload: UpdatePhysicalServerModel = Body(...)):
+async def update_item(id: str, payload: UpdatePhysicalServerModel = Body(...), current_user: dict = Depends(get_current_user)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -177,6 +177,7 @@ async def update_item(id: str, payload: UpdatePhysicalServerModel = Body(...)):
     item_dict = {k: v for k, v in payload.model_dump().items() if v is not None}
 
     if len(item_dict) >= 1:
+        item_dict["updatedBy"] = current_user.get("sub", "")
         item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
         
         update_result = await collection.update_one(

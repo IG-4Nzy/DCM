@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
+import dayjs from 'dayjs';
 import { Box, Tooltip, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Typography } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import Button from '../../../components/Button';
@@ -181,6 +182,10 @@ const PhysicalServers = ({ clusterId = '' }: PhysicalServersProps) => {
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Backup Location</TableCell>
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Admin</TableCell>
                                 <TableCell colSpan={3} align="center" className={styles.tableWrapper__headerCell}>Resource Allotter</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Created By</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Created At</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Updated By</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Updated At</TableCell>
                                 {(hasUpdate || hasDelete) && (
                                     <TableCell rowSpan={2} align="right" className={styles.tableWrapper__headerCellLast}>Actions</TableCell>
                                 )}
@@ -194,11 +199,11 @@ const PhysicalServers = ({ clusterId = '' }: PhysicalServersProps) => {
                         <TableBody>
                             {loading && data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 10 : 11} align="center" sx={{ py: 3 }}>Loading...</TableCell>
+                                    <TableCell colSpan={clusterId ? 14 : 15} align="center" sx={{ py: 3 }}>Loading...</TableCell>
                                 </TableRow>
                             ) : data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 10 : 11} align="center" sx={{ py: 3, color: 'text.secondary' }}>No Physical Server Details found</TableCell>
+                                    <TableCell colSpan={clusterId ? 14 : 15} align="center" sx={{ py: 3, color: 'text.secondary' }}>No Physical Server Details found</TableCell>
                                 </TableRow>
                             ) : (
                                 data.map((row) => (
@@ -219,6 +224,10 @@ const PhysicalServers = ({ clusterId = '' }: PhysicalServersProps) => {
                                         <TableCell className={styles.tableWrapper__cell}>{row.hdd || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.ram || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.cpu || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{usersMap[row.createdBy || ''] || row.createdBy || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.createdAt ? dayjs(row.createdAt).format('DD-MM-YYYY h:mm A') : '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{usersMap[row.updatedBy || ''] || row.updatedBy || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.updatedAt ? dayjs(row.updatedAt).format('DD-MM-YYYY h:mm A') : '--'}</TableCell>
                                         {(hasUpdate || hasDelete) && (
                                             <TableCell align="right">
                                                 <Box className={styles.tableWrapper__actions}>
