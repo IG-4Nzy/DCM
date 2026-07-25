@@ -1,3 +1,4 @@
+in node create -> add a toggle button to mark flag,isNode or Appliance.if it is a appliance and has no admin,then dont show them to anyone without view all server details privilege.
 
 
 
