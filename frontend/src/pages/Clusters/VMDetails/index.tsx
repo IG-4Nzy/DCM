@@ -20,6 +20,7 @@ import { useTableState } from '../../../hooks/useTableState';
 import { type VMDetailsData } from './model';
 import VMDetailsModal from './VMDetailsModal';
 import VMHistoryModal from './VMHistoryModal';
+import { Icons } from '../../../helpers/icons';
 import styles from './index.module.scss';
 
 interface VMDetailsProps {
@@ -384,7 +385,13 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                         }}
                         options={[
                             { label: 'All Host Nodes', value: '' },
-                            ...nodesList.map((n: any) => ({ label: n.nodeId || n.nodeName || n.name, value: n.nodeId || n.nodeName || n.name }))
+                            ...nodesList.map((n: any) => {
+                                const nodeName = n.node || n.hostName || n.nodeId || n.name || '';
+                                const ip = n.ip || n.ipAddress || n.managementIp || '';
+                                const label = ip ? `${nodeName} - ${ip}` : nodeName;
+                                const val = n.node || n.hostName || n.nodeId || n.name || '';
+                                return { label, value: val };
+                            })
                         ]}
                     />
                 </FilterGroup>
@@ -470,10 +477,62 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                                         <TableCell className={styles.tableWrapper__cell} sx={{ fontWeight: 600, color: '#1565c0' }}>{row.vmId || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.vmName || '--'}</TableCell>
                                         {!clusterId && (
-                                            <TableCell className={styles.tableWrapper__cell}>{getClusterName(row.clusterId || '')}</TableCell>
+                                            <TableCell className={styles.tableWrapper__cell}>
+                                                {(() => {
+                                                    const cid = row.clusterId || '';
+                                                    if (!cid) return '--';
+                                                    const found = clusters.find(c => 
+                                                        c.id === cid || 
+                                                        c._id === cid || 
+                                                        (c.vcenterClusterId && c.vcenterClusterId === cid) ||
+                                                        (c.clusterName && c.clusterName.toLowerCase() === cid.toLowerCase())
+                                                    );
+                                                    const cName = found ? found.clusterName : cid;
+                                                    const cTypeStr = `${found?.clusterType || ''} ${found?.clusterName || ''} ${cid}`.toLowerCase();
+                                                    
+                                                    let icon = null;
+                                                    if (cTypeStr.includes('proxmox') || cTypeStr.includes('pve') || cTypeStr.includes('kvm')) {
+                                                        icon = (
+                                                            <Tooltip title="Proxmox" arrow placement="top">
+                                                                <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                                                    <Icons.ProxmoxIcon style={{ color: '#e64a19', fontSize: '22px', flexShrink: 0 }} />
+                                                                </span>
+                                                            </Tooltip>
+                                                        );
+                                                    } else {
+                                                        icon = (
+                                                            <Tooltip title="VMware" arrow placement="top">
+                                                                <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                                                    <Icons.VmwareIcon style={{ color: '#607d8b', fontSize: '22px', flexShrink: 0 }} />
+                                                                </span>
+                                                            </Tooltip>
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+                                                            {icon}
+                                                            <span>{cName}</span>
+                                                        </Box>
+                                                    );
+                                                })()}
+                                            </TableCell>
                                         )}
                                         <TableCell className={styles.tableWrapper__cell}>{row.ipAddress || '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{row.node || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>
+                                            {(() => {
+                                                if (!row.node) return '--';
+                                                const foundNode = nodesList.find(n => 
+                                                    n.node === row.node || 
+                                                    n.hostName === row.node || 
+                                                    n.nodeId === row.node || 
+                                                    n.id === row.node || 
+                                                    n._id === row.node
+                                                );
+                                                const nodeIp = foundNode?.ip || foundNode?.ipAddress || foundNode?.managementIp || '';
+                                                return nodeIp ? `${row.node} - ${nodeIp}` : row.node;
+                                            })()}
+                                        </TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.adminName || '--'}</TableCell>
                                         {(hasUpdate || hasDelete) && (
                                             <TableCell align="right" onClick={(e) => e.stopPropagation()}>

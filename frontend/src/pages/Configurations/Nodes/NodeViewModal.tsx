@@ -90,6 +90,18 @@ const NodeViewModal: React.FC<NodeViewModalProps> = ({ open, onClose, node, admi
                                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.serialNumber || '-'}</Typography>
                                 </Grid>
                                 <Grid size={{xs: 12, sm: 6}}   >
+                                    <Typography variant="caption" color="textSecondary">Server Rack</Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#2b6cb0' }}>{node.rack || '-'}</Typography>
+                                </Grid>
+                                <Grid size={{xs: 12, sm: 6}}   >
+                                    <Typography variant="caption" color="textSecondary">Rack Position</Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#2b6cb0' }}>{node.rackPosition || '-'}</Typography>
+                                </Grid>
+                                <Grid size={{xs: 12, sm: 6}}   >
+                                    <Typography variant="caption" color="textSecondary">Rack Units (U)</Typography>
+                                    <Typography variant="body2">{node.rackUnits !== undefined && node.rackUnits !== null ? node.rackUnits : '-'}</Typography>
+                                </Grid>
+                                <Grid size={{xs: 12, sm: 6}}   >
                                     <Typography variant="caption" color="textSecondary">Custodian</Typography>
                                     <Typography variant="body2">{node.custodian || '-'}</Typography>
                                 </Grid>

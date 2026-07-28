@@ -39,11 +39,16 @@ import { AiOutlineCluster as ClusterIcon } from "react-icons/ai";
 
 import { FaBell as BellIcon } from "react-icons/fa";
 
-import { BsFillPersonVcardFill as AttendanceIcon} from "react-icons/bs";
+import { BsFillPersonVcardFill as AttendanceIcon } from "react-icons/bs";
+
+import { SiProxmox as ProxmoxIcon } from "react-icons/si";
+import { GrVmware as VmwareIcon } from "react-icons/gr";
 
 export const Icons = {
   MenuIcon,
   DashboardIcon,
+  VmwareIcon,
+  ProxmoxIcon,
   LogoutIcon,
   ChevronLeftIcon,
   ChevronRightIcon,

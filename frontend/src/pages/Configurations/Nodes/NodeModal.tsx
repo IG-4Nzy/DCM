@@ -213,26 +213,26 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         }
 
         const payload: any = {
-            node: node.trim() ? node : undefined,
-            ip: ip.trim() ? ip : undefined,
-            remarks,
-            totalRam: totalRam.trim() !== '' ? totalRam.trim() : undefined,
-            totalHardisk: totalHardisk.trim() !== '' ? totalHardisk.trim() : undefined,
-            totalCpu: totalCpu.trim() !== '' ? totalCpu.trim() : undefined,
-            rack: rack || undefined,
-            rackPosition: rackPosition && rackPosition.length > 0 ? rackPosition.join(', ') : undefined,
-            rackUnits: computedRackUnits,
-            serverModel: serverModel || undefined,
-            serialNumber: serialNumber || undefined,
-            custodian: custodian || undefined,
-            admin: finalAdmin,
-            assetNumber: assetNumber || undefined,
+            node: node.trim() ? node : '',
+            ip: ip.trim() ? ip : '',
+            remarks: remarks || '',
+            totalRam: totalRam.trim() !== '' ? totalRam.trim() : '',
+            totalHardisk: totalHardisk.trim() !== '' ? totalHardisk.trim() : '',
+            totalCpu: totalCpu.trim() !== '' ? totalCpu.trim() : '',
+            rack: rack || '',
+            rackPosition: rackPosition && rackPosition.length > 0 ? rackPosition.join(', ') : '',
+            rackUnits: computedRackUnits !== undefined ? computedRackUnits : '',
+            serverModel: serverModel || '',
+            serialNumber: serialNumber || '',
+            custodian: custodian || '',
+            admin: finalAdmin || [],
+            assetNumber: assetNumber || '',
             raidConfiguration: raidConfiguration,
             isAppliance: nodeType === 'appliance',
             isStorage: nodeType === 'storage',
             isPhysical: nodeType === 'node' ? isPhysical : false,
-            os: os.trim() ? os.trim() : undefined,
-            gpu: gpu.trim() ? gpu.trim() : undefined
+            os: os.trim() ? os.trim() : '',
+            gpu: gpu.trim() ? gpu.trim() : ''
         };
 
         if (editingItem) {
@@ -370,6 +370,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                     label="Server Model"
                                     fullWidth
                                     searchable
+                                    clearable
                                     value={serverModel}
                                     onChange={(val) => setServerModel(val)}
                                     options={serverModels.map(sm => ({ label: sm.serverModel, value: sm.serverModel }))}
@@ -419,6 +420,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 label="Admin"
                                 fullWidth
                                 searchable
+                                clearable
                                 multiple
                                 value={admin}
                                 onChange={(val) => setAdmin(val)}
@@ -508,7 +510,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                             <Dropdown
                                 label="Server Rack"
                                 fullWidth
-                                required
+                                clearable
                                 value={rack}
                                 onChange={(val) => setRack(val)}
                                 options={racks.map(r => ({ label: r.serverRack, value: r.serverRack }))}
@@ -518,7 +520,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                             <Dropdown
                                 label="Rack Position"
                                 fullWidth
-                                required
+                                clearable
                                 multiple
                                 searchable
                                 value={rackPosition}

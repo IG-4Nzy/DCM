@@ -238,6 +238,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                             size="small"
                             fullWidth
                             searchable
+                            clearable
                             value={formData.clusterId} 
                             onChange={(val) => {
                                 setFormData(prev => ({ ...prev, clusterId: val, node: '' }));
@@ -264,15 +265,16 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         size="small"
                         fullWidth
                         searchable
+                        clearable
                         value={formData.node} 
                         onChange={(val) => handleChange('node', val)} 
                         options={nodes
                             .filter(n => !formData.clusterId || n.clusterId === formData.clusterId || (n.clusterId && String(n.clusterId) === String(formData.clusterId)))
-                            .map(n => {
+                            .map((n) => {
                                 const nodeName = n.node || n.hostName || n.nodeId || '';
                                 const ip = n.ipAddress || n.ip || n.managementIp || '';
                                 const label = ip ? `${nodeName} - ${ip}` : nodeName;
-                                return { label, value: n.node || n.hostName || label };
+                                return { label, value: nodeName };
                             })}
                     />
                     <TextField 
@@ -294,13 +296,14 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         size="small"
                         fullWidth
                         searchable
+                        clearable
                         value={formData.backupNode} 
                         onChange={(val) => handleChange('backupNode', val)} 
-                        options={nodes.map(n => {
+                        options={nodes.map((n) => {
                             const nodeName = n.node || n.hostName || n.nodeId || '';
                             const ip = n.ipAddress || n.ip || n.managementIp || '';
                             const label = ip ? `${nodeName} - ${ip}` : nodeName;
-                            return { label, value: n.node || n.hostName || label };
+                            return { label, value: nodeName };
                         })}
                     />
                     <Dropdown 
@@ -308,6 +311,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         size="small"
                         fullWidth
                         searchable
+                        clearable
                         value={formData.backupStorage} 
                         onChange={(val) => handleChange('backupStorage', val)} 
                         options={nodes.filter(n => n.type === 'storage' || n.isStorage).map(n => {
@@ -320,6 +324,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         size="small"
                         fullWidth
                         searchable
+                        clearable
                         value={formData.datastore} 
                         onChange={(val) => handleChange('datastore', val)} 
                         options={datastores.map(d => ({ label: `${d.name} (${d.type} - ${d.capacity})`, value: d.name }))}
@@ -328,6 +333,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         label="Power Status" 
                         size="small"
                         fullWidth
+                        clearable
                         value={formData.powerStatus || 'on'} 
                         onChange={(val) => handleChange('powerStatus', val)} 
                         options={[
@@ -341,6 +347,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         size="small"
                         fullWidth
                         searchable
+                        clearable
                         multiple
                         value={formData.admin} 
                         onChange={(val) => handleChange('admin', val)} 

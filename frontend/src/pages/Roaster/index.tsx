@@ -17,7 +17,7 @@ import {
   Switch,
   FormControlLabel
 } from "@mui/material";
-import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon, MdPrint as PrintIcon, MdContentCopy as CopyIcon } from "react-icons/md";
+import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon, MdPrint as PrintIcon, MdContentCopy as CopyIcon, MdUndo as UndoIcon } from "react-icons/md";
 import dayjs, { Dayjs } from "dayjs";
 import { getServerTime } from "../../helpers/time";
 import isoWeekPlugin from "dayjs/plugin/isoWeek";
@@ -25,6 +25,7 @@ import WeekPicker from "../../components/WeekPicker";
 import styles from "./index.module.scss";
 import { tableHeader } from "./constant";
 import { useToast } from "../../contexts/ToastContext";
+import { useConfirm } from "../../contexts/ConfirmContext";
 import { hasPrivilege } from "../../helpers/authUtils";
 import { PRIVILEGES } from "../../helpers/privileges";
 import { useSelector, useDispatch } from "react-redux";
@@ -60,6 +61,9 @@ const RoasterPage: React.FC = () => {
 
   const dispatch = useDispatch<AppDispatch>();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
+  const [rosterHistory, setRosterHistory] = useState<Record<string, Record<string, RosterData>[]>>({});
+  const [splitupHistory, setSplitupHistory] = useState<any[]>([]);
   const isSuperuser = useSelector((state: RootState) => state.auth.isSuperuser);
   const token = useSelector((state: RootState) => state.auth.token);
   const { users, availableDepartments: departmentsList } = useSelector((state: RootState) => state.users);
@@ -313,6 +317,12 @@ const RoasterPage: React.FC = () => {
   };
 
   const handleCopyPreviousRoster = async () => {
+    const isConfirmed = await confirm(
+      "Are you sure you want to copy the roster from the previous week? This will overwrite your current unsaved changes for this week.",
+      "Copy Previous Week Roster"
+    );
+    if (!isConfirmed) return;
+
     const prevWeek = selectedWeek.subtract(1, "week");
     const startDate = prevWeek.startOf("isoWeek").format("YYYY-MM-DD");
     const endDate = prevWeek.endOf("isoWeek").format("YYYY-MM-DD");
@@ -323,8 +333,15 @@ const RoasterPage: React.FC = () => {
         prevRoster[`${r.date}_${r.shift}`] = r.assignees;
       });
 
+      // Save snapshot for undo
+      const currentSnapshot = rosterDataByWeek[currentWeekKey] || {};
+      setRosterHistory(prev => ({
+        ...prev,
+        [currentWeekKey]: [...(prev[currentWeekKey] || []), currentSnapshot]
+      }));
+
       // Now copy to the current week
-      const currentRosterData = { ...(rosterDataByWeek[currentWeekKey] || {}) };
+      const currentRosterData = { ...currentSnapshot };
       const currentWeekDays = Array.from({ length: 7 }).map((_, index) =>
         selectedWeek.startOf("isoWeek").add(index, "day")
       );
@@ -359,12 +376,34 @@ const RoasterPage: React.FC = () => {
     }
   };
 
+  const handleUndoRoster = () => {
+    const historyList = rosterHistory[currentWeekKey] || [];
+    if (historyList.length === 0) return;
+    const previousState = historyList[historyList.length - 1];
+    setRosterDataByWeek(prev => ({
+      ...prev,
+      [currentWeekKey]: previousState
+    }));
+    setRosterHistory(prev => ({
+      ...prev,
+      [currentWeekKey]: historyList.slice(0, historyList.length - 1)
+    }));
+    showToast("Reverted to previous roster state.", "info");
+  };
+
   const handleCopyPreviousSplitup = async () => {
     if (!userDepartment || !dutySummary?.cycleStart) return;
+    const isConfirmed = await confirm(
+      "Are you sure you want to copy the roster splitup targets from the previous cycle?",
+      "Copy Previous Splitup"
+    );
+    if (!isConfirmed) return;
+
     try {
       const dateInPrevCycle = dayjs(dutySummary.cycleStart).subtract(15, 'days').format('YYYY-MM-DD');
       const prevData = await dispatch(fetchDutySummary({ department: userDepartment, date: dateInPrevCycle })).unwrap();
       if (prevData && prevData.splitups && Object.keys(prevData.splitups).length > 0) {
+        setSplitupHistory(prev => [...prev, localSplitups]);
         setLocalSplitups(prevData.splitups);
         showToast("Copied splitup targets from previous month. Please save changes.", "success");
       } else {
@@ -374,6 +413,14 @@ const RoasterPage: React.FC = () => {
       console.error(err);
       showToast("Failed to copy previous splitup targets", "error");
     }
+  };
+
+  const handleUndoSplitup = () => {
+    if (splitupHistory.length === 0) return;
+    const previousState = splitupHistory[splitupHistory.length - 1];
+    setLocalSplitups(previousState);
+    setSplitupHistory(prev => prev.slice(0, prev.length - 1));
+    showToast("Reverted to previous splitup state.", "info");
   };
 
   const handleSave = async () => {
@@ -489,27 +536,55 @@ const RoasterPage: React.FC = () => {
                    </Tooltip>
                  )}
                  {activeTab === 0 ? (
-                   <Tooltip title="Copy Previous Roster">
-                     <IconButton
-                       color="primary"
-                       onClick={handleCopyPreviousRoster}
-                       size="small"
-                       sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }}
-                     >
-                       <CopyIcon />
-                     </IconButton>
-                   </Tooltip>
+                   <>
+                     <Tooltip title="Copy Previous Roster">
+                       <IconButton
+                         color="primary"
+                         onClick={handleCopyPreviousRoster}
+                         size="small"
+                         sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }}
+                       >
+                         <CopyIcon />
+                       </IconButton>
+                     </Tooltip>
+                     {(rosterHistory[currentWeekKey] || []).length > 0 && (
+                       <Tooltip title="Undo Copy / Revert">
+                         <IconButton
+                           color="warning"
+                           onClick={handleUndoRoster}
+                           size="small"
+                           sx={{ backgroundColor: 'rgba(237, 108, 2, 0.08)' }}
+                         >
+                           <UndoIcon />
+                         </IconButton>
+                       </Tooltip>
+                     )}
+                   </>
                  ) : (
-                   <Tooltip title="Copy Previous Roster Splitup">
-                     <IconButton
-                       color="primary"
-                       onClick={handleCopyPreviousSplitup}
-                       size="small"
-                       sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }}
-                     >
-                       <CopyIcon />
-                     </IconButton>
-                   </Tooltip>
+                   <>
+                     <Tooltip title="Copy Previous Roster Splitup">
+                       <IconButton
+                         color="primary"
+                         onClick={handleCopyPreviousSplitup}
+                         size="small"
+                         sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }}
+                       >
+                         <CopyIcon />
+                       </IconButton>
+                     </Tooltip>
+                     {splitupHistory.length > 0 && (
+                       <Tooltip title="Undo Copy / Revert">
+                         <IconButton
+                           color="warning"
+                           onClick={handleUndoSplitup}
+                           size="small"
+                           sx={{ backgroundColor: 'rgba(237, 108, 2, 0.08)' }}
+                         >
+                           <UndoIcon />
+                         </IconButton>
+                       </Tooltip>
+                     )}
+                   </>
                  )}
                 <Tooltip title="Cancel Edit">
                   <IconButton

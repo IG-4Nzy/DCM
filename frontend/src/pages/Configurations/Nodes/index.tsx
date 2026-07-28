@@ -35,6 +35,7 @@ import { fetchClusters } from "../../Clusters/action";
 import { type NodeData } from "./model";
 import NodeModal from "./NodeModal";
 import NodeViewModal from "./NodeViewModal";
+import { Icons } from "../../../helpers/icons";
 
 import request from "../../../services/request";
 
@@ -412,7 +413,39 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
       id: "clusterId",
       label: "Cluster",
       sortable: true,
-      render: (row) => getClusterName(row.clusterId || ""),
+      render: (row) => {
+        const cid = row.clusterId || "";
+        if (!cid) return "-";
+        const found = clusters.find((c) => c.id === cid || c._id === cid || (c.clusterName && c.clusterName.toLowerCase() === cid.toLowerCase()));
+        const cName = found ? found.clusterName : cid;
+        const cTypeStr = `${found?.clusterType || ''} ${found?.clusterName || ''} ${cid}`.toLowerCase();
+        
+        let icon = null;
+        if (cTypeStr.includes('proxmox') || cTypeStr.includes('pve') || cTypeStr.includes('kvm')) {
+          icon = (
+            <Tooltip title="Proxmox" arrow placement="top">
+              <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <Icons.ProxmoxIcon style={{ color: '#e64a19', fontSize: '22px', flexShrink: 0 }} />
+              </span>
+            </Tooltip>
+          );
+        } else {
+          icon = (
+            <Tooltip title="VMware" arrow placement="top">
+              <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <Icons.VmwareIcon style={{ color: '#607d8b', fontSize: '22px', flexShrink: 0 }} />
+              </span>
+            </Tooltip>
+          );
+        }
+
+        return (
+          <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+            {icon}
+            <span>{cName}</span>
+          </Box>
+        );
+      },
     },
     { id: "node", label: "Node", sortable: true },
     {
@@ -422,10 +455,28 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
       render: (row) => (row.isStorage ? "Storage" : row.isAppliance ? "Appliance" : "Node"),
     },
     {
+      id: "ip",
+      label: "IP Address",
+      sortable: true,
+      render: (row) => row.ip || "-",
+    },
+    {
       id: "serverModel",
       label: "Server Model",
       sortable: true,
       render: (row) => row.serverModel || "-",
+    },
+    {
+      id: "rack",
+      label: "Rack",
+      sortable: true,
+      render: (row) => row.rack || "-",
+    },
+    {
+      id: "rackPosition",
+      label: "Position",
+      sortable: true,
+      render: (row) => row.rackPosition || "-",
     },
     {
       id: "admin",

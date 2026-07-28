@@ -20,6 +20,7 @@ import { useTableState } from '../../hooks/useTableState';
 import { fetchClusters, createCluster, updateCluster, deleteCluster, bulkCreateClusters } from './action';
 import { type ClusterData } from './model';
 import ClusterModal from './ClusterCreate/ClusterModal';
+import { Icons } from '../../helpers/icons';
 import styles from './index.module.scss';
 
 type Order = 'asc' | 'desc';
@@ -187,7 +188,38 @@ const Clusters = () => {
 
     const columns: Column<ClusterData>[] = [
         { id: 'slNumber', label: 'SL No', sortable: true },
-        { id: 'clusterName', label: 'Cluster Name', sortable: true },
+        { 
+            id: 'clusterName', 
+            label: 'Cluster Name', 
+            sortable: true,
+            render: (row) => {
+                const cTypeStr = `${row.clusterType || ''} ${row.clusterName || ''}`.toLowerCase();
+                let icon = null;
+                if (cTypeStr.includes('proxmox') || cTypeStr.includes('pve') || cTypeStr.includes('kvm')) {
+                    icon = (
+                        <Tooltip title="Proxmox" arrow placement="top">
+                            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                <Icons.ProxmoxIcon style={{ color: '#e64a19', fontSize: '22px', flexShrink: 0 }} />
+                            </span>
+                        </Tooltip>
+                    );
+                } else {
+                    icon = (
+                        <Tooltip title="VMware" arrow placement="top">
+                            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                <Icons.VmwareIcon style={{ color: '#607d8b', fontSize: '22px', flexShrink: 0 }} />
+                            </span>
+                        </Tooltip>
+                    );
+                }
+                return (
+                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+                        {icon}
+                        <span>{row.clusterName || '--'}</span>
+                    </Box>
+                );
+            }
+        },
         { id: 'clusterType', label: 'Cluster Type', sortable: true, render: (row) => row.clusterType || '--' },
         { id: 'ipAddress', label: 'IP Address', sortable: true },
         {
