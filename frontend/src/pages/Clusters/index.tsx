@@ -3,8 +3,10 @@ import { useState, useEffect, useCallback } from 'react';
 import dayjs from 'dayjs';
 import request from '../../services/request';
 import { useNavigate } from 'react-router-dom';
-import { Box, Tooltip, IconButton, Button as MuiButton } from '@mui/material';
-import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdUploadFile as UploadIcon } from 'react-icons/md';
+import { Box, Tooltip, IconButton, Button as MuiButton, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdUploadFile as UploadIcon, MdFilterList as FilterListIcon } from 'react-icons/md';
+import { FilterDrawer, FilterGroup } from '../../components/FilterDrawer';
+import Dropdown from '../../components/Dropdown';
 import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';
@@ -58,10 +60,22 @@ const Clusters = () => {
     const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
 
     const [searchQuery, setSearchQuery] = useTableState('cluster_search', '');
+    const [clusterTypeFilter, setClusterTypeFilter] = useTableState('cluster_typeFilter', '');
+    const [clusterTypesList, setClusterTypesList] = useState<string[]>([]);
+    const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
     const [page, setPage] = useTableState('cluster_page', 0);
     const [rowsPerPage, setRowsPerPage] = useTableState('cluster_rowsPerPage', 5);
     const [order, setOrder] = useTableState<Order>('cluster_order', 'asc');
     const [orderBy, setOrderBy] = useTableState<string>('cluster_orderBy', 'slNumber');
+
+    useEffect(() => {
+        request.get('/api/cluster-types/', { params: { pagination: false } })
+            .then((res) => {
+                const types = (res.data?.data || []).map((t: any) => t.clusterType).filter(Boolean).sort();
+                setClusterTypesList(types);
+            })
+            .catch((err) => console.error("Failed to load cluster types:", err));
+    }, []);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -72,6 +86,7 @@ const Clusters = () => {
                 sortBy: orderBy,
                 order,
                 search: searchQuery,
+                clusterType: clusterTypeFilter || undefined,
                 pagination: true
             });
             setData(result.data);
@@ -81,7 +96,7 @@ const Clusters = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, rowsPerPage, orderBy, order, searchQuery, showToast]);
+    }, [page, rowsPerPage, orderBy, order, searchQuery, clusterTypeFilter, showToast]);
 
     useEffect(() => {
         loadData();
@@ -246,45 +261,81 @@ const Clusters = () => {
         });
     }
 
+    const activeFilterCount = clusterTypeFilter ? 1 : 0;
+
+    const handleClearAllFilters = () => {
+        setClusterTypeFilter('');
+        setPage(0);
+    };
+
     return (
         <Box className={styles.container}>
             <Box className={styles.container__header}>
                 <label className={styles.container__header__label}>Clusters</label>
-                <Box className={styles.container__header__search}>
+                <Box className={styles.container__header__search} sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                     <SearchBar
                         value={searchQuery}
                         onChange={setSearchQuery}
-                        placeholder="Search clusters..."
+                        placeholder="Search Clusters..."
                     />
+                    <Button
+                        variant={activeFilterCount > 0 ? "contained" : "outlined"}
+                        color="primary"
+                        startIcon={<FilterListIcon size={20} />}
+                        onClick={() => setIsFilterDrawerOpen(true)}
+                        sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
+                    >
+                        Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
+                    </Button>
+                    {isSuperuser && (
+                        <Button
+                            variant="outlined"
+                            color="primary"
+                            startIcon={<UploadIcon />}
+                            onClick={() => setIsBulkUploadModalOpen(true)}
+                        >
+                            Bulk Add
+                        </Button>
+                    )}
                     {hasCreate && (
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                            <MuiButton
-                                component="label"
-                                variant="outlined"
-                                color="primary"
-                                startIcon={<UploadIcon />}
-                                sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 'bold' }}
-                            >
-                                Bulk Upload
-                                <input
-                                    type="file"
-                                    hidden
-                                    accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-                                    onChange={handleBulkUpload}
-                                />
-                            </MuiButton>
-                            <Button
-                                variant="contained"
-                                color="primary"
-                                startIcon={<AddIcon />}
-                                onClick={() => handleOpenModal()}
-                            >
-                                Add Cluster
-                            </Button>
-                        </Box>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={<AddIcon />}
+                            onClick={() => handleOpenModal()}
+                        >
+                            Add Cluster
+                        </Button>
                     )}
                 </Box>
             </Box>
+
+            {/* Right Sidebar Filter Popup */}
+            <FilterDrawer
+                open={isFilterDrawerOpen}
+                onClose={() => setIsFilterDrawerOpen(false)}
+                onClearAll={handleClearAllFilters}
+                title="Cluster Filters"
+                activeCount={activeFilterCount}
+            >
+                <FilterGroup title="Classification">
+                    <Dropdown
+                        label="Cluster Type"
+                        size="small"
+                        searchable
+                        clearable
+                        value={clusterTypeFilter}
+                        onChange={(val) => {
+                            setClusterTypeFilter(val);
+                            setPage(0);
+                        }}
+                        options={[
+                            { label: 'All Types', value: '' },
+                            ...clusterTypesList.map((t) => ({ label: t, value: t }))
+                        ]}
+                    />
+                </FilterGroup>
+            </FilterDrawer>
 
             <Box sx={{ flexGrow: 1, width: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <Table

@@ -49,12 +49,17 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
     const [serialNumber, setSerialNumber] = useState('');
     const [custodian, setCustodian] = useState('');
     const [admin, setAdmin] = useState<string[]>([]);
+    const [otherAdminName, setOtherAdminName] = useState<string>('');
     const [assetNumber, setAssetNumber] = useState('');
     const [raidConfiguration, setRaidConfiguration] = useState<string[]>([]);
-    const [isAppliance, setIsAppliance] = useState<boolean>(false);
+    const [nodeType, setNodeType] = useState<'node' | 'appliance' | 'storage'>('node');
+    const [isPhysical, setIsPhysical] = useState<boolean>(false);
+    const [os, setOs] = useState<string>('');
+    const [gpu, setGpu] = useState<string>('');
     
     const [racks, setRacks] = useState<any[]>([]);
     const [serverModels, setServerModels] = useState<any[]>([]);
+    const [gpusList, setGpusList] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
     const [allNodes, setAllNodes] = useState<any[]>([]);
 
@@ -70,6 +75,9 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
             fetchServerModels({ pagination: false })
                 .then(res => setServerModels(res.data || []))
                 .catch(err => console.error("Failed to fetch server models", err));
+            request.get('/api/gpus?pagination=false')
+                .then(res => setGpusList(res.data?.data || []))
+                .catch(err => console.error("Failed to fetch GPUs", err));
             request.get('/api/users?pagination=false')
                 .then(res => setUsers(res.data?.data || []))
                 .catch(err => console.error("Failed to fetch users", err));
@@ -98,14 +106,34 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setServerModel(editingItem.serverModel || '');
                 setSerialNumber(editingItem.serialNumber || '');
                 setCustodian(editingItem.custodian || '');
-                setAdmin(
-                     Array.isArray(editingItem.admin)
-                        ? editingItem.admin
-                        : (editingItem.admin ? [editingItem.admin] : [])
-                );
+                const adminArr = Array.isArray(editingItem.admin)
+                    ? editingItem.admin
+                    : (editingItem.admin ? [editingItem.admin] : []);
+                setAdmin(adminArr);
+                // Check if any admin entry is custom (not in user list IDs or usernames)
+                const customAdmins = adminArr.filter(a => a !== 'Other' && !users.some(u => (u._id || u.id || u.username) === a));
+                if (customAdmins.length > 0) {
+                    setOtherAdminName(customAdmins.join(', '));
+                    if (!adminArr.includes('Other')) {
+                        setAdmin([...adminArr.filter(a => users.some(u => (u._id || u.id || u.username) === a)), 'Other']);
+                    }
+                } else if (adminArr.includes('Other')) {
+                    setOtherAdminName('');
+                } else {
+                    setOtherAdminName('');
+                }
                 setAssetNumber(editingItem.assetNumber || '');
                 setRaidConfiguration(editingItem.raidConfiguration || []);
-                setIsAppliance(editingItem.isAppliance || false);
+                if (editingItem.isStorage) {
+                    setNodeType('storage');
+                } else if (editingItem.isAppliance) {
+                    setNodeType('appliance');
+                } else {
+                    setNodeType('node');
+                }
+                setIsPhysical(editingItem.isPhysical || false);
+                setOs(editingItem.os || '');
+                setGpu(editingItem.gpu || '');
             } else {
                 setField('');
                 setIp('');
@@ -120,9 +148,13 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setSerialNumber('');
                 setCustodian('');
                 setAdmin([]);
+                setOtherAdminName('');
                 setAssetNumber('');
                 setRaidConfiguration([]);
-                setIsAppliance(false);
+                setNodeType('node');
+                setIsPhysical(false);
+                setOs('');
+                setGpu('');
             }
         }
     }, [open, editingItem, activeRackFilter]);
@@ -131,6 +163,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         if (users.length > 0 && Array.isArray(admin) && admin.length > 0) {
             let changed = false;
             const updatedAdmin = admin.map(adVal => {
+                if (adVal === 'Other') return adVal;
                 const foundUser = users.find(u => u.username === adVal || u._id === adVal || u.id === adVal);
                 if (foundUser) {
                     const targetId = foundUser.id || foundUser._id;
@@ -168,6 +201,17 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
             ? Number(rackUnits) 
             : (rackPosition && rackPosition.length > 0 ? rackPosition.length : undefined);
 
+        // Compute final admin array including custom admin name if 'Other' selected
+        let finalAdmin: string[] | undefined = undefined;
+        if (admin && admin.length > 0) {
+            const listWithoutOther = admin.filter(a => a !== 'Other');
+            if (admin.includes('Other') && otherAdminName.trim()) {
+                finalAdmin = [...listWithoutOther, otherAdminName.trim()];
+            } else {
+                finalAdmin = listWithoutOther.length > 0 ? listWithoutOther : undefined;
+            }
+        }
+
         const payload: any = {
             node: node.trim() ? node : undefined,
             ip: ip.trim() ? ip : undefined,
@@ -181,10 +225,14 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
             serverModel: serverModel || undefined,
             serialNumber: serialNumber || undefined,
             custodian: custodian || undefined,
-            admin: admin && admin.length > 0 ? admin : undefined,
+            admin: finalAdmin,
             assetNumber: assetNumber || undefined,
             raidConfiguration: raidConfiguration,
-            isAppliance: isAppliance
+            isAppliance: nodeType === 'appliance',
+            isStorage: nodeType === 'storage',
+            isPhysical: nodeType === 'node' ? isPhysical : false,
+            os: os.trim() ? os.trim() : undefined,
+            gpu: gpu.trim() ? gpu.trim() : undefined
         };
 
         if (editingItem) {
@@ -244,29 +292,49 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         >
             <form onSubmit={handleSubmit}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
-                    <Box>
-                        <FormLabel sx={{ display: 'block', mb: 1, fontWeight: 500, fontSize: '0.875rem' }}>
-                            Type
-                        </FormLabel>
-                        <ToggleButtonGroup
-                            color="primary"
-                            value={isAppliance ? 'appliance' : 'node'}
-                            exclusive
-                            onChange={(e, val) => {
-                                if (val !== null) {
-                                    setIsAppliance(val === 'appliance');
-                                }
-                            }}
-                            fullWidth
-                            size="small"
-                        >
-                            <ToggleButton value="node" sx={{ textTransform: 'none', fontWeight: 600 }}>Node</ToggleButton>
-                            <ToggleButton value="appliance" sx={{ textTransform: 'none', fontWeight: 600 }}>Appliance</ToggleButton>
-                        </ToggleButtonGroup>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                        <Box sx={{ flexGrow: 1 }}>
+                            <FormLabel sx={{ display: 'block', mb: 1, fontWeight: 500, fontSize: '0.875rem' }}>
+                                Device Type
+                            </FormLabel>
+                            <ToggleButtonGroup
+                                color="primary"
+                                value={nodeType}
+                                exclusive
+                                onChange={(e, val) => {
+                                    if (val !== null) {
+                                        setNodeType(val);
+                                        if (val !== 'node') {
+                                            setIsPhysical(false);
+                                        }
+                                    }
+                                }}
+                                fullWidth
+                                size="small"
+                            >
+                                <ToggleButton value="node" sx={{ textTransform: 'none', fontWeight: 600 }}>Node</ToggleButton>
+                                <ToggleButton value="appliance" sx={{ textTransform: 'none', fontWeight: 600 }}>Appliance</ToggleButton>
+                                <ToggleButton value="storage" sx={{ textTransform: 'none', fontWeight: 600 }}>Storage</ToggleButton>
+                            </ToggleButtonGroup>
+                        </Box>
+                        {nodeType === 'node' && (
+                            <Box sx={{ pt: 2 }}>
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={isPhysical}
+                                            onChange={(e) => setIsPhysical(e.target.checked)}
+                                            color="primary"
+                                        />
+                                    }
+                                    label="Is Physical Server"
+                                />
+                            </Box>
+                        )}
                     </Box>
 
                     <Grid container spacing={2}>
-                        <Grid size={{xs: 12, sm: 6}}>
+                        <Grid size={{xs: 12, sm: 4}}>
                             <TextField
                                 fullWidth
                                 label="Node Name"
@@ -275,13 +343,22 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 onChange={(e) => setField(e.target.value)}
                             />
                         </Grid>
-                        <Grid size={{xs: 12, sm: 6}}>
+                        <Grid size={{xs: 12, sm: 4}}>
                             <TextField
                                 fullWidth
                                 label="IP Address"
                                 placeholder="e.g. 192.168.1.10"
                                 value={ip}
                                 onChange={(e) => setIp(e.target.value)}
+                            />
+                        </Grid>
+                        <Grid size={{xs: 12, sm: 4}}>
+                            <TextField
+                                fullWidth
+                                label="Operating System"
+                                placeholder="e.g. RHEL 8 / Ubuntu 22.04"
+                                value={os}
+                                onChange={(e) => setOs(e.target.value)}
                             />
                         </Grid>
                     </Grid>
@@ -337,7 +414,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 onChange={(e) => setCustodian(e.target.value)}
                             />
                         </Grid>
-                        <Grid size={{xs: 12, sm: 4}}   >
+                        <Grid size={{xs: 12, sm: admin.includes('Other') ? 2 : 4}}>
                             <Dropdown
                                 label="Admin"
                                 fullWidth
@@ -345,9 +422,24 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 multiple
                                 value={admin}
                                 onChange={(val) => setAdmin(val)}
-                                options={users.map(u => ({ label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username, value: u._id || u.id }))}
+                                options={[
+                                    ...users.map(u => ({ label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username, value: u._id || u.id })),
+                                    { label: 'Other', value: 'Other' }
+                                ]}
                             />
                         </Grid>
+                        {admin.includes('Other') && (
+                            <Grid size={{xs: 12, sm: 2}}>
+                                <TextField
+                                    fullWidth
+                                    label="Other Admin Name"
+                                    placeholder="Enter name"
+                                    value={otherAdminName}
+                                    onChange={(e) => setOtherAdminName(e.target.value)}
+                                    required
+                                />
+                            </Grid>
+                        )}
                     </Grid>
 
                     <Box>
@@ -371,7 +463,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                     </Box>
                     
                     <Grid container spacing={2}>
-                        <Grid size={{xs: 12, sm: 4}}   >
+                        <Grid size={{xs: 12, sm: 3}}>
                             <TextField
                                 fullWidth
                                 label="Total RAM"
@@ -380,7 +472,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 onChange={(e) => setTotalRam(e.target.value)}
                             />
                         </Grid>
-                        <Grid size={{xs: 12, sm: 4}}   >
+                        <Grid size={{xs: 12, sm: 3}}>
                             <TextField
                                 fullWidth
                                 label="Total HDD"
@@ -389,13 +481,24 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 onChange={(e) => setTotalHardisk(e.target.value)}
                             />
                         </Grid>
-                        <Grid size={{xs: 12, sm: 4}}   >
+                        <Grid size={{xs: 12, sm: 3}}>
                             <TextField
                                 fullWidth
                                 label="Total CPU"
                                 placeholder="e.g. 32"
                                 value={totalCpu}
                                 onChange={(e) => setTotalCpu(e.target.value)}
+                            />
+                        </Grid>
+                        <Grid size={{xs: 12, sm: 3}}>
+                            <Dropdown
+                                label="GPU"
+                                fullWidth
+                                searchable
+                                clearable
+                                value={gpu}
+                                onChange={(val) => setGpu(val)}
+                                options={gpusList.map(g => ({ label: g.gpuName, value: g.gpuName }))}
                             />
                         </Grid>
                     </Grid>

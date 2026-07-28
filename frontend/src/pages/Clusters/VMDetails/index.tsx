@@ -2,7 +2,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dayjs from 'dayjs';
 import { Box, Tooltip, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
-import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdMonitor as MonitorIcon, MdCloudDownload as CloudDownloadIcon } from 'react-icons/md';
+import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdMonitor as MonitorIcon, MdCloudDownload as CloudDownloadIcon, MdFilterList as FilterListIcon } from 'react-icons/md';
+import { FilterDrawer, FilterGroup } from '../../../components/FilterDrawer';
+import Dropdown from '../../../components/Dropdown';
 import request from '../../../services/request';
 import Button from '../../../components/Button';
 import SearchBar from '../../../components/SearchBar';
@@ -12,7 +14,7 @@ import { useSelector } from 'react-redux';
 import { type RootState } from '../../../store';
 import { hasPrivilege } from '../../../helpers/authUtils';
 import { PRIVILEGES } from '../../../helpers/privileges';
-import { fetchVMDetails, createVMDetails, updateVMDetails, deleteVMDetails } from './action';
+import { fetchVMDetails, createVMDetails, updateVMDetails, deleteVMDetails, fetchAllNodes } from './action';
 import { fetchClusters } from '../action';
 import { useTableState } from '../../../hooks/useTableState';
 import { type VMDetailsData } from './model';
@@ -51,6 +53,10 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
     const [clusters, setClusters] = useState<any[]>([]);
     const [selectedClusterFilter, setSelectedClusterFilter] = useState<string>('All');
     const [adminFilter, setAdminFilter] = useTableState("VMDetails_adminFilter", dashboardAdminFilter || "");
+    const [nodeFilter, setNodeFilter] = useTableState("VMDetails_nodeFilter", "");
+    const [powerStatusFilter, setPowerStatusFilter] = useTableState("VMDetails_powerStatusFilter", "");
+    const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+    const [nodesList, setNodesList] = useState<any[]>([]);
     const [monitoredIps, setMonitoredIps] = useState<Set<string>>(new Set());
 
     const [vcenters, setVcenters] = useState<any[]>([]);
@@ -129,6 +135,9 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                 .then(res => setClusters(res.data || []))
                 .catch(err => console.error("Failed to load clusters", err));
         }
+        fetchAllNodes()
+            .then(nodes => setNodesList(nodes || []))
+            .catch(err => console.error("Failed to load nodes", err));
     }, [clusterId]);
 
     const getClusterName = (cid: string) => {
@@ -161,6 +170,12 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
             if (adminFilter) {
                 params.admin = adminFilter;
             }
+            if (nodeFilter) {
+                params.node = nodeFilter;
+            }
+            if (powerStatusFilter) {
+                params.powerStatus = powerStatusFilter;
+            }
             const result = await fetchVMDetails(params);
             setData(result.data);
             setTotalCount(result.total);
@@ -169,7 +184,7 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
         } finally {
             setLoading(false);
         }
-    }, [clusterId, selectedClusterFilter, adminFilter, page, rowsPerPage, searchQuery, showToast]);
+    }, [clusterId, selectedClusterFilter, adminFilter, nodeFilter, powerStatusFilter, page, rowsPerPage, searchQuery, showToast]);
 
     useEffect(() => {
         loadData();
@@ -273,62 +288,40 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
         }
     };
 
+    const activeFilterCount = [
+        (!clusterId && selectedClusterFilter !== 'All') ? selectedClusterFilter : '',
+        adminFilter,
+        nodeFilter,
+        powerStatusFilter
+    ].filter(Boolean).length;
+
+    const handleClearAllFilters = () => {
+        setSelectedClusterFilter('All');
+        setAdminFilter('');
+        setNodeFilter('');
+        setPowerStatusFilter('');
+        setPage(0);
+    };
+
     return (
         <Box className={styles.container}>
             <Box className={styles.container__header}>
                 <Typography variant="h6" className={styles.container__header__label}>VM Details</Typography>
                 <Box className={styles.container__header__search} sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                    {!clusterId && (
-                        <>
-                            <FormControl size="small" sx={{ minWidth: 150, bgcolor: '#fff' }}>
-                                <InputLabel>Cluster Filter</InputLabel>
-                                <Select
-                                    value={selectedClusterFilter}
-                                    label="Cluster Filter"
-                                    onChange={(e) => {
-                                        setSelectedClusterFilter(e.target.value);
-                                        setPage(0);
-                                    }}
-                                >
-                                    <MenuItem value="All">All Clusters</MenuItem>
-                                    {clusters.map((c: any) => (
-                                        <MenuItem key={c.id || c._id} value={c.id || c._id}>{c.clusterName || c.id}</MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                            <FormControl size="small" sx={{ minWidth: 150, bgcolor: '#fff' }}>
-                                <InputLabel>Admin Filter</InputLabel>
-                                <Select
-                                    value={adminFilter}
-                                    label="Admin Filter"
-                                    onChange={(e) => {
-                                        setAdminFilter(e.target.value);
-                                        setPage(0);
-                                    }}
-                                    renderValue={(selected) => {
-                                        if (!selected) return "All Admins";
-                                        const u = users && users.find((usr: any) => (usr._id || usr.id || usr.username) === selected);
-                                        if (u) {
-                                            return `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username;
-                                        }
-                                        return usersMap[selected] || selected;
-                                    }}
-                                >
-                                    <MenuItem value="">All Admins</MenuItem>
-                                    {users && users.map((u: any) => (
-                                        <MenuItem key={u._id || u.id} value={u._id || u.id || u.username}>
-                                            {`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </>
-                    )}
                     <SearchBar
                         value={searchQuery}
                         onChange={(val) => { setSearchQuery(val); setPage(0); }}
                         placeholder="Search VM Name, IP, App or Node..."
                     />
+                    <Button
+                        variant={activeFilterCount > 0 ? "contained" : "outlined"}
+                        color="primary"
+                        startIcon={<FilterListIcon size={20} />}
+                        onClick={() => setIsFilterDrawerOpen(true)}
+                        sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
+                    >
+                        Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
+                    </Button>
                     {isSuperuser && vcenters.length > 0 && (
                         <Button
                             variant="outlined"
@@ -353,54 +346,118 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                 </Box>
             </Box>
 
+            {/* Right Sidebar Filter Popup */}
+            <FilterDrawer
+                open={isFilterDrawerOpen}
+                onClose={() => setIsFilterDrawerOpen(false)}
+                onClearAll={handleClearAllFilters}
+                title="VM Filters"
+                activeCount={activeFilterCount}
+            >
+                <FilterGroup title="Cluster & Host Node">
+                    {!clusterId && (
+                        <Dropdown
+                            label="Cluster Filter"
+                            size="small"
+                            searchable
+                            clearable
+                            value={selectedClusterFilter}
+                            onChange={(val) => {
+                                setSelectedClusterFilter(val || 'All');
+                                setPage(0);
+                            }}
+                            options={[
+                                { label: 'All Clusters', value: 'All' },
+                                ...clusters.map((c: any) => ({ label: c.clusterName || c.id, value: c.id || c._id }))
+                            ]}
+                        />
+                    )}
+                    <Dropdown
+                        label="Host Node"
+                        size="small"
+                        searchable
+                        clearable
+                        value={nodeFilter}
+                        onChange={(val) => {
+                            setNodeFilter(val);
+                            setPage(0);
+                        }}
+                        options={[
+                            { label: 'All Host Nodes', value: '' },
+                            ...nodesList.map((n: any) => ({ label: n.nodeId || n.nodeName || n.name, value: n.nodeId || n.nodeName || n.name }))
+                        ]}
+                    />
+                </FilterGroup>
+
+                <FilterGroup title="Management & Status">
+                    {!clusterId && (
+                        <Dropdown
+                            label="Admin Filter"
+                            size="small"
+                            searchable
+                            clearable
+                            value={adminFilter}
+                            onChange={(val) => {
+                                setAdminFilter(val);
+                                setPage(0);
+                            }}
+                            options={[
+                                { label: 'All Admins', value: '' },
+                                { label: 'Unassigned', value: 'unassigned' },
+                                { label: 'Other', value: 'other' },
+                                ...(users ? users.map((u: any) => ({
+                                    label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+                                    value: u._id || u.id || u.username
+                                })) : [])
+                            ]}
+                        />
+                    )}
+
+                    <Dropdown
+                        label="Power Status"
+                        size="small"
+                        searchable
+                        clearable
+                        value={powerStatusFilter}
+                        onChange={(val) => {
+                            setPowerStatusFilter(val);
+                            setPage(0);
+                        }}
+                        options={[
+                            { label: 'All Statuses', value: '' },
+                            { label: 'ON', value: 'on' },
+                            { label: 'OFF', value: 'off' }
+                        ]}
+                    />
+                </FilterGroup>
+            </FilterDrawer>
+
             <Paper className={styles.tableWrapper}>
                 <TableContainer>
                     <Table size="medium">
                         <TableHead>
                             <TableRow className={styles.tableWrapper__headerRow}>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>VM ID</TableCell>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>VM Name</TableCell>
+                                <TableCell className={styles.tableWrapper__headerCell}>VM ID</TableCell>
+                                <TableCell className={styles.tableWrapper__headerCell}>VM Name</TableCell>
                                 {!clusterId && (
-                                    <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Cluster</TableCell>
+                                    <TableCell className={styles.tableWrapper__headerCell}>Cluster</TableCell>
                                 )}
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>IP Address</TableCell>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Applications</TableCell>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Node</TableCell>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>OS and Expiry</TableCell>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Backup Name</TableCell>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Backup Node</TableCell>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Backup Storage</TableCell>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Datastore</TableCell>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Admin Name</TableCell>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Admin Contact</TableCell>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Power Status</TableCell>
-                                <TableCell colSpan={3} align="center" className={styles.tableWrapper__headerCell}>Resource Allotter</TableCell>
-                                {isSuperuser && (
-                                    <>
-                                        <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Created By</TableCell>
-                                        <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Created At</TableCell>
-                                        <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Updated By</TableCell>
-                                        <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Updated At</TableCell>
-                                    </>
-                                )}
+                                <TableCell className={styles.tableWrapper__headerCell}>IP Address</TableCell>
+                                <TableCell className={styles.tableWrapper__headerCell}>Node</TableCell>
+                                <TableCell className={styles.tableWrapper__headerCell}>Admin</TableCell>
                                 {(hasUpdate || hasDelete) && (
-                                    <TableCell rowSpan={2} align="right" className={styles.tableWrapper__headerCellLast}>Actions</TableCell>
+                                    <TableCell align="right" className={styles.tableWrapper__headerCellLast}>Actions</TableCell>
                                 )}
-                            </TableRow>
-                            <TableRow className={styles.tableWrapper__headerRow}>
-                                <TableCell className={styles.tableWrapper__headerCell}>HDD</TableCell>
-                                <TableCell className={styles.tableWrapper__headerCell}>RAM</TableCell>
-                                <TableCell className={styles.tableWrapper__headerCell}>CPU</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {loading && data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={(clusterId ? 17 : 18) + (isSuperuser ? 4 : 0)} align="center" sx={{ py: 3 }}>Loading...</TableCell>
+                                    <TableCell colSpan={clusterId ? 6 : 7} align="center" sx={{ py: 3 }}>Loading...</TableCell>
                                 </TableRow>
                             ) : data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={(clusterId ? 17 : 18) + (isSuperuser ? 4 : 0)} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
+                                    <TableCell colSpan={clusterId ? 6 : 7} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
                                 </TableRow>
                             ) : (
                                 data.map((row) => (
@@ -416,35 +473,8 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                                             <TableCell className={styles.tableWrapper__cell}>{getClusterName(row.clusterId || '')}</TableCell>
                                         )}
                                         <TableCell className={styles.tableWrapper__cell}>{row.ipAddress || '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{row.applications || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.node || '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{row.osAndExpiry || '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{row.backupName || '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{row.backupNode || '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{row.backupStorage || '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{row.datastore || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.adminName || '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{row.adminContact || '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>
-                                            <span style={{
-                                                textTransform: 'uppercase',
-                                                fontWeight: 'bold',
-                                                color: (row.powerStatus || 'on') === 'on' ? '#2e7d32' : '#d32f2f'
-                                            }}>
-                                                {row.powerStatus || 'on'}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{row.hdd || '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{row.ram || '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{row.cpu || '--'}</TableCell>
-                                        {isSuperuser && (
-                                            <>
-                                                <TableCell className={styles.tableWrapper__cell}>{usersMap[row.createdBy || ''] || row.createdBy || '--'}</TableCell>
-                                                <TableCell className={styles.tableWrapper__cell}>{row.createdAt ? dayjs(row.createdAt).format('DD-MM-YYYY h:mm A') : '--'}</TableCell>
-                                                <TableCell className={styles.tableWrapper__cell}>{usersMap[row.updatedBy || ''] || row.updatedBy || '--'}</TableCell>
-                                                <TableCell className={styles.tableWrapper__cell}>{row.updatedAt ? dayjs(row.updatedAt).format('DD-MM-YYYY h:mm A') : '--'}</TableCell>
-                                            </>
-                                        )}
                                         {(hasUpdate || hasDelete) && (
                                             <TableCell align="right" onClick={(e) => e.stopPropagation()}>
                                                 <Box className={styles.tableWrapper__actions}>

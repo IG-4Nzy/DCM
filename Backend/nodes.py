@@ -57,6 +57,9 @@ async def list_items(
     serverModel: Optional[str] = Query(None),
     admin: Optional[str] = Query(None),
     rack: Optional[str] = Query(None),
+    os: Optional[str] = Query(None),
+    custodian: Optional[str] = Query(None),
+    gpu: Optional[str] = Query(None),
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
     order: str = Query("asc"),
@@ -76,7 +79,37 @@ async def list_items(
         {"admin": {"$exists": False}}
     ]
 
-    if not can_view_all:
+    if admin:
+        if admin.lower() == "unassigned":
+            and_conditions.append({"$or": no_admin_conditions})
+        elif admin.lower() == "other":
+            users_col_adm = db.get_collection("users")
+            all_users = await users_col_adm.find({}, {"_id": 1, "username": 1}).to_list(length=None)
+            known_ids = set()
+            for u in all_users:
+                known_ids.add(str(u["_id"]))
+                if u.get("username"):
+                    known_ids.add(u["username"])
+            and_conditions.append({
+                "$and": [
+                    {"admin": {"$exists": True, "$ne": None, "$ne": "", "$ne": []}},
+                    {"admin": {"$nin": list(known_ids)}}
+                ]
+            })
+        else:
+            users_col_adm = db.get_collection("users")
+            adm_doc = await users_col_adm.find_one({"username": admin})
+            if not adm_doc and ObjectId.is_valid(admin):
+                adm_doc = await users_col_adm.find_one({"_id": ObjectId(admin)})
+            admin_vals = set()
+            admin_vals.add(admin)
+            if adm_doc:
+                admin_vals.add(str(adm_doc["_id"]))
+                if adm_doc.get("username"):
+                    admin_vals.add(adm_doc["username"])
+            and_conditions.append({"admin": {"$in": list(admin_vals)}})
+
+    if not can_view_all and not admin:
         target_username = current_user.get("sub")
         users_col = db.get_collection("users")
         user_doc = await users_col.find_one({"username": target_username})
@@ -91,19 +124,15 @@ async def list_items(
                 *no_admin_conditions
             ]
         })
-    elif admin:
-        # If the user has view all privileges but explicitly wants to filter by an admin (e.g. from dashboard click)
-        users_col_adm = db.get_collection("users")
-        adm_doc = await users_col_adm.find_one({"username": admin})
-        if not adm_doc and ObjectId.is_valid(admin):
-            adm_doc = await users_col_adm.find_one({"_id": ObjectId(admin)})
-        admin_vals = set()
-        admin_vals.add(admin)
-        if adm_doc:
-            admin_vals.add(str(adm_doc["_id"]))
-            if adm_doc.get("username"):
-                admin_vals.add(adm_doc["username"])
-        and_conditions.append({"admin": {"$in": list(admin_vals)}})
+
+    if os:
+        and_conditions.append({"os": {"$regex": re.escape(os), "$options": "i"}})
+
+    if custodian:
+        and_conditions.append({"custodian": {"$regex": re.escape(custodian), "$options": "i"}})
+
+    if gpu:
+        and_conditions.append({"gpu": {"$regex": re.escape(gpu), "$options": "i"}})
     
     if clusterId:
         cluster_doc = await db.get_collection("clusters").find_one({"_id": ObjectId(clusterId) if ObjectId.is_valid(clusterId) else clusterId})

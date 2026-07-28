@@ -43,22 +43,32 @@ const NodeViewModal: React.FC<NodeViewModalProps> = ({ open, onClose, node, admi
                                   </Grid>
                                   <Grid size={{xs: 12, sm: 6}}   >
                                       <Typography variant="caption" color="textSecondary">Type</Typography>
-                                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.isAppliance ? 'Appliance' : 'Node'}</Typography>
+                                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.isStorage ? 'Storage' : node.isAppliance ? 'Appliance' : 'Node'}{node.isPhysical ? ' (Physical Server)' : ''}</Typography>
                                   </Grid>
-                                  {isSuperuser && (
-                                      <>
-                                          <Grid size={{xs: 12, sm: 6}}   >
-                                              <Typography variant="caption" color="textSecondary">Created By</Typography>
-                                              <Typography variant="body2">{node.createdBy || '-'}</Typography>
-                                          </Grid>
-                                          <Grid size={{xs: 12, sm: 6}}   >
-                                              <Typography variant="caption" color="textSecondary">Last Updated</Typography>
-                                              <Typography variant="body2">
-                                                  {node.updatedAt ? new Date(node.updatedAt).toLocaleString() : '-'}
-                                              </Typography>
-                                          </Grid>
-                                      </>
-                                  )}
+                                  <Grid size={{xs: 12, sm: 6}}   >
+                                      <Typography variant="caption" color="textSecondary">Operating System</Typography>
+                                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.os || '-'}</Typography>
+                                  </Grid>
+                                  <Grid size={{xs: 12, sm: 6}}   >
+                                      <Typography variant="caption" color="textSecondary">Created By</Typography>
+                                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.createdBy || '-'}</Typography>
+                                  </Grid>
+                                  <Grid size={{xs: 12, sm: 6}}   >
+                                      <Typography variant="caption" color="textSecondary">Created At</Typography>
+                                      <Typography variant="body2">
+                                          {node.createdAt ? new Date(node.createdAt).toLocaleString() : '-'}
+                                      </Typography>
+                                  </Grid>
+                                  <Grid size={{xs: 12, sm: 6}}   >
+                                      <Typography variant="caption" color="textSecondary">Updated By</Typography>
+                                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.updatedBy || '-'}</Typography>
+                                  </Grid>
+                                  <Grid size={{xs: 12, sm: 6}}   >
+                                      <Typography variant="caption" color="textSecondary">Last Updated</Typography>
+                                      <Typography variant="body2">
+                                          {node.updatedAt ? new Date(node.updatedAt).toLocaleString() : '-'}
+                                      </Typography>
+                                  </Grid>
                               </Grid>
                         </Box>
                     </Grid>
@@ -111,17 +121,21 @@ const NodeViewModal: React.FC<NodeViewModalProps> = ({ open, onClose, node, admi
                             </Typography>
                             <Divider sx={{ mb: 2 }} />
                             <Grid container spacing={2}>
-                                <Grid size={{xs: 12, sm: 4}}   >
+                                <Grid size={{xs: 12, sm: 3}}   >
                                     <Typography variant="caption" color="textSecondary">Total RAM</Typography>
                                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.totalRam !== undefined && node.totalRam !== null ? `${node.totalRam} GB` : '-'}</Typography>
                                 </Grid>
-                                <Grid size={{xs: 12, sm: 4}}   >
+                                <Grid size={{xs: 12, sm: 3}}   >
                                     <Typography variant="caption" color="textSecondary">Total HDD</Typography>
                                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.totalHardisk !== undefined && node.totalHardisk !== null ? `${node.totalHardisk} GB` : '-'}</Typography>
                                 </Grid>
-                                <Grid size={{xs: 12, sm: 4}}   >
+                                <Grid size={{xs: 12, sm: 3}}   >
                                     <Typography variant="caption" color="textSecondary">Total CPU</Typography>
                                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.totalCpu !== undefined && node.totalCpu !== null ? `${node.totalCpu} GHz` : '-'}</Typography>
+                                </Grid>
+                                <Grid size={{xs: 12, sm: 3}}   >
+                                    <Typography variant="caption" color="textSecondary">GPU</Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.gpu || '-'}</Typography>
                                 </Grid>
                             </Grid>
                         </Box>

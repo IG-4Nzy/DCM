@@ -4,9 +4,9 @@ import { type NodeData, type CreateNodePayload, type UpdateNodePayload } from '.
 
 const ENDPOINT = '/api/nodes';
 
-export const fetchNodes = async (params: { skip?: number, limit?: number, sortBy?: string, order?: string, search?: string, clusterId?: string, serverModel?: string, admin?: string, rack?: string, nodeTypeFilter?: string, pagination?: boolean }): Promise<{data: NodeData[], total: number}> => {
-    const { skip = 0, limit = 10, sortBy = 'nodeId', order = 'asc', search = '', clusterId = '', serverModel = '', admin = '', rack = '', nodeTypeFilter = '', pagination = true } = params;
-    const res = await request.get(ENDPOINT, { params: { skip, limit, sort_by: sortBy, order, search, clusterId, serverModel, admin, rack, nodeTypeFilter, pagination } });
+export const fetchNodes = async (params: { skip?: number, limit?: number, sortBy?: string, order?: string, search?: string, clusterId?: string, serverModel?: string, admin?: string, rack?: string, os?: string, custodian?: string, nodeTypeFilter?: string, pagination?: boolean }): Promise<{data: NodeData[], total: number}> => {
+    const { skip = 0, limit = 10, sortBy = 'nodeId', order = 'asc', search = '', clusterId = '', serverModel = '', admin = '', rack = '', os = '', custodian = '', nodeTypeFilter = '', pagination = true } = params;
+    const res = await request.get(ENDPOINT, { params: { skip, limit, sort_by: sortBy, order, search, clusterId, serverModel, admin, rack, os, custodian, nodeTypeFilter, pagination } });
     return res.data;
 };
 

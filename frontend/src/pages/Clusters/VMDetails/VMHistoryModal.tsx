@@ -178,6 +178,18 @@ const VMHistoryModal: React.FC<VMHistoryModalProps> = ({ open, onClose, vm }) =>
                   <DetailItem icon={MdContactPhone} label="Admin Contact" value={vm.adminContact} />
                 </Grid>
                 )}
+                <Grid item xs={12} sm={6}>
+                  <DetailItem icon={MdPerson} label="Created By" value={vm.createdBy || '--'} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <DetailItem icon={MdEvent} label="Created At" value={safeParseDate(vm.createdAt)} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <DetailItem icon={MdPerson} label="Updated By" value={vm.updatedBy || '--'} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <DetailItem icon={MdEvent} label="Updated At" value={safeParseDate(vm.updatedAt)} />
+                </Grid>
               </Grid>
             </Box>
           </Box>

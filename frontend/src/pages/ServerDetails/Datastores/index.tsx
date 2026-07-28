@@ -1,8 +1,10 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
 import dayjs from 'dayjs';
-import { Box, Tooltip, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Typography } from '@mui/material';
-import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
+import { Box, Tooltip, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdFilterList as FilterListIcon } from 'react-icons/md';
+import { FilterDrawer, FilterGroup } from '../../../components/FilterDrawer';
+import Dropdown from '../../../components/Dropdown';
 import Button from '../../../components/Button';
 import SearchBar from '../../../components/SearchBar';
 import { useToast } from '../../../contexts/ToastContext';
@@ -21,6 +23,9 @@ const Datastores = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [typeFilter, setTypeFilter] = useState('');
+    const [typeList, setTypeList] = useState<string[]>([]);
+    const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(25);
 
@@ -37,6 +42,16 @@ const Datastores = () => {
 
     const [usersMap, setUsersMap] = useState<Record<string, string>>({});
 
+    useEffect(() => {
+        fetchDatastores({ pagination: false })
+            .then(res => {
+                const types = new Set<string>();
+                (res.data || []).forEach((d: any) => { if (d.type) types.add(d.type); });
+                setTypeList(Array.from(types).sort());
+            })
+            .catch(() => {});
+    }, []);
+
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
@@ -44,6 +59,7 @@ const Datastores = () => {
                 skip: page * rowsPerPage,
                 limit: rowsPerPage,
                 search: searchQuery,
+                type: typeFilter || undefined,
                 pagination: true
             };
             const result = await fetchDatastores(params);
@@ -54,7 +70,7 @@ const Datastores = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, rowsPerPage, searchQuery, showToast]);
+    }, [page, rowsPerPage, searchQuery, typeFilter, showToast]);
 
     useEffect(() => {
         loadData();
@@ -107,16 +123,32 @@ const Datastores = () => {
         }
     };
 
+    const activeFilterCount = typeFilter ? 1 : 0;
+
+    const handleClearAllFilters = () => {
+        setTypeFilter('');
+        setPage(0);
+    };
+
     return (
         <Box className={styles.container}>
             <Box className={styles.container__header}>
                 <Typography variant="h6" className={styles.container__header__label}>Datastores</Typography>
-                <Box className={styles.container__header__search}>
+                <Box className={styles.container__header__search} sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                     <SearchBar
                         value={searchQuery}
                         onChange={(val) => { setSearchQuery(val); setPage(0); }}
                         placeholder="Search datastores..."
                     />
+                    <Button
+                        variant={activeFilterCount > 0 ? "contained" : "outlined"}
+                        color="primary"
+                        startIcon={<FilterListIcon size={20} />}
+                        onClick={() => setIsFilterDrawerOpen(true)}
+                        sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
+                    >
+                        Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
+                    </Button>
                     {hasCreate && (
                         <Button
                             variant="contained"
@@ -129,6 +161,33 @@ const Datastores = () => {
                     )}
                 </Box>
             </Box>
+
+            {/* Right Sidebar Filter Popup */}
+            <FilterDrawer
+                open={isFilterDrawerOpen}
+                onClose={() => setIsFilterDrawerOpen(false)}
+                onClearAll={handleClearAllFilters}
+                title="Datastore Filters"
+                activeCount={activeFilterCount}
+            >
+                <FilterGroup title="Storage Classification">
+                    <Dropdown
+                        label="Type Filter"
+                        size="small"
+                        searchable
+                        clearable
+                        value={typeFilter}
+                        onChange={(val) => {
+                            setTypeFilter(val);
+                            setPage(0);
+                        }}
+                        options={[
+                            { label: 'All Types', value: '' },
+                            ...typeList.map((t) => ({ label: t, value: t }))
+                        ]}
+                    />
+                </FilterGroup>
+            </FilterDrawer>
 
             <Paper className={styles.tableWrapper}>
                 <TableContainer>

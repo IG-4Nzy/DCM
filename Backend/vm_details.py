@@ -92,6 +92,8 @@ async def sync_node_resources(node_name: str):
 async def list_items(
     clusterId: Optional[str] = Query(None, description="The ID of the cluster"),
     admin: Optional[str] = Query(None, description="Filter by admin username"),
+    node: Optional[str] = Query(None, description="Filter by node name"),
+    powerStatus: Optional[str] = Query(None, description="Filter by power status"),
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),
     pagination: bool = Query(True),
@@ -114,37 +116,60 @@ async def list_items(
         {"admin": {"$exists": False}}
     ]
 
-    target_username = None
-    if not can_view_all:
-        target_username = current_user.get("sub")
-    elif admin:
-        target_username = admin
-
-    if target_username:
-        users_col = db.get_collection("users")
-        user_doc = await users_col.find_one({"username": target_username})
-        if not user_doc and ObjectId.is_valid(target_username):
-            user_doc = await users_col.find_one({"_id": ObjectId(target_username)})
-        admins = set()
-        admins.add(target_username)
-        if user_doc:
-            admins.add(str(user_doc["_id"]))
-            if user_doc.get("username"):
-                admins.add(user_doc["username"])
+    if admin and admin.lower() == "unassigned":
+        and_conditions.append({"$or": no_admin_conditions})
+    elif admin and admin.lower() == "other":
+        users_col_adm = db.get_collection("users")
+        all_users = await users_col_adm.find({}, {"_id": 1, "username": 1}).to_list(length=None)
+        known_ids = set()
+        for u in all_users:
+            known_ids.add(str(u["_id"]))
+            if u.get("username"):
+                known_ids.add(u["username"])
+        and_conditions.append({
+            "$and": [
+                {"admin": {"$exists": True, "$ne": None, "$ne": "", "$ne": []}},
+                {"admin": {"$nin": list(known_ids)}}
+            ]
+        })
+    else:
+        target_username = None
         if not can_view_all:
-            # Standard user: show VMs assigned to them OR VMs with no admin
-            and_conditions.append({
-                "$or": [
-                    {"admin": {"$in": list(admins)}},
-                    *no_admin_conditions
-                ]
-            })
-        else:
-            # Admin explicitly filtering by a specific user
-            and_conditions.append({"admin": {"$in": list(admins)}})
+            target_username = current_user.get("sub")
+        elif admin:
+            target_username = admin
+
+        if target_username:
+            users_col = db.get_collection("users")
+            user_doc = await users_col.find_one({"username": target_username})
+            if not user_doc and ObjectId.is_valid(target_username):
+                user_doc = await users_col.find_one({"_id": ObjectId(target_username)})
+            admins = set()
+            admins.add(target_username)
+            if user_doc:
+                admins.add(str(user_doc["_id"]))
+                if user_doc.get("username"):
+                    admins.add(user_doc["username"])
+            if not can_view_all:
+                # Standard user: show VMs assigned to them OR VMs with no admin
+                and_conditions.append({
+                    "$or": [
+                        {"admin": {"$in": list(admins)}},
+                        *no_admin_conditions
+                    ]
+                })
+            else:
+                # Admin explicitly filtering by a specific user
+                and_conditions.append({"admin": {"$in": list(admins)}})
     
     if clusterId:
         and_conditions.append({"clusterId": clusterId})
+        
+    if node:
+        and_conditions.append({"node": node})
+
+    if powerStatus:
+        and_conditions.append({"powerStatus": {"$regex": f"^{re.escape(powerStatus)}$", "$options": "i"}})
     
     if search:
         terms = search.strip().split()

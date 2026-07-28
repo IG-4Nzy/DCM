@@ -15,6 +15,7 @@ from hypervisors import router as hypervisors_router
 from nodes import router as nodes_router
 from server_racks import router as server_racks_router
 from server_models import router as server_models_router
+from gpus import router as gpus_router
 from node_details import router as node_details_router
 from clusters import router as clusters_router
 from ad_details import router as ad_details_router
@@ -551,6 +552,7 @@ app.include_router(hypervisors_router, tags=["hypervisors"], prefix="/api/hyperv
 app.include_router(nodes_router, tags=["nodes"], prefix="/api/nodes")
 app.include_router(server_racks_router, tags=["server_racks"], prefix="/api/server-racks")
 app.include_router(server_models_router, tags=["server_models"], prefix="/api/server-models")
+app.include_router(gpus_router, tags=["gpus"], prefix="/api/gpus")
 app.include_router(node_details_router, tags=["node_details"], prefix="/api/node-details")
 app.include_router(clusters_router, tags=["clusters"], prefix="/api/clusters")
 app.include_router(ad_details_router, tags=["ad_details"], prefix="/api/ad-details")

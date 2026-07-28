@@ -70,11 +70,16 @@ async def list_items(
     limit: int = Query(10, ge=1),
     pagination: bool = Query(True),
     search: Optional[str] = None,
+    clusterType: Optional[str] = Query(None),
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
     order: str = Query("asc")
 ):
     query = {}
+    and_conditions = []
+
+    if clusterType:
+        and_conditions.append({"clusterType": clusterType})
     
     if search:
         terms = search.strip().split()
@@ -93,6 +98,12 @@ async def list_items(
                     ]
                 })
             query["$and"] = term_queries
+
+    if and_conditions:
+        if "$and" in query:
+            query["$and"].extend(and_conditions)
+        else:
+            query["$and"] = and_conditions
 
     actual_sort_by = sortBy or sort_by or "slNumber"
     sort_order = 1 if order == "asc" else -1

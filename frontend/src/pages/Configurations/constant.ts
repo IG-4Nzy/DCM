@@ -2,6 +2,7 @@
 import ClusterTypes from "./ClusterTypes";
 import Hypervisors from "./Hypervisors";
 import ServerModels from "./ServerModels";
+import GPUs from "./GPUs";
 import RequestRoutings from "./RequestRoutings";
 import AttendancePeriodConfig from "./AttendancePeriodConfig";
 import BMSChecklistConfig from "./BMSChecklistConfig";
@@ -23,6 +24,7 @@ export const SERVER_MASTERS_CONFIGURATIONS = [
     { id: "clusterTypes", label: "Cluster Types", value: "clusterTypes" },
     { id: "hypervisors", label: "Hypervisors", value: "hypervisors" },
     { id: "serverModel", label: "Server Model", value: "serverModel" },
+    { id: "gpus", label: "GPUs", value: "gpus" },
 ]
 
 export const REQUEST_CONFIGURATIONS = [
@@ -63,6 +65,7 @@ export const CONFIG_TABS_PAGES = {
     clusterTypes: ClusterTypes,
     hypervisors: Hypervisors,
     serverModel: ServerModels,
+    gpus: GPUs,
     requestRoutings: RequestRoutings,
     attendancePeriod: AttendancePeriodConfig,
     bmsChecklistFields: BMSChecklistConfig,

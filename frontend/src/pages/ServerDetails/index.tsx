@@ -27,15 +27,17 @@ const ServerDetails = () => {
     const hasVMView = isSuperuser || hasPrivilege(PRIVILEGES.VM_VIEW) || hasViewAll || hasViewOwn || hasCreatePerm;
     const hasPhysicalServerView = isSuperuser || hasPrivilege(PRIVILEGES.PHYSICAL_SERVER_VIEW) || hasViewAll || hasCreatePerm;
     const hasNetworkDevicesView = isSuperuser || hasViewAll || hasCreatePerm;
+    const hasStorageSystemsView = isSuperuser || hasViewAll || hasCreatePerm;
     const hasDatastoresView = isSuperuser || hasViewAll || hasCreatePerm;
 
     const tabs: TabItem[] = [];
     if (hasRacksView) tabs.push({ id: 'racks', label: 'Racks', value: 'racks' });
     if (hasClusterView) tabs.push({ id: 'clusters', label: 'Clusters', value: 'clusters' });
-    if (hasNodesView) tabs.push({ id: 'nodes', label: 'Nodes', value: 'nodes' });
+    if (hasNodesView) tabs.push({ id: 'nodes', label: 'All Devices', value: 'nodes' });
     if (hasVMView) tabs.push({ id: 'vms', label: 'VMs', value: 'vms' });
     if (hasPhysicalServerView) tabs.push({ id: 'physical_servers', label: 'Physical Servers', value: 'physical_servers' });
     if (hasNetworkDevicesView) tabs.push({ id: 'network_devices', label: 'Network Devices', value: 'network_devices' });
+    if (hasStorageSystemsView) tabs.push({ id: 'storage_systems', label: 'Storage Systems', value: 'storage_systems' });
     if (hasDatastoresView) tabs.push({ id: 'datastores', label: 'Datastores', value: 'datastores' });
 
     const location = useLocation();
@@ -108,8 +110,9 @@ const ServerDetails = () => {
                 {activeTab === 'clusters' && <Clusters />}
                 {activeTab === 'nodes' && <Nodes dashboardAdminFilter={dashboardAdminFilter} />}
                 {activeTab === 'vms' && <VMs dashboardAdminFilter={dashboardAdminFilter} />}
-                {activeTab === 'physical_servers' && <PhysicalServers />}
+                {activeTab === 'physical_servers' && <Nodes dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="physical" />}
                 {activeTab === 'network_devices' && <Nodes dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="appliance" />}
+                {activeTab === 'storage_systems' && <Nodes dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="storage" />}
                 {activeTab === 'datastores' && <Datastores />}
             </Box>
         </Box>

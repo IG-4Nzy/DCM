@@ -622,6 +622,7 @@ class NodeModel(BaseModel):
     isStorage: Optional[bool] = False
     isPhysical: Optional[bool] = False
     os: Optional[str] = None
+    gpu: Optional[str] = None
     createdBy: Optional[str] = None
     createdAt: Optional[str] = None
     updatedBy: Optional[str] = None
@@ -654,6 +655,7 @@ class CreateNodeModel(BaseModel):
     isStorage: Optional[bool] = False
     isPhysical: Optional[bool] = False
     os: Optional[str] = None
+    gpu: Optional[str] = None
 
 class UpdateNodeModel(BaseModel):
     nodeId: Optional[str] = None
@@ -677,6 +679,7 @@ class UpdateNodeModel(BaseModel):
     isStorage: Optional[bool] = None
     isPhysical: Optional[bool] = None
     os: Optional[str] = None
+    gpu: Optional[str] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

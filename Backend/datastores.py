@@ -19,15 +19,19 @@ async def list_datastores(
     limit: int = Query(10, ge=1),
     pagination: bool = Query(True),
     search: Optional[str] = None,
+    type: Optional[str] = Query(None),
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
     order: str = Query("desc"),
     current_user: dict = Depends(get_current_user)
 ):
     query = {}
+    if type:
+        query["type"] = {"$regex": f"^{re.escape(type)}$", "$options": "i"}
+
     if search:
         search_regex = {"$regex": re.escape(search), "$options": "i"}
-        query = {
+        search_condition = {
             "$or": [
                 {"name": search_regex},
                 {"type": search_regex},
@@ -35,6 +39,10 @@ async def list_datastores(
                 {"createdBy": search_regex},
             ]
         }
+        if query:
+            query = {"$and": [query, search_condition]}
+        else:
+            query = search_condition
 
     actual_sort_by = sortBy or sort_by or "createdAt"
     sort_order = 1 if order == "asc" else -1

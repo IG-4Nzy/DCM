@@ -16,7 +16,10 @@ import {
   MdEdit as EditIcon,
   MdDelete as DeleteIcon,
   MdMonitor as MonitorIcon,
+  MdFilterList as FilterListIcon,
 } from "react-icons/md";
+import { FilterDrawer, FilterGroup } from "../../../components/FilterDrawer";
+import Dropdown from "../../../components/Dropdown";
 import Button from "../../../components/Button";
 import SearchBar from "../../../components/SearchBar";
 import Table, { type Column } from "../../../components/Table";
@@ -134,6 +137,18 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
   }, []);
 
   useEffect(() => {
+    request
+      .get("/api/gpus/", { params: { pagination: false } })
+      .then((res) => {
+        const gpus = (res.data.data || [])
+          .map((g: any) => g.gpuName)
+          .filter(Boolean);
+        setGpusList((prev) => Array.from(new Set([...prev, ...gpus])).sort());
+      })
+      .catch((err) => console.error("Failed to load GPUs:", err));
+  }, []);
+
+  useEffect(() => {
     loadNodeAdminIds();
   }, [loadNodeAdminIds]);
 
@@ -167,6 +182,13 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
   );
   const [adminFilter, setAdminFilter] = useTableState("Nodes_adminFilter", dashboardAdminFilter || "");
   const [rackFilter, setRackFilter] = useTableState("Nodes_rackFilter", "");
+  const [osFilter, setOsFilter] = useTableState("Nodes_osFilter", "");
+  const [custodianFilter, setCustodianFilter] = useTableState("Nodes_custodianFilter", "");
+  const [gpuFilter, setGpuFilter] = useTableState("Nodes_gpuFilter", "");
+  const [osList, setOsList] = useState<string[]>([]);
+  const [custodiansList, setCustodiansList] = useState<string[]>([]);
+  const [gpusList, setGpusList] = useState<string[]>([]);
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [page, setPage] = useTableState("Nodes_page", 0);
   const [rowsPerPage, setRowsPerPage] = useTableState("Nodes_rowsPerPage", 5);
   const [order, setOrder] = useTableState<Order>("Nodes_order", "asc");
@@ -181,6 +203,25 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
   }, [dashboardAdminFilter]);
 
 
+  // Build unique OS, Custodian, and GPU lists for filter dropdowns
+  useEffect(() => {
+    fetchNodes({ pagination: false, nodeTypeFilter: nodeTypeFilter || undefined })
+      .then((res) => {
+        const osSet = new Set<string>();
+        const custSet = new Set<string>();
+        const gpuSet = new Set<string>();
+        (res.data || []).forEach((n: any) => {
+          if (n.os) osSet.add(n.os);
+          if (n.custodian) custSet.add(n.custodian);
+          if (n.gpu) gpuSet.add(n.gpu);
+        });
+        setOsList(Array.from(osSet).sort());
+        setCustodiansList(Array.from(custSet).sort());
+        setGpusList((prev) => Array.from(new Set([...prev, ...Array.from(gpuSet)])).sort());
+      })
+      .catch(() => {});
+  }, [nodeTypeFilter]);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -194,6 +235,9 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
         serverModel: serverModelFilter || undefined,
         admin: adminFilter || undefined,
         rack: rackFilter || undefined,
+        os: osFilter || undefined,
+        custodian: custodianFilter || undefined,
+        gpu: gpuFilter || undefined,
         nodeTypeFilter: nodeTypeFilter || undefined,
         pagination: true,
       });
@@ -220,6 +264,8 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
     serverModelFilter,
     adminFilter,
     rackFilter,
+    osFilter,
+    custodianFilter,
     showToast,
     isViewOpen,
     selectedViewItem,
@@ -373,37 +419,13 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
       id: "isAppliance",
       label: "Type",
       sortable: true,
-      render: (row) => (row.isAppliance ? "Appliance" : "Node"),
-    },
-    {
-      id: "ip",
-      label: "IP Address",
-      sortable: true,
-      render: (row) => row.ip || "-",
+      render: (row) => (row.isStorage ? "Storage" : row.isAppliance ? "Appliance" : "Node"),
     },
     {
       id: "serverModel",
       label: "Server Model",
       sortable: true,
       render: (row) => row.serverModel || "-",
-    },
-    {
-      id: "serialNumber",
-      label: "Serial Number",
-      sortable: true,
-      render: (row) => row.serialNumber || "-",
-    },
-    {
-      id: "assetNumber",
-      label: "Asset Number",
-      sortable: true,
-      render: (row) => row.assetNumber || "-",
-    },
-    {
-      id: "custodian",
-      label: "Custodian",
-      sortable: true,
-      render: (row) => row.custodian || "-",
     },
     {
       id: "admin",
@@ -415,85 +437,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
         return adminArr.map((a) => usersMap[a] || a).join(", ") || "-";
       },
     },
-    {
-      id: "totalRam",
-      label: "Total RAM",
-      sortable: true,
-      render: (row) =>
-        row.totalRam !== undefined && row.totalRam !== null
-          ? row.totalRam
-          : "-",
-    },
-    {
-      id: "totalHardisk",
-      label: "Total HDD",
-      sortable: true,
-      render: (row) =>
-        row.totalHardisk !== undefined && row.totalHardisk !== null
-          ? row.totalHardisk
-          : "-",
-    },
-    {
-      id: "totalCpu",
-      label: "Total CPU",
-      sortable: true,
-      render: (row) =>
-        row.totalCpu !== undefined && row.totalCpu !== null
-          ? row.totalCpu
-          : "-",
-    },
-    {
-      id: "rack",
-      label: "Rack",
-      sortable: true,
-      render: (row) => row.rack || "-",
-    },
-    {
-      id: "rackPosition",
-      label: "Position",
-      sortable: true,
-      render: (row) => row.rackPosition || "-",
-    },
-    {
-      id: "rackUnits",
-      label: "Units",
-      sortable: true,
-      render: (row) =>
-        row.rackUnits !== undefined && row.rackUnits !== null
-          ? `${row.rackUnits} U`
-          : "-",
-    },
-    { id: "remarks", label: "Remarks", sortable: false },
   ];
-
-  if (isSuperuser) {
-    columns.push(
-      {
-        id: "createdBy",
-        label: "Created By",
-        sortable: true,
-        render: (row) => usersMap[row.createdBy || ""] || row.createdBy || "-",
-      },
-      {
-        id: "createdAt",
-        label: "Created At",
-        sortable: true,
-        render: (row) => row.createdAt ? dayjs(row.createdAt).format("DD-MM-YYYY h:mm A") : "-",
-      },
-      {
-        id: "updatedBy",
-        label: "Updated By",
-        sortable: true,
-        render: (row) => usersMap[row.updatedBy || ""] || row.updatedBy || "-",
-      },
-      {
-        id: "updatedAt",
-        label: "Updated At",
-        sortable: true,
-        render: (row) => row.updatedAt ? dayjs(row.updatedAt).format("DD-MM-YYYY h:mm A") : "-",
-      }
-    );
-  }
 
   if (hasUpdate || hasDelete) {
     columns.push({
@@ -569,9 +513,31 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
   }
 
   const filterSelectSx = {
-    minWidth: 160,
+    width: "100%",
     bgcolor: "white",
     "& .MuiOutlinedInput-root": { borderRadius: "8px" },
+  };
+
+  const activeFilterCount = [
+    clusterFilter,
+    serverModelFilter,
+    adminFilter,
+    rackFilter,
+    osFilter,
+    custodianFilter,
+    gpuFilter,
+    nodeTypeFilter,
+  ].filter(Boolean).length;
+
+  const handleClearAllFilters = () => {
+    setClusterFilter("");
+    setServerModelFilter("");
+    setAdminFilter("");
+    setRackFilter("");
+    setOsFilter("");
+    setCustodianFilter("");
+    setGpuFilter("");
+    setPage(0);
   };
 
   return (
@@ -595,91 +561,20 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
             flexWrap: "wrap",
           }}
         >
-          <FormControl size="small" sx={filterSelectSx}>
-            <InputLabel>Cluster</InputLabel>
-            <Select
-              value={clusterFilter}
-              label="Cluster"
-              onChange={(e) => {
-                setClusterFilter(e.target.value);
-                setPage(0);
-              }}
-              renderValue={(selected) => selected ? (clusters.find(c => c.id === selected)?.clusterName || selected) : "All Clusters"}
-            >
-              <MenuItem value="">All Clusters</MenuItem>
-              {clusters.map((c) => (
-                <MenuItem key={c.id} value={c.id}>
-                  {c.clusterName}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={filterSelectSx}>
-            <InputLabel>Server Model</InputLabel>
-            <Select
-              value={serverModelFilter}
-              label="Server Model"
-              onChange={(e) => {
-                setServerModelFilter(e.target.value);
-                setPage(0);
-              }}
-              renderValue={(selected) => selected || "All Models"}
-            >
-              <MenuItem value="">All Models</MenuItem>
-              {serverModelsList.map((m) => (
-                <MenuItem key={m} value={m}>
-                  {m}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={filterSelectSx}>
-            <InputLabel>Admin</InputLabel>
-            <Select
-              value={adminFilter}
-              label="Admin"
-              onChange={(e) => {
-                setAdminFilter(e.target.value);
-                setPage(0);
-              }}
-              renderValue={(selected) => selected ? (usersMap[selected] || selected) : "All Admins"}
-            >
-              <MenuItem value="">All Admins</MenuItem>
-              {Array.from(nodeAdminIds)
-                .sort((a, b) =>
-                  (usersMap[a] || a).localeCompare(usersMap[b] || b),
-                )
-                .map((adminId) => (
-                  <MenuItem key={adminId} value={adminId}>
-                    {usersMap[adminId] || adminId}
-                  </MenuItem>
-                ))}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={filterSelectSx}>
-            <InputLabel>Rack</InputLabel>
-            <Select
-              value={rackFilter}
-              label="Rack"
-              onChange={(e) => {
-                setRackFilter(e.target.value);
-                setPage(0);
-              }}
-              renderValue={(selected) => selected || "All Racks"}
-            >
-              <MenuItem value="">All Racks</MenuItem>
-              {racksList.map((r) => (
-                <MenuItem key={r} value={r}>
-                  {r}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
           <SearchBar
             value={searchQuery}
             onChange={setSearchQuery}
             placeholder="Search nodes..."
           />
+          <Button
+            variant={activeFilterCount > 0 ? "contained" : "outlined"}
+            color="primary"
+            startIcon={<FilterListIcon size={20} />}
+            onClick={() => setIsFilterDrawerOpen(true)}
+            sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
+          >
+            Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
+          </Button>
           {hasCreate && (
             <Button
               variant="contained"
@@ -692,6 +587,140 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
           )}
         </Box>
       </Box>
+
+      {/* Right Sidebar Filter Popup */}
+      <FilterDrawer
+        open={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        onClearAll={handleClearAllFilters}
+        title="Device Filters"
+        activeCount={activeFilterCount}
+      >
+        <FilterGroup title="Infrastructure">
+          <Dropdown
+            label="Cluster"
+            size="small"
+            searchable
+            clearable
+            value={clusterFilter}
+            onChange={(val) => {
+              setClusterFilter(val);
+              setPage(0);
+            }}
+            options={[
+              { label: "All Clusters", value: "" },
+              ...clusters.map((c) => ({ label: c.clusterName, value: c.id }))
+            ]}
+          />
+
+          <Dropdown
+            label="Rack"
+            size="small"
+            searchable
+            clearable
+            value={rackFilter}
+            onChange={(val) => {
+              setRackFilter(val);
+              setPage(0);
+            }}
+            options={[
+              { label: "All Racks", value: "" },
+              ...racksList.map((r) => ({ label: r, value: r }))
+            ]}
+          />
+        </FilterGroup>
+
+        <FilterGroup title="Server Specifications">
+          <Dropdown
+            label="Server Model"
+            size="small"
+            searchable
+            clearable
+            value={serverModelFilter}
+            onChange={(val) => {
+              setServerModelFilter(val);
+              setPage(0);
+            }}
+            options={[
+              { label: "All Models", value: "" },
+              ...serverModelsList.map((m) => ({ label: m, value: m }))
+            ]}
+          />
+
+          <Dropdown
+            label="Operating System (OS)"
+            size="small"
+            searchable
+            clearable
+            value={osFilter}
+            onChange={(val) => {
+              setOsFilter(val);
+              setPage(0);
+            }}
+            options={[
+              { label: "All OS", value: "" },
+              ...osList.map((o) => ({ label: o, value: o }))
+            ]}
+          />
+
+          <Dropdown
+            label="GPU"
+            size="small"
+            searchable
+            clearable
+            value={gpuFilter}
+            onChange={(val) => {
+              setGpuFilter(val);
+              setPage(0);
+            }}
+            options={[
+              { label: "All GPUs", value: "" },
+              ...gpusList.map((g) => ({ label: g, value: g }))
+            ]}
+          />
+        </FilterGroup>
+
+        <FilterGroup title="Ownership & Assignment">
+          <Dropdown
+            label="Admin"
+            size="small"
+            searchable
+            clearable
+            value={adminFilter}
+            onChange={(val) => {
+              setAdminFilter(val);
+              setPage(0);
+            }}
+            options={[
+              { label: "All Admins", value: "" },
+              { label: "Unassigned", value: "unassigned" },
+              { label: "Other", value: "other" },
+              ...Array.from(nodeAdminIds)
+                .sort((a, b) => (usersMap[a] || a).localeCompare(usersMap[b] || b))
+                .map((adminId) => ({
+                  label: usersMap[adminId] || adminId,
+                  value: adminId
+                }))
+            ]}
+          />
+
+          <Dropdown
+            label="Custodian"
+            size="small"
+            searchable
+            clearable
+            value={custodianFilter}
+            onChange={(val) => {
+              setCustodianFilter(val);
+              setPage(0);
+            }}
+            options={[
+              { label: "All Custodians", value: "" },
+              ...custodiansList.map((c) => ({ label: c, value: c }))
+            ]}
+          />
+        </FilterGroup>
+      </FilterDrawer>
 
       <Paper
         sx={{

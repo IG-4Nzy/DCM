@@ -22,6 +22,10 @@ export interface NodeData {
     raidConfiguration?: string[];
     ip?: string;
     isAppliance?: boolean;
+    isStorage?: boolean;
+    isPhysical?: boolean;
+    os?: string;
+    gpu?: string;
     createdBy?: string;
     createdAt?: string;
     updatedBy?: string;
@@ -47,6 +51,10 @@ export interface CreateNodePayload {
     raidConfiguration?: string[];
     ip?: string;
     isAppliance?: boolean;
+    isStorage?: boolean;
+    isPhysical?: boolean;
+    os?: string;
+    gpu?: string;
 }
 
 export interface UpdateNodePayload {
@@ -69,4 +77,8 @@ export interface UpdateNodePayload {
     raidConfiguration?: string[];
     ip?: string;
     isAppliance?: boolean;
+    isStorage?: boolean;
+    isPhysical?: boolean;
+    os?: string;
+    gpu?: string;
 }

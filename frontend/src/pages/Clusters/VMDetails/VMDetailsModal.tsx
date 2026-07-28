@@ -41,6 +41,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
     const [clusters, setClusters] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
     const [datastores, setDatastores] = useState<any[]>([]);
+    const [otherAdminName, setOtherAdminName] = useState<string>('');
 
 
     useEffect(() => {
@@ -85,6 +86,16 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     admin: Array.isArray(editingItem.admin) ? editingItem.admin : (editingItem.admin ? [editingItem.admin] : []),
                     powerStatus: editingItem.powerStatus || 'on'
                 });
+                const adminArr = Array.isArray(editingItem.admin) ? editingItem.admin : (editingItem.admin ? [editingItem.admin] : []);
+                const customAdmins = adminArr.filter(a => a !== 'Other' && !users.some(u => (u._id || u.id || u.username) === a));
+                if (customAdmins.length > 0) {
+                    setOtherAdminName(customAdmins.join(', '));
+                    if (!adminArr.includes('Other')) {
+                        setFormData(prev => ({ ...prev, admin: [...adminArr.filter(a => users.some(u => (u._id || u.id || u.username) === a)), 'Other'] }));
+                    }
+                } else {
+                    setOtherAdminName('');
+                }
             } else {
                 setFormData({
                     vmId: '',
@@ -106,6 +117,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     admin: [],
                     powerStatus: 'on'
                 });
+                setOtherAdminName('');
             }
         }
     }, [open, editingItem, clusterId]);
@@ -114,6 +126,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         if (users.length > 0 && Array.isArray(formData.admin) && formData.admin.length > 0) {
             let changed = false;
             const updatedAdmin = formData.admin.map(adVal => {
+                if (adVal === 'Other') return adVal;
                 const foundUser = users.find(u => u.username === adVal || u._id === adVal || u.id === adVal);
                 if (foundUser) {
                     const targetId = foundUser.id || foundUser._id;
@@ -136,7 +149,11 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
             if (field === 'admin') {
                 const selectedIds = Array.isArray(value) ? value : [value];
                 const selectedUsers = users.filter(u => selectedIds.includes(u._id || u.id));
-                next.adminName = selectedUsers.map(u => [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || u.username).join(', ');
+                const names = selectedUsers.map(u => [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || u.username);
+                if (selectedIds.includes('Other') && otherAdminName.trim()) {
+                    names.push(otherAdminName.trim());
+                }
+                next.adminName = names.join(', ');
                 next.adminContact = selectedUsers.map(u => u.mobile || u.phoneNumber || '').filter(Boolean).join(', ');
             }
             return next;
@@ -150,6 +167,13 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
+        // Compute final admin array
+        let currentAdmin: string[] = Array.isArray(formData.admin) ? formData.admin : [];
+        if (currentAdmin.includes('Other')) {
+            const withoutOther = currentAdmin.filter(a => a !== 'Other');
+            currentAdmin = otherAdminName.trim() ? [...withoutOther, otherAdminName.trim()] : withoutOther;
+        }
+
         if (editingItem) {
             const changedData: UpdateVMDetailsPayload = {};
             // Normalize undefined/null to empty string for comparison
@@ -172,14 +196,13 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
             if (formData.adminContact !== norm(editingItem.adminContact)) changedData.adminContact = formData.adminContact;
             
             const oldAdmin = Array.isArray(editingItem.admin) ? editingItem.admin : (editingItem.admin ? [editingItem.admin] : []);
-            const newAdmin = Array.isArray(formData.admin) ? formData.admin : (formData.admin ? [formData.admin] : []);
-            const adminChanged = oldAdmin.length !== newAdmin.length || oldAdmin.some((val, idx) => val !== newAdmin[idx]);
-            if (adminChanged) changedData.admin = formData.admin;
+            const adminChanged = oldAdmin.length !== currentAdmin.length || oldAdmin.some((val, idx) => val !== currentAdmin[idx]);
+            if (adminChanged) changedData.admin = currentAdmin;
             
             if (formData.powerStatus !== norm(editingItem.powerStatus)) changedData.powerStatus = formData.powerStatus;
             onSubmit(changedData);
         } else {
-            onSubmit(formData);
+            onSubmit({ ...formData, admin: currentAdmin });
         }
     };
 
@@ -321,8 +344,27 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         multiple
                         value={formData.admin} 
                         onChange={(val) => handleChange('admin', val)} 
-                        options={users.map(u => ({ label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username, value: u._id || u.id }))}
+                        options={[
+                            ...users.map(u => ({ label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username, value: u._id || u.id })),
+                            { label: 'Other', value: 'Other' }
+                        ]}
                     />
+                    {Array.isArray(formData.admin) && formData.admin.includes('Other') && (
+                        <TextField 
+                            label="Other Admin Name" 
+                            size="small"
+                            className={styles.formGrid__field}
+                            value={otherAdminName} 
+                            onChange={(e) => {
+                                setOtherAdminName(e.target.value);
+                                const selectedUsers = users.filter(u => formData.admin.includes(u._id || u.id));
+                                const names = selectedUsers.map(u => [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || u.username);
+                                if (e.target.value.trim()) names.push(e.target.value.trim());
+                                setFormData(prev => ({ ...prev, adminName: names.join(', ') }));
+                            }} 
+                            required
+                        />
+                    )}
                     <TextField 
                         label="Admin Name (Auto-filled)" 
                         size="small"
