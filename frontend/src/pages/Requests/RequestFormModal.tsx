@@ -600,14 +600,54 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                     />
 
                     <TextField
-                      label="VM Backup Path"
+                      label="Backup Name"
                       fullWidth
                       required
-                      value={details.backupLocation || ''}
-                      onChange={(e) => handleDetailChange('backupLocation', e.target.value)}
-                      placeholder="e.g. /backups/vms/my-vm"
+                      value={details.backupName || ''}
+                      onChange={(e) => handleDetailChange('backupName', e.target.value)}
+                      placeholder="e.g. Daily Backup"
                       sx={{ mt: 1 }}
                     />
+                    <FormControl fullWidth required sx={{ mt: 1 }}>
+                      <InputLabel>Backup Node</InputLabel>
+                      <Select
+                        value={details.backupNode || ''}
+                        label="Backup Node"
+                        onChange={(e) => handleDetailChange('backupNode', e.target.value)}
+                        MenuProps={{ disablePortal: true }}
+                      >
+                        {nodesList.map((n: any) => (
+                          <MenuItem key={n.id || n._id} value={n.node}>
+                            {n.node}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <FormControl fullWidth required sx={{ mt: 1 }}>
+                      <InputLabel>Backup Storage</InputLabel>
+                      <Select
+                        value={details.backupStorage || ''}
+                        label="Backup Storage"
+                        onChange={(e) => handleDetailChange('backupStorage', e.target.value)}
+                        MenuProps={{ disablePortal: true }}
+                      >
+                        {nodesList.filter((n: any) => n.type === 'storage' || n.isStorage).map((n: any) => (
+                          <MenuItem key={n.id || n._id} value={n.node}>
+                            {n.node}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <FormControl fullWidth required sx={{ mt: 1 }}>
+                      <InputLabel>Datastore</InputLabel>
+                      <Select
+                        value={details.datastore || ''}
+                        label="Datastore"
+                        onChange={(e) => handleDetailChange('datastore', e.target.value)}
+                        MenuProps={{ disablePortal: true }}
+                      >
+                      </Select>
+                    </FormControl>
                     
                     <FormControlLabel
                       control={

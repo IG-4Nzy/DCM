@@ -417,9 +417,16 @@ async def get_dashboard_summary(
     ]
     admin_query = {"$or": [{"admin": {"$in": [username, user_id_str]}}, *no_admin_conditions]}
     admin_vm_count = await vms_col.count_documents(admin_query)
-    admin_node_count = await nodes_col.count_documents(admin_query)
+
+    node_query = {
+        "$and": [
+            admin_query,
+            {"isAppliance": {"$nin": [True, "true", "True"]}}
+        ]
+    }
+    admin_node_count = await nodes_col.count_documents(node_query)
     admin_config_nodes_col = db.get_collection("nodes")
-    admin_config_node_count = await admin_config_nodes_col.count_documents(admin_query)
+    admin_config_node_count = await admin_config_nodes_col.count_documents(node_query)
     admin_physical_count = await physical_servers_col.count_documents(admin_query)
     total_admin_servers = admin_node_count + admin_config_node_count + admin_physical_count
 

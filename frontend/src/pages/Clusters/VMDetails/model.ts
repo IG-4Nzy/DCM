@@ -11,7 +11,10 @@ export interface VMDetailsData {
     hdd?: string;
     ram?: string;
     cpu?: string;
-    backupLocation?: string;
+    backupName?: string;
+    backupNode?: string;
+    backupStorage?: string;
+    datastore?: string;
     addedToMonitoring?: boolean;
     adminName?: string;
     adminContact?: string;
@@ -34,7 +37,10 @@ export interface CreateVMDetailsPayload {
     hdd?: string;
     ram?: string;
     cpu?: string;
-    backupLocation?: string;
+    backupName?: string;
+    backupNode?: string;
+    backupStorage?: string;
+    datastore?: string;
     addedToMonitoring?: boolean;
     adminName?: string;
     adminContact?: string;

@@ -618,6 +618,10 @@ class NodeModel(BaseModel):
     assetNumber: Optional[str] = None
     raidConfiguration: List[str] = Field(default_factory=list)
     ip: Optional[str] = None
+    isAppliance: Optional[bool] = False
+    isStorage: Optional[bool] = False
+    isPhysical: Optional[bool] = False
+    os: Optional[str] = None
     createdBy: Optional[str] = None
     createdAt: Optional[str] = None
     updatedBy: Optional[str] = None
@@ -646,6 +650,10 @@ class CreateNodeModel(BaseModel):
     assetNumber: Optional[str] = None
     raidConfiguration: Optional[List[str]] = Field(default_factory=list)
     ip: Optional[str] = None
+    isAppliance: Optional[bool] = False
+    isStorage: Optional[bool] = False
+    isPhysical: Optional[bool] = False
+    os: Optional[str] = None
 
 class UpdateNodeModel(BaseModel):
     nodeId: Optional[str] = None
@@ -665,6 +673,10 @@ class UpdateNodeModel(BaseModel):
     assetNumber: Optional[str] = None
     raidConfiguration: Optional[List[str]] = None
     ip: Optional[str] = None
+    isAppliance: Optional[bool] = None
+    isStorage: Optional[bool] = None
+    isPhysical: Optional[bool] = None
+    os: Optional[str] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -781,6 +793,9 @@ class NodeDetailsModel(BaseModel):
     availableHardisk: Optional[Union[Union[int, str]]] = None
     availableCpu: Optional[Union[int, str]] = None
     remarks: Optional[str] = None
+    type: Optional[str] = "Node"
+    isPhysical: Optional[bool] = False
+    os: Optional[str] = None
     createdBy: Optional[str] = None
     updatedAt: Optional[str] = None
 
@@ -812,6 +827,9 @@ class CreateNodeDetailsModel(BaseModel):
     totalHardisk: Optional[Union[int, str]] = None
     totalCpu: Optional[Union[int, str]] = None
     remarks: Optional[str] = None
+    type: Optional[str] = "Node"
+    isPhysical: Optional[bool] = False
+    os: Optional[str] = None
 
 class UpdateNodeDetailsModel(BaseModel):
     nodeId: Optional[str] = None
@@ -835,6 +853,9 @@ class UpdateNodeDetailsModel(BaseModel):
     totalHardisk: Optional[Union[int, str]] = None
     totalCpu: Optional[Union[int, str]] = None
     remarks: Optional[str] = None
+    type: Optional[str] = None
+    isPhysical: Optional[bool] = None
+    os: Optional[str] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -1013,7 +1034,10 @@ class VMDetailsModel(BaseModel):
     hdd: Optional[str] = None
     ram: Optional[str] = None
     cpu: Optional[str] = None
-    backupLocation: Optional[str] = ""
+    backupName: Optional[str] = ""
+    backupNode: Optional[str] = ""
+    backupStorage: Optional[str] = ""
+    datastore: Optional[str] = ""
     addedToMonitoring: Optional[bool] = False
     adminName: Optional[str] = None
     adminContact: Optional[str] = None
@@ -1040,7 +1064,10 @@ class CreateVMDetailsModel(BaseModel):
     hdd: Optional[str] = None
     ram: Optional[str] = None
     cpu: Optional[str] = None
-    backupLocation: Optional[str] = ""
+    backupName: Optional[str] = ""
+    backupNode: Optional[str] = ""
+    backupStorage: Optional[str] = ""
+    datastore: Optional[str] = ""
     addedToMonitoring: Optional[bool] = False
     adminName: Optional[str] = None
     adminContact: Optional[str] = None
@@ -1058,7 +1085,10 @@ class UpdateVMDetailsModel(BaseModel):
     hdd: Optional[str] = None
     ram: Optional[str] = None
     cpu: Optional[str] = None
-    backupLocation: Optional[str] = None
+    backupName: Optional[str] = None
+    backupNode: Optional[str] = None
+    backupStorage: Optional[str] = None
+    datastore: Optional[str] = None
     addedToMonitoring: Optional[bool] = None
     adminName: Optional[str] = None
     adminContact: Optional[str] = None
@@ -1312,4 +1342,31 @@ class PaginatedPhysicalServersModel(BaseModel):
     data: List[PhysicalServerModel]
     total: int
 
+class DatastoreModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    name: str = Field(...)
+    type: str = Field(...)
+    capacity: str = Field(...)
+    createdBy: Optional[str] = None
+    createdAt: Optional[str] = None
+    updatedBy: Optional[str] = None
+    updatedAt: Optional[str] = None
 
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateDatastoreModel(BaseModel):
+    name: str = Field(...)
+    type: str = Field(...)
+    capacity: str = Field(...)
+
+class UpdateDatastoreModel(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    capacity: Optional[str] = None
+
+class PaginatedDatastoresModel(BaseModel):
+    data: List[DatastoreModel]
+    total: int

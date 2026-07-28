@@ -37,7 +37,7 @@ import request from "../../../services/request";
 
 type Order = "asc" | "desc";
 
-const Nodes = ({ dashboardAdminFilter }: { dashboardAdminFilter?: string }) => {
+const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?: string; nodeTypeFilter?: string }) => {
   const [data, setData] = useState<NodeData[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -194,6 +194,7 @@ const Nodes = ({ dashboardAdminFilter }: { dashboardAdminFilter?: string }) => {
         serverModel: serverModelFilter || undefined,
         admin: adminFilter || undefined,
         rack: rackFilter || undefined,
+        nodeTypeFilter: nodeTypeFilter || undefined,
         pagination: true,
       });
       setData(result.data);
@@ -369,6 +370,12 @@ const Nodes = ({ dashboardAdminFilter }: { dashboardAdminFilter?: string }) => {
     },
     { id: "node", label: "Node", sortable: true },
     {
+      id: "isAppliance",
+      label: "Type",
+      sortable: true,
+      render: (row) => (row.isAppliance ? "Appliance" : "Node"),
+    },
+    {
       id: "ip",
       label: "IP Address",
       sortable: true,
@@ -457,31 +464,36 @@ const Nodes = ({ dashboardAdminFilter }: { dashboardAdminFilter?: string }) => {
           : "-",
     },
     { id: "remarks", label: "Remarks", sortable: false },
-    {
-      id: "createdBy",
-      label: "Created By",
-      sortable: true,
-      render: (row) => usersMap[row.createdBy || ""] || row.createdBy || "-",
-    },
-    {
-      id: "createdAt",
-      label: "Created At",
-      sortable: true,
-      render: (row) => row.createdAt ? dayjs(row.createdAt).format("DD-MM-YYYY h:mm A") : "-",
-    },
-    {
-      id: "updatedBy",
-      label: "Updated By",
-      sortable: true,
-      render: (row) => usersMap[row.updatedBy || ""] || row.updatedBy || "-",
-    },
-    {
-      id: "updatedAt",
-      label: "Updated At",
-      sortable: true,
-      render: (row) => row.updatedAt ? dayjs(row.updatedAt).format("DD-MM-YYYY h:mm A") : "-",
-    },
   ];
+
+  if (isSuperuser) {
+    columns.push(
+      {
+        id: "createdBy",
+        label: "Created By",
+        sortable: true,
+        render: (row) => usersMap[row.createdBy || ""] || row.createdBy || "-",
+      },
+      {
+        id: "createdAt",
+        label: "Created At",
+        sortable: true,
+        render: (row) => row.createdAt ? dayjs(row.createdAt).format("DD-MM-YYYY h:mm A") : "-",
+      },
+      {
+        id: "updatedBy",
+        label: "Updated By",
+        sortable: true,
+        render: (row) => usersMap[row.updatedBy || ""] || row.updatedBy || "-",
+      },
+      {
+        id: "updatedAt",
+        label: "Updated At",
+        sortable: true,
+        render: (row) => row.updatedAt ? dayjs(row.updatedAt).format("DD-MM-YYYY h:mm A") : "-",
+      }
+    );
+  }
 
   if (hasUpdate || hasDelete) {
     columns.push({
@@ -592,6 +604,7 @@ const Nodes = ({ dashboardAdminFilter }: { dashboardAdminFilter?: string }) => {
                 setClusterFilter(e.target.value);
                 setPage(0);
               }}
+              renderValue={(selected) => selected ? (clusters.find(c => c.id === selected)?.clusterName || selected) : "All Clusters"}
             >
               <MenuItem value="">All Clusters</MenuItem>
               {clusters.map((c) => (
@@ -610,6 +623,7 @@ const Nodes = ({ dashboardAdminFilter }: { dashboardAdminFilter?: string }) => {
                 setServerModelFilter(e.target.value);
                 setPage(0);
               }}
+              renderValue={(selected) => selected || "All Models"}
             >
               <MenuItem value="">All Models</MenuItem>
               {serverModelsList.map((m) => (
@@ -628,6 +642,7 @@ const Nodes = ({ dashboardAdminFilter }: { dashboardAdminFilter?: string }) => {
                 setAdminFilter(e.target.value);
                 setPage(0);
               }}
+              renderValue={(selected) => selected ? (usersMap[selected] || selected) : "All Admins"}
             >
               <MenuItem value="">All Admins</MenuItem>
               {Array.from(nodeAdminIds)
@@ -650,6 +665,7 @@ const Nodes = ({ dashboardAdminFilter }: { dashboardAdminFilter?: string }) => {
                 setRackFilter(e.target.value);
                 setPage(0);
               }}
+              renderValue={(selected) => selected || "All Racks"}
             >
               <MenuItem value="">All Racks</MenuItem>
               {racksList.map((r) => (

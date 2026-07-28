@@ -163,6 +163,7 @@ async def list_items(
                 or_conditions = [
                     {"ipAddress": {"$regex": escaped_term, "$options": "i"}},
                     {"vmId": {"$regex": escaped_term, "$options": "i"}},
+                    {"vmName": {"$regex": escaped_term, "$options": "i"}},
                     {"applications": {"$regex": escaped_term, "$options": "i"}},
                     {"node": {"$regex": escaped_term, "$options": "i"}},
                     {"adminName": {"$regex": escaped_term, "$options": "i"}},
@@ -171,7 +172,10 @@ async def list_items(
                     {"hdd": {"$regex": escaped_term, "$options": "i"}},
                     {"ram": {"$regex": escaped_term, "$options": "i"}},
                     {"cpu": {"$regex": escaped_term, "$options": "i"}},
-                    {"backupLocation": {"$regex": escaped_term, "$options": "i"}},
+                    {"backupName": {"$regex": escaped_term, "$options": "i"}},
+                    {"backupNode": {"$regex": escaped_term, "$options": "i"}},
+                    {"backupStorage": {"$regex": escaped_term, "$options": "i"}},
+                    {"datastore": {"$regex": escaped_term, "$options": "i"}},
                     {"powerStatus": {"$regex": escaped_term, "$options": "i"}},
                     {"createdBy": {"$regex": escaped_term, "$options": "i"}},
                     {"createdAt": {"$regex": escaped_term, "$options": "i"}},
@@ -629,7 +633,10 @@ async def import_vcenter_vms(
                             "applications": "",
                             "node": node,
                             "osAndExpiry": vm_os,
-                            "backupLocation": "",
+                            "backupName": "",
+                            "backupNode": "",
+                            "backupStorage": "",
+                            "datastore": "",
                             "admin": [],
                             "adminName": "",
                             "adminContact": "",
@@ -669,7 +676,7 @@ async def update_item(id: str, payload: UpdateVMDetailsModel = Body(...), curren
         raise HTTPException(status_code=404, detail="VM Details not found")
     old_node = old_vm.get("node")
 
-    item_dict = {k: v for k, v in payload.model_dump().items() if v is not None}
+    item_dict = payload.model_dump(exclude_unset=True)
 
     if len(item_dict) >= 1:
         item_dict["updatedBy"] = current_user.get("sub", "")

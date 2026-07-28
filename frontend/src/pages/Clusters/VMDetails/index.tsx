@@ -305,6 +305,14 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                                         setAdminFilter(e.target.value);
                                         setPage(0);
                                     }}
+                                    renderValue={(selected) => {
+                                        if (!selected) return "All Admins";
+                                        const u = users && users.find((usr: any) => (usr._id || usr.id || usr.username) === selected);
+                                        if (u) {
+                                            return `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username;
+                                        }
+                                        return usersMap[selected] || selected;
+                                    }}
                                 >
                                     <MenuItem value="">All Admins</MenuItem>
                                     {users && users.map((u: any) => (
@@ -319,7 +327,7 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                     <SearchBar
                         value={searchQuery}
                         onChange={(val) => { setSearchQuery(val); setPage(0); }}
-                        placeholder="Search IP, App or Node..."
+                        placeholder="Search VM Name, IP, App or Node..."
                     />
                     {isSuperuser && vcenters.length > 0 && (
                         <Button
@@ -359,15 +367,22 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Applications</TableCell>
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Node</TableCell>
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>OS and Expiry</TableCell>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Backup Location</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Backup Name</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Backup Node</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Backup Storage</TableCell>
+                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Datastore</TableCell>
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Admin Name</TableCell>
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Admin Contact</TableCell>
                                 <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Power Status</TableCell>
                                 <TableCell colSpan={3} align="center" className={styles.tableWrapper__headerCell}>Resource Allotter</TableCell>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Created By</TableCell>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Created At</TableCell>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Updated By</TableCell>
-                                <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Updated At</TableCell>
+                                {isSuperuser && (
+                                    <>
+                                        <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Created By</TableCell>
+                                        <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Created At</TableCell>
+                                        <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Updated By</TableCell>
+                                        <TableCell rowSpan={2} className={styles.tableWrapper__headerCell}>Updated At</TableCell>
+                                    </>
+                                )}
                                 {(hasUpdate || hasDelete) && (
                                     <TableCell rowSpan={2} align="right" className={styles.tableWrapper__headerCellLast}>Actions</TableCell>
                                 )}
@@ -381,11 +396,11 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                         <TableBody>
                             {loading && data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 18 : 19} align="center" sx={{ py: 3 }}>Loading...</TableCell>
+                                    <TableCell colSpan={(clusterId ? 17 : 18) + (isSuperuser ? 4 : 0)} align="center" sx={{ py: 3 }}>Loading...</TableCell>
                                 </TableRow>
                             ) : data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={clusterId ? 18 : 19} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
+                                    <TableCell colSpan={(clusterId ? 17 : 18) + (isSuperuser ? 4 : 0)} align="center" sx={{ py: 3, color: 'text.secondary' }}>No VM Details found</TableCell>
                                 </TableRow>
                             ) : (
                                 data.map((row) => (
@@ -404,7 +419,10 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                                         <TableCell className={styles.tableWrapper__cell}>{row.applications || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.node || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.osAndExpiry || '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{row.backupLocation || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.backupName || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.backupNode || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.backupStorage || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>{row.datastore || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.adminName || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.adminContact || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>
@@ -419,10 +437,14 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                                         <TableCell className={styles.tableWrapper__cell}>{row.hdd || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.ram || '--'}</TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>{row.cpu || '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{usersMap[row.createdBy || ''] || row.createdBy || '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{row.createdAt ? dayjs(row.createdAt).format('DD-MM-YYYY h:mm A') : '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{usersMap[row.updatedBy || ''] || row.updatedBy || '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{row.updatedAt ? dayjs(row.updatedAt).format('DD-MM-YYYY h:mm A') : '--'}</TableCell>
+                                        {isSuperuser && (
+                                            <>
+                                                <TableCell className={styles.tableWrapper__cell}>{usersMap[row.createdBy || ''] || row.createdBy || '--'}</TableCell>
+                                                <TableCell className={styles.tableWrapper__cell}>{row.createdAt ? dayjs(row.createdAt).format('DD-MM-YYYY h:mm A') : '--'}</TableCell>
+                                                <TableCell className={styles.tableWrapper__cell}>{usersMap[row.updatedBy || ''] || row.updatedBy || '--'}</TableCell>
+                                                <TableCell className={styles.tableWrapper__cell}>{row.updatedAt ? dayjs(row.updatedAt).format('DD-MM-YYYY h:mm A') : '--'}</TableCell>
+                                            </>
+                                        )}
                                         {(hasUpdate || hasDelete) && (
                                             <TableCell align="right" onClick={(e) => e.stopPropagation()}>
                                                 <Box className={styles.tableWrapper__actions}>

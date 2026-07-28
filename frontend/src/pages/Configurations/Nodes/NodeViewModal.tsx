@@ -1,6 +1,8 @@
 // @ts-nocheck
 import React from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, Divider, Grid } from '@mui/material';
+import { useSelector } from 'react-redux';
+import { type RootState } from '../../../store';
 import Button from '../../../components/Button';
 import { type NodeData } from './model';
 
@@ -12,6 +14,8 @@ interface NodeViewModalProps {
 }
 
 const NodeViewModal: React.FC<NodeViewModalProps> = ({ open, onClose, node, adminName }) => {
+    const { isSuperuser } = useSelector((state: RootState) => state.auth);
+
     if (!node) return null;
 
     return (
@@ -38,15 +42,23 @@ const NodeViewModal: React.FC<NodeViewModalProps> = ({ open, onClose, node, admi
                                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#3182ce' }}>{node.ip || '-'}</Typography>
                                   </Grid>
                                   <Grid size={{xs: 12, sm: 6}}   >
-                                      <Typography variant="caption" color="textSecondary">Created By</Typography>
-                                      <Typography variant="body2">{node.createdBy || '-'}</Typography>
+                                      <Typography variant="caption" color="textSecondary">Type</Typography>
+                                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.isAppliance ? 'Appliance' : 'Node'}</Typography>
                                   </Grid>
-                                  <Grid size={{xs: 12, sm: 6}}   >
-                                      <Typography variant="caption" color="textSecondary">Last Updated</Typography>
-                                      <Typography variant="body2">
-                                          {node.updatedAt ? new Date(node.updatedAt).toLocaleString() : '-'}
-                                      </Typography>
-                                  </Grid>
+                                  {isSuperuser && (
+                                      <>
+                                          <Grid size={{xs: 12, sm: 6}}   >
+                                              <Typography variant="caption" color="textSecondary">Created By</Typography>
+                                              <Typography variant="body2">{node.createdBy || '-'}</Typography>
+                                          </Grid>
+                                          <Grid size={{xs: 12, sm: 6}}   >
+                                              <Typography variant="caption" color="textSecondary">Last Updated</Typography>
+                                              <Typography variant="body2">
+                                                  {node.updatedAt ? new Date(node.updatedAt).toLocaleString() : '-'}
+                                              </Typography>
+                                          </Grid>
+                                      </>
+                                  )}
                               </Grid>
                         </Box>
                     </Grid>

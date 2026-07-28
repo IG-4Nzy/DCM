@@ -247,32 +247,37 @@ const Racks = () => {
                 return parts.length > 0 ? parts.join(' | ') : 'No';
             }
         },
-        { id: 'remarks', label: 'Remarks', sortable: false },
-        {
-            id: 'createdBy',
-            label: 'Created By',
-            sortable: true,
-            render: (row) => usersMap[row.createdBy || ''] || row.createdBy || '-'
-        },
-        {
-            id: 'createdAt',
-            label: 'Created At',
-            sortable: true,
-            render: (row) => row.createdAt ? dayjs(row.createdAt).format('DD-MM-YYYY h:mm A') : '-'
-        },
-        {
-            id: 'updatedBy',
-            label: 'Updated By',
-            sortable: true,
-            render: (row) => usersMap[row.updatedBy || ''] || row.updatedBy || '-'
-        },
-        {
-            id: 'updatedAt',
-            label: 'Updated At',
-            sortable: true,
-            render: (row) => row.updatedAt ? dayjs(row.updatedAt).format('DD-MM-YYYY h:mm A') : '-'
-        }
+        { id: 'remarks', label: 'Remarks', sortable: false }
     ];
+
+    if (isSuperuser) {
+        columns.push(
+            {
+                id: 'createdBy',
+                label: 'Created By',
+                sortable: true,
+                render: (row) => usersMap[row.createdBy || ''] || row.createdBy || '-'
+            },
+            {
+                id: 'createdAt',
+                label: 'Created At',
+                sortable: true,
+                render: (row) => row.createdAt ? dayjs(row.createdAt).format('DD-MM-YYYY h:mm A') : '-'
+            },
+            {
+                id: 'updatedBy',
+                label: 'Updated By',
+                sortable: true,
+                render: (row) => usersMap[row.updatedBy || ''] || row.updatedBy || '-'
+            },
+            {
+                id: 'updatedAt',
+                label: 'Updated At',
+                sortable: true,
+                render: (row) => row.updatedAt ? dayjs(row.updatedAt).format('DD-MM-YYYY h:mm A') : '-'
+            }
+        );
+    }
 
     if (hasUpdate || hasDelete) {
         columns.push({

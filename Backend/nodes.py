@@ -60,6 +60,7 @@ async def list_items(
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
     order: str = Query("asc"),
+    nodeTypeFilter: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
     and_conditions = []
@@ -123,6 +124,35 @@ async def list_items(
         else:
             and_conditions.append({"clusterId": clusterId})
     
+    has_appliance_priv = current_user.get("isSuperuser", False) or "View All Server Details" in privs
+    if not has_appliance_priv:
+        target_username = current_user.get("sub")
+        users_col = db.get_collection("users")
+        user_doc = await users_col.find_one({"username": target_username})
+        target_user_id = str(user_doc["_id"]) if user_doc else None
+        admins = [target_username]
+        if target_user_id:
+            admins.append(target_user_id)
+        and_conditions.append({
+            "$or": [
+                {"isAppliance": {"$ne": True}},
+                {"$and": [
+                    {"isAppliance": True},
+                    {"admin": {"$in": admins}}
+                ]}
+            ]
+        })
+
+    if nodeTypeFilter:
+        if nodeTypeFilter.lower() == "appliance":
+            and_conditions.append({"isAppliance": True})
+        elif nodeTypeFilter.lower() == "storage":
+            and_conditions.append({"isStorage": True})
+        elif nodeTypeFilter.lower() == "physical":
+            and_conditions.append({"isPhysical": True})
+        elif nodeTypeFilter.lower() == "node":
+            and_conditions.append({"isAppliance": {"$ne": True}, "isStorage": {"$ne": True}, "isPhysical": {"$ne": True}})
+
     if serverModel:
         and_conditions.append({"serverModel": serverModel})
     
@@ -130,21 +160,23 @@ async def list_items(
         and_conditions.append({"rack": rack})
     
     if search:
+        import re
+        escaped_search = re.escape(search)
         and_conditions.append({
             "$or": [
-                {"node": {"$regex": search, "$options": "i"}},
-                {"nodeId": {"$regex": search, "$options": "i"}},
-                {"ipAddress": {"$regex": search, "$options": "i"}},
-                {"ip": {"$regex": search, "$options": "i"}},
-                {"managementIp": {"$regex": search, "$options": "i"}},
-                {"custodian": {"$regex": search, "$options": "i"}},
-                {"admin": {"$regex": search, "$options": "i"}},
-                {"assetNumber": {"$regex": search, "$options": "i"}},
-                {"serialNumber": {"$regex": search, "$options": "i"}},
-                {"serverModel": {"$regex": search, "$options": "i"}},
-                {"rack": {"$regex": search, "$options": "i"}},
-                {"rackPosition": {"$regex": search, "$options": "i"}},
-                {"remarks": {"$regex": search, "$options": "i"}}
+                {"node": {"$regex": escaped_search, "$options": "i"}},
+                {"nodeId": {"$regex": escaped_search, "$options": "i"}},
+                {"ipAddress": {"$regex": escaped_search, "$options": "i"}},
+                {"ip": {"$regex": escaped_search, "$options": "i"}},
+                {"managementIp": {"$regex": escaped_search, "$options": "i"}},
+                {"custodian": {"$regex": escaped_search, "$options": "i"}},
+                {"admin": {"$regex": escaped_search, "$options": "i"}},
+                {"assetNumber": {"$regex": escaped_search, "$options": "i"}},
+                {"serialNumber": {"$regex": escaped_search, "$options": "i"}},
+                {"serverModel": {"$regex": escaped_search, "$options": "i"}},
+                {"rack": {"$regex": escaped_search, "$options": "i"}},
+                {"rackPosition": {"$regex": escaped_search, "$options": "i"}},
+                {"remarks": {"$regex": escaped_search, "$options": "i"}}
             ]
         })
 
@@ -212,7 +244,7 @@ async def update_item(id: str, payload: UpdateNodeModel = Body(...), current_use
     if not old_doc:
         raise HTTPException(status_code=404, detail=f"Node {id} not found")
 
-    item_dict = {k: v for k, v in payload.model_dump().items() if v is not None}
+    item_dict = payload.model_dump(exclude_unset=True)
 
     if len(item_dict) >= 1:
         if "ip" in item_dict and item_dict["ip"]:

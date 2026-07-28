@@ -82,7 +82,10 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   const isVMCreationStage = (request?.requestType === 'VM Creation' || request?.requestType === 'VM Management') && (request?.status?.toLowerCase() === 'vm creation' || request?.status?.toLowerCase().includes('creation'));
   const isVMBackupStage = (request?.requestType === 'VM Creation' || request?.requestType === 'VM Management') && (request?.status?.toLowerCase() === 'vm backup' || request?.status?.toLowerCase().includes('backup'));
 
-  const [backupLocation, setBackupLocation] = useState('');
+  const [backupName, setBackupName] = useState('');
+  const [backupNode, setBackupNode] = useState('');
+  const [backupStorage, setBackupStorage] = useState('');
+  const [datastore, setDatastore] = useState('');
   const [backupError, setBackupError] = useState(false);
   const [addedToMonitoring, setAddedToMonitoring] = useState(false);
 
@@ -120,7 +123,10 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       setRemarks('');
       setIpAddress(request.details?.ip || '');
       setIpError(false);
-      setBackupLocation(request.details?.backupLocation || '');
+      setBackupName(request.details?.backupName || '');
+      setBackupNode(request.details?.backupNode || '');
+      setBackupStorage(request.details?.backupStorage || '');
+      setDatastore(request.details?.datastore || '');
       setBackupError(false);
       setAddedToMonitoring(!!request.details?.addedToMonitoring);
 
@@ -232,7 +238,10 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
         };
       } else if (isVMBackupStage) {
         payload.details = {
-          backupLocation: backupLocation.trim()
+          backupName: backupName.trim(),
+          backupNode: backupNode.trim(),
+          backupStorage: backupStorage.trim(),
+          datastore: datastore.trim()
         };
       } else if (isClusterDeciding) {
         payload.details = {
@@ -288,7 +297,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       setExitTimeError(true);
       return;
     }
-    if (isVMBackupStage && !backupLocation.trim()) {
+    if (isVMBackupStage && !backupName.trim()) {
       setBackupError(true);
       return;
     }
@@ -571,9 +580,21 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                         {request.details?.node || 'Not Decided Yet'}
                       </Typography>
                     </Grid>
-                    <Grid size={{xs: 12, sm: 4}}   >
-                      <Typography variant="caption" color="textSecondary">Backup Location</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.backupLocation || '-'}</Typography>
+                    <Grid size={{xs: 12, sm: 6}}   >
+                      <Typography variant="caption" color="textSecondary">Backup Name</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.backupName || '-'}</Typography>
+                    </Grid>
+                    <Grid size={{xs: 12, sm: 6}}   >
+                      <Typography variant="caption" color="textSecondary">Backup Node</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.backupNode || '-'}</Typography>
+                    </Grid>
+                    <Grid size={{xs: 12, sm: 6}}   >
+                      <Typography variant="caption" color="textSecondary">Backup Storage</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.backupStorage || '-'}</Typography>
+                    </Grid>
+                    <Grid size={{xs: 12, sm: 6}}   >
+                      <Typography variant="caption" color="textSecondary">Datastore</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.datastore || '-'}</Typography>
                     </Grid>
                     <Grid size={{xs: 12, sm: 4}}   >
                       <Typography variant="caption" color="textSecondary">Added to Monitoring</Typography>
@@ -762,20 +783,53 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                   {isVMBackupStage && (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1, minWidth: 240 }}>
                       <TextField
-                        label="VM Backup Path / Location"
+                        label="Backup Name"
                         variant="outlined"
                         fullWidth
                         required
                         error={backupError}
-                        helperText={backupError ? "You must provide a VM backup path to advance." : "Enter VM backup directory path"}
-                        value={backupLocation}
+                        helperText={backupError ? "You must provide a Backup Name to advance." : "Enter VM backup name"}
+                        value={backupName}
                         onChange={(e) => {
-                          setBackupLocation(e.target.value);
+                          setBackupName(e.target.value);
                           if (e.target.value.trim()) setBackupError(false);
                         }}
-                        placeholder="e.g. /backups/vms/my-vm"
+                        placeholder="e.g. Daily Backup"
                         sx={{ bgcolor: '#fff' }}
                       />
+                      <FormControl fullWidth required sx={{ bgcolor: '#fff' }}>
+                        <InputLabel>Backup Node</InputLabel>
+                        <Select
+                          value={backupNode}
+                          label="Backup Node"
+                          onChange={(e) => setBackupNode(e.target.value)}
+                        >
+                          {nodes.map((n: any) => (
+                            <MenuItem key={n.id || n._id} value={n.node || n.hostName}>{n.node || n.hostName}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FormControl fullWidth required sx={{ bgcolor: '#fff' }}>
+                        <InputLabel>Backup Storage</InputLabel>
+                        <Select
+                          value={backupStorage}
+                          label="Backup Storage"
+                          onChange={(e) => setBackupStorage(e.target.value)}
+                        >
+                          {nodes.filter((n: any) => n.type === 'storage' || n.isStorage).map((n: any) => (
+                            <MenuItem key={n.id || n._id} value={n.node || n.hostName}>{n.node || n.hostName}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FormControl fullWidth required sx={{ bgcolor: '#fff' }}>
+                        <InputLabel>Datastore</InputLabel>
+                        <Select
+                          value={datastore}
+                          label="Datastore"
+                          onChange={(e) => setDatastore(e.target.value)}
+                        >
+                        </Select>
+                      </FormControl>
                     </Box>
                   )}
 

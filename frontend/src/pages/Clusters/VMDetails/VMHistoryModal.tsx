@@ -132,12 +132,26 @@ const VMHistoryModal: React.FC<VMHistoryModalProps> = ({ open, onClose, vm }) =>
                   <DetailItem icon={MdEvent} label="OS & Expiry" value={vm.osAndExpiry} />
                 </Grid>
                 )}
-                {vm.backupLocation && (
-                <Grid item xs={12}>
-                  <DetailItem icon={MdBackup} label="Backup Location" value={vm.backupLocation} />
+                {vm.backupName && (
+                <Grid item xs={12} sm={6}>
+                  <DetailItem icon={MdBackup} label="Backup Name" value={vm.backupName} />
                 </Grid>
                 )}
-                
+                {vm.backupNode && (
+                <Grid item xs={12} sm={6}>
+                  <DetailItem icon={MdBackup} label="Backup Node" value={vm.backupNode} />
+                </Grid>
+                )}
+                {vm.backupStorage && (
+                <Grid item xs={12} sm={6}>
+                  <DetailItem icon={MdStorage} label="Backup Storage" value={vm.backupStorage} />
+                </Grid>
+                )}
+                {vm.datastore && (
+                <Grid item xs={12} sm={6}>
+                  <DetailItem icon={MdStorage} label="Datastore" value={vm.datastore} />
+                </Grid>
+                )}
                 {vm.hdd && (
                 <Grid item xs={4}>
                   <DetailItem icon={MdStorage} label="HDD" value={vm.hdd} color="#ed6c02" />

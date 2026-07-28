@@ -21,6 +21,7 @@ export interface NodeData {
     assetNumber?: string;
     raidConfiguration?: string[];
     ip?: string;
+    isAppliance?: boolean;
     createdBy?: string;
     createdAt?: string;
     updatedBy?: string;
@@ -45,6 +46,7 @@ export interface CreateNodePayload {
     assetNumber?: string;
     raidConfiguration?: string[];
     ip?: string;
+    isAppliance?: boolean;
 }
 
 export interface UpdateNodePayload {
@@ -66,4 +68,5 @@ export interface UpdateNodePayload {
     assetNumber?: string;
     raidConfiguration?: string[];
     ip?: string;
+    isAppliance?: boolean;
 }

@@ -8,6 +8,7 @@ import Clusters from '../Clusters';
 import Nodes from '../Configurations/Nodes';
 import VMs from '../Clusters/VMDetails';
 import PhysicalServers from './PhysicalServers';
+import Datastores from './Datastores';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store';
 import { hasPrivilege } from '../../helpers/authUtils';
@@ -25,6 +26,8 @@ const ServerDetails = () => {
     const hasNodesView = isSuperuser || hasPrivilege(PRIVILEGES.NODES_VIEW) || hasViewAll || hasViewOwn || hasCreatePerm;
     const hasVMView = isSuperuser || hasPrivilege(PRIVILEGES.VM_VIEW) || hasViewAll || hasViewOwn || hasCreatePerm;
     const hasPhysicalServerView = isSuperuser || hasPrivilege(PRIVILEGES.PHYSICAL_SERVER_VIEW) || hasViewAll || hasCreatePerm;
+    const hasNetworkDevicesView = isSuperuser || hasViewAll || hasCreatePerm;
+    const hasDatastoresView = isSuperuser || hasViewAll || hasCreatePerm;
 
     const tabs: TabItem[] = [];
     if (hasRacksView) tabs.push({ id: 'racks', label: 'Racks', value: 'racks' });
@@ -32,6 +35,8 @@ const ServerDetails = () => {
     if (hasNodesView) tabs.push({ id: 'nodes', label: 'Nodes', value: 'nodes' });
     if (hasVMView) tabs.push({ id: 'vms', label: 'VMs', value: 'vms' });
     if (hasPhysicalServerView) tabs.push({ id: 'physical_servers', label: 'Physical Servers', value: 'physical_servers' });
+    if (hasNetworkDevicesView) tabs.push({ id: 'network_devices', label: 'Network Devices', value: 'network_devices' });
+    if (hasDatastoresView) tabs.push({ id: 'datastores', label: 'Datastores', value: 'datastores' });
 
     const location = useLocation();
 
@@ -104,6 +109,8 @@ const ServerDetails = () => {
                 {activeTab === 'nodes' && <Nodes dashboardAdminFilter={dashboardAdminFilter} />}
                 {activeTab === 'vms' && <VMs dashboardAdminFilter={dashboardAdminFilter} />}
                 {activeTab === 'physical_servers' && <PhysicalServers />}
+                {activeTab === 'network_devices' && <Nodes dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="appliance" />}
+                {activeTab === 'datastores' && <Datastores />}
             </Box>
         </Box>
     );

@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { Box, Grid, Checkbox, FormControlLabel, FormGroup, FormLabel, Dialog, DialogTitle, DialogContent, DialogActions, IconButton } from '@mui/material';
+import { Box, Grid, Checkbox, FormControlLabel, FormGroup, FormLabel, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { MdAdd as AddIcon } from 'react-icons/md';
 import Modal from '../../../components/Modal';
 import TextField from '../../../components/TextField';
@@ -51,6 +51,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
     const [admin, setAdmin] = useState<string[]>([]);
     const [assetNumber, setAssetNumber] = useState('');
     const [raidConfiguration, setRaidConfiguration] = useState<string[]>([]);
+    const [isAppliance, setIsAppliance] = useState<boolean>(false);
     
     const [racks, setRacks] = useState<any[]>([]);
     const [serverModels, setServerModels] = useState<any[]>([]);
@@ -104,6 +105,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 );
                 setAssetNumber(editingItem.assetNumber || '');
                 setRaidConfiguration(editingItem.raidConfiguration || []);
+                setIsAppliance(editingItem.isAppliance || false);
             } else {
                 setField('');
                 setIp('');
@@ -120,6 +122,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setAdmin([]);
                 setAssetNumber('');
                 setRaidConfiguration([]);
+                setIsAppliance(false);
             }
         }
     }, [open, editingItem, activeRackFilter]);
@@ -180,7 +183,8 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
             custodian: custodian || undefined,
             admin: admin && admin.length > 0 ? admin : undefined,
             assetNumber: assetNumber || undefined,
-            raidConfiguration: raidConfiguration
+            raidConfiguration: raidConfiguration,
+            isAppliance: isAppliance
         };
 
         if (editingItem) {
@@ -240,6 +244,27 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         >
             <form onSubmit={handleSubmit}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
+                    <Box>
+                        <FormLabel sx={{ display: 'block', mb: 1, fontWeight: 500, fontSize: '0.875rem' }}>
+                            Type
+                        </FormLabel>
+                        <ToggleButtonGroup
+                            color="primary"
+                            value={isAppliance ? 'appliance' : 'node'}
+                            exclusive
+                            onChange={(e, val) => {
+                                if (val !== null) {
+                                    setIsAppliance(val === 'appliance');
+                                }
+                            }}
+                            fullWidth
+                            size="small"
+                        >
+                            <ToggleButton value="node" sx={{ textTransform: 'none', fontWeight: 600 }}>Node</ToggleButton>
+                            <ToggleButton value="appliance" sx={{ textTransform: 'none', fontWeight: 600 }}>Appliance</ToggleButton>
+                        </ToggleButtonGroup>
+                    </Box>
+
                     <Grid container spacing={2}>
                         <Grid size={{xs: 12, sm: 6}}>
                             <TextField

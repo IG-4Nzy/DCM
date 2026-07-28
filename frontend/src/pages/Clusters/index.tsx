@@ -187,32 +187,37 @@ const Clusters = () => {
             sortable: false,
             render: (row) => row.nodeNames && row.nodeNames.length > 0 ? row.nodeNames.join(', ') : '--'
         },
-        { id: 'remarks', label: 'Remarks', sortable: false, render: (row) => row.remarks || '--' },
-        {
-            id: 'createdBy',
-            label: 'Created By',
-            sortable: true,
-            render: (row) => usersMap[row.createdBy || ''] || row.createdBy || '--'
-        },
-        {
-            id: 'createdAt',
-            label: 'Created At',
-            sortable: true,
-            render: (row) => row.createdAt ? dayjs(row.createdAt).format('DD-MM-YYYY h:mm A') : '--'
-        },
-        {
-            id: 'updatedBy',
-            label: 'Updated By',
-            sortable: true,
-            render: (row) => usersMap[row.updatedBy || ''] || row.updatedBy || '--'
-        },
-        {
-            id: 'updatedAt',
-            label: 'Updated At',
-            sortable: true,
-            render: (row) => row.updatedAt ? dayjs(row.updatedAt).format('DD-MM-YYYY h:mm A') : '--'
-        }
+        { id: 'remarks', label: 'Remarks', sortable: false, render: (row) => row.remarks || '--' }
     ];
+
+    if (isSuperuser) {
+        columns.push(
+            {
+                id: 'createdBy',
+                label: 'Created By',
+                sortable: true,
+                render: (row) => usersMap[row.createdBy || ''] || row.createdBy || '--'
+            },
+            {
+                id: 'createdAt',
+                label: 'Created At',
+                sortable: true,
+                render: (row) => row.createdAt ? dayjs(row.createdAt).format('DD-MM-YYYY h:mm A') : '--'
+            },
+            {
+                id: 'updatedBy',
+                label: 'Updated By',
+                sortable: true,
+                render: (row) => usersMap[row.updatedBy || ''] || row.updatedBy || '--'
+            },
+            {
+                id: 'updatedAt',
+                label: 'Updated At',
+                sortable: true,
+                render: (row) => row.updatedAt ? dayjs(row.updatedAt).format('DD-MM-YYYY h:mm A') : '--'
+            }
+        );
+    }
 
     if (hasUpdate || hasDelete) {
         columns.push({

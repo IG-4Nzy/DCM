@@ -40,6 +40,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
     const [nodes, setNodes] = useState<any[]>([]);
     const [clusters, setClusters] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
+    const [datastores, setDatastores] = useState<any[]>([]);
 
 
     useEffect(() => {
@@ -55,6 +56,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
             request.get('/api/users?pagination=false')
                 .then(res => setUsers(res.data?.data || []))
                 .catch(err => console.error("Failed to fetch users", err));
+            request.get('/api/datastores?pagination=false')
+                .then(res => setDatastores(res.data?.data || []))
+                .catch(err => console.error("Failed to fetch datastores", err));
         }
     }, [open, clusterId, editingItem]);
 
@@ -72,7 +76,10 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     hdd: editingItem.hdd || '',
                     ram: editingItem.ram || '',
                     cpu: editingItem.cpu || '',
-                    backupLocation: editingItem.backupLocation || '',
+                    backupName: editingItem.backupName || '',
+                    backupNode: editingItem.backupNode || '',
+                    backupStorage: editingItem.backupStorage || '',
+                    datastore: editingItem.datastore || '',
                     adminName: editingItem.adminName || '',
                     adminContact: editingItem.adminContact || '',
                     admin: Array.isArray(editingItem.admin) ? editingItem.admin : (editingItem.admin ? [editingItem.admin] : []),
@@ -90,7 +97,10 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     hdd: '',
                     ram: '',
                     cpu: '',
-                    backupLocation: '',
+                    backupName: '',
+                    backupNode: '',
+                    backupStorage: '',
+                    datastore: '',
                     adminName: '',
                     adminContact: '',
                     admin: [],
@@ -142,25 +152,31 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         
         if (editingItem) {
             const changedData: UpdateVMDetailsPayload = {};
-            if (formData.vmName !== editingItem.vmName) changedData.vmName = formData.vmName;
-            if (formData.clusterId !== editingItem.clusterId) changedData.clusterId = formData.clusterId;
-            if (formData.ipAddress !== editingItem.ipAddress) changedData.ipAddress = formData.ipAddress;
-            if (formData.applications !== editingItem.applications) changedData.applications = formData.applications;
-            if (formData.node !== editingItem.node) changedData.node = formData.node;
-            if (formData.osAndExpiry !== editingItem.osAndExpiry) changedData.osAndExpiry = formData.osAndExpiry;
-            if (formData.hdd !== editingItem.hdd) changedData.hdd = formData.hdd;
-            if (formData.ram !== editingItem.ram) changedData.ram = formData.ram;
-            if (formData.cpu !== editingItem.cpu) changedData.cpu = formData.cpu;
-            if (formData.backupLocation !== editingItem.backupLocation) changedData.backupLocation = formData.backupLocation;
-            if (formData.adminName !== editingItem.adminName) changedData.adminName = formData.adminName;
-            if (formData.adminContact !== editingItem.adminContact) changedData.adminContact = formData.adminContact;
+            // Normalize undefined/null to empty string for comparison
+            const norm = (v: any) => v ?? '';
+            
+            if (formData.vmName !== norm(editingItem.vmName)) changedData.vmName = formData.vmName;
+            if (formData.clusterId !== norm(editingItem.clusterId)) changedData.clusterId = formData.clusterId;
+            if (formData.ipAddress !== norm(editingItem.ipAddress)) changedData.ipAddress = formData.ipAddress;
+            if (formData.applications !== norm(editingItem.applications)) changedData.applications = formData.applications;
+            if (formData.node !== norm(editingItem.node)) changedData.node = formData.node;
+            if (formData.osAndExpiry !== norm(editingItem.osAndExpiry)) changedData.osAndExpiry = formData.osAndExpiry;
+            if (formData.hdd !== norm(editingItem.hdd)) changedData.hdd = formData.hdd;
+            if (formData.ram !== norm(editingItem.ram)) changedData.ram = formData.ram;
+            if (formData.cpu !== norm(editingItem.cpu)) changedData.cpu = formData.cpu;
+            if (formData.backupName !== norm(editingItem.backupName)) changedData.backupName = formData.backupName;
+            if (formData.backupNode !== norm(editingItem.backupNode)) changedData.backupNode = formData.backupNode;
+            if (formData.backupStorage !== norm(editingItem.backupStorage)) changedData.backupStorage = formData.backupStorage;
+            if (formData.datastore !== norm(editingItem.datastore)) changedData.datastore = formData.datastore;
+            if (formData.adminName !== norm(editingItem.adminName)) changedData.adminName = formData.adminName;
+            if (formData.adminContact !== norm(editingItem.adminContact)) changedData.adminContact = formData.adminContact;
             
             const oldAdmin = Array.isArray(editingItem.admin) ? editingItem.admin : (editingItem.admin ? [editingItem.admin] : []);
             const newAdmin = Array.isArray(formData.admin) ? formData.admin : (formData.admin ? [formData.admin] : []);
             const adminChanged = oldAdmin.length !== newAdmin.length || oldAdmin.some((val, idx) => val !== newAdmin[idx]);
             if (adminChanged) changedData.admin = formData.admin;
             
-            if (formData.powerStatus !== editingItem.powerStatus) changedData.powerStatus = formData.powerStatus;
+            if (formData.powerStatus !== norm(editingItem.powerStatus)) changedData.powerStatus = formData.powerStatus;
             onSubmit(changedData);
         } else {
             onSubmit(formData);
@@ -244,11 +260,46 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         onChange={(e) => handleChange('osAndExpiry', e.target.value)} 
                     />
                     <TextField 
-                        label="VM Backup Location" 
+                        label="Backup Name" 
                         size="small"
                         className={styles.formGrid__field}
-                        value={formData.backupLocation} 
-                        onChange={(e) => handleChange('backupLocation', e.target.value)} 
+                        value={formData.backupName} 
+                        onChange={(e) => handleChange('backupName', e.target.value)} 
+                    />
+                    <Dropdown 
+                        label="Backup Node" 
+                        size="small"
+                        fullWidth
+                        searchable
+                        value={formData.backupNode} 
+                        onChange={(val) => handleChange('backupNode', val)} 
+                        options={nodes.map(n => {
+                            const nodeName = n.node || n.hostName || n.nodeId || '';
+                            const ip = n.ipAddress || n.ip || n.managementIp || '';
+                            const label = ip ? `${nodeName} - ${ip}` : nodeName;
+                            return { label, value: n.node || n.hostName || label };
+                        })}
+                    />
+                    <Dropdown 
+                        label="Backup Storage" 
+                        size="small"
+                        fullWidth
+                        searchable
+                        value={formData.backupStorage} 
+                        onChange={(val) => handleChange('backupStorage', val)} 
+                        options={nodes.filter(n => n.type === 'storage' || n.isStorage).map(n => {
+                            const nodeName = n.node || n.hostName || n.nodeId || '';
+                            return { label: nodeName, value: nodeName };
+                        })}
+                    />
+                    <Dropdown 
+                        label="Datastore" 
+                        size="small"
+                        fullWidth
+                        searchable
+                        value={formData.datastore} 
+                        onChange={(val) => handleChange('datastore', val)} 
+                        options={datastores.map(d => ({ label: `${d.name} (${d.type} - ${d.capacity})`, value: d.name }))}
                     />
                     <Dropdown 
                         label="Power Status" 
