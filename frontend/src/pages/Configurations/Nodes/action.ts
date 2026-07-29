@@ -21,16 +21,16 @@ export const fetchNodes = async (params: { skip?: number, limit?: number, sortBy
 };
 
 export const createNode = async (payload: CreateNodePayload): Promise<NodeData> => {
-    const res = await request.post(`${ENDPOINT}/`, payload);
+    const res = await request.post(ENDPOINT, payload);
     return res.data;
 };
 
 export const updateNode = async (payload: UpdateNodePayload): Promise<NodeData> => {
     const { id, ...data } = payload;
-    const res = await request.put(`${ENDPOINT}/${id}`, data);
+    const res = await request.put(`/api/nodes/${id}`, data);
     return res.data;
 };
 
 export const deleteNode = async (id: string): Promise<void> => {
-    await request.delete(`${ENDPOINT}/${id}`);
+    await request.delete(`/api/nodes/${id}`);
 };
