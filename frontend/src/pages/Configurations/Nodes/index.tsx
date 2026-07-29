@@ -186,6 +186,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
   const [osFilter, setOsFilter] = useTableState("Nodes_osFilter", "");
   const [custodianFilter, setCustodianFilter] = useTableState("Nodes_custodianFilter", "");
   const [gpuFilter, setGpuFilter] = useTableState("Nodes_gpuFilter", "");
+  const [deviceTypeFilter, setDeviceTypeFilter] = useTableState("Nodes_deviceTypeFilter", "");
   const [osList, setOsList] = useState<string[]>([]);
   const [custodiansList, setCustodiansList] = useState<string[]>([]);
   const [gpusList, setGpusList] = useState<string[]>([]);
@@ -239,7 +240,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
         os: osFilter || undefined,
         custodian: custodianFilter || undefined,
         gpu: gpuFilter || undefined,
-        nodeTypeFilter: nodeTypeFilter || undefined,
+        nodeTypeFilter: nodeTypeFilter || deviceTypeFilter || undefined,
         pagination: true,
       });
       setData(result.data);
@@ -267,6 +268,9 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
     rackFilter,
     osFilter,
     custodianFilter,
+    gpuFilter,
+    deviceTypeFilter,
+    nodeTypeFilter,
     showToast,
     isViewOpen,
     selectedViewItem,
@@ -307,7 +311,15 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
       handleCloseModal();
       loadData();
     } catch (e: any) {
-      showToast(e?.response?.data?.detail || "Failed to save node", "error");
+      const detail = e?.response?.data?.detail;
+      let errorMsg = "Failed to save node";
+      if (typeof detail === "string") {
+        errorMsg = detail;
+      } else if (Array.isArray(detail) && detail[0]?.msg) {
+        const fieldName = detail[0]?.loc ? detail[0].loc[detail[0].loc.length - 1] : "";
+        errorMsg = fieldName ? `${fieldName}: ${detail[0].msg}` : detail[0].msg;
+      }
+      showToast(errorMsg, "error");
     }
   };
 
@@ -577,7 +589,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
     osFilter,
     custodianFilter,
     gpuFilter,
-    nodeTypeFilter,
+    deviceTypeFilter,
   ].filter(Boolean).length;
 
   const handleClearAllFilters = () => {
@@ -588,6 +600,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
     setOsFilter("");
     setCustodianFilter("");
     setGpuFilter("");
+    setDeviceTypeFilter("");
     setPage(0);
   };
 
@@ -648,6 +661,24 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
         activeCount={activeFilterCount}
       >
         <FilterGroup title="Infrastructure">
+          <Dropdown
+            label="Device Type"
+            size="small"
+            clearable
+            value={deviceTypeFilter}
+            onChange={(val) => {
+              setDeviceTypeFilter(val);
+              setPage(0);
+            }}
+            options={[
+              { label: "All Types", value: "" },
+              { label: "Node", value: "node" },
+              { label: "Physical Server", value: "physical" },
+              { label: "Appliance", value: "appliance" },
+              { label: "Storage", value: "storage" },
+            ]}
+          />
+
           <Dropdown
             label="Cluster"
             size="small"

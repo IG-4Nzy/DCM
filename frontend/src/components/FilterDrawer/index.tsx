@@ -33,13 +33,15 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
       anchor="right"
       open={open}
       onClose={onClose}
-      PaperProps={{
-        sx: {
-          width: { xs: '100%', sm: 380 },
-          boxSizing: 'border-box',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.1)',
+      slotProps={{
+        paper: {
+          sx: {
+            width: { xs: '100%', sm: 380 },
+            boxSizing: 'border-box',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.1)',
+          }
         }
       }}
     >

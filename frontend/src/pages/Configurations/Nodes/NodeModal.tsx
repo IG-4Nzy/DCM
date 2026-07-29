@@ -110,15 +110,14 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                     ? editingItem.admin
                     : (editingItem.admin ? [editingItem.admin] : []);
                 setAdmin(adminArr);
-                // Check if any admin entry is custom (not in user list IDs or usernames)
-                const customAdmins = adminArr.filter(a => a !== 'Other' && !users.some(u => (u._id || u.id || u.username) === a));
-                if (customAdmins.length > 0) {
-                    setOtherAdminName(customAdmins.join(', '));
-                    if (!adminArr.includes('Other')) {
-                        setAdmin([...adminArr.filter(a => users.some(u => (u._id || u.id || u.username) === a)), 'Other']);
+                if (users.length > 0) {
+                    const customAdmins = adminArr.filter(a => a !== 'Other' && !users.some(u => (u._id === a || u.id === a || u.username === a)));
+                    if (customAdmins.length > 0) {
+                        setOtherAdminName(customAdmins.join(', '));
+                        setAdmin([...adminArr.filter(a => users.some(u => (u._id === a || u.id === a || u.username === a))), 'Other']);
+                    } else {
+                        setOtherAdminName('');
                     }
-                } else if (adminArr.includes('Other')) {
-                    setOtherAdminName('');
                 } else {
                     setOtherAdminName('');
                 }
@@ -157,7 +156,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setGpu('');
             }
         }
-    }, [open, editingItem, activeRackFilter]);
+    }, [open, editingItem, activeRackFilter, users]);
 
     useEffect(() => {
         if (users.length > 0 && Array.isArray(admin) && admin.length > 0) {
@@ -510,6 +509,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                             <Dropdown
                                 label="Server Rack"
                                 fullWidth
+                                required
                                 clearable
                                 value={rack}
                                 onChange={(val) => setRack(val)}
@@ -520,6 +520,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                             <Dropdown
                                 label="Rack Position"
                                 fullWidth
+                                required
                                 clearable
                                 multiple
                                 searchable

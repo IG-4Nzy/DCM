@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Resp
 from auth_utils import require_privilege, get_current_user, require_any_privilege
 from fastapi.responses import JSONResponse
 from typing import Optional, List
+import re
 from database import db
 from models import NodeModel, CreateNodeModel, UpdateNodeModel, PaginatedNodesModel
 from bson import ObjectId
@@ -24,8 +25,9 @@ async def compute_available_resources(node_doc: dict):
         return node_doc
     vms_collection = db.get_collection("vm_details")
     node_name = node_doc.get("node", "")
+    escaped_node_name = re.escape(node_name) if node_name else ""
     # Find VMs matching the exact node name case-insensitively
-    cursor = vms_collection.find({"node": {"$regex": f"^{node_name}$", "$options": "i"}})
+    cursor = vms_collection.find({"node": {"$regex": f"^{escaped_node_name}$", "$options": "i"}})
     vms = await cursor.to_list(length=None)
     
     used_ram = 0
@@ -125,14 +127,14 @@ async def list_items(
             ]
         })
 
-    if os:
-        and_conditions.append({"os": {"$regex": re.escape(os), "$options": "i"}})
+    if os and os.strip():
+        and_conditions.append({"os": {"$regex": re.escape(os.strip()), "$options": "i"}})
 
-    if custodian:
-        and_conditions.append({"custodian": {"$regex": re.escape(custodian), "$options": "i"}})
+    if custodian and custodian.strip():
+        and_conditions.append({"custodian": custodian.strip()})
 
-    if gpu:
-        and_conditions.append({"gpu": {"$regex": re.escape(gpu), "$options": "i"}})
+    if gpu and gpu.strip():
+        and_conditions.append({"gpu": {"$regex": re.escape(gpu.strip()), "$options": "i"}})
     
     if clusterId:
         cluster_doc = await db.get_collection("clusters").find_one({"_id": ObjectId(clusterId) if ObjectId.is_valid(clusterId) else clusterId})
