@@ -177,8 +177,28 @@ async def list_items(
     if nodeTypeFilter:
         if nodeTypeFilter.lower() == "appliance":
             and_conditions.append({"isAppliance": True})
+            has_appliance_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "View All Network Device" in privs
+            if not has_appliance_all:
+                target_username = current_user.get("sub")
+                users_col = db.get_collection("users")
+                user_doc = await users_col.find_one({"username": target_username})
+                target_user_id = str(user_doc["_id"]) if user_doc else None
+                admins = [target_username]
+                if target_user_id:
+                    admins.append(target_user_id)
+                and_conditions.append({"admin": {"$in": admins}})
         elif nodeTypeFilter.lower() == "storage":
             and_conditions.append({"isStorage": True})
+            has_storage_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "View All Storage Device" in privs
+            if not has_storage_all:
+                target_username = current_user.get("sub")
+                users_col = db.get_collection("users")
+                user_doc = await users_col.find_one({"username": target_username})
+                target_user_id = str(user_doc["_id"]) if user_doc else None
+                admins = [target_username]
+                if target_user_id:
+                    admins.append(target_user_id)
+                and_conditions.append({"admin": {"$in": admins}})
         elif nodeTypeFilter.lower() == "physical":
             and_conditions.append({"isPhysical": True})
         elif nodeTypeFilter.lower() == "node":

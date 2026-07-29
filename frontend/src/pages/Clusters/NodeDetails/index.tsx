@@ -262,28 +262,13 @@ const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
                     />
                     {hasCreate && (
                         <Box sx={{ display: 'flex', gap: 1 }}>
-                            <MuiButton
-                                component="label"
-                                variant="outlined"
-                                color="primary"
-                                startIcon={<UploadIcon />}
-                                sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 'bold' }}
-                            >
-                                Bulk Upload
-                                <input
-                                    type="file"
-                                    hidden
-                                    accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-                                    onChange={handleBulkUpload}
-                                />
-                            </MuiButton>
                             <Button
                                 variant="contained"
                                 color="primary"
                                 startIcon={<AddIcon />}
                                 onClick={() => handleOpenModal()}
                             >
-                                Add Node Details
+                                Add Node
                             </Button>
                         </Box>
                     )}

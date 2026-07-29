@@ -313,16 +313,6 @@ const Clusters = () => {
                     >
                         Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
                     </Button>
-                    {isSuperuser && (
-                        <Button
-                            variant="outlined"
-                            color="primary"
-                            startIcon={<UploadIcon />}
-                            onClick={() => setIsBulkUploadModalOpen(true)}
-                        >
-                            Bulk Add
-                        </Button>
-                    )}
                     {hasCreate && (
                         <Button
                             variant="contained"

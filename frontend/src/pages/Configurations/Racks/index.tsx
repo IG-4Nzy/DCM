@@ -343,31 +343,14 @@ const Racks = () => {
                         placeholder="Search server racks..."
                     />
                     {hasCreate && (
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                            <MuiButton
-                                component="label"
-                                variant="outlined"
-                                color="primary"
-                                startIcon={<UploadIcon />}
-                                sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 'bold' }}
-                            >
-                                Bulk Upload
-                                <input
-                                    type="file"
-                                    hidden
-                                    accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-                                    onChange={handleBulkUpload}
-                                />
-                            </MuiButton>
-                            <Button
-                                variant="contained"
-                                color="primary"
-                                startIcon={<AddIcon />}
-                                onClick={() => handleOpenModal()}
-                            >
-                                Add Server Rack
-                            </Button>
-                        </Box>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={<AddIcon />}
+                            onClick={() => handleOpenModal()}
+                        >
+                            Add Server Rack
+                        </Button>
                     )}
                 </Box>
             </Box>
@@ -477,27 +460,41 @@ const Racks = () => {
                                                         <TableCell key={rack.id} align="center">
                                                             {matchingNodes.length > 0 ? (
                                                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center' }}>
-                                                                    {matchingNodes.map(n => (
-                                                                        <Chip
-                                                                            key={n.id}
-                                                                            label={n.node || n.nodeId}
-                                                                            size="small"
-                                                                            color="primary"
-                                                                            variant="outlined"
-                                                                            clickable
-                                                                            onClick={() => {
-                                                                                setSelectedNodeForView(n);
-                                                                                setIsNodeViewModalOpen(true);
-                                                                            }}
-                                                                            sx={{
-                                                                                fontWeight: 600,
-                                                                                borderRadius: '6px',
-                                                                                backgroundColor: 'rgba(25, 118, 210, 0.04)',
-                                                                                borderColor: 'rgba(25, 118, 210, 0.2)',
-                                                                                cursor: 'pointer'
-                                                                            }}
-                                                                        />
-                                                                    ))}
+                                                                    {matchingNodes.map(n => {
+                                                                        const nodeName = n.node || n.nodeId || '';
+                                                                        return (
+                                                                            <Tooltip key={n.id} title={nodeName} arrow>
+                                                                                <Chip
+                                                                                    label={nodeName}
+                                                                                    size="small"
+                                                                                    color="primary"
+                                                                                    variant="outlined"
+                                                                                    clickable
+                                                                                    onClick={() => {
+                                                                                        setSelectedNodeForView(n);
+                                                                                        setIsNodeViewModalOpen(true);
+                                                                                    }}
+                                                                                    sx={{
+                                                                                        fontWeight: 600,
+                                                                                        borderRadius: '6px',
+                                                                                        backgroundColor: 'rgba(25, 118, 210, 0.04)',
+                                                                                        borderColor: 'rgba(25, 118, 210, 0.2)',
+                                                                                        cursor: 'pointer',
+                                                                                        width: '130px',
+                                                                                        height: '28px',
+                                                                                        '& .MuiChip-label': {
+                                                                                            display: 'block',
+                                                                                            overflow: 'hidden',
+                                                                                            textOverflow: 'ellipsis',
+                                                                                            whiteSpace: 'nowrap',
+                                                                                            px: 1,
+                                                                                            width: '100%'
+                                                                                        }
+                                                                                    }}
+                                                                                />
+                                                                            </Tooltip>
+                                                                        );
+                                                                    })}
                                                                 </Box>
                                                             ) : null}
                                                         </TableCell>

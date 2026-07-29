@@ -26,8 +26,8 @@ const ServerDetails = () => {
     const hasNodesView = isSuperuser || hasPrivilege(PRIVILEGES.NODES_VIEW) || hasViewAll || hasViewOwn || hasCreatePerm;
     const hasVMView = isSuperuser || hasPrivilege(PRIVILEGES.VM_VIEW) || hasViewAll || hasViewOwn || hasCreatePerm;
     const hasPhysicalServerView = isSuperuser || hasPrivilege(PRIVILEGES.PHYSICAL_SERVER_VIEW) || hasViewAll || hasCreatePerm;
-    const hasNetworkDevicesView = isSuperuser || hasViewAll || hasCreatePerm;
-    const hasStorageSystemsView = isSuperuser || hasViewAll || hasCreatePerm;
+    const hasNetworkDevicesView = isSuperuser || hasPrivilege(PRIVILEGES.NETWORK_DEVICE_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_NETWORK_DEVICE) || hasViewAll || hasCreatePerm;
+    const hasStorageSystemsView = isSuperuser || hasPrivilege(PRIVILEGES.STORAGE_DEVICE_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_STORAGE_DEVICE) || hasViewAll || hasCreatePerm;
     const hasDatastoresView = isSuperuser || hasViewAll || hasCreatePerm;
 
     const tabs: TabItem[] = [];

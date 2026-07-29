@@ -3,14 +3,14 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Button, Box, Typography, Paper, CircularProgress,
-    Chip, Alert
+    Chip, Alert, Accordion, AccordionSummary, AccordionDetails
 } from '@mui/material';
 import Table, { type Column } from '../../components/Table';
 import { useToast } from '../../contexts/ToastContext';
 import request from '../../services/request';
 import dayjs from 'dayjs';
 import Papa from 'papaparse';
-import { MdUpload as UploadIcon } from 'react-icons/md';
+import { MdUpload as UploadIcon, MdExpandMore as ExpandMoreIcon } from 'react-icons/md';
 import type { UserData } from '../Users/model';
 
 interface VerificationModalProps {
@@ -39,6 +39,17 @@ interface CombinedRecord {
 
     isValid: boolean;
     errorReasons: string[];
+}
+
+interface UserGroup {
+    username: string;
+    fullName: string;
+    passNumber: string | null;
+    totalDays: number;
+    validDays: number;
+    discrepancyDays: number;
+    totalHours: number;
+    records: CombinedRecord[];
 }
 
 const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, period, onClose, users, isVerified, onVerify, canVerify }) => {
@@ -296,6 +307,44 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, period, o
 
     }, [appRecords, csvRecords, users, isOpen, isLoadedVerified]);
 
+    const userGroups = useMemo<UserGroup[]>(() => {
+        const groupsMap = new Map<string, UserGroup>();
+
+        combinedData.forEach(rec => {
+            if (!groupsMap.has(rec.username)) {
+                groupsMap.set(rec.username, {
+                    username: rec.username,
+                    fullName: rec.fullName,
+                    passNumber: rec.passNumber,
+                    totalDays: 0,
+                    validDays: 0,
+                    discrepancyDays: 0,
+                    totalHours: 0,
+                    records: []
+                });
+            }
+            const group = groupsMap.get(rec.username)!;
+            group.totalDays += 1;
+            if (rec.isValid) {
+                group.validDays += 1;
+            } else {
+                group.discrepancyDays += 1;
+            }
+            group.totalHours += rec.appWorkedHours || 0;
+            group.records.push(rec);
+        });
+
+        // Sort user records by date desc
+        const result = Array.from(groupsMap.values());
+        result.forEach(g => {
+            g.records.sort((a, b) => b.date.localeCompare(a.date));
+        });
+
+        // Sort users by full name asc
+        result.sort((a, b) => a.fullName.localeCompare(b.fullName));
+        return result;
+    }, [combinedData]);
+
     const formatTimeOnly = (isoString: string | null) => {
         if (!isoString) return '-';
         return dayjs(isoString).format('HH:mm');
@@ -307,21 +356,6 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, period, o
             label: 'Date',
             sortable: true,
             render: (row) => dayjs(row.date).format('MMM DD, YYYY')
-        },
-        {
-            id: 'fullName',
-            label: 'Employee Name',
-            sortable: true,
-            render: (row) => (
-                <Box>
-                    <Typography variant="body2">{row.fullName}</Typography>
-                    {row.passNumber && (
-                        <Typography variant="caption" color="textSecondary">
-                            Pass: {row.passNumber.trim()}
-                        </Typography>
-                    )}
-                </Box>
-            )
         },
         {
             id: 'login',
@@ -359,20 +393,24 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, period, o
             id: 'status',
             label: 'Validation Status',
             sortable: true,
-            render: (row) => (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    <Chip
-                        label={row.isValid ? 'Valid' : 'Discrepancy'}
-                        size="small"
-                        color={row.isValid ? 'success' : 'error'}
-                    />
-                    {!row.isValid && row.errorReasons.map((err, i) => (
-                        <Typography key={i} variant="caption" color="error" sx={{ lineHeight: 1.1 }}>
-                            • {err}
-                        </Typography>
-                    ))}
-                </Box>
-            )
+            render: (row) => {
+                const isWarning = !row.isValid && row.appWorkedHours >= 8;
+                const chipColor = row.isValid ? 'success' : isWarning ? 'warning' : 'error';
+                return (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Chip
+                            label={row.isValid ? 'Valid' : 'Discrepancy'}
+                            size="small"
+                            color={chipColor}
+                        />
+                        {!row.isValid && row.errorReasons.map((err, i) => (
+                            <Typography key={i} variant="caption" color={isWarning ? 'warning.dark' : 'error'} sx={{ lineHeight: 1.1 }}>
+                                • {err}
+                            </Typography>
+                        ))}
+                    </Box>
+                );
+            }
         }
     ];
 
@@ -440,13 +478,61 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, period, o
                                 Viewing historically verified attendance log for this cycle.
                             </Alert>
                         )}
-                        <Paper sx={{ width: '100%', mb: 2, p: 0, boxShadow: 'none' }}>
-                            <Table
-                                columns={columns}
-                                data={combinedData}
-                                pagination={false}
-                            />
-                        </Paper>
+
+                        {userGroups.length === 0 ? (
+                            <Typography variant="body2" color="textSecondary" align="center" sx={{ py: 4 }}>
+                                No attendance records found for this period.
+                            </Typography>
+                        ) : (
+                            userGroups.map((group) => (
+                                <Accordion key={group.username} variant="outlined" sx={{ mb: 1.5, borderRadius: '8px !important', '&:before': { display: 'none' } }}>
+                                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', pr: 2 }}>
+                                            <Box>
+                                                <Typography variant="subtitle1" fontWeight="600" color="text.primary">
+                                                    {group.fullName}
+                                                </Typography>
+                                                {group.passNumber && (
+                                                    <Typography variant="caption" color="textSecondary">
+                                                        Pass Number: {group.passNumber.trim()}
+                                                    </Typography>
+                                                )}
+                                            </Box>
+                                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                                <Chip
+                                                    label={`${group.totalDays} Days (${group.totalHours.toFixed(1)} hrs)`}
+                                                    size="small"
+                                                    variant="outlined"
+                                                />
+                                                {group.validDays > 0 && (
+                                                    <Chip
+                                                        label={`${group.validDays} Valid`}
+                                                        size="small"
+                                                        color="success"
+                                                    />
+                                                )}
+                                                {group.discrepancyDays > 0 && (
+                                                    <Chip
+                                                        label={`${group.discrepancyDays} Discrepancies`}
+                                                        size="small"
+                                                        color="error"
+                                                    />
+                                                )}
+                                            </Box>
+                                        </Box>
+                                    </AccordionSummary>
+                                    <AccordionDetails sx={{ p: 0 }}>
+                                        <Paper sx={{ width: '100%', p: 0, boxShadow: 'none' }}>
+                                            <Table
+                                                columns={columns}
+                                                data={group.records}
+                                                pagination={false}
+                                            />
+                                        </Paper>
+                                    </AccordionDetails>
+                                </Accordion>
+                            ))
+                        )}
                     </Box>
                 )}
             </DialogContent>

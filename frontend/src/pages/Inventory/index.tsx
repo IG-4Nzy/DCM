@@ -296,25 +296,9 @@ const Inventory: React.FC = () => {
         </Box>
 
         {hasCreate && (
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              component="label"
-              variant="outlined"
-              color="primary"
-              startIcon={<UploadIcon />}
-            >
-              Bulk Upload
-              <input
-                type="file"
-                hidden
-                accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-                onChange={handleBulkUpload}
-              />
-            </Button>
             <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => { setSelectedItem(null); setIsFormModalOpen(true); }}>
               Add Item
             </Button>
-          </Box>
         )}
       </Box>
 

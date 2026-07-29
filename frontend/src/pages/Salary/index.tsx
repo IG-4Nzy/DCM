@@ -226,13 +226,17 @@ const Salary = () => {
     updateGroupsInState(groups.map(g => g.id === id ? { ...g, [field]: value } : g));
   };
 
-  const deleteGroup = (id: string, e?: React.MouseEvent) => {
+  const deleteGroup = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    const newGroups = groups.filter(g => g.id !== id);
-    updateGroupsInState(newGroups);
-    saveGroupsToDB(currentMonth, newGroups);
-    setEditingGroupIds(editingGroupIds.filter(gId => gId !== id));
-    setExpandedGroupIds(expandedGroupIds.filter(gId => gId !== id));
+    const groupToDelete = groups.find(g => g.id === id);
+    const groupName = groupToDelete?.name || 'this group';
+    if (await confirm(`Are you sure you want to delete ${groupName}?`, 'Delete Group')) {
+      const newGroups = groups.filter(g => g.id !== id);
+      updateGroupsInState(newGroups);
+      saveGroupsToDB(currentMonth, newGroups);
+      setEditingGroupIds(editingGroupIds.filter(gId => gId !== id));
+      setExpandedGroupIds(expandedGroupIds.filter(gId => gId !== id));
+    }
   };
 
   const toggleEditGroup = async (id: string, e?: React.MouseEvent) => {
@@ -323,16 +327,21 @@ const Salary = () => {
     }));
   };
 
-  const deleteMember = (groupId: string, memberId: string) => {
-    updateGroupsInState(groups.map(g => {
-      if (g.id === groupId) {
-        return {
-          ...g,
-          members: g.members.filter(m => m.id !== memberId)
-        };
-      }
-      return g;
-    }));
+  const deleteMember = async (groupId: string, memberId: string) => {
+    const group = groups.find(g => g.id === groupId);
+    const member = group?.members.find(m => m.id === memberId);
+    const memberName = member?.name || 'this member';
+    if (await confirm(`Are you sure you want to delete ${memberName}?`, 'Delete Member')) {
+      updateGroupsInState(groups.map(g => {
+        if (g.id === groupId) {
+          return {
+            ...g,
+            members: g.members.filter(m => m.id !== memberId)
+          };
+        }
+        return g;
+      }));
+    }
   };
 
   const calculateGroupTotal = (group: Group) => {
@@ -477,11 +486,15 @@ const Salary = () => {
     setTemplates(templates.map(t => t.id === id ? { ...t, [field]: value } : t));
   };
 
-  const deleteTemplate = (id: string) => {
-    const newTemplates = templates.filter(t => t.id !== id);
-    setTemplates(newTemplates);
-    saveTemplatesToDB(newTemplates);
-    setEditingTemplateIds(editingTemplateIds.filter(tId => tId !== id));
+  const deleteTemplate = async (id: string) => {
+    const templateToDelete = templates.find(t => t.id === id);
+    const title = templateToDelete?.title || 'this template';
+    if (await confirm(`Are you sure you want to delete ${title}?`, 'Delete Template')) {
+      const newTemplates = templates.filter(t => t.id !== id);
+      setTemplates(newTemplates);
+      saveTemplatesToDB(newTemplates);
+      setEditingTemplateIds(editingTemplateIds.filter(tId => tId !== id));
+    }
   };
 
   const toggleEditTemplate = async (id: string) => {
@@ -544,16 +557,21 @@ const Salary = () => {
     }));
   };
 
-  const deleteActivity = (templateId: string, activityId: string) => {
-    setTemplates(templates.map(t => {
-      if (t.id === templateId) {
-        return {
-          ...t,
-          activities: t.activities.filter(a => a.id !== activityId)
-        };
-      }
-      return t;
-    }));
+  const deleteActivity = async (templateId: string, activityId: string) => {
+    const template = templates.find(t => t.id === templateId);
+    const activity = template?.activities.find(a => a.id === activityId);
+    const actName = activity?.name || 'this activity';
+    if (await confirm(`Are you sure you want to delete ${actName}?`, 'Delete Activity')) {
+      setTemplates(templates.map(t => {
+        if (t.id === templateId) {
+          return {
+            ...t,
+            activities: t.activities.filter(a => a.id !== activityId)
+          };
+        }
+        return t;
+      }));
+    }
   };
 
   // Format cycle period string

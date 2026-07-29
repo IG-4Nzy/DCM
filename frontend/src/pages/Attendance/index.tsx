@@ -1204,6 +1204,33 @@ const Attendance: React.FC = () => {
                         </Box>
                     ) : (
                         <Box>
+                            {/* Day of Week Header Row */}
+                            <Box
+                                sx={{
+                                    display: { xs: 'none', md: 'grid' },
+                                    gridTemplateColumns: 'repeat(7, 1fr)',
+                                    gap: 2,
+                                    mb: 1.5,
+                                    textAlign: 'center'
+                                }}
+                            >
+                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((dayName, index) => (
+                                    <Paper
+                                        key={dayName}
+                                        elevation={0}
+                                        sx={{
+                                            py: 1,
+                                            fontWeight: 700,
+                                            fontSize: '0.85rem',
+                                            color: index === 0 || index === 6 ? '#d32f2f' : 'text.secondary',
+                                            backgroundColor: 'rgba(0,0,0,0.03)',
+                                            borderRadius: 1.5
+                                        }}
+                                    >
+                                        {dayName}
+                                    </Paper>
+                                ))}
+                            </Box>
 
                             <Box
                                 sx={{
