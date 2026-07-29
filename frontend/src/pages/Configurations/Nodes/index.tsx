@@ -42,11 +42,13 @@ import request from "../../../services/request";
 type Order = "asc" | "desc";
 
 const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?: string; nodeTypeFilter?: string }) => {
+  const { isSuperuser, username } = useSelector((state: RootState) => state.auth);
   const [data, setData] = useState<NodeData[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [clusters, setClusters] = useState<any[]>([]);
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const [nodeAdminIds, setNodeAdminIds] = useState<Set<string>>(new Set());
   const [serverModelsList, setServerModelsList] = useState<string[]>([]);
   const [racksList, setRacksList] = useState<string[]>([]);
@@ -78,6 +80,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
       .then((res) => {
         const map: Record<string, string> = {};
         const list = res.data.data || [];
+        setAllUsers(list);
         list.forEach((u: any) => {
           const fullName = [u.firstName, u.lastName]
             .filter(Boolean)
@@ -164,7 +167,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
   const { showToast } = useToast();
   const { confirm } = useConfirm();
 
-  const { isSuperuser } = useSelector((state: RootState) => state.auth);
+
   const hasCreate =
     isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
   const hasUpdate =
@@ -187,6 +190,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
   const [custodianFilter, setCustodianFilter] = useTableState("Nodes_custodianFilter", "");
   const [gpuFilter, setGpuFilter] = useTableState("Nodes_gpuFilter", "");
   const [deviceTypeFilter, setDeviceTypeFilter] = useTableState("Nodes_deviceTypeFilter", "");
+  const [networkTypeFilter, setNetworkTypeFilter] = useTableState("Nodes_networkTypeFilter", "");
   const [osList, setOsList] = useState<string[]>([]);
   const [custodiansList, setCustodiansList] = useState<string[]>([]);
   const [gpusList, setGpusList] = useState<string[]>([]);
@@ -241,6 +245,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
         custodian: custodianFilter || undefined,
         gpu: gpuFilter || undefined,
         nodeTypeFilter: nodeTypeFilter || deviceTypeFilter || undefined,
+        networkType: networkTypeFilter || undefined,
         pagination: true,
       });
       setData(result.data);
@@ -270,6 +275,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
     custodianFilter,
     gpuFilter,
     deviceTypeFilter,
+    networkTypeFilter,
     nodeTypeFilter,
     showToast,
     isViewOpen,
@@ -581,6 +587,33 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
     "& .MuiOutlinedInput-root": { borderRadius: "8px" },
   };
 
+  const hasViewAll = isSuperuser || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
+  const currentUser = allUsers.find(u => u.username === username);
+  const userDept = currentUser?.department;
+
+  const filteredAdmins = allUsers
+    .filter(u => {
+      if (hasViewAll) return true;
+      return u.department === userDept;
+    })
+    .map(u => ({
+      label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+      value: u._id || u.id || u.username
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  const adminOptions = hasViewAll
+    ? [
+        { label: "All Admins", value: "" },
+        { label: "Unassigned", value: "unassigned" },
+        { label: "Other", value: "other" },
+        ...filteredAdmins
+      ]
+    : [
+        { label: "Unassigned", value: "unassigned" },
+        ...filteredAdmins
+      ];
+
   const activeFilterCount = [
     clusterFilter,
     serverModelFilter,
@@ -590,6 +623,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
     custodianFilter,
     gpuFilter,
     deviceTypeFilter,
+    networkTypeFilter,
   ].filter(Boolean).length;
 
   const handleClearAllFilters = () => {
@@ -601,11 +635,12 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
     setCustodianFilter("");
     setGpuFilter("");
     setDeviceTypeFilter("");
+    setNetworkTypeFilter("");
     setPage(0);
   };
 
   return (
-    <Box sx={{ mt: 2 }}>
+    <Box sx={{ mt: 2, flexGrow: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <Box
         sx={{
           display: "flex",
@@ -676,6 +711,22 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
               { label: "Physical Server", value: "physical" },
               { label: "Appliance", value: "appliance" },
               { label: "Storage", value: "storage" },
+            ]}
+          />
+
+          <Dropdown
+            label="Network Type"
+            size="small"
+            clearable
+            value={networkTypeFilter}
+            onChange={(val) => {
+              setNetworkTypeFilter(val);
+              setPage(0);
+            }}
+            options={[
+              { label: "All Networks", value: "" },
+              { label: "Intranet", value: "intranet" },
+              { label: "Internet", value: "internet" },
             ]}
           />
 
@@ -773,17 +824,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
               setAdminFilter(val);
               setPage(0);
             }}
-            options={[
-              { label: "All Admins", value: "" },
-              { label: "Unassigned", value: "unassigned" },
-              { label: "Other", value: "other" },
-              ...Array.from(nodeAdminIds)
-                .sort((a, b) => (usersMap[a] || a).localeCompare(usersMap[b] || b))
-                .map((adminId) => ({
-                  label: usersMap[adminId] || adminId,
-                  value: adminId
-                }))
-            ]}
+            options={adminOptions}
           />
 
           <Dropdown
@@ -811,6 +852,10 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
           p: 0,
           boxShadow: "none",
           background: "transparent",
+          flexGrow: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden"
         }}
       >
         <Table

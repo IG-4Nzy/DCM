@@ -1,4 +1,10 @@
-// @ts-nocheck
+export interface VMItemDetail {
+    name: string;
+    remarks?: string;
+    createdAt?: string;
+    createdBy?: string;
+}
+
 export interface VMDetailsData {
     id: string;
     vmId?: string;
@@ -20,6 +26,10 @@ export interface VMDetailsData {
     adminContact?: string;
     admin?: string | string[];
     powerStatus?: string;
+    isNetworkConnected?: boolean;
+    clones?: VMItemDetail[];
+    snapshots?: VMItemDetail[];
+    templates?: VMItemDetail[];
     createdAt?: string;
     updatedBy?: string;
     updatedAt?: string;
@@ -46,6 +56,10 @@ export interface CreateVMDetailsPayload {
     adminContact?: string;
     admin?: string | string[];
     powerStatus?: string;
+    isNetworkConnected?: boolean;
+    clones?: VMItemDetail[];
+    snapshots?: VMItemDetail[];
+    templates?: VMItemDetail[];
 }
 
 export interface UpdateVMDetailsPayload extends Partial<CreateVMDetailsPayload> {}

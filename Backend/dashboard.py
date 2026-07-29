@@ -421,14 +421,15 @@ async def get_dashboard_summary(
     node_query = {
         "$and": [
             admin_query,
-            {"isAppliance": {"$nin": [True, "true", "True"]}}
+            {"isAppliance": {"$ne": True}},
+            {"isStorage": {"$ne": True}},
+            {"isPhysical": {"$ne": True}}
         ]
     }
     admin_node_count = await nodes_col.count_documents(node_query)
     admin_config_nodes_col = db.get_collection("nodes")
     admin_config_node_count = await admin_config_nodes_col.count_documents(node_query)
-    admin_physical_count = await physical_servers_col.count_documents(admin_query)
-    total_admin_servers = admin_node_count + admin_config_node_count + admin_physical_count
+    total_admin_servers = admin_node_count + admin_config_node_count
 
     return {
         "roasterShifts": enriched_roasters,

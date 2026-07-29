@@ -45,7 +45,7 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
     const { showToast } = useToast();
     const { confirm } = useConfirm();
 
-    const { isSuperuser } = useSelector((state: RootState) => state.auth);
+    const { isSuperuser, username } = useSelector((state: RootState) => state.auth);
     const { users } = useSelector((state: RootState) => state.users || { users: [] });
     const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
     const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
@@ -56,6 +56,9 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
     const [adminFilter, setAdminFilter] = useTableState("VMDetails_adminFilter", dashboardAdminFilter || "");
     const [nodeFilter, setNodeFilter] = useTableState("VMDetails_nodeFilter", "");
     const [powerStatusFilter, setPowerStatusFilter] = useTableState("VMDetails_powerStatusFilter", "");
+    const [networkTypeFilter, setNetworkTypeFilter] = useTableState("VMDetails_networkTypeFilter", "");
+    const [clusterTypeFilter, setClusterTypeFilter] = useTableState("VMDetails_clusterTypeFilter", "");
+    const [clusterTypesList, setClusterTypesList] = useState<string[]>([]);
     const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
     const [nodesList, setNodesList] = useState<any[]>([]);
     const [monitoredIps, setMonitoredIps] = useState<Set<string>>(new Set());
@@ -63,12 +66,14 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
     const [vcenters, setVcenters] = useState<any[]>([]);
     const [isImporting, setIsImporting] = useState<boolean>(false);
     const [usersMap, setUsersMap] = useState<Record<string, string>>({});
+    const [allUsers, setAllUsers] = useState<any[]>([]);
 
     useEffect(() => {
         request.get('/api/users/?pagination=false')
             .then((res) => {
                 const map: Record<string, string> = {};
                 const list = res.data?.data || [];
+                setAllUsers(list);
                 list.forEach((u: any) => {
                     const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
                     const displayName = fullName || u.username;
@@ -139,6 +144,13 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
         fetchAllNodes()
             .then(nodes => setNodesList(nodes || []))
             .catch(err => console.error("Failed to load nodes", err));
+
+        request.get('/api/cluster-types/', { params: { pagination: false } })
+            .then((res) => {
+                const types = (res.data?.data || []).map((t: any) => t.clusterType).filter(Boolean).sort();
+                setClusterTypesList(types);
+            })
+            .catch((err) => console.error("Failed to load cluster types:", err));
     }, [clusterId]);
 
     const getClusterName = (cid: string) => {
@@ -177,6 +189,12 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
             if (powerStatusFilter) {
                 params.powerStatus = powerStatusFilter;
             }
+            if (networkTypeFilter) {
+                params.networkType = networkTypeFilter;
+            }
+            if (clusterTypeFilter) {
+                params.clusterType = clusterTypeFilter;
+            }
             const result = await fetchVMDetails(params);
             setData(result.data);
             setTotalCount(result.total);
@@ -185,7 +203,7 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
         } finally {
             setLoading(false);
         }
-    }, [clusterId, selectedClusterFilter, adminFilter, nodeFilter, powerStatusFilter, page, rowsPerPage, searchQuery, showToast]);
+    }, [clusterId, selectedClusterFilter, adminFilter, nodeFilter, powerStatusFilter, networkTypeFilter, clusterTypeFilter, page, rowsPerPage, searchQuery, showToast]);
 
     useEffect(() => {
         loadData();
@@ -289,11 +307,40 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
         }
     };
 
+    const hasViewAll = isSuperuser || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
+    const currentUser = allUsers.find(u => u.username === username);
+    const userDept = currentUser?.department;
+
+    const filteredAdmins = allUsers
+        .filter(u => {
+            if (hasViewAll) return true;
+            return u.department === userDept;
+        })
+        .map(u => ({
+            label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+            value: u._id || u.id || u.username
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+
+    const adminOptions = hasViewAll
+        ? [
+            { label: 'All Admins', value: '' },
+            { label: 'Unassigned', value: 'unassigned' },
+            { label: 'Other', value: 'other' },
+            ...filteredAdmins
+        ]
+        : [
+            { label: 'Unassigned', value: 'unassigned' },
+            ...filteredAdmins
+        ];
+
     const activeFilterCount = [
         (!clusterId && selectedClusterFilter !== 'All') ? selectedClusterFilter : '',
         adminFilter,
         nodeFilter,
-        powerStatusFilter
+        powerStatusFilter,
+        networkTypeFilter,
+        clusterTypeFilter
     ].filter(Boolean).length;
 
     const handleClearAllFilters = () => {
@@ -301,6 +348,8 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
         setAdminFilter('');
         setNodeFilter('');
         setPowerStatusFilter('');
+        setNetworkTypeFilter('');
+        setClusterTypeFilter('');
         setPage(0);
     };
 
@@ -394,6 +443,36 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                             })
                         ]}
                     />
+                    <Dropdown
+                        label="Cluster Type"
+                        size="small"
+                        searchable
+                        clearable
+                        value={clusterTypeFilter}
+                        onChange={(val) => {
+                            setClusterTypeFilter(val);
+                            setPage(0);
+                        }}
+                        options={[
+                            { label: 'All Cluster Types', value: '' },
+                            ...clusterTypesList.map((ct) => ({ label: ct, value: ct }))
+                        ]}
+                    />
+                    <Dropdown
+                        label="Network Type"
+                        size="small"
+                        clearable
+                        value={networkTypeFilter}
+                        onChange={(val) => {
+                            setNetworkTypeFilter(val);
+                            setPage(0);
+                        }}
+                        options={[
+                            { label: 'All Networks', value: '' },
+                            { label: 'Intranet', value: 'intranet' },
+                            { label: 'Internet', value: 'internet' }
+                        ]}
+                    />
                 </FilterGroup>
 
                 <FilterGroup title="Management & Status">
@@ -408,15 +487,7 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                                 setAdminFilter(val);
                                 setPage(0);
                             }}
-                            options={[
-                                { label: 'All Admins', value: '' },
-                                { label: 'Unassigned', value: 'unassigned' },
-                                { label: 'Other', value: 'other' },
-                                ...(users ? users.map((u: any) => ({
-                                    label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
-                                    value: u._id || u.id || u.username
-                                })) : [])
-                            ]}
+                            options={adminOptions}
                         />
                     )}
 
@@ -440,8 +511,8 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
             </FilterDrawer>
 
             <Paper className={styles.tableWrapper}>
-                <TableContainer>
-                    <Table size="medium">
+                <TableContainer sx={{ flexGrow: 1, overflow: 'auto' }}>
+                    <Table size="medium" stickyHeader>
                         <TableHead>
                             <TableRow className={styles.tableWrapper__headerRow}>
                                 <TableCell className={styles.tableWrapper__headerCell}>VM ID</TableCell>

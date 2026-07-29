@@ -8,6 +8,10 @@ import Button from '../../../components/Button';
 import { fetchAllNodes } from './action';
 import { fetchClusters } from '../action';
 import request from '../../../services/request';
+import { useSelector } from 'react-redux';
+import { type RootState } from '../../../store';
+import { hasPrivilege } from '../../../helpers/authUtils';
+import { PRIVILEGES } from '../../../helpers/privileges';
 import styles from './modal.module.scss';
 
 interface VMDetailsModalProps {
@@ -42,7 +46,30 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
     const [users, setUsers] = useState<any[]>([]);
     const [datastores, setDatastores] = useState<any[]>([]);
     const [otherAdminName, setOtherAdminName] = useState<string>('');
+    const [resolvedAdmins, setResolvedAdmins] = useState<boolean>(false);
 
+    const { isSuperuser, username } = useSelector((state: RootState) => state.auth);
+
+    const hasViewAll = isSuperuser || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
+    const currentUser = users.find(u => u.username === username);
+    const userDept = currentUser?.department;
+
+    const filteredUserOptions = users
+        .filter(u => {
+            if (hasViewAll) return true;
+            return u.department === userDept;
+        })
+        .map(u => ({
+            label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+            value: u._id || u.id
+        }));
+
+    const adminOptions = hasViewAll
+        ? [
+            ...filteredUserOptions,
+            { label: 'Other', value: 'Other' }
+        ]
+        : filteredUserOptions;
 
     useEffect(() => {
         if (open) {
@@ -84,18 +111,13 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     adminName: editingItem.adminName || '',
                     adminContact: editingItem.adminContact || '',
                     admin: Array.isArray(editingItem.admin) ? editingItem.admin : (editingItem.admin ? [editingItem.admin] : []),
-                    powerStatus: editingItem.powerStatus || 'on'
+                    powerStatus: editingItem.powerStatus || 'on',
+                    isNetworkConnected: editingItem.isNetworkConnected !== undefined ? editingItem.isNetworkConnected : true,
+                    clones: editingItem.clones || [],
+                    snapshots: editingItem.snapshots || [],
+                    templates: editingItem.templates || []
                 });
-                const adminArr = Array.isArray(editingItem.admin) ? editingItem.admin : (editingItem.admin ? [editingItem.admin] : []);
-                const customAdmins = adminArr.filter(a => a !== 'Other' && !users.some(u => (u._id || u.id || u.username) === a));
-                if (customAdmins.length > 0) {
-                    setOtherAdminName(customAdmins.join(', '));
-                    if (!adminArr.includes('Other')) {
-                        setFormData(prev => ({ ...prev, admin: [...adminArr.filter(a => users.some(u => (u._id || u.id || u.username) === a)), 'Other'] }));
-                    }
-                } else {
-                    setOtherAdminName('');
-                }
+                setOtherAdminName('');
             } else {
                 setFormData({
                     vmId: '',
@@ -115,7 +137,11 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     adminName: '',
                     adminContact: '',
                     admin: [],
-                    powerStatus: 'on'
+                    powerStatus: 'on',
+                    isNetworkConnected: true,
+                    clones: [],
+                    snapshots: [],
+                    templates: []
                 });
                 setOtherAdminName('');
             }
@@ -123,25 +149,42 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
     }, [open, editingItem, clusterId]);
 
     useEffect(() => {
-        if (users.length > 0 && Array.isArray(formData.admin) && formData.admin.length > 0) {
-            let changed = false;
-            const updatedAdmin = formData.admin.map(adVal => {
-                if (adVal === 'Other') return adVal;
-                const foundUser = users.find(u => u.username === adVal || u._id === adVal || u.id === adVal);
-                if (foundUser) {
-                    const targetId = foundUser.id || foundUser._id;
-                    if (targetId && adVal !== targetId) {
-                        changed = true;
-                        return targetId;
-                    }
+        if (!open) {
+            setResolvedAdmins(false);
+        }
+    }, [open]);
+
+    useEffect(() => {
+        if (open && users.length > 0 && !resolvedAdmins) {
+            if (editingItem) {
+                const adminArr = Array.isArray(editingItem.admin) ? editingItem.admin : (editingItem.admin ? [editingItem.admin] : []);
+                const registeredAdmins = adminArr.filter(a => users.some(u => String(u._id || u.id || u.username) === String(a)));
+                const customAdmins = adminArr.filter(a => a !== 'Other' && !users.some(u => String(u._id || u.id || u.username) === String(a)));
+
+                let updatedAdminList = [...registeredAdmins];
+                if (customAdmins.length > 0) {
+                    setOtherAdminName(customAdmins.join(', '));
+                    updatedAdminList.push('Other');
+                } else {
+                    setOtherAdminName('');
                 }
-                return adVal;
-            });
-            if (changed) {
-                setFormData(prev => ({ ...prev, admin: updatedAdmin }));
+
+                const finalAdminIds = updatedAdminList.map(adVal => {
+                    if (adVal === 'Other') return adVal;
+                    const foundUser = users.find(u => String(u.username) === String(adVal) || String(u._id) === String(adVal) || String(u.id) === String(adVal));
+                    return foundUser ? (foundUser.id || foundUser._id) : adVal;
+                });
+
+                setFormData(prev => ({
+                    ...prev,
+                    admin: finalAdminIds
+                }));
+                setResolvedAdmins(true);
+            } else {
+                setResolvedAdmins(true);
             }
         }
-    }, [users, formData.admin]);
+    }, [open, editingItem, users, resolvedAdmins]);
 
     const handleChange = (field: keyof CreateVMDetailsPayload, value: any) => {
         setFormData(prev => {
@@ -200,6 +243,11 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
             if (adminChanged) changedData.admin = currentAdmin;
             
             if (formData.powerStatus !== norm(editingItem.powerStatus)) changedData.powerStatus = formData.powerStatus;
+            if (formData.isNetworkConnected !== editingItem.isNetworkConnected) changedData.isNetworkConnected = formData.isNetworkConnected;
+
+            changedData.clones = formData.clones;
+            changedData.snapshots = formData.snapshots;
+            changedData.templates = formData.templates;
             onSubmit(changedData);
         } else {
             onSubmit({ ...formData, admin: currentAdmin });
@@ -341,6 +389,18 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                             { label: 'Off', value: 'off' }
                         ]}
                     />
+                    <Dropdown 
+                        label="Network Connection" 
+                        size="small"
+                        fullWidth
+                        clearable
+                        value={formData.isNetworkConnected !== false ? 'connected' : 'disconnected'} 
+                        onChange={(val) => handleChange('isNetworkConnected', val === 'connected')} 
+                        options={[
+                            { label: 'Connected', value: 'connected' },
+                            { label: 'Disconnected', value: 'disconnected' }
+                        ]}
+                    />
 
                     <Dropdown 
                         label="Admin" 
@@ -351,10 +411,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         multiple
                         value={formData.admin} 
                         onChange={(val) => handleChange('admin', val)} 
-                        options={[
-                            ...users.map(u => ({ label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username, value: u._id || u.id })),
-                            { label: 'Other', value: 'Other' }
-                        ]}
+                        options={adminOptions}
                     />
                     {Array.isArray(formData.admin) && formData.admin.includes('Other') && (
                         <TextField 
@@ -413,6 +470,177 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         value={formData.cpu} 
                         onChange={(e) => handleChange('cpu', e.target.value)} 
                     />
+
+                    {/* Clones Section */}
+                    <Typography variant="subtitle1" className={styles.formGrid__title}>
+                        Clones
+                    </Typography>
+                    <Box sx={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        {(formData.clones || []).map((clone, idx) => (
+                            <Box key={idx} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                <TextField 
+                                    label="Clone Name" 
+                                    size="small" 
+                                    sx={{ flex: 1 }}
+                                    value={clone.name} 
+                                    onChange={(e) => {
+                                        const updated = [...(formData.clones || [])];
+                                        updated[idx].name = e.target.value;
+                                        setFormData(prev => ({ ...prev, clones: updated }));
+                                    }}
+                                />
+                                <TextField 
+                                    label="Remarks" 
+                                    size="small" 
+                                    sx={{ flex: 2 }}
+                                    value={clone.remarks || ''} 
+                                    onChange={(e) => {
+                                        const updated = [...(formData.clones || [])];
+                                        updated[idx].remarks = e.target.value;
+                                        setFormData(prev => ({ ...prev, clones: updated }));
+                                    }}
+                                />
+                                <Button 
+                                    variant="outlined" 
+                                    color="error" 
+                                    size="small"
+                                    onClick={() => {
+                                        const updated = (formData.clones || []).filter((_, i) => i !== idx);
+                                        setFormData(prev => ({ ...prev, clones: updated }));
+                                    }}
+                                >
+                                    Delete
+                                </Button>
+                            </Box>
+                        ))}
+                        <Button 
+                            variant="outlined" 
+                            size="small" 
+                            sx={{ alignSelf: 'flex-start', mt: 0.5 }}
+                            onClick={() => {
+                                setFormData(prev => ({
+                                    ...prev,
+                                    clones: [...(prev.clones || []), { name: '', remarks: '' }]
+                                }));
+                            }}
+                        >
+                            + Add Clone
+                        </Button>
+                    </Box>
+
+                    {/* Snapshots Section */}
+                    <Typography variant="subtitle1" className={styles.formGrid__title}>
+                        Snapshots
+                    </Typography>
+                    <Box sx={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        {(formData.snapshots || []).map((snap, idx) => (
+                            <Box key={idx} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                <TextField 
+                                    label="Snapshot Name" 
+                                    size="small" 
+                                    sx={{ flex: 1 }}
+                                    value={snap.name} 
+                                    onChange={(e) => {
+                                        const updated = [...(formData.snapshots || [])];
+                                        updated[idx].name = e.target.value;
+                                        setFormData(prev => ({ ...prev, snapshots: updated }));
+                                    }}
+                                />
+                                <TextField 
+                                    label="Remarks" 
+                                    size="small" 
+                                    sx={{ flex: 2 }}
+                                    value={snap.remarks || ''} 
+                                    onChange={(e) => {
+                                        const updated = [...(formData.snapshots || [])];
+                                        updated[idx].remarks = e.target.value;
+                                        setFormData(prev => ({ ...prev, snapshots: updated }));
+                                    }}
+                                />
+                                <Button 
+                                    variant="outlined" 
+                                    color="error" 
+                                    size="small"
+                                    onClick={() => {
+                                        const updated = (formData.snapshots || []).filter((_, i) => i !== idx);
+                                        setFormData(prev => ({ ...prev, snapshots: updated }));
+                                    }}
+                                >
+                                    Delete
+                                </Button>
+                            </Box>
+                        ))}
+                        <Button 
+                            variant="outlined" 
+                            size="small" 
+                            sx={{ alignSelf: 'flex-start', mt: 0.5 }}
+                            onClick={() => {
+                                setFormData(prev => ({
+                                    ...prev,
+                                    snapshots: [...(prev.snapshots || []), { name: '', remarks: '' }]
+                                }));
+                            }}
+                        >
+                            + Add Snapshot
+                        </Button>
+                    </Box>
+
+                    {/* Templates Section */}
+                    <Typography variant="subtitle1" className={styles.formGrid__title}>
+                        Templates
+                    </Typography>
+                    <Box sx={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        {(formData.templates || []).map((tpl, idx) => (
+                            <Box key={idx} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                <TextField 
+                                    label="Template Name" 
+                                    size="small" 
+                                    sx={{ flex: 1 }}
+                                    value={tpl.name} 
+                                    onChange={(e) => {
+                                        const updated = [...(formData.templates || [])];
+                                        updated[idx].name = e.target.value;
+                                        setFormData(prev => ({ ...prev, templates: updated }));
+                                    }}
+                                />
+                                <TextField 
+                                    label="Remarks" 
+                                    size="small" 
+                                    sx={{ flex: 2 }}
+                                    value={tpl.remarks || ''} 
+                                    onChange={(e) => {
+                                        const updated = [...(formData.templates || [])];
+                                        updated[idx].remarks = e.target.value;
+                                        setFormData(prev => ({ ...prev, templates: updated }));
+                                    }}
+                                />
+                                <Button 
+                                    variant="outlined" 
+                                    color="error" 
+                                    size="small"
+                                    onClick={() => {
+                                        const updated = (formData.templates || []).filter((_, i) => i !== idx);
+                                        setFormData(prev => ({ ...prev, templates: updated }));
+                                    }}
+                                >
+                                    Delete
+                                </Button>
+                            </Box>
+                        ))}
+                        <Button 
+                            variant="outlined" 
+                            size="small" 
+                            sx={{ alignSelf: 'flex-start', mt: 0.5 }}
+                            onClick={() => {
+                                setFormData(prev => ({
+                                    ...prev,
+                                    templates: [...(prev.templates || []), { name: '', remarks: '' }]
+                                }));
+                            }}
+                        >
+                            + Add Template
+                        </Button>
+                    </Box>
                 </Box>
                 <Box className={styles.buttonContainer}>
                     <Button variant="outlined" onClick={onClose} sx={{ color: '#637381', borderColor: '#637381' }}>Cancel</Button>

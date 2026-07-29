@@ -15,7 +15,8 @@ import {
   MdBookmarkBorder, 
   MdBackup, 
   MdCheckCircle, 
-  MdHistory 
+  MdHistory,
+  MdNetworkCheck
 } from 'react-icons/md';
 import dayjs from 'dayjs';
 
@@ -95,20 +96,32 @@ const VMHistoryModal: React.FC<VMHistoryModalProps> = ({ open, onClose, vm }) =>
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Box sx={{ p: 2, bgcolor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
                 <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>
                   {vm.vmId || 'VM Details'}
                 </Typography>
-                <Chip 
-                  label={(vm.powerStatus || 'ON').toUpperCase()} 
-                  size="small" 
-                  sx={{ 
-                    bgcolor: getPowerStatusColor(vm.powerStatus) + '15', 
-                    color: getPowerStatusColor(vm.powerStatus), 
-                    fontWeight: 700,
-                    border: `1px solid ${getPowerStatusColor(vm.powerStatus)}30`
-                  }} 
-                />
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                  <Chip 
+                    label={(vm.powerStatus || 'ON').toUpperCase()} 
+                    size="small" 
+                    sx={{ 
+                      bgcolor: getPowerStatusColor(vm.powerStatus) + '15', 
+                      color: getPowerStatusColor(vm.powerStatus), 
+                      fontWeight: 700,
+                      border: `1px solid ${getPowerStatusColor(vm.powerStatus)}30`
+                    }} 
+                  />
+                  <Chip 
+                    label={vm.isNetworkConnected !== false ? 'CONNECTED' : 'DISCONNECTED'} 
+                    size="small" 
+                    sx={{ 
+                      bgcolor: (vm.isNetworkConnected !== false ? '#0284c7' : '#64748b') + '15', 
+                      color: vm.isNetworkConnected !== false ? '#0284c7' : '#64748b', 
+                      fontWeight: 700,
+                      border: `1px solid ${(vm.isNetworkConnected !== false ? '#0284c7' : '#64748b')}30`
+                    }} 
+                  />
+                </Box>
               </Box>
 
               <Grid container spacing={1.5}>
@@ -176,6 +189,42 @@ const VMHistoryModal: React.FC<VMHistoryModalProps> = ({ open, onClose, vm }) =>
                 {vm.adminContact && (
                 <Grid item xs={12}>
                   <DetailItem icon={MdContactPhone} label="Admin Contact" value={vm.adminContact} />
+                </Grid>
+                )}
+                {vm.clones && vm.clones.length > 0 && (
+                <Grid item xs={12}>
+                  <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>Clones ({vm.clones.length})</Typography>
+                  <Box sx={{ mt: 0.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    {vm.clones.map((c, i) => (
+                      <Typography key={i} variant="caption" sx={{ bgcolor: '#e0f2fe', color: '#0369a1', px: 1, py: 0.5, borderRadius: '4px', display: 'block' }}>
+                        <strong>{c.name}</strong>{c.remarks ? ` — ${c.remarks}` : ''}
+                      </Typography>
+                    ))}
+                  </Box>
+                </Grid>
+                )}
+                {vm.snapshots && vm.snapshots.length > 0 && (
+                <Grid item xs={12}>
+                  <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>Snapshots ({vm.snapshots.length})</Typography>
+                  <Box sx={{ mt: 0.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    {vm.snapshots.map((s, i) => (
+                      <Typography key={i} variant="caption" sx={{ bgcolor: '#fef3c7', color: '#b45309', px: 1, py: 0.5, borderRadius: '4px', display: 'block' }}>
+                        <strong>{s.name}</strong>{s.remarks ? ` — ${s.remarks}` : ''}
+                      </Typography>
+                    ))}
+                  </Box>
+                </Grid>
+                )}
+                {vm.templates && vm.templates.length > 0 && (
+                <Grid item xs={12}>
+                  <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>Templates ({vm.templates.length})</Typography>
+                  <Box sx={{ mt: 0.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    {vm.templates.map((t, i) => (
+                      <Typography key={i} variant="caption" sx={{ bgcolor: '#f3e8ff', color: '#6b21a8', px: 1, py: 0.5, borderRadius: '4px', display: 'block' }}>
+                        <strong>{t.name}</strong>{t.remarks ? ` — ${t.remarks}` : ''}
+                      </Typography>
+                    ))}
+                  </Box>
                 </Grid>
                 )}
                 <Grid item xs={12} sm={6}>

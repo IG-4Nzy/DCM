@@ -2,10 +2,10 @@
 import request from '../../../services/request';
 import { type NodeData, type CreateNodePayload, type UpdateNodePayload } from './model';
 
-const ENDPOINT = '/api/nodes/';
+const ENDPOINT = '/api/nodes';
 
-export const fetchNodes = async (params: { skip?: number, limit?: number, sortBy?: string, order?: string, search?: string, clusterId?: string, serverModel?: string, admin?: string, rack?: string, os?: string, custodian?: string, nodeTypeFilter?: string, pagination?: boolean }): Promise<{data: NodeData[], total: number}> => {
-    const { skip = 0, limit = 10, sortBy = 'nodeId', order = 'asc', search = '', clusterId = '', serverModel = '', admin = '', rack = '', os = '', custodian = '', nodeTypeFilter = '', pagination = true } = params;
+export const fetchNodes = async (params: { skip?: number, limit?: number, sortBy?: string, order?: string, search?: string, clusterId?: string, serverModel?: string, admin?: string, rack?: string, os?: string, custodian?: string, nodeTypeFilter?: string, networkType?: string, pagination?: boolean }): Promise<{data: NodeData[], total: number}> => {
+    const { skip = 0, limit = 10, sortBy = 'nodeId', order = 'asc', search = '', clusterId = '', serverModel = '', admin = '', rack = '', os = '', custodian = '', nodeTypeFilter = '', networkType = '', pagination = true } = params;
     const queryParams: any = { skip, limit, sort_by: sortBy, order, pagination };
     if (search) queryParams.search = search;
     if (clusterId) queryParams.clusterId = clusterId;
@@ -15,8 +15,9 @@ export const fetchNodes = async (params: { skip?: number, limit?: number, sortBy
     if (os) queryParams.os = os;
     if (custodian) queryParams.custodian = custodian;
     if (nodeTypeFilter) queryParams.nodeTypeFilter = nodeTypeFilter;
+    if (networkType) queryParams.networkType = networkType;
     
-    const res = await request.get(ENDPOINT, { params: queryParams });
+    const res = await request.get(`${ENDPOINT}/`, { params: queryParams });
     return res.data;
 };
 
