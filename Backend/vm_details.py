@@ -101,6 +101,8 @@ async def list_items(
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
     order: str = Query("desc"),
+    networkType: Optional[str] = Query(None, description="Filter by node network type (internet/intranet)"),
+    clusterType: Optional[str] = Query(None, description="Filter by cluster type"),
     current_user: dict = Depends(get_current_user)
 ):
     and_conditions = []
@@ -170,6 +172,43 @@ async def list_items(
 
     if powerStatus:
         and_conditions.append({"powerStatus": {"$regex": f"^{re.escape(powerStatus)}$", "$options": "i"}})
+
+    if networkType and networkType.strip():
+        nt_val = networkType.strip().lower()
+        nodes_col = db.get_collection("nodes")
+        if nt_val == "intranet":
+            matching_nodes_cursor = nodes_col.find({
+                "$or": [
+                    {"networkType": "intranet"},
+                    {"networkType": None},
+                    {"networkType": ""},
+                    {"networkType": {"$exists": False}}
+                ]
+            }, {"node": 1})
+        else:
+            matching_nodes_cursor = nodes_col.find({"networkType": nt_val}, {"node": 1})
+        
+        matching_nodes = await matching_nodes_cursor.to_list(length=None)
+        regex_conditions = []
+        for n in matching_nodes:
+            if n.get("node"):
+                regex_conditions.append({"node": {"$regex": f"^{re.escape(n['node'])}$", "$options": "i"}})
+        
+        if regex_conditions:
+            and_conditions.append({"$or": regex_conditions})
+        else:
+            and_conditions.append({"node": "__NON_EXISTENT_NODE__"})
+
+    if clusterType and clusterType.strip():
+        ct_val = clusterType.strip()
+        clusters_col = db.get_collection("clusters")
+        matching_clusters_cursor = clusters_col.find({"clusterType": {"$regex": f"^{re.escape(ct_val)}$", "$options": "i"}}, {"_id": 1})
+        matching_clusters = await matching_clusters_cursor.to_list(length=None)
+        cluster_ids = [str(c["_id"]) for c in matching_clusters]
+        if not cluster_ids:
+            and_conditions.append({"clusterId": "__NON_EXISTENT_CLUSTER__"})
+        else:
+            and_conditions.append({"clusterId": {"$in": cluster_ids}})
     
     if search:
         terms = search.strip().split()
@@ -218,7 +257,7 @@ async def list_items(
     sort_order = 1 if order == "asc" else -1
 
     total = await collection.count_documents(query)
-    cursor = collection.find(query).sort(actual_sort_by, sort_order)
+    cursor = collection.find(query).collation({"locale": "en", "numericOrdering": True}).sort(actual_sort_by, sort_order)
     
     if pagination:
         cursor = cursor.skip(skip).limit(limit)
@@ -248,7 +287,7 @@ async def create_item(
                 max_vm_id = max(max_vm_id, num)
             except:
                 pass
-    item_dict["vmId"] = f"VM-{max_vm_id + 1:02d}"
+    item_dict["vmId"] = f"VM-{max_vm_id + 1}"
 
     new_item = await collection.insert_one(item_dict)
     created = await collection.find_one({"_id": new_item.inserted_id})
@@ -649,7 +688,7 @@ async def import_vcenter_vms(
                             updated_count += 1
                     else:
                         max_vm_id += 1
-                        final_vm_id = f"VM-{max_vm_id:02d}"
+                        final_vm_id = f"VM-{max_vm_id}"
                         new_vm_doc = {
                             "vmId": final_vm_id,
                             "vmName": vm_name,
@@ -826,10 +865,19 @@ async def get_vm_history(id: str):
             user_map[u.get("username")] = name or u.get("username")
 
     history = []
+    # 1. Process Request Logs for COMPLETED requests only
     for log in logs_list:
         req_id = log.get("requestId")
         req = req_map.get(req_id)
         if not req:
+            continue
+
+        # Only include if request status is Completed or log action indicates completion
+        req_status = (req.get("status") or "").lower()
+        what_did = log.get("action") or ""
+        is_completed_action = any(k in what_did.lower() for k in ["completed", "complete", "approved", "transition (completed)"])
+        
+        if req_status != "completed" and not is_completed_action:
             continue
 
         req_type = req.get("requestType") or req.get("category") or "VM Request"
@@ -837,7 +885,6 @@ async def get_vm_history(id: str):
         
         who_requested = user_map.get(req.get("createdBy"), req.get("createdBy"))
         who_did = user_map.get(log.get("user"), log.get("user"))
-        what_did = log.get("action")
         timestamp = log.get("timestamp")
         
         log_details = log.get("details") or ""
@@ -849,22 +896,87 @@ async def get_vm_history(id: str):
         operation_type = req_details.get("operationType")
         
         op_info = ""
+        extra_req_details = []
         if req_type == "VM Management" and operation_type:
-            op_info = f" [{operation_type}"
-            if operation_type == "Migration" and req_details.get("migrationNode"):
-                op_info += f" to Node: {req_details.get('migrationNode')}"
+            op_info = f" [{operation_type}]"
+            if operation_type == "Backup":
+                if req_details.get("backupName"):
+                    extra_req_details.append(f"Backup Name: {req_details.get('backupName')}")
+                if req_details.get("backupNode"):
+                    extra_req_details.append(f"Backup Node: {req_details.get('backupNode')}")
+                if req_details.get("backupStorage"):
+                    extra_req_details.append(f"Backup Storage: {req_details.get('backupStorage')}")
+                if req_details.get("ip") or req_details.get("ipAddress"):
+                    extra_req_details.append(f"IP: {req_details.get('ip') or req_details.get('ipAddress')}")
+            elif operation_type == "Migration":
+                if req_details.get("migrationNode"):
+                    extra_req_details.append(f"Target Node: {req_details.get('migrationNode')}")
+                if req_details.get("ip") or req_details.get("ipAddress"):
+                    extra_req_details.append(f"IP: {req_details.get('ip') or req_details.get('ipAddress')}")
             elif operation_type == "Resource Upgrade":
-                op_info += f" (RAM: {req_details.get('newRam')}, HDD: {req_details.get('newHdd')}, CPU: {req_details.get('newCpu')})"
-            op_info += "]"
+                upgrades = []
+                if req_details.get("newRam"): upgrades.append(f"RAM: {req_details.get('newRam')}")
+                if req_details.get("newHdd"): upgrades.append(f"HDD: {req_details.get('newHdd')}")
+                if req_details.get("newCpu"): upgrades.append(f"CPU: {req_details.get('newCpu')}")
+                if upgrades:
+                    extra_req_details.append(f"Upgrades: {', '.join(upgrades)}")
+                if req_details.get("ip") or req_details.get("ipAddress"):
+                    extra_req_details.append(f"IP: {req_details.get('ip') or req_details.get('ipAddress')}")
+            elif operation_type == "Power":
+                if req_details.get("powerStatus"):
+                    extra_req_details.append(f"Target Power: {req_details.get('powerStatus')}")
+                if req_details.get("ip") or req_details.get("ipAddress"):
+                    extra_req_details.append(f"IP: {req_details.get('ip') or req_details.get('ipAddress')}")
+            else:
+                if req_details.get("ip") or req_details.get("ipAddress"):
+                    extra_req_details.append(f"IP: {req_details.get('ip') or req_details.get('ipAddress')}")
+
+        formatted_details = log_details
+        if extra_req_details:
+            formatted_details = f"{', '.join(extra_req_details)} | {formatted_details}" if formatted_details else ", ".join(extra_req_details)
 
         history.append({
             "requestId": req_seq_id,
             "requestType": f"{req_type}{op_info}",
             "whoRequested": who_requested,
             "whoDid": who_did,
-            "whatDid": what_did,
+            "whatDid": "Completed",
             "time": timestamp,
-            "details": log_details
+            "details": formatted_details
+        })
+
+    # 2. Append Manually Added Clones, Snapshots, Templates to History
+    for c in vm.get("clones", []):
+        history.append({
+            "requestId": "MANUAL",
+            "requestType": "Manual Entry [Clone]",
+            "whoRequested": c.get("createdBy") or vm.get("updatedBy") or vm.get("createdBy") or "--",
+            "whoDid": c.get("createdBy") or vm.get("updatedBy") or vm.get("createdBy") or "--",
+            "whatDid": "Added Clone",
+            "time": c.get("createdAt") or vm.get("updatedAt") or vm.get("createdAt"),
+            "details": f"Clone Name: {c.get('name')}" + (f" | Remarks: {c.get('remarks')}" if c.get('remarks') else "")
+        })
+
+    for s in vm.get("snapshots", []):
+        history.append({
+            "requestId": "MANUAL",
+            "requestType": "Manual Entry [Snapshot]",
+            "whoRequested": s.get("createdBy") or vm.get("updatedBy") or vm.get("createdBy") or "--",
+            "whoDid": s.get("createdBy") or vm.get("updatedBy") or vm.get("createdBy") or "--",
+            "whatDid": "Added Snapshot",
+            "time": s.get("createdAt") or vm.get("updatedAt") or vm.get("createdAt"),
+            "details": f"Snapshot Name: {s.get('name')}" + (f" | Remarks: {s.get('remarks')}" if s.get('remarks') else "")
+        })
+
+    for t in vm.get("templates", []):
+        history.append({
+            "requestId": "MANUAL",
+            "requestType": "Manual Entry [Template]",
+            "whoRequested": t.get("createdBy") or vm.get("updatedBy") or vm.get("createdBy") or "--",
+            "whoDid": t.get("createdBy") or vm.get("updatedBy") or vm.get("createdBy") or "--",
+            "whatDid": "Added Template",
+            "time": t.get("createdAt") or vm.get("updatedAt") or vm.get("createdAt"),
+            "details": f"Template Name: {t.get('name')}" + (f" | Remarks: {t.get('remarks')}" if t.get('remarks') else "")
         })
 
     history.sort(key=lambda x: x.get("time") or "", reverse=True)

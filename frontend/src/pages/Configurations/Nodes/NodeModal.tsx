@@ -10,6 +10,10 @@ import { type NodeData, type CreateNodePayload, type UpdateNodePayload } from '.
 import { fetchServerRacks } from '../Racks/action';
 import { fetchServerModels, createServerModel } from '../ServerModels/action';
 import request from '../../../services/request';
+import { useSelector } from 'react-redux';
+import { type RootState } from '../../../store';
+import { hasPrivilege } from '../../../helpers/authUtils';
+import { PRIVILEGES } from '../../../helpers/privileges';
 
 const matchesPosition = (nodeRackPosition: string | undefined, posIndex: number) => {
     if (!nodeRackPosition) return false;
@@ -50,12 +54,15 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
     const [custodian, setCustodian] = useState('');
     const [admin, setAdmin] = useState<string[]>([]);
     const [otherAdminName, setOtherAdminName] = useState<string>('');
+    const [resolvedAdmins, setResolvedAdmins] = useState<boolean>(false);
+
     const [assetNumber, setAssetNumber] = useState('');
     const [raidConfiguration, setRaidConfiguration] = useState<string[]>([]);
     const [nodeType, setNodeType] = useState<'node' | 'appliance' | 'storage'>('node');
     const [isPhysical, setIsPhysical] = useState<boolean>(false);
     const [os, setOs] = useState<string>('');
     const [gpu, setGpu] = useState<string>('');
+    const [networkType, setNetworkType] = useState<string>('intranet');
     
     const [racks, setRacks] = useState<any[]>([]);
     const [serverModels, setServerModels] = useState<any[]>([]);
@@ -66,6 +73,29 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
     const [showNewModelModal, setShowNewModelModal] = useState(false);
     const [newModelName, setNewModelName] = useState('');
     const [newModelRemarks, setNewModelRemarks] = useState('');
+
+    const { isSuperuser, username } = useSelector((state: RootState) => state.auth);
+
+    const hasViewAll = isSuperuser || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
+    const currentUser = users.find(u => u.username === username);
+    const userDept = currentUser?.department;
+
+    const filteredUserOptions = users
+        .filter(u => {
+            if (hasViewAll) return true;
+            return u.department === userDept;
+        })
+        .map(u => ({
+            label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+            value: u._id || u.id
+        }));
+
+    const adminOptions = hasViewAll
+        ? [
+            ...filteredUserOptions,
+            { label: 'Other', value: 'Other' }
+        ]
+        : filteredUserOptions;
 
     useEffect(() => {
         if (open) {
@@ -110,17 +140,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                     ? editingItem.admin
                     : (editingItem.admin ? [editingItem.admin] : []);
                 setAdmin(adminArr);
-                if (users.length > 0) {
-                    const customAdmins = adminArr.filter(a => a !== 'Other' && !users.some(u => (u._id === a || u.id === a || u.username === a)));
-                    if (customAdmins.length > 0) {
-                        setOtherAdminName(customAdmins.join(', '));
-                        setAdmin([...adminArr.filter(a => users.some(u => (u._id === a || u.id === a || u.username === a))), 'Other']);
-                    } else {
-                        setOtherAdminName('');
-                    }
-                } else {
-                    setOtherAdminName('');
-                }
+                setOtherAdminName('');
                 setAssetNumber(editingItem.assetNumber || '');
                 setRaidConfiguration(editingItem.raidConfiguration || []);
                 if (editingItem.isStorage) {
@@ -133,6 +153,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setIsPhysical(editingItem.isPhysical || false);
                 setOs(editingItem.os || '');
                 setGpu(editingItem.gpu || '');
+                setNetworkType(editingItem.networkType || 'intranet');
             } else {
                 setField('');
                 setIp('');
@@ -154,30 +175,47 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setIsPhysical(false);
                 setOs('');
                 setGpu('');
+                setNetworkType('intranet');
             }
         }
-    }, [open, editingItem, activeRackFilter, users]);
+    }, [open, editingItem, activeRackFilter]);
 
     useEffect(() => {
-        if (users.length > 0 && Array.isArray(admin) && admin.length > 0) {
-            let changed = false;
-            const updatedAdmin = admin.map(adVal => {
-                if (adVal === 'Other') return adVal;
-                const foundUser = users.find(u => u.username === adVal || u._id === adVal || u.id === adVal);
-                if (foundUser) {
-                    const targetId = foundUser.id || foundUser._id;
-                    if (targetId && adVal !== targetId) {
-                        changed = true;
-                        return targetId;
-                    }
+        if (!open) {
+            setResolvedAdmins(false);
+        }
+    }, [open]);
+
+    useEffect(() => {
+        if (open && users.length > 0 && !resolvedAdmins) {
+            if (editingItem) {
+                const adminArr = Array.isArray(editingItem.admin)
+                    ? editingItem.admin
+                    : (editingItem.admin ? [editingItem.admin] : []);
+                const registeredAdmins = adminArr.filter(a => users.some(u => (u._id === a || u.id === a || u.username === a)));
+                const customAdmins = adminArr.filter(a => a !== 'Other' && !users.some(u => (u._id === a || u.id === a || u.username === a)));
+
+                let updatedAdminList = [...registeredAdmins];
+                if (customAdmins.length > 0) {
+                    setOtherAdminName(customAdmins.join(', '));
+                    updatedAdminList.push('Other');
+                } else {
+                    setOtherAdminName('');
                 }
-                return adVal;
-            });
-            if (changed) {
-                setAdmin(updatedAdmin);
+
+                const finalAdminIds = updatedAdminList.map(adVal => {
+                    if (adVal === 'Other') return adVal;
+                    const foundUser = users.find(u => u.username === adVal || u._id === adVal || u.id === adVal);
+                    return foundUser ? (foundUser.id || foundUser._id) : adVal;
+                });
+
+                setAdmin(finalAdminIds);
+                setResolvedAdmins(true);
+            } else {
+                setResolvedAdmins(true);
             }
         }
-    }, [users, admin]);
+    }, [open, editingItem, users, resolvedAdmins]);
 
     useEffect(() => {
         if (Array.isArray(rackPosition) && rackPosition.length > 0) {
@@ -231,7 +269,8 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
             isStorage: nodeType === 'storage',
             isPhysical: nodeType === 'node' ? isPhysical : false,
             os: os.trim() ? os.trim() : '',
-            gpu: gpu.trim() ? gpu.trim() : ''
+            gpu: gpu.trim() ? gpu.trim() : '',
+            networkType: networkType || 'intranet'
         };
 
         if (editingItem) {
@@ -336,6 +375,14 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                         <Grid size={{xs: 12, sm: 4}}>
                             <TextField
                                 fullWidth
+                                label="Cluster"
+                                value={editingItem?.clusterName || editingItem?.clusterId || '--'}
+                                disabled
+                            />
+                        </Grid>
+                        <Grid size={{xs: 12, sm: 4}}>
+                            <TextField
+                                fullWidth
                                 label="Node Name"
                                 placeholder="e.g. Node-01"
                                 value={node}
@@ -351,13 +398,25 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 onChange={(e) => setIp(e.target.value)}
                             />
                         </Grid>
-                        <Grid size={{xs: 12, sm: 4}}>
+                        <Grid size={{xs: 12, sm: 6}}>
                             <TextField
                                 fullWidth
                                 label="Operating System"
                                 placeholder="e.g. RHEL 8 / Ubuntu 22.04"
                                 value={os}
                                 onChange={(e) => setOs(e.target.value)}
+                            />
+                        </Grid>
+                        <Grid size={{xs: 12, sm: 6}}>
+                            <Dropdown
+                                label="Network Type"
+                                fullWidth
+                                value={networkType}
+                                onChange={(val) => setNetworkType(val)}
+                                options={[
+                                    { label: 'Intranet', value: 'intranet' },
+                                    { label: 'Internet', value: 'internet' }
+                                ]}
                             />
                         </Grid>
                     </Grid>
@@ -423,10 +482,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 multiple
                                 value={admin}
                                 onChange={(val) => setAdmin(val)}
-                                options={[
-                                    ...users.map(u => ({ label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username, value: u._id || u.id })),
-                                    { label: 'Other', value: 'Other' }
-                                ]}
+                                options={adminOptions}
                             />
                         </Grid>
                         {admin.includes('Other') && (

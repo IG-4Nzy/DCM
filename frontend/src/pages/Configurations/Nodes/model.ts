@@ -14,6 +14,7 @@ export interface NodeData {
     rackPosition?: string;
     rackUnits?: number;
     clusterId?: string;
+    clusterName?: string;
     serverModel?: string;
     serialNumber?: string;
     custodian?: string;
@@ -26,6 +27,7 @@ export interface NodeData {
     isPhysical?: boolean;
     os?: string;
     gpu?: string;
+    networkType?: string;
     createdBy?: string;
     createdAt?: string;
     updatedBy?: string;
@@ -55,6 +57,7 @@ export interface CreateNodePayload {
     isPhysical?: boolean;
     os?: string;
     gpu?: string;
+    networkType?: string;
 }
 
 export interface UpdateNodePayload {
@@ -81,4 +84,5 @@ export interface UpdateNodePayload {
     isPhysical?: boolean;
     os?: string;
     gpu?: string;
+    networkType?: string;
 }

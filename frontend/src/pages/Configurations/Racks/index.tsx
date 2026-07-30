@@ -318,7 +318,7 @@ const Racks = () => {
     const positions = Array.from({ length: 42 }, (_, idx) => idx + 1);
 
     return (
-        <Box sx={{ mt: 2 }}>
+        <Box sx={{ mt: 2, flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
                 <Box>
                     <ToggleButtonGroup
@@ -356,7 +356,7 @@ const Racks = () => {
             </Box>
 
             {viewMode === 'list' ? (
-                <Paper sx={{ width: '100%', mb: 2, p: 0, boxShadow: 'none', background: 'transparent' }}>
+                <Paper sx={{ width: '100%', mb: 2, p: 0, boxShadow: 'none', background: 'transparent', flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <Table
                         columns={columns}
                         data={data}
@@ -386,7 +386,8 @@ const Racks = () => {
                         padding: "0px",
                         display: 'flex',
                         flexDirection: 'column',
-                        mb: 2
+                        mb: 2,
+                        flexGrow: 1
                     }}
                 >
                     <TableContainer sx={{ overflow: 'auto', maxHeight: 600 }}>

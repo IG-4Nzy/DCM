@@ -198,7 +198,27 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
               multiline
               rows={2}
               value={purpose}
-              onChange={(e) => setPurpose(e.target.value)}
+              onChange={(e) => {
+                const newPurpose = e.target.value;
+                setPurpose(newPurpose);
+                if (currentRequestType === 'VM Creation' && !editingRequest) {
+                  const purpStr = newPurpose.trim().replace(/\s+/g, '');
+                  const osStr = (details.osVersion || '').trim().replace(/\s+/g, '');
+                  let ipPortion = '';
+                  if (details.ip) {
+                    const parts = details.ip.trim().split('.');
+                    if (parts.length >= 2) {
+                      ipPortion = parts.slice(-2).join('.');
+                    } else {
+                      ipPortion = details.ip.trim();
+                    }
+                  }
+                  const nameParts = [purpStr, osStr, ipPortion].filter(Boolean);
+                  if (nameParts.length > 0) {
+                    handleDetailChange('vmName', nameParts.join('_'));
+                  }
+                }
+              }}
               placeholder="State the purpose of this request"
             />
 
@@ -207,12 +227,75 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
               <>
                 {!editingRequest ? (
                   <>
-                    <TextField label="VM Name" fullWidth required value={details.vmName || ''} onChange={(e) => handleDetailChange('vmName', e.target.value)} />
-                    <TextField label="OS and Version" fullWidth required value={details.osVersion || ''} onChange={(e) => handleDetailChange('osVersion', e.target.value)} />
+                    <TextField 
+                      label="OS and Version" 
+                      fullWidth 
+                      required 
+                      value={details.osVersion || ''} 
+                      onChange={(e) => {
+                        const newOs = e.target.value;
+                        handleDetailChange('osVersion', newOs);
+                        
+                        // Auto-generate VM Name: Purpose_OS_IPLast2
+                        const purpStr = (purpose || '').trim().replace(/\s+/g, '');
+                        const osStr = newOs.trim().replace(/\s+/g, '');
+                        let ipPortion = '';
+                        if (details.ip) {
+                          const parts = details.ip.trim().split('.');
+                          if (parts.length >= 2) {
+                            ipPortion = parts.slice(-2).join('.');
+                          } else {
+                            ipPortion = details.ip.trim();
+                          }
+                        }
+                        const nameParts = [purpStr, osStr, ipPortion].filter(Boolean);
+                        if (nameParts.length > 0) {
+                          handleDetailChange('vmName', nameParts.join('_'));
+                        }
+                      }} 
+                    />
+                    <TextField 
+                      label="IP (Optional)" 
+                      fullWidth 
+                      value={details.ip || ''} 
+                      onChange={(e) => {
+                        const newIp = e.target.value;
+                        handleDetailChange('ip', newIp);
+
+                        // Auto-generate VM Name: Purpose_OS_IPLast2
+                        const purpStr = (purpose || '').trim().replace(/\s+/g, '');
+                        const osStr = (details.osVersion || '').trim().replace(/\s+/g, '');
+                        let ipPortion = '';
+                        if (newIp) {
+                          const parts = newIp.trim().split('.');
+                          if (parts.length >= 2) {
+                            ipPortion = parts.slice(-2).join('.');
+                          } else {
+                            ipPortion = newIp.trim();
+                          }
+                        }
+                        const nameParts = [purpStr, osStr, ipPortion].filter(Boolean);
+                        if (nameParts.length > 0) {
+                          handleDetailChange('vmName', nameParts.join('_'));
+                        }
+                      }} 
+                    />
+                    <TextField 
+                      label="VM Name (Auto-generated)" 
+                      fullWidth 
+                      required 
+                      disabled={!isSuperuser && (!editingRequest || !editingRequest.currentAssignedUsers || !editingRequest.currentAssignedUsers.includes(username))}
+                      value={details.vmName || ''} 
+                      onChange={(e) => handleDetailChange('vmName', e.target.value)} 
+                      helperText={
+                        (!isSuperuser && (!editingRequest || !editingRequest.currentAssignedUsers || !editingRequest.currentAssignedUsers.includes(username)))
+                          ? "Auto-generated from Purpose, OS, and IP. Editable by assigned VM creators/approvers."
+                          : "Auto-generated format: Purpose_OS_IP"
+                      }
+                    />
                     <TextField label="RAM" fullWidth required value={details.ram || ''} onChange={(e) => handleDetailChange('ram', e.target.value)} />
                     <TextField label="HDD" fullWidth required value={details.hdd || ''} onChange={(e) => handleDetailChange('hdd', e.target.value)} />
                     <TextField label="CPU" fullWidth required value={details.cpu || ''} onChange={(e) => handleDetailChange('cpu', e.target.value)} />
-                    <TextField label="IP (Optional)" fullWidth value={details.ip || ''} onChange={(e) => handleDetailChange('ip', e.target.value)} />
                   </>
                 ) : (
                   <>
@@ -594,7 +677,27 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                       fullWidth
                       required
                       value={details.ip || ''}
-                      onChange={(e) => handleDetailChange('ip', e.target.value)}
+                      onChange={(e) => {
+                        const newIp = e.target.value;
+                        handleDetailChange('ip', newIp);
+                        if (currentRequestType === 'VM Creation') {
+                          const purpStr = (purpose || '').trim().replace(/\s+/g, '');
+                          const osStr = (details.osVersion || '').trim().replace(/\s+/g, '');
+                          let ipPortion = '';
+                          if (newIp) {
+                            const parts = newIp.trim().split('.');
+                            if (parts.length >= 2) {
+                              ipPortion = parts.slice(-2).join('.');
+                            } else {
+                              ipPortion = newIp.trim();
+                            }
+                          }
+                          const nameParts = [purpStr, osStr, ipPortion].filter(Boolean);
+                          if (nameParts.length > 0) {
+                            handleDetailChange('vmName', nameParts.join('_'));
+                          }
+                        }
+                      }}
                       placeholder="e.g. 192.168.1.10"
                       sx={{ mt: 1 }}
                     />

@@ -40,6 +40,7 @@ const ServerDetails = () => {
     if (hasNetworkDevicesView) tabs.push({ id: 'network_devices', label: 'Network Devices', value: 'network_devices' });
 
     const location = useLocation();
+    const isProgrammaticTabChangeRef = useRef(false);
 
     const [activeTab, setActiveTab] = useState<string | number>(() => {
         const navTab = location.state?.tab;
@@ -76,8 +77,43 @@ const ServerDetails = () => {
     }, [activeTab]);
 
     useEffect(() => {
+        if (isProgrammaticTabChangeRef.current) {
+            isProgrammaticTabChangeRef.current = false;
+            return;
+        }
+
+        const filterKeys = [
+            'cluster_search',
+            'cluster_typeFilter',
+            'VMDetails_adminFilter',
+            'VMDetails_nodeFilter',
+            'VMDetails_powerStatusFilter',
+            'VMDetails_networkTypeFilter',
+            'VMDetails_clusterTypeFilter',
+            'Racks_search',
+            'Nodes_search',
+            'Nodes_clusterFilter',
+            'Nodes_serverModelFilter',
+            'Nodes_adminFilter',
+            'Nodes_rackFilter',
+            'Nodes_osFilter',
+            'Nodes_custodianFilter',
+            'Nodes_gpuFilter',
+            'Nodes_deviceTypeFilter',
+            'Nodes_networkTypeFilter',
+            'cluster_page',
+            'Racks_page',
+            'Nodes_page'
+        ];
+        filterKeys.forEach(key => {
+            localStorage.removeItem(key);
+        });
+    }, [activeTab]);
+
+    useEffect(() => {
         const handleTabChange = (e: CustomEvent) => {
             if (tabs.some(tab => tab.value === e.detail)) {
+                isProgrammaticTabChangeRef.current = true;
                 setActiveTab(e.detail);
             }
         };
@@ -95,7 +131,7 @@ const ServerDetails = () => {
     }
 
     return (
-        <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', overflow: 'hidden', boxSizing: 'border-box' }}>
             <label style={{ color: '#333', fontSize: "24px", fontWeight: 'bold', marginBottom: '16px' }}>Server Details</label>
             <Box sx={{ mb: 2 }}>
                 <SliderTabSelector
@@ -104,14 +140,14 @@ const ServerDetails = () => {
                     onChange={setActiveTab}
                 />
             </Box>
-            <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-                {activeTab === 'racks' && <Racks />}
-                {activeTab === 'clusters' && <Clusters />}
-                {activeTab === 'nodes' && <Nodes dashboardAdminFilter={dashboardAdminFilter} />}
-                {activeTab === 'vms' && <VMs dashboardAdminFilter={dashboardAdminFilter} />}
-                {activeTab === 'physical_servers' && <Nodes dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="physical" />}
-                {activeTab === 'network_devices' && <Nodes dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="appliance" />}
-                {activeTab === 'storage_systems' && <Nodes dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="storage" />}
+            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {activeTab === 'racks' && <Racks key={activeTab} />}
+                {activeTab === 'clusters' && <Clusters key={activeTab} />}
+                {activeTab === 'nodes' && <Nodes key={activeTab} dashboardAdminFilter={dashboardAdminFilter} />}
+                {activeTab === 'vms' && <VMs key={activeTab} dashboardAdminFilter={dashboardAdminFilter} />}
+                {activeTab === 'physical_servers' && <Nodes key={activeTab} dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="physical" />}
+                {activeTab === 'network_devices' && <Nodes key={activeTab} dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="appliance" />}
+                {activeTab === 'storage_systems' && <Nodes key={activeTab} dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="storage" />}
             </Box>
         </Box>
     );

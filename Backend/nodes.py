@@ -23,6 +23,27 @@ def clean_int(value) -> int:
 async def compute_available_resources(node_doc: dict):
     if not node_doc:
         return node_doc
+    
+    # Enrich node with clusterName
+    cluster_id = node_doc.get("clusterId")
+    node_id_str = str(node_doc.get("_id", ""))
+    cluster_name = None
+    clusters_col = db.get_collection("clusters")
+    
+    if cluster_id:
+        c_doc = await clusters_col.find_one({"_id": ObjectId(cluster_id) if ObjectId.is_valid(cluster_id) else cluster_id})
+        if c_doc:
+            cluster_name = c_doc.get("clusterName")
+    
+    if not cluster_name and node_id_str:
+        c_doc = await clusters_col.find_one({"nodes": {"$in": [node_id_str, ObjectId(node_id_str) if ObjectId.is_valid(node_id_str) else node_id_str]}})
+        if c_doc:
+            cluster_name = c_doc.get("clusterName")
+            if not cluster_id:
+                node_doc["clusterId"] = str(c_doc["_id"])
+                
+    node_doc["clusterName"] = cluster_name or "--"
+
     vms_collection = db.get_collection("vm_details")
     node_name = node_doc.get("node", "")
     escaped_node_name = re.escape(node_name) if node_name else ""
@@ -66,6 +87,7 @@ async def list_items(
     sort_by: Optional[str] = Query(None),
     order: str = Query("asc"),
     nodeTypeFilter: Optional[str] = Query(None),
+    networkType: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
     and_conditions = []
@@ -209,6 +231,20 @@ async def list_items(
     
     if rack:
         and_conditions.append({"rack": rack})
+
+    if networkType and networkType.strip():
+        nt_val = networkType.strip().lower()
+        if nt_val == "intranet":
+            and_conditions.append({
+                "$or": [
+                    {"networkType": "intranet"},
+                    {"networkType": None},
+                    {"networkType": ""},
+                    {"networkType": {"$exists": False}}
+                ]
+            })
+        else:
+            and_conditions.append({"networkType": nt_val})
     
     if search:
         import re

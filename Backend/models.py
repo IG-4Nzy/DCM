@@ -611,6 +611,7 @@ class NodeModel(BaseModel):
     rackPosition: Optional[str] = None
     rackUnits: Optional[int] = None
     clusterId: Optional[str] = None
+    clusterName: Optional[str] = None
     serverModel: Optional[str] = None
     serialNumber: Optional[str] = None
     custodian: Optional[str] = None
@@ -623,6 +624,7 @@ class NodeModel(BaseModel):
     isPhysical: Optional[bool] = False
     os: Optional[str] = None
     gpu: Optional[str] = None
+    networkType: Optional[str] = "intranet"
     createdBy: Optional[str] = None
     createdAt: Optional[str] = None
     updatedBy: Optional[str] = None
@@ -656,6 +658,7 @@ class CreateNodeModel(BaseModel):
     isPhysical: Optional[bool] = False
     os: Optional[str] = None
     gpu: Optional[str] = None
+    networkType: Optional[str] = "intranet"
 
 class UpdateNodeModel(BaseModel):
     nodeId: Optional[str] = None
@@ -680,6 +683,7 @@ class UpdateNodeModel(BaseModel):
     isPhysical: Optional[bool] = None
     os: Optional[str] = None
     gpu: Optional[str] = None
+    networkType: Optional[str] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -1046,6 +1050,10 @@ class VMDetailsModel(BaseModel):
     adminContact: Optional[str] = None
     admin: Optional[Union[str, List[str]]] = None
     powerStatus: Optional[str] = None
+    isNetworkConnected: Optional[bool] = True
+    clones: Optional[List[dict]] = Field(default_factory=list)
+    snapshots: Optional[List[dict]] = Field(default_factory=list)
+    templates: Optional[List[dict]] = Field(default_factory=list)
     createdBy: Optional[str] = None
     createdAt: Optional[str] = None
     updatedBy: Optional[str] = None
@@ -1076,6 +1084,10 @@ class CreateVMDetailsModel(BaseModel):
     adminContact: Optional[str] = None
     admin: Optional[Union[str, List[str]]] = None
     powerStatus: Optional[str] = None
+    isNetworkConnected: Optional[bool] = True
+    clones: Optional[List[dict]] = Field(default_factory=list)
+    snapshots: Optional[List[dict]] = Field(default_factory=list)
+    templates: Optional[List[dict]] = Field(default_factory=list)
 
 class UpdateVMDetailsModel(BaseModel):
     vmId: Optional[str] = None
@@ -1097,6 +1109,10 @@ class UpdateVMDetailsModel(BaseModel):
     adminContact: Optional[str] = None
     admin: Optional[Union[str, List[str]]] = None
     powerStatus: Optional[str] = None
+    isNetworkConnected: Optional[bool] = None
+    clones: Optional[List[dict]] = None
+    snapshots: Optional[List[dict]] = None
+    templates: Optional[List[dict]] = None
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

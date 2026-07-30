@@ -421,7 +421,8 @@ async def get_dashboard_summary(
     node_query = {
         "$and": [
             admin_query,
-            {"isAppliance": {"$nin": [True, "true", "True"]}}
+            {"isAppliance": {"$ne": True}},
+            {"isStorage": {"$ne": True}}
         ]
     }
     admin_node_count = await nodes_col.count_documents(node_query)

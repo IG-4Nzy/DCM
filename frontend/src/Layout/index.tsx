@@ -358,13 +358,34 @@ const Layout: React.FC = () => {
                 if (!isSuperuser && option.privileges && !hasAnyPrivilege(option.privileges)) {
                   return null;
                 }
+
+                let displayLabel = option.label;
+                if (option.subItemPrivileges && Array.isArray(option.subItemPrivileges)) {
+                  const allowedSubItems = option.subItemPrivileges
+                    .filter((sub: any) => isSuperuser || hasAnyPrivilege(sub.privileges))
+                    .map((sub: any) => sub.label);
+                  
+                  if (allowedSubItems.length > 0) {
+                    if (allowedSubItems.length === 1) {
+                      displayLabel = allowedSubItems[0];
+                    } else if (allowedSubItems.length === 2) {
+                      displayLabel = allowedSubItems.join(' & ');
+                    } else {
+                      const last = allowedSubItems.pop();
+                      displayLabel = `${allowedSubItems.join(', ')} & ${last}`;
+                    }
+                  }
+                }
+
                 const isSelected = location.pathname === option.route;
                 return (
-                  <ListItem key={`sidebar-item-${index}`} disablePadding sx={{ display: 'block' }} title={option.label} >
+                  <ListItem key={`sidebar-item-${index}`} disablePadding sx={{ display: 'block' }} title={displayLabel} >
                     <ListItemButton
                       onClick={() => navigate(option?.route)}
                       sx={{
                         minHeight: 48,
+                        height: 'auto',
+                        py: 1,
                         justifyContent: open ? 'initial' : 'center',
                         px: 2.5,
                         background: isSelected ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
@@ -378,7 +399,7 @@ const Layout: React.FC = () => {
                       <ListItemIcon
                         sx={{
                           minWidth: 0,
-                          mr: open ? 3 : 'auto',
+                          mr: open ? 3 : 0,
                           justifyContent: 'center',
                           color: isSelected ? '#1976d2' : 'inherit'
                         }}
@@ -399,7 +420,19 @@ const Layout: React.FC = () => {
                           <option.icon />
                         </Badge>
                       </ListItemIcon>
-                      <ListItemText primary={option.label} sx={{ opacity: open ? 1 : 0 }} />
+                      <ListItemText
+                        primary={
+                          <span style={{
+                            whiteSpace: 'normal',
+                            wordBreak: 'break-word',
+                            lineHeight: 1.25,
+                            fontSize: '0.85rem'
+                          }}>
+                            {displayLabel}
+                          </span>
+                        }
+                        sx={{ opacity: open ? 1 : 0, display: open ? 'block' : 'none', my: 0 }}
+                      />
                     </ListItemButton>
                   </ListItem>
                 );
@@ -424,14 +457,14 @@ const Layout: React.FC = () => {
                 <ListItemIcon
                   sx={{
                     minWidth: 0,
-                    mr: open ? 3 : 'auto',
+                    mr: open ? 3 : 0,
                     justifyContent: 'center',
                     color: '#f5b041'
                   }}
                 >
                   <StickyNoteIcon size={24} />
                 </ListItemIcon>
-                <ListItemText primary="Sticky Note" sx={{ opacity: open ? 1 : 0 }} />
+                <ListItemText primary="Sticky Note" sx={{ opacity: open ? 1 : 0, display: open ? 'block' : 'none' }} />
               </ListItemButton>
             </ListItem>
           )}
@@ -448,14 +481,14 @@ const Layout: React.FC = () => {
               <ListItemIcon
                 sx={{
                   minWidth: 0,
-                  mr: open ? 3 : 'auto',
+                  mr: open ? 3 : 0,
                   justifyContent: 'center',
                   color: 'error.main'
                 }}
               >
                 <LogoutIcon />
               </ListItemIcon>
-              <ListItemText primary={wordings.logout} sx={{ opacity: open ? 1 : 0 }} />
+              <ListItemText primary={wordings.logout} sx={{ opacity: open ? 1 : 0, display: open ? 'block' : 'none' }} />
             </ListItemButton>
           </ListItem>
         </List>
