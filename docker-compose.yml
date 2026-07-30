@@ -20,6 +20,7 @@ services:
       - "8000:8000"
     environment:
       - MONGO_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-password}@mongodb:27017/dcm_database?authSource=admin
+      - deploy=${deploy:-${DEPLOY:-prod}}
     volumes:
       - backend_uploads:/app/uploads
     cap_add:
@@ -35,6 +36,7 @@ services:
       - "80:80"
     environment:
       - VITE_API_BASE_URL=http://localhost:8000
+      - deploy=${deploy:-${DEPLOY:-prod}}
     depends_on:
       - backend
     restart: unless-stopped

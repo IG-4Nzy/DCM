@@ -181,3 +181,31 @@ Start the platform using:
 docker compose up -d
 ```
 No internet lookup will occur; Docker will mount named volumes (e.g., `mongodb_data` and `backend_uploads`) and run successfully.
+
+
+
+
+
+
+Option B: Build Docker Images Directly on the Intranet Machine
+If you need to edit code and rebuild images directly on the intranet machine:
+
+Step 1: Package Dependencies on Online Machine
+Save Base Docker Images:
+
+docker pull python:3.11-slim
+docker pull node:22-alpine
+docker pull nginx:alpine
+docker pull mongo:latest
+docker save -o base_images.tar python:3.11-slim node:22-alpine nginx:alpine mongo:latest
+
+Pre-download Python Dependencies:
+pip download -r Backend/requirements.txt -d Backend/wheels/
+
+docker load -i base_images.tar
+
+Build and run containers:
+
+Production:
+docker compose up -d --build
+
