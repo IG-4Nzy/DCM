@@ -10,8 +10,9 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
-# Embed a specific placeholder string at build time
+# Embed specific placeholder strings at build time
 ENV VITE_API_BASE_URL=RUNTIME_API_BASE_URL_PLACEHOLDER
+ENV VITE_DEPLOY_ENV=RUNTIME_DEPLOY_ENV_PLACEHOLDER
 RUN npx vite build
 
 # Production Stage

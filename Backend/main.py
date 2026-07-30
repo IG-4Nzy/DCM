@@ -596,6 +596,11 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 async def root():
     return {"message": "Welcome to the DCM API"}
 
+@app.get("/api/config", tags=["config"])
+async def get_app_config():
+    deploy_val = os.getenv("deploy", os.getenv("DEPLOY", os.getenv("DEPLOY_ENV", "prod"))).lower().strip()
+    return {"deploy": deploy_val}
+
 
 # ─────────────────────────────────────────────────────────
 # LIFECYCLE EVENTS — Background Scheduler & Client Cleanup

@@ -15,7 +15,8 @@ import {
   CssBaseline,
   Avatar,
   Tooltip,
-  Badge
+  Badge,
+  Typography
 } from '@mui/material';
 import MuiDrawer from '@mui/material/Drawer';
 import MuiAppBar, { type AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
@@ -235,6 +236,21 @@ const Layout: React.FC = () => {
     fetchInitials();
   }, [username]);
 
+  const [deployEnv, setDeployEnv] = useState<string>(() => {
+    const raw = (import.meta.env.VITE_DEPLOY_ENV || '').toLowerCase().trim();
+    return raw && !raw.includes('placeholder') ? raw : 'prod';
+  });
+
+  useEffect(() => {
+    request.get('/api/config')
+      .then(res => {
+        if (res.data?.deploy) {
+          setDeployEnv(res.data.deploy.toLowerCase().trim());
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     const currentOption = SIDEBAR_OPTIONS.find(opt => location.pathname.startsWith(opt.route));
     if (currentOption) {
@@ -267,6 +283,43 @@ const Layout: React.FC = () => {
   return (
     <NotificationPollerProvider>
       <StickyNote />
+      {deployEnv === 'test' && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            pointerEvents: 'none',
+            zIndex: 9998,
+            overflow: 'hidden',
+            opacity: 0.05,
+            userSelect: 'none',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignContent: 'space-around',
+            justifyContent: 'space-around',
+            transform: 'rotate(-25deg) scale(1.5)'
+          }}
+        >
+          {Array.from({ length: 60 }).map((_, i) => (
+            <Typography
+              key={i}
+              sx={{
+                fontSize: '2.5rem',
+                fontWeight: 900,
+                letterSpacing: '6px',
+                color: '#000000',
+                m: 6,
+                whiteSpace: 'nowrap'
+              }}
+            >
+              DCM
+            </Typography>
+          ))}
+        </Box>
+      )}
       <Box sx={{ display: 'flex', textAlign: 'left', width: '100%', minHeight: '100vh' }}>
       <CssBaseline />
       <AppBar position="fixed" open={open}>
@@ -283,9 +336,33 @@ const Layout: React.FC = () => {
           >
             <MenuIcon />
           </IconButton>
-          <label style={{ flexGrow: 1, fontWeight: '500', fontSize: '1.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {wordings.dataCentreManagement}
-          </label>
+          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+            <label style={{ fontWeight: '500', fontSize: '1.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {wordings.dataCentreManagement}
+            </label>
+            {deployEnv === 'test' && (
+              <Box
+                sx={{
+                  backgroundColor: '#ed6c02',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '0.75rem',
+                  px: 1.2,
+                  py: 0.3,
+                  borderRadius: '12px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  boxShadow: '0 2px 6px rgba(237, 108, 2, 0.4)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  lineHeight: 1,
+                  flexShrink: 0
+                }}
+              >
+                Test
+              </Box>
+            )}
+          </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Box
               sx={{
