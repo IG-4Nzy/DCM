@@ -21,6 +21,13 @@ interface RequestFormModalProps {
   requestTypes: string[];
 }
 
+const SELECT_MENU_PROPS = {
+  disableScrollLock: true,
+  PaperProps: {
+    sx: { maxHeight: 300 },
+  },
+};
+
 const RequestFormModal: React.FC<RequestFormModalProps> = ({
   isModalOpen,
   handleCloseModal,
@@ -186,7 +193,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                   setDetails({});
                 }}
                 disabled={!!editingRequest}
-                MenuProps={{ disablePortal: true }}
+                MenuProps={SELECT_MENU_PROPS}
               >
                 {requestTypes.map(type => (
                   <MenuItem key={type} value={type}>{type}</MenuItem>
@@ -236,13 +243,34 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                     value={details.networkType || 'Internet'}
                     label="Network Type"
                     disabled={editingRequest && !isSuperuser && !editingRequest.currentAssignedUsers?.includes(username)}
-                    onChange={(e) => handleDetailChange('networkType', e.target.value)}
-                    MenuProps={{ disablePortal: true }}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      handleDetailChange('networkType', val);
+                      if (val !== 'Intranet') {
+                        handleDetailChange('firstInternetDeployment', false);
+                      }
+                    }}
+                    MenuProps={SELECT_MENU_PROPS}
                   >
                     <MenuItem value="Internet">Internet</MenuItem>
                     <MenuItem value="Intranet">Intranet</MenuItem>
                   </Select>
                 </FormControl>
+
+                {details.networkType === 'Intranet' && (
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={!!details.firstInternetDeployment}
+                        disabled={editingRequest && !isSuperuser && !editingRequest.currentAssignedUsers?.includes(username)}
+                        onChange={(e) => handleDetailChange('firstInternetDeployment', e.target.checked)}
+                        color="primary"
+                      />
+                    }
+                    label="First deploy to Internet, then migrate to Intranet"
+                    sx={{ color: '#374151', mt: -0.5, mb: 0.5 }}
+                  />
+                )}
 
                 <TextField 
                   label="OS and Version" 
@@ -338,7 +366,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                             ip: selectedVm ? (selectedVm.ipAddress || '') : '',
                           }));
                         }}
-                        MenuProps={{ disablePortal: true }}
+                        MenuProps={SELECT_MENU_PROPS}
                       >
                         {vmsList.map((vm: any) => (
                           <MenuItem key={vm.id || vm._id} value={vm.id || vm._id}>
@@ -381,7 +409,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                                 backupName: undefined,
                               }));
                             }}
-                            MenuProps={{ disablePortal: true }}
+                            MenuProps={SELECT_MENU_PROPS}
                           >
                             <MenuItem value="Migration">Migration</MenuItem>
                             <MenuItem value="Clone">Clone</MenuItem>
@@ -435,7 +463,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                                   handleDetailChange('migrationCluster', e.target.value);
                                   handleDetailChange('migrationNode', '');
                                 }}
-                                MenuProps={{ disablePortal: true }}
+                                MenuProps={SELECT_MENU_PROPS}
                               >
                                 {clustersList.map((c: any) => (
                                   <MenuItem key={c.id || c._id} value={c.id || c._id}>
@@ -450,7 +478,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                                 value={details.migrationNode || ''}
                                 label="Target Node"
                                 onChange={(e) => handleDetailChange('migrationNode', e.target.value)}
-                                MenuProps={{ disablePortal: true }}
+                                MenuProps={SELECT_MENU_PROPS}
                               >
                                 {nodesList
                                   .filter((n: any) => !details.migrationCluster || n.clusterId === details.migrationCluster)
@@ -627,7 +655,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                     value={status}
                     label="Status"
                     onChange={(e) => setStatus(e.target.value)}
-                    MenuProps={{ disablePortal: true }}
+                    MenuProps={SELECT_MENU_PROPS}
                     disabled={!isSuperuser && (!editingRequest?.currentAssignedUsers || !editingRequest.currentAssignedUsers.includes(username))}
                   >
                     {configuredStages.length > 0 ? (
@@ -653,7 +681,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                         value={details.cluster || ''}
                         label="Cluster"
                         onChange={(e) => handleDetailChange('cluster', e.target.value)}
-                        MenuProps={{ disablePortal: true }}
+                        MenuProps={SELECT_MENU_PROPS}
                       >
                         {clustersList.map((c: any) => (
                           <MenuItem key={c.id || c._id} value={c.clusterName}>
@@ -669,7 +697,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                         value={details.node || ''}
                         label="Node (Physical Host)"
                         onChange={(e) => handleDetailChange('node', e.target.value)}
-                        MenuProps={{ disablePortal: true }}
+                        MenuProps={SELECT_MENU_PROPS}
                       >
                         {nodesList.map((n: any) => (
                           <MenuItem key={n.id || n._id} value={n.node}>
@@ -724,7 +752,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                         value={details.backupNode || ''}
                         label="Backup Node"
                         onChange={(e) => handleDetailChange('backupNode', e.target.value)}
-                        MenuProps={{ disablePortal: true }}
+                        MenuProps={SELECT_MENU_PROPS}
                       >
                         {nodesList.map((n: any) => (
                           <MenuItem key={n.id || n._id} value={n.node}>
@@ -739,7 +767,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                         value={details.backupStorage || ''}
                         label="Backup Storage"
                         onChange={(e) => handleDetailChange('backupStorage', e.target.value)}
-                        MenuProps={{ disablePortal: true }}
+                        MenuProps={SELECT_MENU_PROPS}
                       >
                         {nodesList.filter((n: any) => n.type === 'storage' || n.isStorage).map((n: any) => (
                           <MenuItem key={n.id || n._id} value={n.node}>
@@ -754,7 +782,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                         value={details.datastore || ''}
                         label="Datastore"
                         onChange={(e) => handleDetailChange('datastore', e.target.value)}
-                        MenuProps={{ disablePortal: true }}
+                        MenuProps={SELECT_MENU_PROPS}
                       >
                       </Select>
                     </FormControl>

@@ -22,6 +22,13 @@ const SPECIAL_ASSIGNEES = [
   { value: 'RequesterDeptHead', label: 'Department Head of Requester', type: 'special' },
 ];
 
+const SELECT_MENU_PROPS = {
+  disableScrollLock: true,
+  PaperProps: {
+    sx: { maxHeight: 300 },
+  },
+};
+
 interface RequestRoutingModalProps {
   open: boolean;
   onClose: () => void;
@@ -108,16 +115,93 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
   };
 
   const updateStage = (index: number, field: keyof RequestRoutingStage, value: any) => {
-    const updated = [...stages];
-    updated[index] = { ...updated[index], [field]: value };
-    setStages(updated);
+    setStages((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const updateStageFields = (index: number, fields: Partial<RequestRoutingStage>) => {
+    setStages((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], ...fields };
+      return updated;
+    });
   };
 
   const handleAssigneeChange = (index: number, values: string[] | string) => {
-    const updated = [...stages];
     const vals = Array.isArray(values) ? values : (values ? [values] : []);
-    updated[index] = { ...updated[index], assignmentType: 'Mixed', assignedTo: vals };
-    setStages(updated);
+    setStages((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], assignmentType: 'Mixed', assignedTo: vals };
+      return updated;
+    });
+  };
+
+  const addConditionalAssignment = (stageIndex: number) => {
+    setStages((prev) => {
+      const updated = [...prev];
+      const currentRules = updated[stageIndex]?.conditionalAssignments || [];
+      updated[stageIndex] = {
+        ...updated[stageIndex],
+        conditionalAssignments: [
+          ...currentRules,
+          { conditionField: 'networkType', conditionValue: 'Intranet', assignmentType: 'Mixed', assignedTo: [] }
+        ]
+      };
+      return updated;
+    });
+  };
+
+  const removeConditionalAssignment = (stageIndex: number, ruleIndex: number) => {
+    setStages((prev) => {
+      const updated = [...prev];
+      const currentRules = updated[stageIndex]?.conditionalAssignments || [];
+      updated[stageIndex] = {
+        ...updated[stageIndex],
+        conditionalAssignments: currentRules.filter((_, i) => i !== ruleIndex)
+      };
+      return updated;
+    });
+  };
+
+  const updateConditionalAssignment = (stageIndex: number, ruleIndex: number, field: string, value: any) => {
+    setStages((prev) => {
+      const updated = [...prev];
+      const currentRules = [...(updated[stageIndex]?.conditionalAssignments || [])];
+      currentRules[ruleIndex] = { ...currentRules[ruleIndex], [field]: value };
+      updated[stageIndex] = {
+        ...updated[stageIndex],
+        conditionalAssignments: currentRules
+      };
+      return updated;
+    });
+  };
+
+  const updateConditionalAssignmentFields = (stageIndex: number, ruleIndex: number, fields: Record<string, any>) => {
+    setStages((prev) => {
+      const updated = [...prev];
+      const currentRules = [...(updated[stageIndex]?.conditionalAssignments || [])];
+      currentRules[ruleIndex] = { ...currentRules[ruleIndex], ...fields };
+      updated[stageIndex] = {
+        ...updated[stageIndex],
+        conditionalAssignments: currentRules
+      };
+      return updated;
+    });
+  };
+
+  const getRuleAssigneeValue = (rule: any): string[] => {
+    let items: string[] = [];
+    if (Array.isArray(rule.assignedTo)) {
+      items = rule.assignedTo;
+    } else if (typeof rule.assignedTo === 'string' && rule.assignedTo) {
+      items = [rule.assignedTo];
+    } else {
+      return [];
+    }
+    return items.map((item) => normalizeAssigneeValue(item, rule as any)).filter(Boolean);
   };
 
   const normalizeAssigneeValue = (val: string, stage: RequestRoutingStage): string => {
@@ -250,6 +334,7 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                 label="Request Type"
                 onChange={(e) => setRequestType(e.target.value)}
                 disabled={!!editingItem}
+                MenuProps={SELECT_MENU_PROPS}
               >
                 {requestTypes.map((type) => (
                   <MenuItem key={type} value={type}>
@@ -323,13 +408,14 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                   />
 
                   <FormControl size="small" sx={{ minWidth: 240 }}>
-                    <InputLabel>Assignee</InputLabel>
+                    <InputLabel>Default Assignee</InputLabel>
                     <Select
                       multiple
                       value={getAssigneeValue(stage)}
-                      label="Assignee"
+                      label="Default Assignee"
                       onChange={(e) => handleAssigneeChange(index, e.target.value as string[])}
                       renderValue={(selected) => (selected as string[]).map(formatAssigneeLabel).join(', ')}
+                      MenuProps={SELECT_MENU_PROPS}
                     >
                       {renderAssigneeSelectOptions(stage)}
                     </Select>
@@ -350,16 +436,31 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                   <Typography variant="caption" fontWeight={700} color="secondary.main" sx={{ minWidth: 130 }}>
                     ⚡ Run Stage Only If:
                   </Typography>
-                  <FormControl size="small" sx={{ minWidth: 160 }}>
+                  <FormControl size="small" sx={{ minWidth: 180 }}>
                     <InputLabel>Condition Field</InputLabel>
                     <Select
                       value={stage.conditionField || ''}
                       label="Condition Field"
-                      onChange={(e) => updateStage(index, 'conditionField', e.target.value)}
+                      onChange={(e) => {
+                        const newField = e.target.value;
+                        let val = '';
+                        if (newField === 'networkType') val = 'Internet';
+                        else if (newField === 'firstInternetDeployment') val = 'true';
+                        else if (newField === 'operationType') val = 'Migration';
+                        else if (newField === 'requestType') val = 'VM Creation';
+
+                        updateStageFields(index, {
+                          conditionField: newField,
+                          conditionValue: val,
+                        });
+                      }}
+                      MenuProps={SELECT_MENU_PROPS}
                     >
                       <MenuItem value="">Always Run (No Condition)</MenuItem>
                       <MenuItem value="networkType">Network Type (networkType)</MenuItem>
+                      <MenuItem value="firstInternetDeployment">First Internet Deployment (firstInternetDeployment)</MenuItem>
                       <MenuItem value="operationType">Operation Type (operationType)</MenuItem>
+                      <MenuItem value="requestType">Request Type (requestType)</MenuItem>
                       <MenuItem value="purpose">Purpose (purpose)</MenuItem>
                     </Select>
                   </FormControl>
@@ -372,21 +473,209 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                           value={stage.conditionOperator || 'equals'}
                           label="Operator"
                           onChange={(e) => updateStage(index, 'conditionOperator', e.target.value)}
+                          MenuProps={SELECT_MENU_PROPS}
                         >
                           <MenuItem value="equals">Equals (==)</MenuItem>
                           <MenuItem value="not_equals">Not Equals (!=)</MenuItem>
                         </Select>
                       </FormControl>
-                      <TextField
-                        label="Expected Value"
-                        size="small"
-                        placeholder="e.g. Internet, Intranet"
-                        value={stage.conditionValue || ''}
-                        onChange={(e) => updateStage(index, 'conditionValue', e.target.value)}
-                        sx={{ width: 160 }}
-                      />
+                      
+                      {(() => {
+                        const optionsMap: Record<string, { value: string; label: string }[]> = {
+                          networkType: [
+                            { value: 'Internet', label: 'Internet' },
+                            { value: 'Intranet', label: 'Intranet' },
+                          ],
+                          firstInternetDeployment: [
+                            { value: 'true', label: 'True (First Internet Deployment)' },
+                            { value: 'false', label: 'False (Direct Intranet)' },
+                          ],
+                          operationType: [
+                            { value: 'Migration', label: 'Migration' },
+                            { value: 'Clone', label: 'Clone' },
+                            { value: 'Snapshot', label: 'Snapshot' },
+                            { value: 'Template', label: 'Template' },
+                            { value: 'Backup', label: 'Backup' },
+                            { value: 'Resource Upgrade', label: 'Resource Upgrade' },
+                            { value: 'Others', label: 'Others' },
+                          ],
+                          requestType: [
+                            { value: 'VM Creation', label: 'VM Creation' },
+                            { value: 'VM Management', label: 'VM Management' },
+                            { value: 'DC Entry', label: 'DC Entry' },
+                            { value: 'Hardware Issuance', label: 'Hardware Issuance' },
+                            { value: 'Hardware Replacement', label: 'Hardware Replacement' },
+                          ],
+                        };
+
+                        const fieldOptions = optionsMap[stage.conditionField];
+                        if (fieldOptions) {
+                          return (
+                            <FormControl size="small" sx={{ minWidth: 180 }}>
+                              <InputLabel>Expected Value</InputLabel>
+                              <Select
+                                value={stage.conditionValue || ''}
+                                label="Expected Value"
+                                onChange={(e) => updateStage(index, 'conditionValue', e.target.value)}
+                                MenuProps={SELECT_MENU_PROPS}
+                              >
+                                {fieldOptions.map((opt) => (
+                                  <MenuItem key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          );
+                        } else {
+                          return (
+                            <TextField
+                              label="Expected Value"
+                              size="small"
+                              placeholder="Enter expected value..."
+                              value={stage.conditionValue || ''}
+                              onChange={(e) => updateStage(index, 'conditionValue', e.target.value)}
+                              sx={{ width: 180 }}
+                            />
+                          );
+                        }
+                      })()}
                     </>
                   )}
+                </Box>
+
+                {/* Conditional Status Assignment Section */}
+                <Box sx={{ width: '100%', pt: 1, borderTop: '1px dashed #cfd8dc', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="caption" fontWeight={700} color="primary.main">
+                      🔀 Conditional Status Assignments (Override Assignee based on condition):
+                    </Typography>
+                    <Button
+                      variant="text"
+                      size="small"
+                      startIcon={<AddIcon />}
+                      onClick={() => addConditionalAssignment(index)}
+                      type="button"
+                      sx={{ fontSize: '0.75rem', py: 0 }}
+                    >
+                      Add Rule
+                    </Button>
+                  </Box>
+
+                  {(stage.conditionalAssignments || []).map((rule, ruleIdx) => (
+                    <Box key={ruleIdx} sx={{ display: 'flex', gap: 1.5, alignItems: 'center', backgroundColor: '#f8fafc', p: 1, borderRadius: 1, border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
+                      <FormControl size="small" sx={{ minWidth: 160 }}>
+                        <InputLabel>If Field</InputLabel>
+                        <Select
+                          value={rule.conditionField || ''}
+                          label="If Field"
+                          onChange={(e) => {
+                            const newField = e.target.value;
+                            let val = '';
+                            if (newField === 'networkType') val = 'Internet';
+                            else if (newField === 'firstInternetDeployment') val = 'true';
+                            else if (newField === 'operationType') val = 'Migration';
+                            else if (newField === 'requestType') val = 'VM Creation';
+
+                            updateConditionalAssignmentFields(index, ruleIdx, {
+                              conditionField: newField,
+                              conditionValue: val,
+                            });
+                          }}
+                          MenuProps={SELECT_MENU_PROPS}
+                        >
+                          <MenuItem value="networkType">Network Type (networkType)</MenuItem>
+                          <MenuItem value="firstInternetDeployment">First Internet Deployment (firstInternetDeployment)</MenuItem>
+                          <MenuItem value="operationType">Operation Type (operationType)</MenuItem>
+                          <MenuItem value="requestType">Request Type (requestType)</MenuItem>
+                          <MenuItem value="purpose">Purpose (purpose)</MenuItem>
+                        </Select>
+                      </FormControl>
+
+                      {(() => {
+                        const optionsMap: Record<string, { value: string; label: string }[]> = {
+                          networkType: [
+                            { value: 'Internet', label: 'Internet' },
+                            { value: 'Intranet', label: 'Intranet' },
+                          ],
+                          firstInternetDeployment: [
+                            { value: 'true', label: 'True (First Internet Deployment)' },
+                            { value: 'false', label: 'False (Direct Intranet)' },
+                          ],
+                          operationType: [
+                            { value: 'Migration', label: 'Migration' },
+                            { value: 'Clone', label: 'Clone' },
+                            { value: 'Snapshot', label: 'Snapshot' },
+                            { value: 'Template', label: 'Template' },
+                            { value: 'Backup', label: 'Backup' },
+                            { value: 'Resource Upgrade', label: 'Resource Upgrade' },
+                            { value: 'Others', label: 'Others' },
+                          ],
+                          requestType: [
+                            { value: 'VM Creation', label: 'VM Creation' },
+                            { value: 'VM Management', label: 'VM Management' },
+                            { value: 'DC Entry', label: 'DC Entry' },
+                            { value: 'Hardware Issuance', label: 'Hardware Issuance' },
+                            { value: 'Hardware Replacement', label: 'Hardware Replacement' },
+                          ],
+                        };
+
+                        const fieldOptions = optionsMap[rule.conditionField];
+                        if (fieldOptions) {
+                          return (
+                            <FormControl size="small" sx={{ minWidth: 160 }}>
+                              <InputLabel>Equals Value</InputLabel>
+                              <Select
+                                value={rule.conditionValue || ''}
+                                label="Equals Value"
+                                onChange={(e) => updateConditionalAssignment(index, ruleIdx, 'conditionValue', e.target.value)}
+                                MenuProps={SELECT_MENU_PROPS}
+                              >
+                                {fieldOptions.map((opt) => (
+                                  <MenuItem key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          );
+                        } else {
+                          return (
+                            <TextField
+                              label="Equals Value"
+                              size="small"
+                              placeholder="Enter value..."
+                              value={rule.conditionValue || ''}
+                              onChange={(e) => updateConditionalAssignment(index, ruleIdx, 'conditionValue', e.target.value)}
+                              sx={{ width: 160 }}
+                            />
+                          );
+                        }
+                      })()}
+
+                      <FormControl size="small" sx={{ minWidth: 220, flex: 1 }}>
+                        <InputLabel>Assign To</InputLabel>
+                        <Select
+                          multiple
+                          value={getRuleAssigneeValue(rule)}
+                          label="Assign To"
+                          onChange={(e) => {
+                            const vals = Array.isArray(e.target.value) ? e.target.value : [e.target.value];
+                            updateConditionalAssignment(index, ruleIdx, 'assignedTo', vals);
+                            updateConditionalAssignment(index, ruleIdx, 'assignmentType', 'Mixed');
+                          }}
+                          renderValue={(selected) => (selected as string[]).map(formatAssigneeLabel).join(', ')}
+                          MenuProps={SELECT_MENU_PROPS}
+                        >
+                          {renderAssigneeSelectOptions(rule as any)}
+                        </Select>
+                      </FormControl>
+
+                      <IconButton size="small" color="error" onClick={() => removeConditionalAssignment(index, ruleIdx)}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ))}
                 </Box>
               </Box>
             ))}
