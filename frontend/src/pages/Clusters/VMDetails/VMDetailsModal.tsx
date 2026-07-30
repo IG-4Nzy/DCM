@@ -113,6 +113,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     admin: Array.isArray(editingItem.admin) ? editingItem.admin : (editingItem.admin ? [editingItem.admin] : []),
                     powerStatus: editingItem.powerStatus || 'on',
                     isNetworkConnected: editingItem.isNetworkConnected !== undefined ? editingItem.isNetworkConnected : true,
+                    networkType: editingItem.networkType || (editingItem.ipAddress?.startsWith('192.168') ? 'Internet' : editingItem.ipAddress?.startsWith('10.') ? 'Intranet' : 'Internet'),
                     clones: editingItem.clones || [],
                     snapshots: editingItem.snapshots || [],
                     templates: editingItem.templates || []
@@ -139,6 +140,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     admin: [],
                     powerStatus: 'on',
                     isNetworkConnected: true,
+                    networkType: 'Internet',
                     clones: [],
                     snapshots: [],
                     templates: []
@@ -189,6 +191,14 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
     const handleChange = (field: keyof CreateVMDetailsPayload, value: any) => {
         setFormData(prev => {
             const next = { ...prev, [field]: value };
+            if (field === 'ipAddress') {
+                const ipStr = String(value).trim();
+                if (ipStr.startsWith('192.168.')) {
+                    next.networkType = 'Internet';
+                } else if (ipStr.startsWith('10.')) {
+                    next.networkType = 'Intranet';
+                }
+            }
             if (field === 'admin') {
                 const selectedIds = Array.isArray(value) ? value : [value];
                 const selectedUsers = users.filter(u => selectedIds.includes(u._id || u.id));
@@ -244,6 +254,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
             
             if (formData.powerStatus !== norm(editingItem.powerStatus)) changedData.powerStatus = formData.powerStatus;
             if (formData.isNetworkConnected !== editingItem.isNetworkConnected) changedData.isNetworkConnected = formData.isNetworkConnected;
+            if (formData.networkType !== norm(editingItem.networkType)) changedData.networkType = formData.networkType;
 
             changedData.clones = formData.clones;
             changedData.snapshots = formData.snapshots;
@@ -300,6 +311,17 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         className={styles.formGrid__field}
                         value={formData.ipAddress} 
                         onChange={(e) => handleChange('ipAddress', e.target.value)} 
+                    />
+                    <Dropdown 
+                        label="Network Type" 
+                        size="small"
+                        fullWidth
+                        value={formData.networkType || (formData.ipAddress?.startsWith('192.168') ? 'Internet' : formData.ipAddress?.startsWith('10.') ? 'Intranet' : 'Internet')} 
+                        onChange={(val) => handleChange('networkType', val)} 
+                        options={[
+                            { label: 'Internet (192.168.x.x)', value: 'Internet' },
+                            { label: 'Intranet (10.x.x.x)', value: 'Intranet' }
+                        ]}
                     />
                     <TextField 
                         label="Applications" 

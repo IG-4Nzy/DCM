@@ -275,5 +275,168 @@ class VCenterInventoryService:
             revalidate_ttl=60.0
         )
 
+    async def get_vm_snapshots(self, ip_address: str, session_id: str, vm_id: str) -> List[Dict[str, Any]]:
+        client = vcenter_http_client.get_client()
+        headers = {"vmware-api-session-id": session_id}
+
+        async def fetch():
+            snapshots = []
+            def parse_snapshots(obj):
+                if isinstance(obj, list):
+                    for item in obj:
+                        parse_snapshots(item)
+                elif isinstance(obj, dict):
+                    name = obj.get("name") or obj.get("snapshot_name") or obj.get("title")
+                    if name:
+                        snapshots.append({
+                            "name": str(name),
+                            "snapshotId": str(obj.get("snapshot") or obj.get("id") or ""),
+                            "description": str(obj.get("description") or obj.get("remarks") or ""),
+                            "createdAt": str(obj.get("create_time") or obj.get("created_at") or obj.get("createTime") or "")
+                        })
+                    if "children" in obj:
+                        parse_snapshots(obj["children"])
+                    if "childSnapshotList" in obj:
+                        parse_snapshots(obj["childSnapshotList"])
+
+            endpoints_to_try = [
+                f"/api/vcenter/vm/{vm_id}/snapshot",
+                f"/api/vcenter/vm/{vm_id}/snapshots",
+                f"/rest/vcenter/vm/{vm_id}/snapshot",
+                f"/rest/vcenter/vm/{vm_id}"
+            ]
+
+            for endpoint in endpoints_to_try:
+                try:
+                    res = await client.get(f"https://{ip_address}{endpoint}", headers=headers)
+                    if res.status_code == 200:
+                        data = res.json()
+                        val = data.get("value", data) if isinstance(data, dict) else data
+                        if isinstance(val, dict) and ("snapshots" in val or "snapshot" in val):
+                            parse_snapshots(val.get("snapshots") or val.get("snapshot"))
+                        elif isinstance(val, list):
+                            parse_snapshots(val)
+                        if snapshots:
+                            return snapshots
+                except Exception as e:
+                    logger.debug(f"Failed snapshot lookup on {endpoint} for {vm_id}: {e}")
+
+            return snapshots
+
+        key = f"vcenter:{ip_address}:vm:{vm_id}:snapshots"
+        return await global_cache.get_or_fetch(
+            key,
+            lambda: vcenter_rate_limiter.execute_request(ip_address, fetch),
+            ttl=300.0,
+            revalidate_ttl=60.0
+        )
+
+    async def get_vm_templates(self, ip_address: str, session_id: str) -> List[Dict[str, Any]]:
+        client = vcenter_http_client.get_client()
+        headers = {"vmware-api-session-id": session_id}
+
+        async def fetch():
+            templates = []
+            endpoints = [
+                "/api/vcenter/vm?filter.is_template=true",
+                "/rest/vcenter/vm?filter.is_template=true",
+                "/api/content/library/item"
+            ]
+            for ep in endpoints:
+                try:
+                    res = await client.get(f"https://{ip_address}{ep}", headers=headers)
+                    if res.status_code == 200:
+                        data = res.json()
+                        items = data.get("value", data) if isinstance(data, dict) else data
+                        if isinstance(items, list):
+                            for t in items:
+                                t_name = t.get("name") or t.get("vm_name") or t.get("title")
+                                if t_name:
+                                    templates.append({
+                                        "name": str(t_name),
+                                        "templateId": str(t.get("vm") or t.get("id") or ""),
+                                        "remarks": f"Template in vCenter ({t.get('power_state', 'OFF')})",
+                                        "createdAt": str(t.get("created_at") or "")
+                                    })
+                        if templates:
+                            return templates
+                except Exception as e:
+                    logger.debug(f"Failed template lookup on {ep}: {e}")
+            return templates
+
+        key = f"vcenter:{ip_address}:templates"
+        return await global_cache.get_or_fetch(
+            key,
+            lambda: vcenter_rate_limiter.execute_request(ip_address, fetch),
+            ttl=300.0,
+            revalidate_ttl=60.0
+        )
+
+    async def get_vm_clones(self, ip_address: str, session_id: str, vm_name: str) -> List[Dict[str, Any]]:
+        client = vcenter_http_client.get_client()
+        headers = {"vmware-api-session-id": session_id}
+
+        async def fetch():
+            clones = []
+            try:
+                res = await client.get(f"https://{ip_address}/api/vcenter/vm", headers=headers)
+                if res.status_code == 200:
+                    all_vms = res.json()
+                    if isinstance(all_vms, list):
+                        for v in all_vms:
+                            name = str(v.get("name") or "")
+                            if name and name.lower() != vm_name.lower() and (
+                                vm_name.lower() in name.lower() or 
+                                "clone" in name.lower() or 
+                                "copy" in name.lower()
+                            ):
+                                clones.append({
+                                    "name": name,
+                                    "cloneId": str(v.get("vm") or ""),
+                                    "remarks": f"Cloned VM in vCenter ({v.get('power_state', 'OFF')})",
+                                    "createdAt": ""
+                                })
+            except Exception as e:
+                logger.debug(f"Failed clone lookup for {vm_name}: {e}")
+            return clones
+
+        key = f"vcenter:{ip_address}:vm:{vm_name}:clones"
+        return await global_cache.get_or_fetch(
+            key,
+            lambda: vcenter_rate_limiter.execute_request(ip_address, fetch),
+            ttl=300.0,
+            revalidate_ttl=60.0
+        )
+
+    async def find_vm_by_ip(self, ip_address: str, session_id: str, target_vm_ip: str) -> Optional[Dict[str, Any]]:
+        if not target_vm_ip or target_vm_ip in ("--", "N/A"):
+            return None
+        vms = await self.get_vms(ip_address, session_id)
+        for v in vms:
+            vm_id = v.get("vm") or v.get("id")
+            if not vm_id:
+                continue
+            ip_val = v.get("ip_address") or v.get("ipAddress")
+            if ip_val and str(ip_val).strip() == target_vm_ip.strip():
+                return v
+            guest_ip = await self.get_vm_guest_ip(ip_address, session_id, str(vm_id))
+            if guest_ip and str(guest_ip).strip() == target_vm_ip.strip():
+                return v
+        return None
+
+    async def get_snapshots_and_clones_by_ip(self, ip_address: str, session_id: str, target_vm_ip: str, vm_name: str) -> Dict[str, Any]:
+        result = {"snapshots": [], "clones": [], "vcenterVmId": None}
+        matched_vm = await self.find_vm_by_ip(ip_address, session_id, target_vm_ip)
+        if matched_vm:
+            vm_id = matched_vm.get("vm") or matched_vm.get("id")
+            v_name = matched_vm.get("name") or vm_name
+            result["vcenterVmId"] = vm_id
+            if vm_id:
+                result["snapshots"] = await self.get_vm_snapshots(ip_address, session_id, str(vm_id))
+            result["clones"] = await self.get_vm_clones(ip_address, session_id, str(v_name))
+        else:
+            result["clones"] = await self.get_vm_clones(ip_address, session_id, vm_name)
+        return result
+
 # Global Inventory Service
 vcenter_inventory_service = VCenterInventoryService()

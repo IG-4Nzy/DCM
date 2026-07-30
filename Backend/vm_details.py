@@ -178,36 +178,21 @@ async def list_items(
         if nt_val == "disconnected":
             and_conditions.append({"isNetworkConnected": False})
         elif nt_val == "internet":
-            nodes_col = db.get_collection("nodes")
-            matching_nodes_cursor = nodes_col.find({"networkType": "internet"}, {"node": 1})
-            matching_nodes = await matching_nodes_cursor.to_list(length=None)
-            node_conditions = [{"node": {"$regex": f"^{re.escape(n['node'])}$", "$options": "i"}} for n in matching_nodes if n.get("node")]
-            
-            internet_or = [
-                {"networkType": "internet"},
-                {"ipAddress": {"$regex": r"^192\.168\."}},
-                {"ip": {"$regex": r"^192\.168\."}}
-            ] + node_conditions
-            and_conditions.append({"$or": internet_or})
-        elif nt_val == "intranet":
-            nodes_col = db.get_collection("nodes")
-            matching_nodes_cursor = nodes_col.find({
+            and_conditions.append({
                 "$or": [
-                    {"networkType": "intranet"},
-                    {"networkType": None},
-                    {"networkType": ""},
-                    {"networkType": {"$exists": False}}
+                    {"networkType": {"$regex": "^internet$", "$options": "i"}},
+                    {"ipAddress": {"$regex": r"^192\.168\."}},
+                    {"ip": {"$regex": r"^192\.168\."}}
                 ]
-            }, {"node": 1})
-            matching_nodes = await matching_nodes_cursor.to_list(length=None)
-            node_conditions = [{"node": {"$regex": f"^{re.escape(n['node'])}$", "$options": "i"}} for n in matching_nodes if n.get("node")]
-            
-            intranet_or = [
-                {"networkType": "intranet"},
-                {"ipAddress": {"$regex": r"^10\."}},
-                {"ip": {"$regex": r"^10\."}}
-            ] + node_conditions
-            and_conditions.append({"$or": intranet_or})
+            })
+        elif nt_val == "intranet":
+            and_conditions.append({
+                "$or": [
+                    {"networkType": {"$regex": "^intranet$", "$options": "i"}},
+                    {"ipAddress": {"$regex": r"^10\."}},
+                    {"ip": {"$regex": r"^10\."}}
+                ]
+            })
 
     if clusterType and clusterType.strip():
         ct_val = clusterType.strip()
@@ -622,17 +607,27 @@ async def import_vcenter_vms(
                     raw_os = vm.get("osAndExpiry") or vm.get("guest_OS") or vm.get("os") or vm.get("guest_family") or vm.get("guest_fullname") or ""
                     vm_os = str(raw_os).strip()
 
-                    # Fetch live hardware details if any specs missing
-                    if session_id and vm_id_val and (not vm_cpu or not vm_ram or not vm_hdd or not vm_os):
+                    # Link DCM VM and vCenter VM by IP address to fetch hardware, snapshots, and clones
+                    vcenter_snaps = []
+                    vcenter_clones = []
+                    if session_id and ip_address:
                         try:
                             from services.vcenter.inventory_service import vcenter_inventory_service
-                            hw = await vcenter_inventory_service.get_vm_hardware_details(vc["ipAddress"], session_id, vm_id_val)
-                            if not vm_cpu and hw.get("cpu"): vm_cpu = hw["cpu"]
-                            if not vm_ram and hw.get("ram"): vm_ram = hw["ram"]
-                            if not vm_hdd and hw.get("hdd"): vm_hdd = hw["hdd"]
-                            if not vm_os and hw.get("osAndExpiry"): vm_os = hw["osAndExpiry"]
+                            res = await vcenter_inventory_service.get_snapshots_and_clones_by_ip(
+                                vc["ipAddress"], session_id, ip_address, vm_name
+                            )
+                            vcenter_snaps = res.get("snapshots", [])
+                            vcenter_clones = res.get("clones", [])
+                            vcenter_vm_id = res.get("vcenterVmId") or vm_id_val
+
+                            if vcenter_vm_id:
+                                hw = await vcenter_inventory_service.get_vm_hardware_details(vc["ipAddress"], session_id, vcenter_vm_id)
+                                if not vm_cpu and hw.get("cpu"): vm_cpu = hw["cpu"]
+                                if not vm_ram and hw.get("ram"): vm_ram = hw["ram"]
+                                if not vm_hdd and hw.get("hdd"): vm_hdd = hw["hdd"]
+                                if not vm_os and hw.get("osAndExpiry"): vm_os = hw["osAndExpiry"]
                         except Exception as e:
-                            logger.warning(f"Failed to fetch live hardware details for {vm_id_val}: {e}")
+                            logger.warning(f"Failed to fetch live vCenter details by IP for {ip_address}: {e}")
 
                     # Resolve specific cluster for this VM
                     vm_host_ref = str(vm.get("host") or vm.get("node") or "").strip()
@@ -697,6 +692,10 @@ async def import_vcenter_vms(
                             update_fields["hdd"] = vm_hdd
                         if vm_os and existing.get("osAndExpiry") != vm_os:
                             update_fields["osAndExpiry"] = vm_os
+                        if vcenter_snaps:
+                            update_fields["snapshots"] = vcenter_snaps
+                        if vcenter_clones:
+                            update_fields["clones"] = vcenter_clones
 
                         if update_fields:
                             update_fields["updatedAt"] = datetime.now(timezone.utc).isoformat()
@@ -831,8 +830,35 @@ async def get_vm_history(id: str):
 
     vm_db_id = str(vm["_id"])
     vm_id_field = vm.get("vmId")
-    vm_name = vm.get("applications")
+    vm_name = vm.get("applications") or vm.get("vmName") or ""
     vm_ip = vm.get("ipAddress")
+
+    # Live sync vCenter snapshots and clones by IP address
+    if vm_ip:
+        try:
+            vcenter_col = db.get_collection("vcenter")
+            vc = await vcenter_col.find_one({"status": True})
+            if vc and vc.get("ipAddress"):
+                from services.vcenter.session_manager import vcenter_session_manager
+                from services.vcenter.inventory_service import vcenter_inventory_service
+                
+                session_id = await vcenter_session_manager.get_session_id(
+                    vc["ipAddress"], vc.get("username", ""), vc.get("password", "")
+                )
+                if session_id:
+                    res = await vcenter_inventory_service.get_snapshots_and_clones_by_ip(
+                        vc["ipAddress"], session_id, vm_ip, vm_name
+                    )
+                    vc_snaps = res.get("snapshots", [])
+                    vc_clones = res.get("clones", [])
+                    updates = {}
+                    if vc_snaps: updates["snapshots"] = vc_snaps
+                    if vc_clones: updates["clones"] = vc_clones
+                    if updates:
+                        await collection.update_one({"_id": ObjectId(id)}, {"$set": updates})
+                        vm.update(updates)
+        except Exception as e:
+            logger.debug(f"Live vCenter lookup by IP skipped in history endpoint: {e}")
 
     match_conditions = []
     if vm_db_id:
@@ -949,6 +975,12 @@ async def get_vm_history(id: str):
                     extra_req_details.append(f"Target Power: {req_details.get('powerStatus')}")
                 if req_details.get("ip") or req_details.get("ipAddress"):
                     extra_req_details.append(f"IP: {req_details.get('ip') or req_details.get('ipAddress')}")
+            elif operation_type == "Snapshot":
+                snap_name = req_details.get("snapshotName") or req_details.get("name")
+                if snap_name:
+                    extra_req_details.append(f"Snapshot Name: {snap_name}")
+                if req_details.get("remarks"):
+                    extra_req_details.append(f"Remarks: {req_details.get('remarks')}")
             else:
                 if req_details.get("ip") or req_details.get("ipAddress"):
                     extra_req_details.append(f"IP: {req_details.get('ip') or req_details.get('ipAddress')}")

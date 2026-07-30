@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dayjs from 'dayjs';
 import { Box, Tooltip, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
-import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdMonitor as MonitorIcon, MdCloudDownload as CloudDownloadIcon, MdFilterList as FilterListIcon, MdPowerSettingsNew as PowerIcon, MdWifi as NetworkOnIcon, MdWifiOff as NetworkOffIcon } from 'react-icons/md';
+import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdMonitor as MonitorIcon, MdCloudDownload as CloudDownloadIcon, MdFilterList as FilterListIcon, MdPowerSettingsNew as PowerIcon, MdWifi as NetworkOnIcon, MdWifiOff as NetworkOffIcon, MdWarning as WarningIcon, MdCameraAlt as SnapshotIcon } from 'react-icons/md';
 import { FilterDrawer, FilterGroup } from '../../../components/FilterDrawer';
 import Dropdown from '../../../components/Dropdown';
 import request from '../../../services/request';
@@ -606,6 +606,43 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                                                              </Tooltip>
                                                          );
                                                      })()}
+
+                                                     {/* Snapshot Indicator & Warning */}
+                                                     {(() => {
+                                                         const snaps = row.snapshots || [];
+                                                         if (snaps.length === 0) return null;
+                                                         const isMultiple = snaps.length > 1;
+                                                         const snapNames = snaps.map((s: any) => s.name || s.snapshotName || 'Snapshot').join(', ');
+                                                         const tooltipTitle = isMultiple 
+                                                             ? `WARNING: ${snaps.length} Snapshots exist for this VM!\nSnapshots: ${snapNames}` 
+                                                             : `Snapshot: ${snapNames}`;
+
+                                                         return (
+                                                             <Tooltip title={<span style={{ whiteSpace: 'pre-line' }}>{tooltipTitle}</span>} arrow placement="top">
+                                                                 <Box sx={{ 
+                                                                     display: 'inline-flex', 
+                                                                     alignItems: 'center', 
+                                                                     gap: 0.3,
+                                                                     px: 0.8, 
+                                                                     py: 0.25, 
+                                                                     borderRadius: '10px',
+                                                                     fontSize: '11px',
+                                                                     fontWeight: 700,
+                                                                     color: isMultiple ? '#d48806' : '#0284c7',
+                                                                     backgroundColor: isMultiple ? '#fffbe6' : 'rgba(2, 132, 199, 0.1)',
+                                                                     border: `1px solid ${isMultiple ? '#ffe58f' : '#7dd3fc'}`,
+                                                                     lineHeight: 1
+                                                                 }}>
+                                                                     {isMultiple ? (
+                                                                         <WarningIcon style={{ fontSize: '13px', color: '#d48806' }} />
+                                                                     ) : (
+                                                                         <SnapshotIcon style={{ fontSize: '12px', color: '#0284c7' }} />
+                                                                     )}
+                                                                     <span>{snaps.length} {snaps.length === 1 ? 'Snap' : 'Snaps'}</span>
+                                                                 </Box>
+                                                             </Tooltip>
+                                                         );
+                                                     })()}
                                                  </Box>
                                              </Box>
                                          </TableCell>
@@ -651,7 +688,33 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                                                 })()}
                                             </TableCell>
                                         )}
-                                        <TableCell className={styles.tableWrapper__cell}>{row.ipAddress || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'nowrap' }}>
+                                                <span>{row.ipAddress || '--'}</span>
+                                                {(() => {
+                                                    const isInternet = row.networkType ? row.networkType.toLowerCase() === 'internet' : row.ipAddress?.startsWith('192.168');
+                                                    const isIntranet = row.networkType ? row.networkType.toLowerCase() === 'intranet' : row.ipAddress?.startsWith('10.');
+                                                    if (!isInternet && !isIntranet) return null;
+                                                    return (
+                                                        <Box 
+                                                            sx={{ 
+                                                                fontSize: '10px', 
+                                                                px: 0.8,
+                                                                py: 0.2, 
+                                                                borderRadius: '4px',
+                                                                fontWeight: 700,
+                                                                lineHeight: 1,
+                                                                bgcolor: isInternet ? 'rgba(3, 105, 161, 0.1)' : 'rgba(21, 128, 61, 0.1)',
+                                                                color: isInternet ? '#0369a1' : '#15803d',
+                                                                border: `1px solid ${isInternet ? '#bae6fd' : '#bbf7d0'}`
+                                                            }}
+                                                        >
+                                                            {isInternet ? 'Internet' : 'Intranet'}
+                                                        </Box>
+                                                    );
+                                                })()}
+                                            </Box>
+                                        </TableCell>
                                         <TableCell className={styles.tableWrapper__cell}>
                                             {(() => {
                                                 if (!row.node) return '--';

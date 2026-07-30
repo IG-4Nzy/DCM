@@ -16,7 +16,9 @@ import {
   MdBackup, 
   MdCheckCircle, 
   MdHistory,
-  MdNetworkCheck
+  MdNetworkCheck,
+  MdWarning,
+  MdCameraAlt
 } from 'react-icons/md';
 import dayjs from 'dayjs';
 
@@ -95,6 +97,32 @@ const VMHistoryModal: React.FC<VMHistoryModalProps> = ({ open, onClose, vm }) =>
             VM Information
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* Multiple Snapshots Warning Banner */}
+            {vm.snapshots && vm.snapshots.length > 1 && (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 1.5,
+                  bgcolor: '#fffbe6',
+                  border: '1px solid #ffe58f',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 1.5
+                }}
+              >
+                <MdWarning style={{ fontSize: '22px', color: '#d48806', marginTop: '2px', flexShrink: 0 }} />
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#d48806' }}>
+                    WARNING: Multiple Snapshots ({vm.snapshots.length} Active)
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#8c6b00', display: 'block', lineHeight: 1.3, mt: 0.3 }}>
+                    This VM currently has <strong>{vm.snapshots.length} snapshots</strong>. Having multiple active snapshots increases disk latency and datastore usage.
+                  </Typography>
+                </Box>
+              </Paper>
+            )}
+
             <Box sx={{ p: 2, bgcolor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
                 <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>
@@ -119,6 +147,16 @@ const VMHistoryModal: React.FC<VMHistoryModalProps> = ({ open, onClose, vm }) =>
                       color: vm.isNetworkConnected !== false ? '#0284c7' : '#64748b', 
                       fontWeight: 700,
                       border: `1px solid ${(vm.isNetworkConnected !== false ? '#0284c7' : '#64748b')}30`
+                    }} 
+                  />
+                  <Chip 
+                    label={vm.networkType ? vm.networkType.toUpperCase() : (vm.ipAddress?.startsWith('192.168') ? 'INTERNET' : vm.ipAddress?.startsWith('10.') ? 'INTRANET' : 'INTERNET')} 
+                    size="small" 
+                    sx={{ 
+                      bgcolor: ((vm.networkType?.toLowerCase() === 'intranet' || vm.ipAddress?.startsWith('10.')) ? '#15803d' : '#0369a1') + '15', 
+                      color: (vm.networkType?.toLowerCase() === 'intranet' || vm.ipAddress?.startsWith('10.')) ? '#15803d' : '#0369a1', 
+                      fontWeight: 700,
+                      border: `1px solid ${((vm.networkType?.toLowerCase() === 'intranet' || vm.ipAddress?.startsWith('10.')) ? '#15803d' : '#0369a1')}30`
                     }} 
                   />
                 </Box>
@@ -195,7 +233,7 @@ const VMHistoryModal: React.FC<VMHistoryModalProps> = ({ open, onClose, vm }) =>
                 <Grid item xs={12}>
                   <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>Clones ({vm.clones.length})</Typography>
                   <Box sx={{ mt: 0.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    {vm.clones.map((c, i) => (
+                    {vm.clones.map((c: any, i: number) => (
                       <Typography key={i} variant="caption" sx={{ bgcolor: '#e0f2fe', color: '#0369a1', px: 1, py: 0.5, borderRadius: '4px', display: 'block' }}>
                         <strong>{c.name}</strong>{c.remarks ? ` — ${c.remarks}` : ''}
                       </Typography>
@@ -205,12 +243,60 @@ const VMHistoryModal: React.FC<VMHistoryModalProps> = ({ open, onClose, vm }) =>
                 )}
                 {vm.snapshots && vm.snapshots.length > 0 && (
                 <Grid item xs={12}>
-                  <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>Snapshots ({vm.snapshots.length})</Typography>
-                  <Box sx={{ mt: 0.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    {vm.snapshots.map((s, i) => (
-                      <Typography key={i} variant="caption" sx={{ bgcolor: '#fef3c7', color: '#b45309', px: 1, py: 0.5, borderRadius: '4px', display: 'block' }}>
-                        <strong>{s.name}</strong>{s.remarks ? ` — ${s.remarks}` : ''}
-                      </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
+                    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <MdCameraAlt style={{ fontSize: '15px', color: vm.snapshots.length > 1 ? '#d48806' : '#0284c7' }} />
+                      Snapshots ({vm.snapshots.length})
+                    </Typography>
+                    {vm.snapshots.length > 1 && (
+                      <Chip 
+                        icon={<MdWarning style={{ fontSize: '12px', color: '#d48806' }} />}
+                        label="Multiple Snapshots" 
+                        size="small" 
+                        sx={{ 
+                          bgcolor: '#fffbe6', 
+                          color: '#d48806', 
+                          border: '1px solid #ffe58f', 
+                          fontWeight: 700, 
+                          fontSize: '10px', 
+                          height: '20px' 
+                        }} 
+                      />
+                    )}
+                  </Box>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                    {vm.snapshots.map((s: any, i: number) => (
+                      <Box 
+                        key={i} 
+                        sx={{ 
+                          bgcolor: vm.snapshots.length > 1 ? '#fffbe6' : '#f8fafc', 
+                          color: vm.snapshots.length > 1 ? '#8c6b00' : '#1e293b', 
+                          p: 1.25, 
+                          borderRadius: '8px', 
+                          border: `1px solid ${vm.snapshots.length > 1 ? '#ffe58f' : '#e2e8f0'}` 
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '12px', color: vm.snapshots.length > 1 ? '#d48806' : '#0f172a' }}>
+                            Snapshot #{i + 1}: {s.name || s.snapshotName || `Snapshot-${i + 1}`}
+                          </Typography>
+                          {s.snapshotId && (
+                            <Typography variant="caption" sx={{ fontSize: '10px', color: '#64748b', bgcolor: 'rgba(0,0,0,0.04)', px: 0.8, py: 0.2, borderRadius: '4px' }}>
+                              ID: {s.snapshotId}
+                            </Typography>
+                          )}
+                        </Box>
+                        {(s.description || s.remarks) && (
+                          <Typography variant="caption" sx={{ display: 'block', mt: 0.4, color: '#475569', fontSize: '11px' }}>
+                            {s.description || s.remarks}
+                          </Typography>
+                        )}
+                        {s.createdAt && (
+                          <Typography variant="caption" sx={{ display: 'block', fontSize: '10px', color: '#94a3b8', mt: 0.3 }}>
+                            Created At: {safeParseDate(s.createdAt)}
+                          </Typography>
+                        )}
+                      </Box>
                     ))}
                   </Box>
                 </Grid>

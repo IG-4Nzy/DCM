@@ -116,17 +116,35 @@ async def list_users(
     is_superuser = current_user.get("isSuperuser", False)
     user_privileges = current_user.get("privileges", [])
     
-    only_dept_scoped = not (is_superuser or "View All Users" in user_privileges)
+    has_view_all_access = (
+        is_superuser or 
+        "View All Users" in user_privileges or 
+        "View All Roaster" in user_privileges
+    )
+    only_dept_scoped = not has_view_all_access
     if not pagination:
         only_dept_scoped = False
     
+    async def get_dept_filter(dept_val: str):
+        if not dept_val:
+            return dept_val
+        dept_doc = await db.get_collection("departments").find_one({
+            "$or": [
+                {"name": dept_val},
+                {"_id": ObjectId(dept_val) if ObjectId.is_valid(dept_val) else None}
+            ]
+        })
+        if dept_doc:
+            return {"$in": [str(dept_doc["_id"]), dept_doc.get("name", "")]}
+        return dept_val
+
     if only_dept_scoped:
-        query["department"] = current_user.get("department") or "None"
+        query["department"] = await get_dept_filter(current_user.get("department") or "None")
     else:
         if department == "me":
-            query["department"] = current_user.get("department")
+            query["department"] = await get_dept_filter(current_user.get("department") or "None")
         elif department:
-            query["department"] = department
+            query["department"] = await get_dept_filter(department)
 
     if role:
         query["role"] = role

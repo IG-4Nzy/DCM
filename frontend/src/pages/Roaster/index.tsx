@@ -93,6 +93,13 @@ const RoasterPage: React.FC = () => {
 
   const activeDepartment = selectedDepartment || userDepartment || '';
 
+  const activeDeptObj = (departmentsList || []).find((d: any) => 
+    d.name === activeDepartment || 
+    (d._id && String(d._id) === String(activeDepartment)) || 
+    (d.id && String(d.id) === String(activeDepartment))
+  );
+  const displayDepartmentValue = activeDeptObj ? activeDeptObj.name : activeDepartment;
+
   const formatTime = (timeStr: string) => {
     if (!timeStr) return '';
     const parts = timeStr.split(':');
@@ -227,7 +234,27 @@ const RoasterPage: React.FC = () => {
     // We want to calculate the summary for all users in the current department with the configured tracked role
     const trackedRole = dutySummary.trackedRole || "All Roles";
     const deptUsers = users.filter((u) => {
-      const isCorrectDept = u.department === activeDepartment;
+      const activeDeptObj = (departmentsList || []).find((d: any) => 
+        d.name === activeDepartment || 
+        (d._id && String(d._id) === String(activeDepartment)) || 
+        (d.id && String(d.id) === String(activeDepartment))
+      );
+      const activeDeptName = activeDeptObj ? activeDeptObj.name : activeDepartment;
+      const activeDeptId = activeDeptObj ? String(activeDeptObj._id || activeDeptObj.id) : activeDepartment;
+
+      const userDeptObj = (departmentsList || []).find((d: any) => 
+        (d._id && String(d._id) === String(u.department)) || 
+        (d.id && String(d.id) === String(u.department)) || 
+        d.name === u.department
+      );
+      const userDeptName = userDeptObj ? userDeptObj.name : u.department;
+      const userDeptId = userDeptObj ? String(userDeptObj._id || userDeptObj.id) : u.department;
+
+      const isCorrectDept = 
+        u.department === activeDepartment || 
+        userDeptId === activeDeptId || 
+        userDeptName === activeDeptName;
+
       const isNotSuper = !(u.is_superuser || u.isSuperuser);
       const isCorrectRole = trackedRole === "All Roles" || (Array.isArray(u.role) ? u.role.includes(trackedRole) : u.role === trackedRole);
       return isCorrectDept && isNotSuper && isCorrectRole;
@@ -684,14 +711,14 @@ const RoasterPage: React.FC = () => {
               <InputLabel id="roaster-dept-label" sx={{ fontSize: '12px' }}>Department</InputLabel>
               <Select
                 labelId="roaster-dept-label"
-                value={activeDepartment}
+                value={displayDepartmentValue}
                 label="Department"
                 onChange={(e) => setSelectedDepartment(e.target.value)}
                 sx={{ fontSize: '12px', height: '32px' }}
               >
                 {Array.from(new Set([
                   ...((departmentsList || []).map((d: any) => typeof d === 'string' ? d : d.name).filter(Boolean)),
-                  ...(activeDepartment ? [activeDepartment] : [])
+                  ...(displayDepartmentValue ? [displayDepartmentValue] : [])
                 ])).map((deptName) => (
                   <MenuItem key={deptName} value={deptName} sx={{ fontSize: '12px' }}>
                     {deptName}

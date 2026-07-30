@@ -17,7 +17,17 @@ async def get_roaster_status(
     department: str = Query(...),
     current_user: dict = Depends(get_current_user)
 ):
-    status_doc = await roaster_status_collection.find_one({"weekStartDate": weekStartDate, "department": department})
+    dept_doc = await db.get_collection("departments").find_one({
+        "$or": [
+            {"name": department},
+            {"_id": ObjectId(department) if ObjectId.is_valid(department) else None}
+        ]
+    })
+    dept_match = [department]
+    if dept_doc:
+        dept_match = [str(dept_doc["_id"]), dept_doc.get("name", "")]
+
+    status_doc = await roaster_status_collection.find_one({"weekStartDate": weekStartDate, "department": {"$in": dept_match}})
     if not status_doc:
         return RoasterStatusModel(
             weekStartDate=weekStartDate,
@@ -138,7 +148,16 @@ async def list_roasters(
     if shift:
         query["shift"] = shift
     if department:
-        query["department"] = department
+        dept_doc = await db.get_collection("departments").find_one({
+            "$or": [
+                {"name": department},
+                {"_id": ObjectId(department) if ObjectId.is_valid(department) else None}
+            ]
+        })
+        if dept_doc:
+            query["department"] = {"$in": [str(dept_doc["_id"]), dept_doc.get("name", "")]}
+        else:
+            query["department"] = department
 
     actual_sort_by = sortBy or sort_by or "date"
     sort_order = 1 if order == "asc" else -1
@@ -451,10 +470,20 @@ async def get_duty_summary(
     week_start_str = week_start.isoformat()
     week_end_str = week_end.isoformat()
 
+    dept_doc = await db.get_collection("departments").find_one({
+        "$or": [
+            {"name": department},
+            {"_id": ObjectId(department) if ObjectId.is_valid(department) else None}
+        ]
+    })
+    dept_match = [department]
+    if dept_doc:
+        dept_match = list(set([d for d in [department, str(dept_doc["_id"]), dept_doc.get("name", "")] if d]))
+
     # Fetch all rosters in the monthly cycle for this department (exclude Leave)
     month_query = {
         "date": {"$gte": cycle_start_str, "$lte": cycle_end_str},
-        "department": department,
+        "department": {"$in": dept_match},
         "shift": {"$ne": "Leave"}
     }
     month_rosters = await roasters_collection.find(month_query).to_list(length=None)
@@ -462,7 +491,7 @@ async def get_duty_summary(
     # Fetch all rosters in the current week for this department (exclude Leave)
     week_query = {
         "date": {"$gte": week_start_str, "$lte": week_end_str},
-        "department": department,
+        "department": {"$in": dept_match},
         "shift": {"$ne": "Leave"}
     }
     week_rosters = await roasters_collection.find(week_query).to_list(length=None)
@@ -486,7 +515,7 @@ async def get_duty_summary(
     # Get all users of this department with the tracked role
     users_collection = db.get_collection("users")
     tracked_role = config.get("trackedRole", "All Roles")
-    user_query = {"department": department, "status": {"$ne": False}}
+    user_query = {"department": {"$in": dept_match}, "status": {"$ne": False}}
     user_query["$or"] = [
         {"isSuperuser": {"$ne": True}},
         {"is_superuser": {"$ne": True}}
