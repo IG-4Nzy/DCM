@@ -128,8 +128,97 @@ async def get_routing_for_type(request_type: str):
     return routing
 
 
-async def resolve_assignees(stage: dict, requester_username: str) -> List[str]:
-    """Resolve the actual usernames to assign based on the assignment type."""
+def is_stage_applicable(stage: dict, request_doc: dict) -> bool:
+    """Check whether a stage condition matches the request doc details."""
+    c_field = stage.get("conditionField")
+    c_val = stage.get("conditionValue")
+    if not c_field or c_val is None or str(c_val).strip() == "":
+        return True  # No condition set, so stage is always applicable
+
+    c_operator = stage.get("conditionOperator", "equals")
+    details = request_doc.get("details") if isinstance(request_doc.get("details"), dict) else {}
+
+    raw_val = None
+    if c_field in details and details[c_field] is not None:
+        raw_val = details[c_field]
+    elif c_field in request_doc and request_doc[c_field] is not None:
+        raw_val = request_doc[c_field]
+
+    if raw_val is None or str(raw_val).strip() == "":
+        # Default fallback for networkType if unspecified
+        if c_field == "networkType":
+            raw_val = "Internet"
+        else:
+            raw_val = ""
+
+    actual_val = str(raw_val).strip().lower()
+    expected_val = str(c_val).strip().lower()
+
+    if c_operator == "not_equals":
+        return actual_val != expected_val
+    else:  # equals
+        return actual_val == expected_val
+
+
+def get_applicable_stages(stages: List[dict], request_doc: dict) -> List[dict]:
+    """Filter stages based on stage execution conditions."""
+    return [s for s in stages if is_stage_applicable(s, request_doc)]
+
+
+def recalculate_vm_name(doc: dict) -> dict:
+    """Recalculate vmName for VM Creation requests using Purpose, OS, and IP."""
+    req_type = doc.get("requestType") or doc.get("category", "")
+    if req_type != "VM Creation":
+        return doc
+
+    details = doc.get("details")
+    if not isinstance(details, dict):
+        details = {}
+
+    purpose = (doc.get("purpose") or "").strip().replace(" ", "")
+    os_ver = (details.get("osVersion") or "").strip().replace(" ", "")
+    ip_val = (details.get("ip") or "").strip()
+
+    ip_portion = ""
+    if ip_val:
+        parts = [p for p in ip_val.split(".") if p]
+        if len(parts) >= 2:
+            ip_portion = ".".join(parts[-2:])
+        else:
+            ip_portion = ip_val
+
+    name_parts = [p for p in [purpose, os_ver, ip_portion] if p]
+    if name_parts:
+        details["vmName"] = "_".join(name_parts)
+
+    doc["details"] = details
+    return doc
+
+
+async def resolve_assignees(stage: dict, requester_username: str, request_doc: Optional[dict] = None) -> List[str]:
+    """Resolve the actual usernames to assign based on the assignment type and conditional rules."""
+    # Check conditional assignments if request_doc is provided
+    conditional_rules = stage.get("conditionalAssignments") or []
+    if conditional_rules and request_doc:
+        details = request_doc.get("details") or {}
+        for rule in conditional_rules:
+            if not isinstance(rule, dict):
+                continue
+            field = rule.get("conditionField", "")
+            exp_val = str(rule.get("conditionValue", "")).strip().lower()
+            if not field or not exp_val:
+                continue
+            act_val = str(details.get(field) or request_doc.get(field) or "").strip().lower()
+            if act_val == exp_val:
+                # Rule matches! Resolve assignees using rule's configuration
+                rule_assign_type = rule.get("assignmentType") or "Mixed"
+                rule_assigned_to = rule.get("assignedTo")
+                return await resolve_assignees(
+                    {"assignmentType": rule_assign_type, "assignedTo": rule_assigned_to},
+                    requester_username,
+                    request_doc=None
+                )
+
     assignment_type = stage.get("assignmentType", "")
     assigned_to = stage.get("assignedTo", "")
 
@@ -300,6 +389,7 @@ async def add_vm_details_on_completion(existing_request: dict, username: str):
                 "hdd": str(details.get("hdd") or "120"),
                 "ram": str(details.get("ram") or "8"),
                 "cpu": str(details.get("cpu") or "4"),
+                "networkType": details.get("networkType") or "Internet",
                 "backupName": details.get("backupName") or "",
                 "backupNode": details.get("backupNode") or "",
                 "backupStorage": details.get("backupStorage") or "",
@@ -625,19 +715,26 @@ async def create_item(
     item_dict["createdAt"] = now
     item_dict["updatedAt"] = now
     item_dict["requestId"] = await get_next_sequence("requests_sequence", "REQ")
+    item_dict = recalculate_vm_name(item_dict)
 
     # Look up the routing configuration for this request type
     routing = await get_routing_for_type(payload.requestType)
 
     if routing and routing.get("stages"):
-        stages = sorted(routing["stages"], key=lambda s: s.get("order", 0))
-        first_stage = stages[0]
-        item_dict["status"] = first_stage.get("stageName", "Pending")
-        item_dict["currentStageIndex"] = 0
+        sorted_stages = sorted(routing["stages"], key=lambda s: s.get("order", 0))
+        stages = get_applicable_stages(sorted_stages, item_dict)
+        if stages:
+            first_stage = stages[0]
+            item_dict["status"] = first_stage.get("stageName", "Pending")
+            item_dict["currentStageIndex"] = 0
 
-        # Resolve assignees for the first stage
-        assignees = await resolve_assignees(first_stage, requester)
-        item_dict["currentAssignedUsers"] = assignees
+            # Resolve assignees for the first stage
+            assignees = await resolve_assignees(first_stage, requester, request_doc=item_dict)
+            item_dict["currentAssignedUsers"] = assignees
+        else:
+            item_dict["status"] = "Pending"
+            item_dict["currentStageIndex"] = 0
+            item_dict["currentAssignedUsers"] = []
     else:
         item_dict["status"] = "Pending"
         item_dict["currentStageIndex"] = 0
@@ -685,6 +782,10 @@ async def update_item(id: str, payload: UpdateRequestModel = Body(...), current_
 
     item_dict = {k: v for k, v in payload.model_dump().items() if v is not None}
     item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    merged_details = {**(existing.get("details") or {}), **(item_dict.get("details") or {})}
+    merged_doc = recalculate_vm_name({**existing, **item_dict, "details": merged_details})
+    if "details" in merged_doc:
+        item_dict["details"] = merged_doc["details"]
 
     # If status is being changed, handle stage progression
     new_status = item_dict.get("status")
@@ -701,7 +802,9 @@ async def update_item(id: str, payload: UpdateRequestModel = Body(...), current_
         routing = await get_routing_for_type(request_type)
 
         if routing and routing.get("stages"):
-            stages = sorted(routing["stages"], key=lambda s: s.get("order", 0))
+            sorted_stages = sorted(routing["stages"], key=lambda s: s.get("order", 0))
+            merged_doc = {**existing, **item_dict}
+            stages = get_applicable_stages(sorted_stages, merged_doc)
             stage_names = [s.get("stageName", "") for s in stages]
 
             if new_status in stage_names:
@@ -710,7 +813,7 @@ async def update_item(id: str, payload: UpdateRequestModel = Body(...), current_
 
                 # Resolve assignees for the new stage
                 requester = existing.get("createdBy", "")
-                assignees = await resolve_assignees(stages[new_index], requester)
+                assignees = await resolve_assignees(stages[new_index], requester, request_doc=merged_doc)
                 item_dict["currentAssignedUsers"] = assignees
             elif new_status in ["Completed", "Rejected"]:
                 # Terminal status
@@ -764,8 +867,10 @@ async def get_next_assignees(id: str, current_user: dict = Depends(get_current_u
     if not routing or not routing.get("stages"):
         return {"assignees": []}
 
-    stages = sorted(routing["stages"], key=lambda s: s.get("order", 0))
-    current_index = existing.get("currentStageIndex", 0)
+    sorted_stages = sorted(routing["stages"], key=lambda s: s.get("order", 0))
+    stages = get_applicable_stages(sorted_stages, existing)
+    curr_status = existing.get("status", "")
+    current_index = next((i for i, s in enumerate(stages) if s.get("stageName") == curr_status), existing.get("currentStageIndex", 0))
     next_index = current_index + 1
 
     if next_index >= len(stages):
@@ -813,6 +918,8 @@ async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), c
                 update_fields["details"] = {**existing_details, **payload["details"]}
             else:
                 update_fields["details"] = payload["details"]
+            merged_doc = recalculate_vm_name({**existing, "details": update_fields["details"]})
+            update_fields["details"] = merged_doc["details"]
         if "remarks" in payload:
             update_fields["remarks"] = payload["remarks"]
         if update_fields:
@@ -841,8 +948,10 @@ async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), c
             ]
         }
 
-    stages = sorted(routing["stages"], key=lambda s: s.get("order", 0))
-    current_index = existing.get("currentStageIndex", 0)
+    sorted_stages = sorted(routing["stages"], key=lambda s: s.get("order", 0))
+    stages = get_applicable_stages(sorted_stages, existing)
+    curr_status = existing.get("status", "")
+    current_index = next((i for i, s in enumerate(stages) if s.get("stageName") == curr_status), existing.get("currentStageIndex", 0))
     next_index = current_index + 1
 
     if next_index >= len(stages):
@@ -861,7 +970,7 @@ async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), c
             temp_stage = {"assignmentType": "Mixed", "assignedTo": [selected]}
             assignees = await resolve_assignees(temp_stage, requester)
         else:
-            assignees = await resolve_assignees(next_stage, requester)
+            assignees = await resolve_assignees(next_stage, requester, request_doc=existing)
                 
         update_data = {
             "status": next_stage.get("stageName", ""),
@@ -931,8 +1040,10 @@ async def backward_stage(
     if not routing or not routing.get("stages"):
         raise HTTPException(status_code=400, detail="No routing stages configured for this request type")
 
-    stages = sorted(routing["stages"], key=lambda s: s.get("order", 0))
-    current_index = existing.get("currentStageIndex", 0)
+    sorted_stages = sorted(routing["stages"], key=lambda s: s.get("order", 0))
+    stages = get_applicable_stages(sorted_stages, existing)
+    curr_status = existing.get("status", "")
+    current_index = next((i for i, s in enumerate(stages) if s.get("stageName") == curr_status), existing.get("currentStageIndex", 0))
     
     prev_index = current_index - 1
 
@@ -941,7 +1052,7 @@ async def backward_stage(
 
     prev_stage = stages[prev_index]
     requester = existing.get("createdBy", "")
-    assignees = await resolve_assignees(prev_stage, requester)
+    assignees = await resolve_assignees(prev_stage, requester, request_doc=existing)
     
     update_data = {
         "status": prev_stage.get("stageName", ""),

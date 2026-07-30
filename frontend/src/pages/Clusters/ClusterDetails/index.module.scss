@@ -1,16 +1,20 @@
 .container {
     width: 100%;
+    height: calc(100vh - 80px);
     flex-grow: 1;
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
+    overflow: hidden;
+    min-height: 0;
 
     &__header {
         display: flex;
         align-items: center;
-        margin-bottom: 24px;
+        margin-bottom: 16px;
         gap: 16px;
         padding: 8px;
+        flex-shrink: 0;
 
         &__button {
             background-color: rgba(0, 0, 0, 0.04);
@@ -23,16 +27,21 @@
     }
 
     &__tabsWrapper {
-        padding: 16px;
+        padding: 8px 16px;
         margin-bottom: 12px;
         border-radius: 12px;
         box-shadow: none;
         background-color: transparent !important;
+        flex-shrink: 0;
     }
 
     &__contentWrapper {
         flex-grow: 1;
-        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-height: 0;
+        padding: 16px;
         border-radius: 12px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         background-color: #fff;

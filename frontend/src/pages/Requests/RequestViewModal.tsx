@@ -466,10 +466,25 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                       <Typography variant="caption" color="textSecondary">VM Name</Typography>
                       <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.vmName || '-'}</Typography>
                     </Grid>
+                    {request.requestType === 'VM Creation' && (
+                      <Grid size={{xs: 12, sm: 4}}>
+                        <Typography variant="caption" color="textSecondary">Network Type</Typography>
+                        <Box sx={{ mt: 0.3 }}>
+                          <Chip
+                            label={request.details?.networkType || 'Internet'}
+                            size="small"
+                            color={request.details?.networkType === 'Intranet' ? 'secondary' : 'primary'}
+                            sx={{ fontWeight: 600 }}
+                          />
+                        </Box>
+                      </Grid>
+                    )}
                     {request.requestType === 'VM Management' && request.details?.operationType && (
-                      <Grid size={{xs: 12, sm: 4}}   >
+                      <Grid size={{xs: 12, sm: 4}}>
                         <Typography variant="caption" color="textSecondary">Operation Type</Typography>
-                        <Chip label={request.details.operationType} size="small" color="info" sx={{ fontWeight: 600 }} />
+                        <Box sx={{ mt: 0.3 }}>
+                          <Chip label={request.details.operationType} size="small" color="info" sx={{ fontWeight: 600 }} />
+                        </Box>
                       </Grid>
                     )}
                     <Grid size={{xs: 12, sm: 4}}   >

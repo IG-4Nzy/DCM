@@ -108,7 +108,7 @@ async def list_items(
     and_conditions = []
     
     privs = current_user.get("privileges", [])
-    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Create Server Details" in privs
+    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs
     
     # Conditions that match records with no admin assigned
     no_admin_conditions = [
@@ -175,8 +175,22 @@ async def list_items(
 
     if networkType and networkType.strip():
         nt_val = networkType.strip().lower()
-        nodes_col = db.get_collection("nodes")
-        if nt_val == "intranet":
+        if nt_val == "disconnected":
+            and_conditions.append({"isNetworkConnected": False})
+        elif nt_val == "internet":
+            nodes_col = db.get_collection("nodes")
+            matching_nodes_cursor = nodes_col.find({"networkType": "internet"}, {"node": 1})
+            matching_nodes = await matching_nodes_cursor.to_list(length=None)
+            node_conditions = [{"node": {"$regex": f"^{re.escape(n['node'])}$", "$options": "i"}} for n in matching_nodes if n.get("node")]
+            
+            internet_or = [
+                {"networkType": "internet"},
+                {"ipAddress": {"$regex": r"^192\.168\."}},
+                {"ip": {"$regex": r"^192\.168\."}}
+            ] + node_conditions
+            and_conditions.append({"$or": internet_or})
+        elif nt_val == "intranet":
+            nodes_col = db.get_collection("nodes")
             matching_nodes_cursor = nodes_col.find({
                 "$or": [
                     {"networkType": "intranet"},
@@ -185,19 +199,15 @@ async def list_items(
                     {"networkType": {"$exists": False}}
                 ]
             }, {"node": 1})
-        else:
-            matching_nodes_cursor = nodes_col.find({"networkType": nt_val}, {"node": 1})
-        
-        matching_nodes = await matching_nodes_cursor.to_list(length=None)
-        regex_conditions = []
-        for n in matching_nodes:
-            if n.get("node"):
-                regex_conditions.append({"node": {"$regex": f"^{re.escape(n['node'])}$", "$options": "i"}})
-        
-        if regex_conditions:
-            and_conditions.append({"$or": regex_conditions})
-        else:
-            and_conditions.append({"node": "__NON_EXISTENT_NODE__"})
+            matching_nodes = await matching_nodes_cursor.to_list(length=None)
+            node_conditions = [{"node": {"$regex": f"^{re.escape(n['node'])}$", "$options": "i"}} for n in matching_nodes if n.get("node")]
+            
+            intranet_or = [
+                {"networkType": "intranet"},
+                {"ipAddress": {"$regex": r"^10\."}},
+                {"ip": {"$regex": r"^10\."}}
+            ] + node_conditions
+            and_conditions.append({"$or": intranet_or})
 
     if clusterType and clusterType.strip():
         ct_val = clusterType.strip()
@@ -276,6 +286,12 @@ async def create_item(
     item_dict["createdBy"] = current_user.get("sub", "")
     item_dict["createdAt"] = datetime.now(timezone.utc).isoformat()
     item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
+
+    ip_val = str(item_dict.get("ipAddress") or item_dict.get("ip") or "").strip()
+    if ip_val.startswith("192.168"):
+        item_dict["networkType"] = "internet"
+    elif ip_val.startswith("10."):
+        item_dict["networkType"] = "intranet"
     
     max_vm_id = 0
     cursor = collection.find({"vmId": {"$regex": "^VM-"}}, {"vmId": 1})
@@ -745,6 +761,12 @@ async def update_item(id: str, payload: UpdateVMDetailsModel = Body(...), curren
     if len(item_dict) >= 1:
         item_dict["updatedBy"] = current_user.get("sub", "")
         item_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
+        
+        ip_val = str(item_dict.get("ipAddress") or item_dict.get("ip") or old_vm.get("ipAddress") or "").strip()
+        if ip_val.startswith("192.168"):
+            item_dict["networkType"] = "internet"
+        elif ip_val.startswith("10."):
+            item_dict["networkType"] = "intranet"
         
         update_result = await collection.update_one(
             {"_id": ObjectId(id)}, {"$set": item_dict}

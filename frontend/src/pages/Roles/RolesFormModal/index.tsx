@@ -68,6 +68,7 @@ const PRIVILEGE_GROUPS: { [category: string]: string[] } = {
     ],
     "Roaster & Attendance": [
         "View Roaster",
+        "View All Roaster",
         "Create Roaster",
         "Update Roaster",
         "Delete Roaster",
@@ -191,6 +192,7 @@ const RoleFormModal = ({
     availablePrivileges = [],
     handleSubmit
 }: PropType) => {
+    const [searchQuery, setSearchQuery] = React.useState('');
 
     const safeFormPrivileges = formPrivileges || [];
     const safeAvailablePrivileges = availablePrivileges || [];
@@ -220,6 +222,8 @@ const RoleFormModal = ({
         ...PRIVILEGE_GROUPS,
         ...(otherPrivs.length > 0 ? { "Other Privileges": otherPrivs } : {})
     };
+
+    const searchLower = searchQuery.trim().toLowerCase();
 
     return (
         <Modal
@@ -252,9 +256,18 @@ const RoleFormModal = ({
                 </div>
 
                 <Box sx={{ mt: 2, mb: 1 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#334155', mb: 1 }}>
-                        Permissions / Privileges (Grouped by Module)
-                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#334155' }}>
+                            Permissions / Privileges (Grouped by Module)
+                        </Typography>
+                        <TextField
+                            placeholder="Search privileges..."
+                            size="small"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            sx={{ minWidth: 220, '& .MuiInputBase-input': { fontSize: '13px', py: '6px' } }}
+                        />
+                    </Box>
 
                     <Box sx={{
                         maxHeight: '400px',
@@ -268,10 +281,13 @@ const RoleFormModal = ({
                     }}>
                         {Object.entries(renderedGroups).map(([groupName, groupPrivs]) => {
                             const activeGroupPrivs = groupPrivs.filter(p => safeAvailablePrivileges.includes(p));
-                            if (activeGroupPrivs.length === 0) return null;
+                            const filteredGroupPrivs = activeGroupPrivs.filter(p =>
+                                !searchLower || p.toLowerCase().includes(searchLower) || groupName.toLowerCase().includes(searchLower)
+                            );
+                            if (filteredGroupPrivs.length === 0) return null;
 
-                            const selectedInGroup = activeGroupPrivs.filter(p => safeFormPrivileges.includes(p));
-                            const isAllSelected = selectedInGroup.length === activeGroupPrivs.length;
+                            const selectedInGroup = filteredGroupPrivs.filter(p => safeFormPrivileges.includes(p));
+                            const isAllSelected = selectedInGroup.length === filteredGroupPrivs.length;
                             const isSomeSelected = selectedInGroup.length > 0 && !isAllSelected;
 
                             return (
@@ -295,7 +311,7 @@ const RoleFormModal = ({
                                                     size="small"
                                                     checked={isAllSelected}
                                                     indeterminate={isSomeSelected}
-                                                    onChange={(e) => handleToggleGroup(activeGroupPrivs, e.target.checked)}
+                                                    onChange={(e) => handleToggleGroup(filteredGroupPrivs, e.target.checked)}
                                                 />
                                             }
                                             label={<span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>Select All</span>}
@@ -304,7 +320,7 @@ const RoleFormModal = ({
                                     </Box>
                                     <Divider sx={{ mb: 1.5, borderColor: '#e2e8f0' }} />
                                     <Grid container spacing={1.5}>
-                                        {activeGroupPrivs.map((priv) => (
+                                        {filteredGroupPrivs.map((priv) => (
                                             <Grid size={{ xs: 12, sm: 6 }} key={priv}>
                                                 <FormControlLabel
                                                     control={

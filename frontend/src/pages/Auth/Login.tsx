@@ -7,6 +7,7 @@ import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, 
 import { motion } from 'framer-motion';
 import { useToast } from '../../contexts/ToastContext';
 import { useEffect } from 'react';
+import request from '../../services/request';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -16,6 +17,21 @@ const Login: React.FC = () => {
   const dispatch = useDispatch<any>();
   const navigate = useNavigate();
   const { showToast } = useToast();
+
+  const [deployEnv, setDeployEnv] = useState<string>(() => {
+    const raw = (import.meta.env.VITE_DEPLOY_ENV || '').toLowerCase().trim();
+    return raw && !raw.includes('placeholder') ? raw : 'prod';
+  });
+
+  useEffect(() => {
+    request.get('/api/config')
+      .then(res => {
+        if (res.data?.deploy) {
+          setDeployEnv(res.data.deploy.toLowerCase().trim());
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -67,12 +83,53 @@ const Login: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'center',
         background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        position: 'relative',
+        overflow: 'hidden'
       }}
     >
+      {deployEnv === 'test' && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            pointerEvents: 'none',
+            zIndex: 0,
+            overflow: 'hidden',
+            opacity: 0.05,
+            userSelect: 'none',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignContent: 'space-around',
+            justifyContent: 'space-around',
+            transform: 'rotate(-25deg) scale(1.5)'
+          }}
+        >
+          {Array.from({ length: 60 }).map((_, i) => (
+            <Typography
+              key={i}
+              sx={{
+                fontSize: '2.5rem',
+                fontWeight: 900,
+                letterSpacing: '6px',
+                color: '#000000',
+                m: 6,
+                whiteSpace: 'nowrap'
+              }}
+            >
+              DCM
+            </Typography>
+          ))}
+        </Box>
+      )}
+
       <motion.div
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
+        style={{ zIndex: 1 }}
       >
         <Paper
           elevation={4}
@@ -82,8 +139,36 @@ const Login: React.FC = () => {
             borderRadius: 4,
             background: 'rgba(255, 255, 255, 0.85)',
             backdropFilter: 'blur(10px)',
+            position: 'relative'
           }}
         >
+          {deployEnv === 'test' && (
+            <Box
+              sx={{
+                textAlign: 'center',
+                mb: 1.5
+              }}
+            >
+              <Box
+                sx={{
+                  display: 'inline-block',
+                  backgroundColor: '#ed6c02',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '0.75rem',
+                  px: 1.5,
+                  py: 0.4,
+                  borderRadius: '12px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  boxShadow: '0 2px 6px rgba(237, 108, 2, 0.4)'
+                }}
+              >
+                Test Environment
+              </Box>
+            </Box>
+          )}
+
           <label
             style={{
               display: 'block',

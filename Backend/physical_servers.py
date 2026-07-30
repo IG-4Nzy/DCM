@@ -86,7 +86,7 @@ async def list_items(
     query = {}
     
     privs = current_user.get("privileges", [])
-    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Create Server Details" in privs
+    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs
     if not can_view_all:
         target_username = current_user.get("sub")
         users_col = db.get_collection("users")

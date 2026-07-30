@@ -93,7 +93,7 @@ async def list_items(
     and_conditions = []
     
     privs = current_user.get("privileges", [])
-    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Create Server Details" in privs
+    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Racks View" in privs
     
     # Conditions that match records with no admin assigned
     no_admin_conditions = [
@@ -103,51 +103,67 @@ async def list_items(
         {"admin": {"$exists": False}}
     ]
 
-    if admin:
-        if admin.lower() == "unassigned":
-            and_conditions.append({"$or": no_admin_conditions})
-        elif admin.lower() == "other":
-            users_col_adm = db.get_collection("users")
-            all_users = await users_col_adm.find({}, {"_id": 1, "username": 1}).to_list(length=None)
-            known_ids = set()
-            for u in all_users:
-                known_ids.add(str(u["_id"]))
-                if u.get("username"):
-                    known_ids.add(u["username"])
+    target_username = current_user.get("sub")
+    users_col = db.get_collection("users")
+    user_doc = await users_col.find_one({"username": target_username})
+    target_user_id = str(user_doc["_id"]) if user_doc else None
+    user_admin_identifiers = [target_username]
+    if target_user_id:
+        user_admin_identifiers.append(target_user_id)
+
+    if not can_view_all:
+        if admin:
+            if admin.lower() == "unassigned":
+                and_conditions.append({"$or": no_admin_conditions})
+            elif admin.lower() == "assigned":
+                and_conditions.append({"admin": {"$in": user_admin_identifiers}})
+            else:
+                # Restrict to current user's nodes or unassigned
+                and_conditions.append({
+                    "$or": [
+                        {"admin": {"$in": user_admin_identifiers}},
+                        *no_admin_conditions
+                    ]
+                })
+        else:
             and_conditions.append({
-                "$and": [
-                    {"admin": {"$exists": True, "$ne": None, "$ne": "", "$ne": []}},
-                    {"admin": {"$nin": list(known_ids)}}
+                "$or": [
+                    {"admin": {"$in": user_admin_identifiers}},
+                    *no_admin_conditions
                 ]
             })
-        else:
-            users_col_adm = db.get_collection("users")
-            adm_doc = await users_col_adm.find_one({"username": admin})
-            if not adm_doc and ObjectId.is_valid(admin):
-                adm_doc = await users_col_adm.find_one({"_id": ObjectId(admin)})
-            admin_vals = set()
-            admin_vals.add(admin)
-            if adm_doc:
-                admin_vals.add(str(adm_doc["_id"]))
-                if adm_doc.get("username"):
-                    admin_vals.add(adm_doc["username"])
-            and_conditions.append({"admin": {"$in": list(admin_vals)}})
-
-    if not can_view_all and not admin:
-        target_username = current_user.get("sub")
-        users_col = db.get_collection("users")
-        user_doc = await users_col.find_one({"username": target_username})
-        target_user_id = str(user_doc["_id"]) if user_doc else None
-        admins = [target_username]
-        if target_user_id:
-            admins.append(target_user_id)
-        # Show nodes assigned to this user OR nodes with no admin
-        and_conditions.append({
-            "$or": [
-                {"admin": {"$in": admins}},
-                *no_admin_conditions
-            ]
-        })
+    else:
+        if admin:
+            if admin.lower() == "unassigned":
+                and_conditions.append({"$or": no_admin_conditions})
+            elif admin.lower() == "assigned":
+                and_conditions.append({"admin": {"$in": user_admin_identifiers}})
+            elif admin.lower() == "other":
+                users_col_adm = db.get_collection("users")
+                all_users = await users_col_adm.find({}, {"_id": 1, "username": 1}).to_list(length=None)
+                known_ids = set()
+                for u in all_users:
+                    known_ids.add(str(u["_id"]))
+                    if u.get("username"):
+                        known_ids.add(u["username"])
+                and_conditions.append({
+                    "$and": [
+                        {"admin": {"$exists": True, "$ne": None, "$ne": "", "$ne": []}},
+                        {"admin": {"$nin": list(known_ids)}}
+                    ]
+                })
+            else:
+                users_col_adm = db.get_collection("users")
+                adm_doc = await users_col_adm.find_one({"username": admin})
+                if not adm_doc and ObjectId.is_valid(admin):
+                    adm_doc = await users_col_adm.find_one({"_id": ObjectId(admin)})
+                admin_vals = set()
+                admin_vals.add(admin)
+                if adm_doc:
+                    admin_vals.add(str(adm_doc["_id"]))
+                    if adm_doc.get("username"):
+                        admin_vals.add(adm_doc["username"])
+                and_conditions.append({"admin": {"$in": list(admin_vals)}})
 
     if os and os.strip():
         and_conditions.append({"os": {"$regex": re.escape(os.strip()), "$options": "i"}})

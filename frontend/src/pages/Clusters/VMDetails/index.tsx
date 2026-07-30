@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dayjs from 'dayjs';
 import { Box, Tooltip, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
-import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdMonitor as MonitorIcon, MdCloudDownload as CloudDownloadIcon, MdFilterList as FilterListIcon } from 'react-icons/md';
+import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdMonitor as MonitorIcon, MdCloudDownload as CloudDownloadIcon, MdFilterList as FilterListIcon, MdPowerSettingsNew as PowerIcon, MdWifi as NetworkOnIcon, MdWifiOff as NetworkOffIcon } from 'react-icons/md';
 import { FilterDrawer, FilterGroup } from '../../../components/FilterDrawer';
 import Dropdown from '../../../components/Dropdown';
 import request from '../../../services/request';
@@ -470,7 +470,8 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                         options={[
                             { label: 'All Networks', value: '' },
                             { label: 'Intranet', value: 'intranet' },
-                            { label: 'Internet', value: 'internet' }
+                            { label: 'Internet', value: 'internet' },
+                            { label: 'Disconnected', value: 'disconnected' }
                         ]}
                     />
                 </FilterGroup>
@@ -511,7 +512,7 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
             </FilterDrawer>
 
             <Paper className={styles.tableWrapper}>
-                <TableContainer sx={{ flexGrow: 1, overflow: 'auto' }}>
+                <TableContainer sx={{ flexGrow: 1, flexShrink: 1, minHeight: 0, overflow: 'auto' }}>
                     <Table size="medium" stickyHeader>
                         <TableHead>
                             <TableRow className={styles.tableWrapper__headerRow}>
@@ -546,7 +547,68 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                                         sx={{ cursor: 'pointer' }}
                                     >
                                         <TableCell className={styles.tableWrapper__cell} sx={{ fontWeight: 600, color: '#1565c0' }}>{row.vmId || '--'}</TableCell>
-                                        <TableCell className={styles.tableWrapper__cell}>{row.vmName || '--'}</TableCell>
+                                        <TableCell className={styles.tableWrapper__cell}>
+                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'nowrap' }}>
+                                                 <Typography variant="body2" sx={{ fontWeight: 600, color: '#2c3e50' }}>
+                                                     {row.vmName || '--'}
+                                                 </Typography>
+                                                 <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+                                                     {/* Power Status Indicator */}
+                                                     {(() => {
+                                                         const pStatus = (row.powerStatus || '').toLowerCase();
+                                                         const isPowerOn = pStatus === 'on' || pStatus === 'poweredon' || pStatus === 'running';
+                                                         return (
+                                                             <Tooltip title={`Power Status: ${isPowerOn ? 'ON' : 'OFF'}`} arrow placement="top">
+                                                                 <Box sx={{ 
+                                                                     display: 'inline-flex', 
+                                                                     alignItems: 'center', 
+                                                                     gap: 0.3,
+                                                                     px: 0.8, 
+                                                                     py: 0.25, 
+                                                                     borderRadius: '10px',
+                                                                     fontSize: '11px',
+                                                                     fontWeight: 700,
+                                                                     letterSpacing: '0.3px',
+                                                                     color: isPowerOn ? '#1b5e20' : '#c62828',
+                                                                     backgroundColor: isPowerOn ? 'rgba(46, 125, 50, 0.1)' : 'rgba(211, 47, 47, 0.1)',
+                                                                     border: `1px solid ${isPowerOn ? '#a5d6a7' : '#ef9a9a'}`,
+                                                                     lineHeight: 1
+                                                                 }}>
+                                                                     <PowerIcon style={{ fontSize: '13px', color: isPowerOn ? '#2e7d32' : '#d32f2f' }} />
+                                                                     <span>{isPowerOn ? 'ON' : 'OFF'}</span>
+                                                                 </Box>
+                                                             </Tooltip>
+                                                         );
+                                                     })()}
+
+                                                     {/* Network Connection Indicator */}
+                                                     {(() => {
+                                                         const isNetworkConnected = row.isNetworkConnected !== false;
+                                                         return (
+                                                             <Tooltip title={`Network: ${isNetworkConnected ? 'Connected' : 'Disconnected'}`} arrow placement="top">
+                                                                 <Box sx={{ 
+                                                                     display: 'inline-flex', 
+                                                                     alignItems: 'center', 
+                                                                     justifyContent: 'center', 
+                                                                     p: '4px',
+                                                                     borderRadius: '50%',
+                                                                     color: isNetworkConnected ? '#0288d1' : '#d32f2f',
+                                                                     backgroundColor: isNetworkConnected ? 'rgba(2, 136, 209, 0.1)' : 'rgba(211, 47, 47, 0.1)',
+                                                                     border: `1px solid ${isNetworkConnected ? '#81d4fa' : '#ef9a9a'}`,
+                                                                     lineHeight: 1
+                                                                 }}>
+                                                                     {isNetworkConnected ? (
+                                                                         <NetworkOnIcon style={{ fontSize: '13px' }} />
+                                                                     ) : (
+                                                                         <NetworkOffIcon style={{ fontSize: '13px' }} />
+                                                                     )}
+                                                                 </Box>
+                                                             </Tooltip>
+                                                         );
+                                                     })()}
+                                                 </Box>
+                                             </Box>
+                                         </TableCell>
                                         {!clusterId && (
                                             <TableCell className={styles.tableWrapper__cell}>
                                                 {(() => {
@@ -658,6 +720,7 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                         setRowsPerPage(parseInt(e.target.value, 10));
                         setPage(0);
                     }}
+                    sx={{ flexShrink: 0, borderTop: '1px solid #e0e0e0', backgroundColor: '#fff' }}
                 />
             </Paper>
 

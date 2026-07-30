@@ -588,14 +588,8 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
   };
 
   const hasViewAll = isSuperuser || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
-  const currentUser = allUsers.find(u => u.username === username);
-  const userDept = currentUser?.department;
 
   const filteredAdmins = allUsers
-    .filter(u => {
-      if (hasViewAll) return true;
-      return u.department === userDept;
-    })
     .map(u => ({
       label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
       value: u._id || u.id || u.username
@@ -610,8 +604,9 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
         ...filteredAdmins
       ]
     : [
-        { label: "Unassigned", value: "unassigned" },
-        ...filteredAdmins
+        { label: "All My & Unassigned", value: "" },
+        { label: "Assigned to Me", value: "assigned" },
+        { label: "Unassigned", value: "unassigned" }
       ];
 
   const activeFilterCount = [

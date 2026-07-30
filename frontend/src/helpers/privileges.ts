@@ -22,6 +22,7 @@ export const PRIVILEGES = {
     DEPARTMENT_DELETE: "Delete Department",
     ROASTER_CREATE: "Create Roaster",
     ROASTER_VIEW: "View Roaster",
+    VIEW_ALL_ROASTER: "View All Roaster",
     ROASTER_UPDATE: "Update Roaster",
     ROASTER_DELETE: "Delete Roaster",
     ROASTER_APPROVE: "Approve Roaster",

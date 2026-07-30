@@ -127,7 +127,7 @@ async def list_roasters(
     is_superuser = current_user.get("isSuperuser", False)
     privileges = current_user.get("privileges", [])
 
-    if not is_superuser and "View Roaster" not in privileges:
+    if not is_superuser and "View Roaster" not in privileges and "View All Roaster" not in privileges:
         raise HTTPException(status_code=403, detail="Not enough permissions to view roasters")
 
     query = {}
@@ -378,7 +378,7 @@ async def get_duty_summary(
 ):
     is_superuser = current_user.get("isSuperuser", False)
     privileges = current_user.get("privileges", [])
-    if not is_superuser and "View Roaster" not in privileges:
+    if not is_superuser and "View Roaster" not in privileges and "View All Roaster" not in privileges:
         raise HTTPException(status_code=403, detail="Not enough permissions")
 
     # Reconcile roster leaves for the past dates in this department

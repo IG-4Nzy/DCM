@@ -15,7 +15,10 @@ import {
   Tab,
   Paper,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  FormControl,
+  Select,
+  InputLabel
 } from "@mui/material";
 import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon, MdPrint as PrintIcon, MdContentCopy as CopyIcon, MdUndo as UndoIcon } from "react-icons/md";
 import dayjs, { Dayjs } from "dayjs";
@@ -68,7 +71,8 @@ const RoasterPage: React.FC = () => {
   const token = useSelector((state: RootState) => state.auth.token);
   const { users, availableDepartments: departmentsList } = useSelector((state: RootState) => state.users);
   
-  const canView = isSuperuser || hasPrivilege(PRIVILEGES.ROASTER_VIEW);
+  const canView = isSuperuser || hasPrivilege(PRIVILEGES.ROASTER_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_ROASTER);
+  const hasViewAllRoaster = isSuperuser || hasPrivilege(PRIVILEGES.VIEW_ALL_ROASTER);
   const canEdit =
     isSuperuser ||
     hasPrivilege(PRIVILEGES.ROASTER_CREATE) ||
@@ -78,6 +82,16 @@ const RoasterPage: React.FC = () => {
   const tokenDept = token ? (jwtDecode(token) as any).department || "General" : "General";
   const currentUserObj = users.find(u => u.username === tokenSub);
   const userDepartment = currentUserObj ? currentUserObj.department : tokenDept;
+
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+
+  useEffect(() => {
+    if (userDepartment && !selectedDepartment) {
+      setSelectedDepartment(userDepartment);
+    }
+  }, [userDepartment]);
+
+  const activeDepartment = selectedDepartment || userDepartment || '';
 
   const formatTime = (timeStr: string) => {
     if (!timeStr) return '';
@@ -112,10 +126,11 @@ const RoasterPage: React.FC = () => {
 
 
   const fetchRosters = async () => {
+    if (!activeDepartment) return;
     const prevSundayStr = selectedWeek.startOf("isoWeek").subtract(1, "day").format("YYYY-MM-DD");
     const endDate = selectedWeek.endOf("isoWeek").format("YYYY-MM-DD");
     try {
-      const data = await dispatch(fetchRostersData({ startDate: prevSundayStr, endDate, department: userDepartment || '' })).unwrap();
+      const data = await dispatch(fetchRostersData({ startDate: prevSundayStr, endDate, department: activeDepartment })).unwrap();
       const newRosterData: Record<string, RosterData> = {};
       data.forEach((r: any) => {
         newRosterData[`${r.date}_${r.shift}`] = {
@@ -139,10 +154,10 @@ const RoasterPage: React.FC = () => {
   };
 
   const fetchRosterStatus = async () => {
-    if (!userDepartment) return;
+    if (!activeDepartment) return;
     const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
     try {
-      const data = await dispatch(fetchRosterStatusData({ weekStartDate: startDate, department: userDepartment })).unwrap();
+      const data = await dispatch(fetchRosterStatusData({ weekStartDate: startDate, department: activeDepartment })).unwrap();
       setRosterStatus(data);
     } catch (e) {
       console.error(e);
@@ -150,10 +165,10 @@ const RoasterPage: React.FC = () => {
   };
 
   const fetchSummary = async () => {
-    if (!userDepartment) return;
+    if (!activeDepartment) return;
     try {
       const dateStr = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
-      const data = await dispatch(fetchDutySummary({ department: userDepartment, date: dateStr })).unwrap();
+      const data = await dispatch(fetchDutySummary({ department: activeDepartment, date: dateStr })).unwrap();
       setDutySummary(data);
       if (data && data.splitups) {
         setLocalSplitups(data.splitups);
@@ -176,10 +191,10 @@ const RoasterPage: React.FC = () => {
   };
 
   const handleSaveSplitup = async () => {
-    if (!userDepartment || !dutySummary?.cycleStart) return;
+    if (!activeDepartment || !dutySummary?.cycleStart) return;
     try {
       await dispatch(saveRosterSplitup({
-        department: userDepartment,
+        department: activeDepartment,
         cycleStart: dutySummary.cycleStart,
         splitups: localSplitups
       })).unwrap();
@@ -212,7 +227,7 @@ const RoasterPage: React.FC = () => {
     // We want to calculate the summary for all users in the current department with the configured tracked role
     const trackedRole = dutySummary.trackedRole || "All Roles";
     const deptUsers = users.filter((u) => {
-      const isCorrectDept = u.department === userDepartment;
+      const isCorrectDept = u.department === activeDepartment;
       const isNotSuper = !(u.is_superuser || u.isSuperuser);
       const isCorrectRole = trackedRole === "All Roles" || (Array.isArray(u.role) ? u.role.includes(trackedRole) : u.role === trackedRole);
       return isCorrectDept && isNotSuper && isCorrectRole;
@@ -273,26 +288,26 @@ const RoasterPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchRosters();
-    fetchRosterStatus();
-    fetchSummary();
-  }, [selectedWeek]);
+    if (activeDepartment) {
+      fetchRosters();
+      fetchRosterStatus();
+      fetchSummary();
+    }
+  }, [selectedWeek, activeDepartment]);
 
   useEffect(() => {
-    // Backend supports "me" to automatically resolve the current user's department properly,
-    // avoiding stale token payload issues.
-    dispatch(fetchUsers({ department: "me", pagination: false }));
+    dispatch(fetchUsers({ department: activeDepartment || undefined, pagination: false }));
     dispatch(fetchAllDepartmentsForDropdown());
-  }, [dispatch, token]);
+  }, [dispatch, token, activeDepartment]);
 
   const handleStatusChange = async (newStatus: string) => {
     setAnchorEl(null);
-    if (!userDepartment) return;
+    if (!activeDepartment) return;
     const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
     try {
       const data = await dispatch(updateRosterStatus({
         weekStartDate: startDate,
-        department: userDepartment,
+        department: activeDepartment,
         status: newStatus
       })).unwrap();
       setRosterStatus(data);
@@ -327,7 +342,7 @@ const RoasterPage: React.FC = () => {
     const startDate = prevWeek.startOf("isoWeek").format("YYYY-MM-DD");
     const endDate = prevWeek.endOf("isoWeek").format("YYYY-MM-DD");
     try {
-      const data = await dispatch(fetchRostersData({ startDate, endDate, department: userDepartment || '' })).unwrap();
+      const data = await dispatch(fetchRostersData({ startDate, endDate, department: activeDepartment })).unwrap();
       const prevRoster: Record<string, string[]> = {};
       data.forEach((r: any) => {
         prevRoster[`${r.date}_${r.shift}`] = r.assignees;
@@ -392,7 +407,7 @@ const RoasterPage: React.FC = () => {
   };
 
   const handleCopyPreviousSplitup = async () => {
-    if (!userDepartment || !dutySummary?.cycleStart) return;
+    if (!activeDepartment || !dutySummary?.cycleStart) return;
     const isConfirmed = await confirm(
       "Are you sure you want to copy the roster splitup targets from the previous cycle?",
       "Copy Previous Splitup"
@@ -401,7 +416,7 @@ const RoasterPage: React.FC = () => {
 
     try {
       const dateInPrevCycle = dayjs(dutySummary.cycleStart).subtract(15, 'days').format('YYYY-MM-DD');
-      const prevData = await dispatch(fetchDutySummary({ department: userDepartment, date: dateInPrevCycle })).unwrap();
+      const prevData = await dispatch(fetchDutySummary({ department: activeDepartment, date: dateInPrevCycle })).unwrap();
       if (prevData && prevData.splitups && Object.keys(prevData.splitups).length > 0) {
         setSplitupHistory(prev => [...prev, localSplitups]);
         setLocalSplitups(prevData.splitups);
@@ -439,26 +454,26 @@ const RoasterPage: React.FC = () => {
             date,
             shift,
             assignees: cleanAssignees,
-            department: userDepartment || 'General',
+            department: activeDepartment || 'General',
           })).unwrap();
         } else if (cleanAssignees.length > 0) {
           await dispatch(createRoster({
             date,
             shift,
             assignees: cleanAssignees,
-            department: userDepartment || 'General',
+            department: activeDepartment || 'General',
           })).unwrap();
         }
       });
       await Promise.all(promises);
       
       // Automatically reset status to Pending when edits are made
-      if (userDepartment) {
+      if (activeDepartment) {
         try {
           const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
           const data = await dispatch(resetRosterStatus({
             weekStartDate: startDate,
-            department: userDepartment,
+            department: activeDepartment,
             status: "Pending"
           })).unwrap();
           setRosterStatus(data);
@@ -664,6 +679,27 @@ const RoasterPage: React.FC = () => {
 
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {hasViewAllRoaster && (
+            <FormControl size="small" className="hide-on-print" sx={{ minWidth: 160 }}>
+              <InputLabel id="roaster-dept-label" sx={{ fontSize: '12px' }}>Department</InputLabel>
+              <Select
+                labelId="roaster-dept-label"
+                value={activeDepartment}
+                label="Department"
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                sx={{ fontSize: '12px', height: '32px' }}
+              >
+                {Array.from(new Set([
+                  ...((departmentsList || []).map((d: any) => typeof d === 'string' ? d : d.name).filter(Boolean)),
+                  ...(activeDepartment ? [activeDepartment] : [])
+                ])).map((deptName) => (
+                  <MenuItem key={deptName} value={deptName} sx={{ fontSize: '12px' }}>
+                    {deptName}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
           {!getServerTime().isSame(selectedWeek, 'isoWeek') && (
             <Button
               variant="outlined"

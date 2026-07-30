@@ -1051,6 +1051,7 @@ class VMDetailsModel(BaseModel):
     admin: Optional[Union[str, List[str]]] = None
     powerStatus: Optional[str] = None
     isNetworkConnected: Optional[bool] = True
+    networkType: Optional[str] = None
     clones: Optional[List[dict]] = Field(default_factory=list)
     snapshots: Optional[List[dict]] = Field(default_factory=list)
     templates: Optional[List[dict]] = Field(default_factory=list)
@@ -1085,6 +1086,7 @@ class CreateVMDetailsModel(BaseModel):
     admin: Optional[Union[str, List[str]]] = None
     powerStatus: Optional[str] = None
     isNetworkConnected: Optional[bool] = True
+    networkType: Optional[str] = None
     clones: Optional[List[dict]] = Field(default_factory=list)
     snapshots: Optional[List[dict]] = Field(default_factory=list)
     templates: Optional[List[dict]] = Field(default_factory=list)
@@ -1110,6 +1112,7 @@ class UpdateVMDetailsModel(BaseModel):
     admin: Optional[Union[str, List[str]]] = None
     powerStatus: Optional[str] = None
     isNetworkConnected: Optional[bool] = None
+    networkType: Optional[str] = None
     clones: Optional[List[dict]] = None
     snapshots: Optional[List[dict]] = None
     templates: Optional[List[dict]] = None
@@ -1190,11 +1193,25 @@ class PaginatedRequestsModel(BaseModel):
 
 # --- Request Routing Configuration ---
 
+class ConditionalAssignmentRule(BaseModel):
+    conditionField: str = "networkType"
+    conditionValue: str = "Internet"
+    assignmentType: Optional[str] = None
+    assignedTo: Optional[Union[str, List[str]]] = None
+
+    model_config = ConfigDict(
+        extra="allow",
+    )
+
 class RequestRoutingStage(BaseModel):
     stageName: str
     order: int = 0
     assignmentType: Optional[str] = None
     assignedTo: Optional[Union[str, List[str]]] = None  # username(s) of assigned user(s)
+    conditionField: Optional[str] = None
+    conditionOperator: Optional[str] = "equals"
+    conditionValue: Optional[str] = None
+    conditionalAssignments: Optional[List[ConditionalAssignmentRule]] = []
 
     model_config = ConfigDict(
         extra="allow",

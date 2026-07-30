@@ -67,7 +67,7 @@ const Racks = () => {
     const { confirm } = useConfirm();
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
-    const hasView = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const hasView = isSuperuser || hasPrivilege(PRIVILEGES.RACKS_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS) || hasPrivilege(PRIVILEGES.VIEW_SERVER_DETAILS) || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
     const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
     const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
     const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
