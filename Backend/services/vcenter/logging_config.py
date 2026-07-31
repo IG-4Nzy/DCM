@@ -55,10 +55,11 @@ def setup_logging(log_dir: str = "logs", log_level: str = "INFO"):
     file_handler.setFormatter(JSONFormatter())
     root_logger.addHandler(file_handler)
 
-    # Suppress noisy third-party loggers
+    # Third-party loggers tuning
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.INFO)
+    logging.getLogger("uvicorn.error").setLevel(logging.INFO)
     logging.getLogger("motor").setLevel(logging.WARNING)
 
     logging.getLogger("vcenter").info("Structured logging initialized successfully.")

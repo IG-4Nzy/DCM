@@ -50,12 +50,9 @@ async def update_roaster_status(
     if user:
         first_name = user.get("firstName", "")
         last_name = user.get("lastName", "")
-        user_dept = user.get("department", "Unknown")
-        role = user.get("role", "Unknown")
         name_str = f"{first_name} {last_name}".strip()
         if not name_str:
             name_str = user.get("username", "Unknown")
-        name_str = f"{name_str} ({user_dept} - {role})"
 
     update_doc = {
         "weekStartDate": status_data.weekStartDate,
@@ -95,12 +92,9 @@ async def reset_roaster_status(
     if user:
         first_name = user.get("firstName", "")
         last_name = user.get("lastName", "")
-        user_dept = user.get("department", "Unknown")
-        role = user.get("role", "Unknown")
         name_str = f"{first_name} {last_name}".strip()
         if not name_str:
             name_str = user.get("username", "Unknown")
-        name_str = f"{name_str} ({user_dept} - {role})"
 
     update_doc = {
         "weekStartDate": status_data.weekStartDate,

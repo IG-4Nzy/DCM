@@ -53,6 +53,97 @@ def _vm_host_ref(vm: dict) -> str:
 
 
 # ─────────────────────────────────────────────────────────
+# CONFIGURATION & MANUAL REFRESH ENDPOINTS
+# ─────────────────────────────────────────────────────────
+
+config_collection = db.get_collection("vcenter_config")
+
+@router.get("/config", response_description="Get global vCenter auto refresh configuration")
+async def get_vcenter_config():
+    doc = await config_collection.find_one({"_id": "vcenter_global_config"})
+    if not doc:
+        return {"autoRefresh": True, "refreshIntervalSeconds": 30}
+    return {
+        "autoRefresh": doc.get("autoRefresh", True),
+        "refreshIntervalSeconds": doc.get("refreshIntervalSeconds", 30),
+        "updatedAt": doc.get("updatedAt"),
+        "updatedBy": doc.get("updatedBy")
+    }
+
+@router.put("/config", response_description="Update global vCenter auto refresh configuration")
+async def update_vcenter_config(
+    payload: dict = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    auto_refresh = payload.get("autoRefresh")
+    refresh_interval = payload.get("refreshIntervalSeconds", 30)
+
+    if auto_refresh is None:
+        raise HTTPException(status_code=400, detail="Field 'autoRefresh' boolean is required.")
+
+    update_data = {
+        "autoRefresh": bool(auto_refresh),
+        "refreshIntervalSeconds": int(refresh_interval),
+        "updatedAt": datetime.now(timezone.utc).isoformat(),
+        "updatedBy": current_user.get("sub", "")
+    }
+
+    await config_collection.update_one(
+        {"_id": "vcenter_global_config"},
+        {"$set": update_data},
+        upsert=True
+    )
+
+    return update_data
+
+@router.post("/refresh-all", response_description="Trigger manual telemetry refresh for all registered vCenters")
+async def refresh_all_vcenters():
+    from tasks.telemetry_scheduler import vcenter_telemetry_scheduler
+    vcenters_cursor = collection.find({})
+    vcenters = await vcenters_cursor.to_list(length=None)
+    
+    if not vcenters:
+        return {"status": "success", "message": "No vCenters registered.", "refreshedCount": 0}
+
+    refreshed_count = 0
+    for vc in vcenters:
+        try:
+            await vcenter_telemetry_scheduler.force_refresh_vcenter(vc)
+            refreshed_count += 1
+        except Exception as e:
+            logger.error(f"Manual refresh failed for vCenter {vc.get('ipAddress')}: {e}")
+
+    return {
+        "status": "success",
+        "message": f"Successfully triggered manual telemetry refresh for {refreshed_count} vCenter instance(s).",
+        "refreshedCount": refreshed_count
+    }
+
+@router.post("/{id}/refresh", response_description="Trigger manual telemetry refresh for a specific vCenter")
+async def refresh_vcenter_by_id(id: str):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    vcenter = await collection.find_one({"_id": ObjectId(id)})
+    if not vcenter:
+        raise HTTPException(status_code=404, detail="vCenter not found")
+
+    from tasks.telemetry_scheduler import vcenter_telemetry_scheduler
+    try:
+        await vcenter_telemetry_scheduler.force_refresh_vcenter(vcenter)
+    except Exception as e:
+        logger.error(f"Manual refresh failed for vCenter {id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to refresh vCenter telemetry: {str(e)}")
+
+    snap_col = db.get_collection("vcenter_telemetry")
+    snapshot = await snap_col.find_one({"vcenterId": id})
+    if snapshot:
+        snapshot.pop("_id", None)
+        return snapshot
+    
+    return {"status": "success", "message": f"Telemetry refresh triggered for vCenter {id}"}
+
+# ─────────────────────────────────────────────────────────
 # CRUD ENDPOINTS (preserved from original)
 # ─────────────────────────────────────────────────────────
 

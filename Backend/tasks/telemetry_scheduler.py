@@ -32,6 +32,7 @@ class VCenterTelemetryScheduler:
     def __init__(self):
         self._running = False
         self._tasks: list[asyncio.Task] = []
+        self._active_syncs: set[str] = set()
 
     def start(self):
         if self._running:
@@ -47,6 +48,7 @@ class VCenterTelemetryScheduler:
             t.cancel()
         await asyncio.gather(*self._tasks, return_exceptions=True)
         self._tasks.clear()
+        self._active_syncs.clear()
         logger.info("Background vCenter telemetry collection loops terminated.")
 
     async def _run_session_keepalive(self):
@@ -57,18 +59,53 @@ class VCenterTelemetryScheduler:
                 logger.error(f"Error in session keep-alive loop: {e}")
             await asyncio.sleep(60.0)
 
+    async def force_refresh_vcenter(self, vc: dict):
+        """Forces an immediate manual telemetry collection for a given vCenter dict."""
+        vc_id = str(vc.get("_id"))
+        self._active_syncs.discard(vc_id)
+        await self._collect_vcenter_telemetry_guarded(vc)
+
     async def _run_telemetry_loop(self):
-        """Standard scheduler: Periodically pulls telemetry and updates MongoDB snapshot"""
+        """Standard scheduler: Periodically pulls telemetry and updates MongoDB snapshot if autoRefresh is enabled"""
         while self._running:
             try:
-                vcenters_col = db.get_collection("vcenter_details")
-                cursor = vcenters_col.find({})
-                async for vc in cursor:
-                    # Async task per vCenter to avoid blocking others
-                    asyncio.create_task(self._collect_vcenter_telemetry(vc))
+                # Check global vCenter autoRefresh setting from MongoDB
+                config_col = db.get_collection("vcenter_config")
+                config_doc = await config_col.find_one({"_id": "vcenter_global_config"})
+                global_auto_refresh = config_doc.get("autoRefresh", True) if config_doc else True
+
+                if global_auto_refresh:
+                    vcenters_col = db.get_collection("vcenter_details")
+                    cursor = vcenters_col.find({})
+                    async for vc in cursor:
+                        if not vc.get("autoRefresh", True):
+                            continue
+                        vc_id = str(vc.get("_id"))
+                        if vc_id in self._active_syncs:
+                            logger.debug(f"Telemetry sync for vCenter {vc_id} already in progress. Skipping cycle.")
+                            continue
+                        # Async task per vCenter to avoid blocking others
+                        asyncio.create_task(self._collect_vcenter_telemetry_guarded(vc))
+                else:
+                    logger.debug("vCenter auto refresh is turned OFF globally. Skipping background interval sync.")
             except Exception as e:
                 logger.error(f"Error in main telemetry scheduling loop: {e}")
             await asyncio.sleep(30.0)  # Evaluation check every 30s
+
+    async def _collect_vcenter_telemetry_guarded(self, vc: dict):
+        vc_id = str(vc.get("_id"))
+        if vc_id in self._active_syncs:
+            return
+        self._active_syncs.add(vc_id)
+        try:
+            # Enforce 90s max execution timeout for telemetry collection to prevent hanging tasks
+            await asyncio.wait_for(self._collect_vcenter_telemetry(vc), timeout=90.0)
+        except asyncio.TimeoutError:
+            logger.warning(f"Scheduled telemetry sync timed out (90s) for vCenter {vc.get('ipAddress')}")
+        except Exception as e:
+            logger.error(f"Error collecting vCenter telemetry for {vc.get('ipAddress')}: {e}")
+        finally:
+            self._active_syncs.discard(vc_id)
 
     async def _collect_vcenter_telemetry(self, vc: dict):
         vc_id = str(vc["_id"])
@@ -117,7 +154,9 @@ class VCenterTelemetryScheduler:
             db_vms_by_ip = {v.get("ipAddress", ""): v for v in db_vms if v.get("ipAddress")}
 
             # Build host moref → DB node name map
+            # Build host moref → DB node name map and host → cluster map
             vcenter_host_to_node = {}
+            vcenter_host_to_cluster = {}
             try:
                 nodes_col = db.get_collection("nodes")
                 node_details_col = db.get_collection("node_details")
@@ -157,6 +196,14 @@ class VCenterTelemetryScheduler:
                     h_moref = h.get("host") or h.get("host_id") or ""
                     h_name = h.get("name") or ""
                     h_ip = h.get("ip_address") or h.get("ipAddress") or ""
+                    h_cluster = h.get("cluster") or h.get("cluster_id") or ""
+
+                    if h_cluster:
+                        if h_moref:
+                            vcenter_host_to_cluster[h_moref] = h_cluster
+                        if h_name:
+                            vcenter_host_to_cluster[h_name] = h_cluster
+                            vcenter_host_to_cluster[h_name.lower()] = h_cluster
 
                     resolved = ""
                     if h_name:

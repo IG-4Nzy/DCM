@@ -881,6 +881,7 @@ class ClusterModel(BaseModel):
     clusterType: Optional[str] = None
     nodes: List[str] = Field(default_factory=list)
     nodeNames: List[str] = Field(default_factory=list)
+    networkType: Optional[str] = "intranet"
     remarks: Optional[str] = None
     createdBy: Optional[str] = None
     createdAt: Optional[str] = None
@@ -898,6 +899,7 @@ class CreateClusterModel(BaseModel):
     racks: Optional[List[str]] = Field(default_factory=list)
     clusterType: Optional[str] = None
     nodes: Optional[List[str]] = Field(default_factory=list)
+    networkType: Optional[str] = "intranet"
     remarks: Optional[str] = None
 
 class UpdateClusterModel(BaseModel):
@@ -906,6 +908,7 @@ class UpdateClusterModel(BaseModel):
     racks: Optional[List[str]] = None
     clusterType: Optional[str] = None
     nodes: Optional[List[str]] = None
+    networkType: Optional[str] = None
     remarks: Optional[str] = None
     
     model_config = ConfigDict(

@@ -152,10 +152,14 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             
             role_ids = payload.get("roleIds", [])
             department = payload.get("department", "")
-            asyncio.create_task(users_col.update_one(
-                {"username": username},
-                {"$set": {"lastActive": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}}
-            ))
+
+            async def _update_last_active():
+                await users_col.update_one(
+                    {"username": username},
+                    {"$set": {"lastActive": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}}
+                )
+
+            asyncio.create_task(_update_last_active())
             asyncio.create_task(update_attendance_on_request(username, department, role_ids))
         except Exception as e:
             print("Error updating user activity:", e)

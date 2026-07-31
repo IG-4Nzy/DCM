@@ -73,6 +73,7 @@ def clean_ip_address(ip: str) -> str:
 async def exec_ping(ip: str, timeout: int) -> tuple[bool, float]:
     """Asynchronous ping check using asyncio subprocess. Returns (success, duration_ms)"""
     start_time = time.perf_counter()
+    proc = None
     try:
         # -c 1: send 1 packet
         # -W timeout: timeout in seconds
@@ -81,11 +82,17 @@ async def exec_ping(ip: str, timeout: int) -> tuple[bool, float]:
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL
         )
-        await proc.wait()
+        await asyncio.wait_for(proc.wait(), timeout=float(timeout + 2))
         duration = (time.perf_counter() - start_time) * 1000.0
         return proc.returncode == 0, round(duration, 1)
     except Exception as e:
         logger.debug(f"Ping execution error for {ip}: {e}")
+        if proc:
+            try:
+                proc.kill()
+                await proc.wait()
+            except Exception:
+                pass
         duration = (time.perf_counter() - start_time) * 1000.0
         return False, round(duration, 1)
 
@@ -99,7 +106,7 @@ async def exec_tcp_port(ip: str, port: int, timeout: int) -> tuple[bool, float]:
         )
         writer.close()
         try:
-            await writer.wait_closed()
+            await asyncio.wait_for(writer.wait_closed(), timeout=2.0)
         except Exception:
             pass
         duration = (time.perf_counter() - start_time) * 1000.0
@@ -116,8 +123,9 @@ class ServerPingScheduler:
     def __init__(self):
         self._running = False
         self._task: Optional[asyncio.Task] = None
-        self._semaphore = asyncio.Semaphore(200) # Limit concurrent checks to 200
+        self._semaphore = asyncio.Semaphore(50) # Limit concurrent checks to 50
         self._last_checked: Dict[str, float] = {}
+        self._active_checks: set[str] = set()
 
     def start(self):
         if self._running:
@@ -134,6 +142,7 @@ class ServerPingScheduler:
                 await self._task
             except asyncio.CancelledError:
                 pass
+        self._active_checks.clear()
         logger.info("Server Ping Monitoring Scheduler stopped.")
 
     async def _run_loop(self):
@@ -145,23 +154,30 @@ class ServerPingScheduler:
                 cursor = servers_col.find({"isEnabled": True})
                 async for server in cursor:
                     server_id = str(server["_id"])
+                    if server_id in self._active_checks:
+                        continue
                     interval = server.get("interval", 60)
                     last_check = self._last_checked.get(server_id, 0.0)
 
                     if now - last_check >= interval:
                         self._last_checked[server_id] = now
+                        self._active_checks.add(server_id)
                         # Spawn non-blocking check task
-                        asyncio.create_task(self._check_server_throttled(server))
+                        asyncio.create_task(self._check_server_throttled(server, server_id))
             except Exception as e:
                 logger.error(f"Error in Server Ping Monitoring Loop: {e}")
-            await asyncio.sleep(1.0)
+            await asyncio.sleep(5.0)
 
-    async def _check_server_throttled(self, server: dict):
-        async with self._semaphore:
-            try:
-                await self._check_server(server)
-            except Exception as e:
-                logger.error(f"Failed monitoring check for {server.get('ipAddress')}: {e}")
+    async def _check_server_throttled(self, server: dict, server_id: str):
+        try:
+            async with self._semaphore:
+                await asyncio.wait_for(self._check_server(server), timeout=30.0)
+        except asyncio.TimeoutError:
+            logger.warning(f"Server ping check timed out (30s) for {server.get('ipAddress')}")
+        except Exception as e:
+            logger.error(f"Failed monitoring check for {server.get('ipAddress')}: {e}")
+        finally:
+            self._active_checks.discard(server_id)
 
     async def _check_server(self, server: dict):
         server_id = str(server["_id"])

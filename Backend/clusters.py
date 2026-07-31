@@ -71,6 +71,7 @@ async def list_items(
     pagination: bool = Query(True),
     search: Optional[str] = None,
     clusterType: Optional[str] = Query(None),
+    networkType: Optional[str] = Query(None),
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
     order: str = Query("asc")
@@ -80,6 +81,8 @@ async def list_items(
 
     if clusterType:
         and_conditions.append({"clusterType": clusterType})
+    if networkType:
+        and_conditions.append({"networkType": networkType})
     
     if search:
         terms = search.strip().split()
@@ -92,6 +95,7 @@ async def list_items(
                         {"clusterName": {"$regex": escaped_term, "$options": "i"}},
                         {"ipAddress": {"$regex": escaped_term, "$options": "i"}},
                         {"slNumber": {"$regex": escaped_term, "$options": "i"}},
+                        {"networkType": {"$regex": escaped_term, "$options": "i"}},
                         {"remarks": {"$regex": escaped_term, "$options": "i"}},
                         {"createdBy": {"$regex": escaped_term, "$options": "i"}},
                         {"updatedAt": {"$regex": escaped_term, "$options": "i"}},

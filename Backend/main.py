@@ -611,7 +611,20 @@ from services.vcenter.client import vcenter_http_client
 
 @app.on_event("startup")
 async def on_startup():
-    """Start background telemetry scheduler on app boot."""
+    """Start background telemetry scheduler on app boot and create DB performance indexes."""
+    try:
+        await db.user_activity.create_index("username")
+        await db.user_activity.create_index("lastActive")
+        await db.monitored_servers.create_index("isEnabled")
+        await db.monitoring_status.create_index("serverId")
+        await db.vcenter_telemetry.create_index([("vcenterId", 1), ("timestamp", -1)])
+        await db.ping_drop_logs.create_index([("timestamp", -1)])
+        await db.works.create_index([("status", 1), ("assignee", 1)])
+        await db.requests.create_index([("status", 1), ("createdBy", 1)])
+        await db.audit_logs.create_index([("timestamp", -1)])
+    except Exception as e:
+        print(f"Database index initialization notice: {e}")
+
     vcenter_telemetry_scheduler.start()
     server_ping_scheduler.start()
 
