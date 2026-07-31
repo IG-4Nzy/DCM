@@ -16,7 +16,7 @@ Refactored to enterprise-grade architecture:
 
 import logging
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
-from auth_utils import require_privilege, get_current_user
+from auth_utils import require_privilege, require_any_privilege, get_current_user, filter_vms_by_owner_ip
 from typing import Optional
 from database import db
 from models import VCenterDetailsModel, CreateVCenterDetailsModel, UpdateVCenterDetailsModel, PaginatedVCenterDetailsModel
@@ -56,7 +56,7 @@ def _vm_host_ref(vm: dict) -> str:
 # CRUD ENDPOINTS (preserved from original)
 # ─────────────────────────────────────────────────────────
 
-@router.get("/", response_description="List all vCenter details", response_model=PaginatedVCenterDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Cluster"))])
+@router.get("/", response_description="List all vCenter details", response_model=PaginatedVCenterDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["View Cluster", "View Server Monitoring", "view_own_vcenter_vm_monitoring"]))])
 async def list_items(
     clusterId: Optional[str] = Query(None, description="The ID of the cluster"),
     skip: int = Query(0, ge=0),
@@ -92,7 +92,7 @@ async def list_items(
     return {"data": items, "total": total}
 
 
-@router.post("/", response_description="Create vCenter Details", response_model=VCenterDetailsModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Cluster"))])
+@router.post("/", response_description="Create vCenter Details", response_model=VCenterDetailsModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create vCenter Appliance", "Create Cluster"]))])
 async def create_item(
     payload: CreateVCenterDetailsModel = Body(...),
     current_user: dict = Depends(get_current_user)
@@ -136,7 +136,7 @@ async def create_item(
     return created
 
 
-@router.post("/fetch-clusters-preview", response_description="Fetch cluster names directly from live vCenter REST API", dependencies=[Depends(require_privilege("Create Cluster"))])
+@router.post("/fetch-clusters-preview", response_description="Fetch cluster names directly from live vCenter REST API", dependencies=[Depends(require_any_privilege(["Create vCenter Appliance", "Create Cluster"]))])
 async def fetch_clusters_preview(
     payload: dict = Body(...)
 ):
@@ -185,7 +185,7 @@ async def fetch_clusters_preview(
         )
 
 
-@router.put("/{id}", response_description="Update vCenter details", response_model=VCenterDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Cluster"))])
+@router.put("/{id}", response_description="Update vCenter details", response_model=VCenterDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Update vCenter Appliance", "Update Cluster"]))])
 async def update_item(id: str, payload: UpdateVCenterDetailsModel = Body(...)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -209,7 +209,7 @@ async def update_item(id: str, payload: UpdateVCenterDetailsModel = Body(...)):
     raise HTTPException(status_code=404, detail="vCenter Details not found")
 
 
-@router.delete("/{id}", response_description="Delete vCenter details", dependencies=[Depends(require_privilege("Delete Cluster"))])
+@router.delete("/{id}", response_description="Delete vCenter details", dependencies=[Depends(require_any_privilege(["Delete vCenter Appliance", "Delete Cluster"]))])
 async def delete_item(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -229,7 +229,7 @@ async def delete_item(id: str):
 # ─────────────────────────────────────────────────────────
 
 @router.get("/{id}/monitor", response_description="Get live vCenter monitoring telemetry")
-async def monitor_vcenter(id: str, current_user: dict = Depends(require_privilege("View Server Monitoring"))):
+async def monitor_vcenter(id: str, current_user: dict = Depends(require_any_privilege(["View Server Monitoring", "view_own_vcenter_vm_monitoring", "View Own vCenter VM Monitoring"]))):
     """
     Returns the latest telemetry snapshot for a vCenter instance.
     Data is pre-collected by the background VCenterTelemetryScheduler and stored in MongoDB.
@@ -260,6 +260,15 @@ async def monitor_vcenter(id: str, current_user: dict = Depends(require_privileg
         snapshot["version"] = vcenter.get("vcenterVersion", "8.0.2")
         snapshot["type"] = vcenter.get("vcenterType", "vCenter Server Appliance")
         snapshot["licenceExpiry"] = vcenter.get("licenceExpiry", "2029-12-31")
+        snapshot["vms"] = await filter_vms_by_owner_ip(snapshot.get("vms") or [], current_user)
+        if not snapshot.get("hosts"):
+            snapshot["hosts"] = []
+        if not snapshot.get("alarms"):
+            snapshot["alarms"] = []
+        if not snapshot.get("events"):
+            snapshot["events"] = []
+        if not snapshot.get("metrics"):
+            snapshot["metrics"] = {"cpuUsage": 0.0, "ramUsage": 0.0, "hddUsage": 0.0, "networkTraffic": 0.0}
         return snapshot
 
     # 2. No snapshot yet — perform a one-time warm-up fetch
@@ -373,6 +382,8 @@ async def monitor_vcenter(id: str, current_user: dict = Depends(require_privileg
 
     else:
         vcenter_version = vcenter.get("vcenterVersion", "8.0.2")
+
+    vms_telemetry = await filter_vms_by_owner_ip(vms_telemetry, current_user)
 
     return {
         "id": id,

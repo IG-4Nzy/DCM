@@ -57,6 +57,10 @@ import {
 } from 'react-icons/md';
 import { fetchVCenters, fetchClusters, fetchVCenterTelemetry, createVCenter, fetchNodes, deleteVCenter, fetchVCenterClustersPreview } from './action';
 import { useToast } from '../../contexts/ToastContext';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../store';
+import { hasPrivilege } from '../../helpers/authUtils';
+import { PRIVILEGES } from '../../helpers/privileges';
 import styles from './index.module.scss';
 
 interface VCenterItem {
@@ -148,6 +152,9 @@ interface MonitorData {
 
 const ServerMonitoring: React.FC = () => {
   const { showToast } = useToast();
+  const { isSuperuser } = useSelector((state: RootState) => state.auth);
+  const canCreateVCenter = isSuperuser || hasPrivilege(PRIVILEGES.CREATE_VCENTER_APPLIANCE) || hasPrivilege(PRIVILEGES.CLUSTER_CREATE);
+  const canDeleteVCenter = isSuperuser || hasPrivilege(PRIVILEGES.DELETE_VCENTER_APPLIANCE) || hasPrivilege(PRIVILEGES.CLUSTER_DELETE);
   const [vcenters, setVcenters] = useState<VCenterItem[]>([]);
 
   const playAlarmSound = () => {
@@ -505,10 +512,10 @@ const ServerMonitoring: React.FC = () => {
 
 
   // Filtered VM list
-  const filteredVms = monitorData?.vms.filter(vm => 
+  const filteredVms = (monitorData?.vms || []).filter(vm => 
     (vm.name || '').toLowerCase().includes((vmSearch || '').toLowerCase()) || 
     (vm.ipAddress || '').toLowerCase().includes((vmSearch || '').toLowerCase())
-  ) || [];
+  );
 
   // Filtered vCenter list sorted by status (offline/Red at the top)
   const filteredVcenters = vcenters.filter(vc =>
@@ -537,14 +544,16 @@ const ServerMonitoring: React.FC = () => {
                 Directory of registered virtual vCenter appliances. Click expand arrows to monitor ESXi Hosts & VM guest lists.
               </Typography>
             </Box>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<AddIcon />}
-              onClick={() => setIsModalOpen(true)}
-            >
-              Register vCenter
-            </Button>
+            {canCreateVCenter && (
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<AddIcon />}
+                onClick={() => setIsModalOpen(true)}
+              >
+                Register vCenter
+              </Button>
+            )}
           </header>
 
           {/* Quick Info Strips */}
@@ -662,11 +671,11 @@ const ServerMonitoring: React.FC = () => {
                         : 'Green'; // Fallback to green while querying
 
                     // Dynamic Alarms count harvested from real database
-                    const criticalAlarmsCount = telemetry 
-                      ? telemetry.alarms.filter((a: any) => a.severity === 'Critical').length 
+                    const criticalAlarmsCount = telemetry?.alarms 
+                      ? (telemetry.alarms || []).filter((a: any) => a.severity === 'Critical').length 
                       : 0;
-                    const warningAlarmsCount = telemetry 
-                      ? telemetry.alarms.filter((a: any) => a.severity === 'Warning').length 
+                    const warningAlarmsCount = telemetry?.alarms 
+                      ? (telemetry.alarms || []).filter((a: any) => a.severity === 'Warning').length 
                       : 0;
 
                     // Compute actual, live dynamic resource capacity from node_details
@@ -813,14 +822,16 @@ const ServerMonitoring: React.FC = () => {
 
                           {/* Actions */}
                           <TableCell align="right" onClick={(e) => e.stopPropagation()}>
-                             <IconButton 
-                               color="error" 
-                               onClick={() => handleDeleteClick(vcId)}
-                               size="small"
-                               title="Delete vCenter"
-                             >
-                               <DeleteIcon style={{ fontSize: '1.2rem' }} />
-                             </IconButton>
+                            {canDeleteVCenter && (
+                              <IconButton 
+                                color="error" 
+                                onClick={() => handleDeleteClick(vcId)}
+                                size="small"
+                                title="Delete vCenter"
+                              >
+                                <DeleteIcon style={{ fontSize: '1.2rem' }} />
+                              </IconButton>
+                            )}
                            </TableCell>
 
                         </TableRow>
@@ -837,18 +848,18 @@ const ServerMonitoring: React.FC = () => {
                               ) : telemetry ? (
                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                                   <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <ClusterIcon style={{ color: '#3b82f6' }} /> Mapped Nodes & Guest VMs ({telemetry.hosts.length} Hosts, {telemetry.vms.length} VMs)
+                                    <ClusterIcon style={{ color: '#3b82f6' }} /> Mapped Nodes & Guest VMs ({(telemetry?.hosts || []).length} Hosts, {(telemetry?.vms || []).length} VMs)
                                   </Typography>
                                   
-                                  {telemetry.hosts.length === 0 ? (
+                                  {(telemetry?.hosts || []).length === 0 ? (
                                     <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic', pl: 2 }}>
                                       No ESXi hypervisor hosts registered in this vCenter cluster group.
                                     </Typography>
                                   ) : (
                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                      {telemetry.hosts.map((host, hIdx) => {
+                                      {(telemetry?.hosts || []).map((host, hIdx) => {
                                         // Filter VMs mapping to this host's hostName
-                                        const hostVms = telemetry.vms.filter(vm => 
+                                        const hostVms = (telemetry?.vms || []).filter(vm => 
                                           [vm.node, vm.hostId].filter(Boolean).some(ref =>
                                             [host.name, host.id].filter(Boolean).some(hostRef =>
                                               String(ref).toLowerCase() === String(hostRef).toLowerCase()

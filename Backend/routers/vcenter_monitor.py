@@ -2,7 +2,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Depends
 from bson import ObjectId
 from database import db
-from auth_utils import get_current_user, require_privilege
+from auth_utils import get_current_user, require_privilege, require_any_privilege, filter_vms_by_owner_ip
 from services.vcenter.health_service import vcenter_health_service
 
 router = APIRouter()
@@ -27,7 +27,7 @@ async def get_vcenter_telemetry_snapshot(vc_id: str) -> dict:
 
 # Legacy /monitor compatibility endpoint so frontend doesn't break
 @router.get("/{id}/monitor", tags=["telemetry"])
-async def monitor_legacy(id: str, current_user: dict = Depends(require_privilege("View Server Monitoring"))):
+async def monitor_legacy(id: str, current_user: dict = Depends(require_any_privilege(["View Server Monitoring", "view_own_vcenter_vm_monitoring", "View Own vCenter VM Monitoring"]))):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
     snap = await get_vcenter_telemetry_snapshot(id)
@@ -40,10 +40,12 @@ async def monitor_legacy(id: str, current_user: dict = Depends(require_privilege
         snap["version"] = vc.get("vcenterVersion", "8.0.2")
         snap["type"] = vc.get("vcenterType", "vCenter Server Appliance")
         snap["licenceExpiry"] = vc.get("licenceExpiry", "2029-12-31")
+    if "vms" in snap:
+        snap["vms"] = await filter_vms_by_owner_ip(snap.get("vms", []), current_user)
     return snap
 
 @router.get("/{id}/monitor/summary", tags=["telemetry"])
-async def monitor_summary(id: str, current_user: dict = Depends(require_privilege("View Server Monitoring"))):
+async def monitor_summary(id: str, current_user: dict = Depends(require_any_privilege(["View Server Monitoring", "view_own_vcenter_vm_monitoring", "View Own vCenter VM Monitoring"]))):
     snap = await get_vcenter_telemetry_snapshot(id)
     return {
         "vcenterId": id,
@@ -61,11 +63,13 @@ async def monitor_hosts(id: str, current_user: dict = Depends(require_privilege(
     }
 
 @router.get("/{id}/monitor/vms", tags=["telemetry"])
-async def monitor_vms(id: str, current_user: dict = Depends(require_privilege("View Server Monitoring"))):
+async def monitor_vms(id: str, current_user: dict = Depends(require_any_privilege(["View Server Monitoring", "view_own_vcenter_vm_monitoring", "View Own vCenter VM Monitoring"]))):
     snap = await get_vcenter_telemetry_snapshot(id)
+    vms_list = snap.get("vms", [])
+    user_vms = await filter_vms_by_owner_ip(vms_list, current_user)
     return {
         "vcenterId": id,
-        "vms": snap.get("vms", [])
+        "vms": user_vms
     }
 
 @router.get("/{id}/monitor/alarms", tags=["telemetry"])

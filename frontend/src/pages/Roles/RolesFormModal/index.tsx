@@ -30,7 +30,11 @@ const PRIVILEGE_GROUPS: { [category: string]: string[] } = {
         "View Server Ping Monitoring",
         "Create Server Ping Monitoring",
         "Update Server Ping Monitoring",
-        "Delete Server Ping Monitoring"
+        "Delete Server Ping Monitoring",
+        "view_own_vcenter_vm_monitoring",
+        "Create vCenter Appliance",
+        "Update vCenter Appliance",
+        "Delete vCenter Appliance"
     ],
     "Users & Roles": [
         "View All Users",

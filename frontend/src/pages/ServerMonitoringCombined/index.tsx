@@ -12,7 +12,7 @@ import ServerPingMonitoring from '../ServerPingMonitoring';
 const ServerMonitoringCombined: React.FC = () => {
   const { isSuperuser } = useSelector((state: RootState) => state.auth);
 
-  const canViewServerMonitoring = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_MONITORING_VIEW);
+  const canViewServerMonitoring = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_MONITORING_VIEW) || hasPrivilege(PRIVILEGES.VIEW_OWN_VCENTER_VM_MONITORING);
   const canViewPingMonitoring = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_PING_MONITORING_VIEW);
 
   const availableTabs = [

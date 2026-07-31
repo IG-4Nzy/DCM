@@ -202,3 +202,77 @@ def require_any_privilege(allowed_privileges: list):
             )
         return current_user
     return privilege_checker
+
+async def filter_vms_by_owner_ip(vms_list: list, current_user: dict) -> list:
+    if not vms_list or not isinstance(vms_list, list):
+        return []
+
+    is_superuser = current_user.get("isSuperuser", False)
+    privileges = current_user.get("privileges", [])
+
+    # Superusers and users with "View Server Monitoring" see ALL VMs
+    if is_superuser or "View Server Monitoring" in privileges:
+        return vms_list
+
+    # Check if user has "view_own_vcenter_vm_monitoring" or "View Own vCenter VM Monitoring"
+    has_own_privilege = (
+        "view_own_vcenter_vm_monitoring" in privileges or
+        "View Own vCenter VM Monitoring" in privileges
+    )
+    if not has_own_privilege:
+        return []
+
+    username = current_user.get("sub") or current_user.get("username")
+    if not username:
+        return []
+
+    from database import db
+    from bson import ObjectId
+
+    users_col = db.get_collection("users")
+    user_doc = await users_col.find_one({"username": username})
+    if not user_doc and ObjectId.is_valid(username):
+        user_doc = await users_col.find_one({"_id": ObjectId(username)})
+
+    admins = {username}
+    if user_doc:
+        admins.add(str(user_doc["_id"]))
+        if user_doc.get("username"):
+            admins.add(user_doc["username"])
+
+    vm_col = db.get_collection("vm_details")
+    owned_vms = await vm_col.find({"admin": {"$in": list(admins)}}).to_list(length=None)
+
+    owned_ips = set()
+    for vm in owned_vms:
+        ip_val = vm.get("ipAddress") or vm.get("ip")
+        if ip_val:
+            if isinstance(ip_val, list):
+                for item in ip_val:
+                    if item and str(item).strip() and str(item).strip() != "0.0.0.0":
+                        owned_ips.add(str(item).strip())
+            elif isinstance(ip_val, str):
+                for item in ip_val.replace(",", " ").split():
+                    item_clean = item.strip()
+                    if item_clean and item_clean != "0.0.0.0":
+                        owned_ips.add(item_clean)
+
+    filtered_vms = []
+    for vm in vms_list:
+        vm_ip_val = vm.get("ipAddress") or vm.get("ip") or vm.get("guest_ip")
+        vm_ips = set()
+        if vm_ip_val:
+            if isinstance(vm_ip_val, list):
+                for item in vm_ip_val:
+                    if item and str(item).strip() and str(item).strip() != "0.0.0.0":
+                        vm_ips.add(str(item).strip())
+            elif isinstance(vm_ip_val, str):
+                for item in vm_ip_val.replace(",", " ").split():
+                    item_clean = item.strip()
+                    if item_clean and item_clean != "0.0.0.0":
+                        vm_ips.add(item_clean)
+
+        if any(ip in owned_ips for ip in vm_ips):
+            filtered_vms.append(vm)
+
+    return filtered_vms

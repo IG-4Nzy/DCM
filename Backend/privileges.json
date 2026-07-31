@@ -145,5 +145,9 @@
     "Delete Salary Calculation",
     "Edit About App",
     "View About App",
-    "View Bug Reports"
+    "View Bug Reports",
+    "view_own_vcenter_vm_monitoring",
+    "Create vCenter Appliance",
+    "Update vCenter Appliance",
+    "Delete vCenter Appliance"
 ]

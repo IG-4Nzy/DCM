@@ -149,4 +149,8 @@ export const PRIVILEGES = {
     EDIT_ABOUT_APP: "Edit About App",
     ABOUT_VIEW: "View About App",
     VIEW_BUG_REPORTS: "View Bug Reports",
+    VIEW_OWN_VCENTER_VM_MONITORING: "view_own_vcenter_vm_monitoring",
+    CREATE_VCENTER_APPLIANCE: "Create vCenter Appliance",
+    UPDATE_VCENTER_APPLIANCE: "Update vCenter Appliance",
+    DELETE_VCENTER_APPLIANCE: "Delete vCenter Appliance",
 }
