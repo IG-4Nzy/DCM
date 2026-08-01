@@ -114,6 +114,11 @@ class VCenterTelemetryScheduler:
         password = vc.get("password")
 
         if not ip or not username or not password:
+            await self._update_offline_status(vc_id, {
+                "reachable": False,
+                "authenticated": False,
+                "apiStatus": "Missing IP, username or password"
+            })
             return
 
         logger.debug(f"Starting scheduled metric sync for vCenter: {ip}")
@@ -127,6 +132,11 @@ class VCenterTelemetryScheduler:
 
             session_id = await vcenter_session_manager.get_session(ip, username, password)
             if not session_id:
+                await self._update_offline_status(vc_id, {
+                    "reachable": True,
+                    "authenticated": False,
+                    "apiStatus": "Failed to create vCenter session"
+                })
                 return
 
             # 2. Gather metrics, hosts, vms, alarms, and datastores
@@ -428,6 +438,11 @@ class VCenterTelemetryScheduler:
 
         except Exception as e:
             logger.error(f"Failed scheduled telemetry sync for vCenter {ip}: {e}")
+            await self._update_offline_status(vc_id, {
+                "reachable": False,
+                "authenticated": False,
+                "apiStatus": f"Sync error: {e}"
+            })
 
     async def _update_offline_status(self, vc_id: str, health: dict):
         snap_col = db.get_collection("vcenter_telemetry")

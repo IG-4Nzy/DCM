@@ -15,6 +15,7 @@ Refactored to enterprise-grade architecture:
 """
 
 import logging
+import asyncio
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
 from auth_utils import require_privilege, require_any_privilege, get_current_user, filter_vms_by_owner_ip
 from typing import Optional

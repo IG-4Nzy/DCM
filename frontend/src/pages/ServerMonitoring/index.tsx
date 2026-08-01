@@ -826,6 +826,11 @@ const ServerMonitoring: React.FC = () => {
                           {/* Name */}
                           <TableCell sx={{ fontWeight: 700, color: '#1e293b' }}>
                             {vc.name}
+                            {telemetry?.lastUpdated && (
+                              <Typography variant="caption" sx={{ display: 'block', color: '#94a3b8', fontWeight: 400 }}>
+                                Refreshed: {new Date(telemetry.lastUpdated).toLocaleTimeString()}
+                              </Typography>
+                            )}
                           </TableCell>
                           
                           {/* IP Address */}
