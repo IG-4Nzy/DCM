@@ -21,7 +21,7 @@ export const deletePhysicalServer = async (id: string) => {
     return response.data;
 };
 
-export const fetchAllNodes = async () => {
-    const response = await request.get('/api/nodes/', { params: { pagination: false } });
+export const fetchAllNodes = async (params?: any) => {
+    const response = await request.get('/api/nodes/', { params: { pagination: false, ...params } });
     return response.data.data;
 };

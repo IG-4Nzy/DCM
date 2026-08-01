@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Box, Typography, Checkbox, FormControlLabel } from '@mui/material';
 import Modal from '../../../components/Modal';
 import TextField from '../../../components/TextField';
@@ -39,8 +39,13 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
 
     useEffect(() => {
         if (open) {
-            fetchAllNodes()
-                .then(data => setNodes(data))
+            const activeClusterId = editingItem ? editingItem.clusterId : (formData.clusterId || clusterId);
+            const nodeParams: any = {};
+            if (activeClusterId) {
+                nodeParams.clusterId = activeClusterId;
+            }
+            fetchAllNodes(nodeParams)
+                .then(data => setNodes(data || []))
                 .catch(err => console.error("Failed to load nodes", err));
             if (!clusterId || clusterId === '') {
                 fetchClusters({ pagination: false })
@@ -51,7 +56,7 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
                 .then(res => setUsers(res.data?.data || []))
                 .catch(err => console.error("Failed to fetch users", err));
         }
-    }, [open, clusterId]);
+    }, [open, clusterId, editingItem, formData.clusterId]);
 
     useEffect(() => {
         if (open) {
@@ -117,6 +122,35 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
         setFormData(prev => ({ ...prev, [field]: checked }));
     };
 
+    const nodeOptions = useMemo(() => {
+        const list: { label: string; value: string }[] = [];
+        const usedValues = new Set<string>();
+
+        (nodes || []).forEach((n, idx) => {
+            const rawNodeName = n.node || n.hostName || n.nodeId || n.name || '';
+            const ip = n.ipAddress || n.ip || n.managementIp || '';
+            const fallbackName = ip ? `Node ${ip}` : `Node ${n._id || n.id || idx + 1}`;
+            const baseName = rawNodeName || fallbackName;
+            const label = ip && !baseName.includes(ip) ? `${baseName} - ${ip}` : baseName;
+
+            let val = baseName;
+            if (usedValues.has(val)) {
+                val = label;
+            }
+            if (usedValues.has(val)) {
+                val = `${label} (${n.nodeId || n._id || idx + 1})`;
+            }
+            usedValues.add(val);
+            list.push({ label, value: val });
+        });
+
+        if (formData.node && !list.some(opt => opt.value === formData.node)) {
+            list.unshift({ label: formData.node, value: formData.node });
+        }
+
+        return list;
+    }, [nodes, formData.node]);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -179,9 +213,7 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
                         fullWidth
                         value={formData.node} 
                         onChange={(val) => handleChange('node', val)} 
-                        options={nodes
-                            .filter(n => !formData.clusterId || n.clusterId === formData.clusterId)
-                            .map(n => ({ label: n.node, value: n.node }))}
+                        options={nodeOptions}
                     />
                     <TextField 
                         label="OS and Expiry" 

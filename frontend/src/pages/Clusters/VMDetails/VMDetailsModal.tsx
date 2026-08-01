@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Box, Typography, Checkbox, FormControlLabel } from '@mui/material';
 import Modal from '../../../components/Modal';
 import TextField from '../../../components/TextField';
@@ -73,8 +73,13 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
 
     useEffect(() => {
         if (open) {
-            fetchAllNodes()
-                .then(data => setNodes(data))
+            const activeClusterId = editingItem ? editingItem.clusterId : (formData.clusterId || clusterId);
+            const nodeParams: any = {};
+            if (activeClusterId) {
+                nodeParams.clusterId = activeClusterId;
+            }
+            fetchAllNodes(nodeParams)
+                .then(data => setNodes(data || []))
                 .catch(err => console.error("Failed to load nodes", err));
             if (!clusterId || clusterId === '') {
                 fetchClusters({ pagination: false })
@@ -88,7 +93,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                 .then(res => setDatastores(res.data?.data || []))
                 .catch(err => console.error("Failed to fetch datastores", err));
         }
-    }, [open, clusterId, editingItem]);
+    }, [open, clusterId, editingItem, formData.clusterId]);
 
     useEffect(() => {
         if (open) {
@@ -217,6 +222,64 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         setFormData(prev => ({ ...prev, [field]: checked }));
     };
 
+    const nodeOptions = useMemo(() => {
+        const list: { label: string; value: string }[] = [];
+        const usedValues = new Set<string>();
+
+        (nodes || []).forEach((n, idx) => {
+            const rawNodeName = n.node || n.hostName || n.nodeId || n.name || '';
+            const ip = n.ipAddress || n.ip || n.managementIp || '';
+            const fallbackName = ip ? `Node ${ip}` : `Node ${n._id || n.id || idx + 1}`;
+            const baseName = rawNodeName || fallbackName;
+            const label = ip && !baseName.includes(ip) ? `${baseName} - ${ip}` : baseName;
+
+            let val = baseName;
+            if (usedValues.has(val)) {
+                val = label;
+            }
+            if (usedValues.has(val)) {
+                val = `${label} (${n.nodeId || n._id || idx + 1})`;
+            }
+            usedValues.add(val);
+            list.push({ label, value: val });
+        });
+
+        if (formData.node && !list.some(opt => opt.value === formData.node)) {
+            list.unshift({ label: formData.node, value: formData.node });
+        }
+
+        return list;
+    }, [nodes, formData.node]);
+
+    const backupNodeOptions = useMemo(() => {
+        const list: { label: string; value: string }[] = [];
+        const usedValues = new Set<string>();
+
+        (nodes || []).forEach((n, idx) => {
+            const rawNodeName = n.node || n.hostName || n.nodeId || n.name || '';
+            const ip = n.ipAddress || n.ip || n.managementIp || '';
+            const fallbackName = ip ? `Node ${ip}` : `Node ${n._id || n.id || idx + 1}`;
+            const baseName = rawNodeName || fallbackName;
+            const label = ip && !baseName.includes(ip) ? `${baseName} - ${ip}` : baseName;
+
+            let val = baseName;
+            if (usedValues.has(val)) {
+                val = label;
+            }
+            if (usedValues.has(val)) {
+                val = `${label} (${n.nodeId || n._id || idx + 1})`;
+            }
+            usedValues.add(val);
+            list.push({ label, value: val });
+        });
+
+        if (formData.backupNode && !list.some(opt => opt.value === formData.backupNode)) {
+            list.unshift({ label: formData.backupNode, value: formData.backupNode });
+        }
+
+        return list;
+    }, [nodes, formData.backupNode]);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -299,10 +362,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                             searchable
                             clearable
                             value={formData.clusterId} 
-                            onChange={(val) => {
-                                setFormData(prev => ({ ...prev, clusterId: val, node: '' }));
-                            }} 
-                            options={clusters.map(c => ({ label: c.clusterName, value: c.id || c._id }))}
+                            onChange={(val) => handleChange('clusterId', val)} 
+                            options={clusters.map((c) => ({ label: c.clusterName || c.id, value: c.id || c._id }))}
                         />
                     )}
                     <TextField 
@@ -311,6 +372,16 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         className={styles.formGrid__field}
                         value={formData.ipAddress} 
                         onChange={(e) => handleChange('ipAddress', e.target.value)} 
+                    />
+                    <Dropdown 
+                        label="Datastore" 
+                        size="small"
+                        fullWidth
+                        searchable
+                        clearable
+                        value={formData.datastore} 
+                        onChange={(val) => handleChange('datastore', val)} 
+                        options={datastores.map((ds) => ({ label: `${ds.name || ds.datastoreName || ds.id}${ds.capacity ? ` (${ds.freeSpace || ''} free)` : ''}`, value: ds.name || ds.datastoreName || ds.id || ds._id }))}
                     />
                     <Dropdown 
                         label="Network Type" 
@@ -338,14 +409,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         clearable
                         value={formData.node} 
                         onChange={(val) => handleChange('node', val)} 
-                        options={nodes
-                            .filter(n => !formData.clusterId || n.clusterId === formData.clusterId || (n.clusterId && String(n.clusterId) === String(formData.clusterId)))
-                            .map((n) => {
-                                const nodeName = n.node || n.hostName || n.nodeId || '';
-                                const ip = n.ipAddress || n.ip || n.managementIp || '';
-                                const label = ip ? `${nodeName} - ${ip}` : nodeName;
-                                return { label, value: nodeName };
-                            })}
+                        options={nodeOptions}
                     />
                     <TextField 
                         label="OS and Expiry" 
@@ -369,12 +433,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         clearable
                         value={formData.backupNode} 
                         onChange={(val) => handleChange('backupNode', val)} 
-                        options={nodes.map((n) => {
-                            const nodeName = n.node || n.hostName || n.nodeId || '';
-                            const ip = n.ipAddress || n.ip || n.managementIp || '';
-                            const label = ip ? `${nodeName} - ${ip}` : nodeName;
-                            return { label, value: nodeName };
-                        })}
+                        options={backupNodeOptions}
                     />
                     <Dropdown 
                         label="Backup Storage" 

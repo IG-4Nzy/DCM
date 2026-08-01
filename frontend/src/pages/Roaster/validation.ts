@@ -51,15 +51,29 @@ export const validateRoster = (
   const matchesShiftTarget = (m: UserShiftMapping, target: string) => {
     if (!target) return false;
     const normT = normStr(target);
-    const normCol = normStr(m.colShift);
     const normAct = normStr(m.actualShift);
     const normRow = normStr(m.rowName);
 
-    if (normT === normCol || normT === normAct || normT === normRow) return true;
-    if (normCol && normCol.includes(normT)) return true;
+    // 1. Exact match with row name (e.g., "Shift 3 Row 2") or exact mapped shift (e.g., "Shift-4")
+    if (normT === normRow || normT === normAct) return true;
+
+    // 2. If target specifies a row (e.g. "Shift 3 Row 2"), it must match row name
+    if (normT.includes('row')) {
+      return normT === normRow;
+    }
+
+    // 3. Compare shift numbers (e.g., target "Shift 3" or "Shift-3" vs actual shift "Shift-4")
+    const targetDigits = (target.match(/\d+/) || [])[0];
+    const actDigits = ((m.actualShift || '').match(/\d+/) || [])[0];
+
+    if (targetDigits && actDigits) {
+      return targetDigits === actDigits;
+    }
+
+    // 4. Non-numeric shift name matching (e.g. "Leave")
     if (normAct && normAct.includes(normT)) return true;
-    if (normRow && normRow.includes(normT)) return true;
-    if (normT.includes(normCol) || normT.includes(normAct) || normT.includes(normRow)) return true;
+    if (normT && normT.includes(normAct)) return true;
+
     return false;
   };
 
@@ -76,14 +90,20 @@ export const validateRoster = (
       if (colRows.length === 0) {
         colRows = [
           { name: `${colShift.replace('-', ' ')} Row 1`, mappedShift: colShift },
-          { name: `${colShift.replace('-', ' ')} Row 2`, mappedShift: colShift }
+          { name: `${colShift.replace('-', ' ')} Row 2`, mappedShift: colShift === 'Shift-3' ? 'Shift-4' : colShift }
         ];
       }
 
       colRows.forEach((row, rIdx) => {
         const username = assignees[rIdx];
         if (username) {
-          const actualShift = row.mappedShift?.replace(/\s+/g, '-') || colShift;
+          let actualShift = row.mappedShift?.replace(/\s+/g, '-');
+          if (!actualShift || actualShift === 'None') {
+            actualShift = (colShift === 'Shift-3' && rIdx === 1) ? 'Shift-4' : colShift;
+          } else if (colShift === 'Shift-3' && rIdx === 1 && (actualShift === 'Shift-3' || actualShift === 'Shift3')) {
+            // Default second row of Shift 3 is Shift 4
+            actualShift = 'Shift-4';
+          }
           if (!userShifts[username]) {
             userShifts[username] = [];
           }
@@ -98,29 +118,26 @@ export const validateRoster = (
   const isNightDuty = (m: UserShiftMapping) => {
     const normActual = (m.actualShift || '').toLowerCase();
     const normRow = (m.rowName || '').toLowerCase();
+    if (normActual.includes('4') || normRow.includes('shift 4') || normRow.includes('row 2') || m.rIdx === 1) {
+      return false;
+    }
     return (
-      m.colShift === 'Shift-3' ||
       normActual.includes('3') ||
-      normActual.includes('4') ||
       normActual.includes('night') ||
       normRow.includes('shift 3') ||
-      normRow.includes('shift 4')
+      m.colShift === 'Shift-3'
     );
   };
 
   const isRestrictedNextDayShift = (m: UserShiftMapping) => {
-    if (m.colShift === 'Shift-1' || m.colShift === 'Shift-2') {
-      return true;
-    }
-    if (m.colShift === 'Shift-3') {
-      const normActual = (m.actualShift || '').toLowerCase();
-      const normRow = (m.rowName || '').toLowerCase();
-      if (m.rIdx === 1 || normActual.includes('4') || normRow.includes('row 2') || normRow.includes('shift 4')) {
-        return false;
-      }
-      return true;
-    }
     const normActual = (m.actualShift || '').toLowerCase();
+    const normRow = (m.rowName || '').toLowerCase();
+    if (m.rIdx === 1 || normActual.includes('4') || normRow.includes('shift 4') || normRow.includes('row 2')) {
+      return false;
+    }
+    if (m.colShift === 'Shift-1' || m.colShift === 'Shift-2' || m.colShift === 'Shift-3') {
+      return true;
+    }
     if (normActual.includes('1') || normActual.includes('2') || normActual.includes('3')) {
       return true;
     }
