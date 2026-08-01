@@ -175,23 +175,26 @@ async def list_items(
         and_conditions.append({"gpu": {"$regex": re.escape(gpu.strip()), "$options": "i"}})
     
     if clusterId:
+        cluster_ids_to_match = [clusterId]
+        if ObjectId.is_valid(clusterId):
+            cluster_ids_to_match.append(ObjectId(clusterId))
+
         cluster_doc = await db.get_collection("clusters").find_one({"_id": ObjectId(clusterId) if ObjectId.is_valid(clusterId) else clusterId})
         if cluster_doc:
-            node_ids = cluster_doc.get("nodes", [])
-            object_ids = []
+            node_ids = cluster_doc.get("nodes", []) or []
+            matched_ids = []
             for nid in node_ids:
+                matched_ids.append(str(nid))
                 if ObjectId.is_valid(nid):
-                    object_ids.append(ObjectId(nid))
-                else:
-                    object_ids.append(nid)
+                    matched_ids.append(ObjectId(nid))
             and_conditions.append({
                 "$or": [
-                    {"_id": {"$in": object_ids}},
-                    {"clusterId": clusterId}
+                    {"_id": {"$in": matched_ids}},
+                    {"clusterId": {"$in": cluster_ids_to_match}}
                 ]
             })
         else:
-            and_conditions.append({"clusterId": clusterId})
+            and_conditions.append({"clusterId": {"$in": cluster_ids_to_match}})
     
     has_appliance_priv = current_user.get("isSuperuser", False) or "View All Server Details" in privs
     if not has_appliance_priv:
