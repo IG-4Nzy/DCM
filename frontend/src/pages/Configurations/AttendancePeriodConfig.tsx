@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect } from 'react';
-import { Box, Paper, Typography, TextField, Grid, Divider, FormControl, InputLabel, Select, MenuItem, FormControlLabel, Switch } from '@mui/material';
+import { Box, Paper, Typography, TextField, Grid, Divider, FormControl, InputLabel, Select, MenuItem, FormControlLabel, Switch, Chip } from '@mui/material';
 import Button from '../../components/Button';
 import { useToast } from '../../contexts/ToastContext';
 import { useSelector } from 'react-redux';
@@ -20,6 +20,14 @@ interface RosterRow {
     mappedShift: string;
 }
 
+interface RosterValidationRule {
+    id?: string;
+    fromShift: string;
+    allowedNextShifts: string[];
+    restrictedNextShifts: string[];
+    description: string;
+}
+
 const AttendancePeriodConfig = () => {
     const [startDay, setStartDay] = useState<number | string>(1);
     const [endDay, setEndDay] = useState<number | string>(31);
@@ -28,6 +36,7 @@ const AttendancePeriodConfig = () => {
     const [maxAllowedDays, setMaxAllowedDays] = useState<number | string>(26);
     const [shifts, setShifts] = useState<ShiftInfo[]>([]);
     const [rosterRows, setRosterRows] = useState<RosterRow[]>([]);
+    const [validationRules, setValidationRules] = useState<RosterValidationRule[]>([]);
     const [trackedRole, setTrackedRole] = useState<string>('All Roles');
     const [roles, setRoles] = useState<{id: string, name: string}[]>([{ id: 'All Roles', name: 'All Roles' }]);
     const [lateLoginRestriction, setLateLoginRestriction] = useState<boolean>(true);
@@ -50,6 +59,7 @@ const AttendancePeriodConfig = () => {
                 setMaxAllowedDays(response.data.maxAllowedDays || 26);
                 setShifts(response.data.shifts || []);
                 setRosterRows(response.data.rosterRows || []);
+                setValidationRules(response.data.validationRules || []);
                 setTrackedRole(response.data.trackedRole || 'All Roles');
                 setLateLoginRestriction(response.data.lateLoginRestriction !== undefined ? response.data.lateLoginRestriction : true);
             }
@@ -111,6 +121,14 @@ const AttendancePeriodConfig = () => {
             }
         }
 
+        // Validate roster validation rules
+        for (const rule of validationRules) {
+            if (!rule.fromShift || !rule.fromShift.trim()) {
+                showToast('Validation rule trigger shift cannot be empty', 'warning');
+                return;
+            }
+        }
+
         setSaving(true);
         try {
             await request.post('/api/attendance/config', {
@@ -122,6 +140,7 @@ const AttendancePeriodConfig = () => {
                 shifts,
                 trackedRole,
                 rosterRows,
+                validationRules,
                 lateLoginRestriction
             });
             showToast('Attendance configuration saved successfully', 'success');
@@ -462,6 +481,144 @@ const AttendancePeriodConfig = () => {
                                             </Grid>
                                         </Grid>
                                     ))}
+                                </Box>
+                            )}
+                        </Grid>
+
+                        <Grid size={{xs: 12}}>
+                            <Divider sx={{ my: 3 }} />
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333' }}>
+                                    Manage Roster Validation Rules (Next-Day Shift Restrictions)
+                                </Typography>
+                                {hasUpdate && (
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        onClick={() => setValidationRules([
+                                            ...validationRules,
+                                            {
+                                                id: `rule_${Date.now()}`,
+                                                fromShift: shifts[0]?.name || rosterRows[0]?.mappedShift || 'Shift-3',
+                                                allowedNextShifts: [],
+                                                restrictedNextShifts: ['Shift-1', 'Shift-2', 'Shift-3'],
+                                                description: ''
+                                            }
+                                        ])}
+                                        disabled={saving}
+                                    >
+                                        + Add Validation Rule
+                                    </Button>
+                                )}
+                            </Box>
+
+                            <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                                Define shift transition rules that restrict personnel from taking invalid follow-up shifts on the next day after working a prior shift.
+                            </Typography>
+
+                            {validationRules.length === 0 ? (
+                                <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic', mb: 2 }}>
+                                    No custom validation rules added yet. Default night shift rules (Shift-3 restricts Shift 1/2/3 next day) will apply.
+                                </Typography>
+                            ) : (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mb: 3 }}>
+                                    {validationRules.map((rule, idx) => {
+                                        const shiftOptions = Array.from(new Set([
+                                            ...shifts.map(s => s.name),
+                                            ...rosterRows.map(r => r.name),
+                                            ...rosterRows.map(r => r.mappedShift),
+                                            'Shift-1', 'Shift-2', 'Shift-3', 'Shift-4', 'Leave'
+                                        ])).filter(Boolean);
+
+                                        return (
+                                            <Paper key={rule.id || idx} variant="outlined" sx={{ p: 2, borderRadius: 2, backgroundColor: '#fcfcfc' }}>
+                                                <Grid container spacing={2} sx={{ alignItems: 'center' }}>
+                                                    <Grid size={{xs: 12, sm: 4}}>
+                                                        <FormControl fullWidth size="small">
+                                                            <InputLabel>If Worked Shift / Row</InputLabel>
+                                                            <Select
+                                                                value={rule.fromShift}
+                                                                label="If Worked Shift / Row"
+                                                                onChange={(e) => {
+                                                                    const newRules = [...validationRules];
+                                                                    newRules[idx].fromShift = e.target.value;
+                                                                    setValidationRules(newRules);
+                                                                }}
+                                                                disabled={!hasUpdate || saving}
+                                                            >
+                                                                {shiftOptions.map((opt, oIdx) => (
+                                                                    <MenuItem key={oIdx} value={opt}>{opt}</MenuItem>
+                                                                ))}
+                                                            </Select>
+                                                        </FormControl>
+                                                    </Grid>
+                                                    
+                                                    <Grid size={{xs: 12, sm: 8}}>
+                                                        <FormControl fullWidth size="small">
+                                                            <InputLabel>Restricted Shifts Next Day</InputLabel>
+                                                            <Select
+                                                                multiple
+                                                                value={rule.restrictedNextShifts || []}
+                                                                label="Restricted Shifts Next Day"
+                                                                onChange={(e) => {
+                                                                    const val = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                                                                    const newRules = [...validationRules];
+                                                                    newRules[idx].restrictedNextShifts = val;
+                                                                    setValidationRules(newRules);
+                                                                }}
+                                                                renderValue={(selected) => (
+                                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                                        {selected.map((value) => (
+                                                                            <Chip key={value} label={value} size="small" color="error" variant="outlined" />
+                                                                        ))}
+                                                                    </Box>
+                                                                )}
+                                                                disabled={!hasUpdate || saving}
+                                                            >
+                                                                {shiftOptions.map((opt, oIdx) => (
+                                                                    <MenuItem key={oIdx} value={opt}>{opt}</MenuItem>
+                                                                ))}
+                                                            </Select>
+                                                        </FormControl>
+                                                    </Grid>
+
+                                                    <Grid size={{xs: 12, sm: 10}}>
+                                                        <TextField
+                                                            label="Rule Description / Error Reason"
+                                                            placeholder="e.g. Personnel on night shift cannot work morning/afternoon shifts the next day"
+                                                            fullWidth
+                                                            size="small"
+                                                            value={rule.description || ''}
+                                                            onChange={(e) => {
+                                                                const newRules = [...validationRules];
+                                                                newRules[idx].description = e.target.value;
+                                                                setValidationRules(newRules);
+                                                            }}
+                                                            disabled={!hasUpdate || saving}
+                                                        />
+                                                    </Grid>
+
+                                                    <Grid size={{xs: 12, sm: 2}}>
+                                                        {hasUpdate && (
+                                                            <Button
+                                                                variant="outlined"
+                                                                color="error"
+                                                                fullWidth
+                                                                size="small"
+                                                                onClick={() => {
+                                                                    const newRules = validationRules.filter((_, rIdx) => rIdx !== idx);
+                                                                    setValidationRules(newRules);
+                                                                }}
+                                                                disabled={saving}
+                                                            >
+                                                                Remove
+                                                            </Button>
+                                                        )}
+                                                    </Grid>
+                                                </Grid>
+                                            </Paper>
+                                        );
+                                    })}
                                 </Box>
                             )}
                         </Grid>

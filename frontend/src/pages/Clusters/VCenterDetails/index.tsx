@@ -1,11 +1,12 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
 import { Box, Tooltip, IconButton, Card, CardContent, Typography, Grid } from '@mui/material';
-import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
+import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdRefresh as RefreshIcon } from 'react-icons/md';
 import Button from '../../../components/Button';
 import SearchBar from '../../../components/SearchBar';
 import { useToast } from '../../../contexts/ToastContext';
 import { useConfirm } from '../../../contexts/ConfirmContext';
+import request from '../../../services/request';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../../store';
 import { hasPrivilege } from '../../../helpers/authUtils';
@@ -23,6 +24,7 @@ const VCenterDetails = ({ clusterId }: VCenterDetailsProps) => {
     const [data, setData] = useState<VCenterDetailsData[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [refreshingId, setRefreshingId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,6 +58,19 @@ const VCenterDetails = ({ clusterId }: VCenterDetailsProps) => {
     useEffect(() => {
         loadData();
     }, [loadData]);
+
+    const handleManualRefresh = async (id: string) => {
+        setRefreshingId(id);
+        try {
+            await request.post(`/api/vcenter-details/${id}/refresh`, {}, { timeout: 30000 });
+            showToast('Manual vCenter refresh completed successfully!', 'success');
+            loadData();
+        } catch (e: any) {
+            showToast(e?.response?.data?.detail || 'Failed to refresh vCenter telemetry', 'error');
+        } finally {
+            setRefreshingId(null);
+        }
+    };
 
     const handleOpenModal = (item?: VCenterDetailsData) => {
         setEditingItem(item || null);
@@ -218,8 +233,12 @@ const VCenterDetails = ({ clusterId }: VCenterDetailsProps) => {
                                     )}
                                 </Box>
 
-                                {(hasUpdate || hasDelete) && (
                                     <Box className={styles.card__actions}>
+                                        <Tooltip title="Manual Refresh">
+                                            <IconButton size="small" color="secondary" onClick={() => handleManualRefresh(item.id)} disabled={refreshingId === item.id}>
+                                                <RefreshIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
                                         {hasUpdate && (
                                             <Tooltip title="Edit">
                                                 <IconButton size="small" color="primary" onClick={() => handleOpenModal(item)}>
@@ -235,7 +254,6 @@ const VCenterDetails = ({ clusterId }: VCenterDetailsProps) => {
                                             </Tooltip>
                                         )}
                                     </Box>
-                                )}
                             </CardContent>
                         </Card>
                     </Grid>

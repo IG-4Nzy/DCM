@@ -636,20 +636,10 @@ export const NotificationPollerProvider: React.FC<{ children: React.ReactNode }>
     }
   }, [canView, users]);
 
-  // Countdown timer for 30 seconds refresh
+  // Disabled automatic notification polling loop
   useEffect(() => {
-    if (!canView) return;
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          fetchMonitoredData(true);
-          return 30;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [canView]);
+    // Polling disabled per configuration
+  }, []);
 
   return (
     <NotificationPollerContext.Provider value={{

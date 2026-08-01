@@ -21,6 +21,7 @@ services:
     environment:
       - MONGO_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-password}@mongodb:27017/dcm_database?authSource=admin
       - deploy=${deploy:-${DEPLOY:-prod}}
+      - PYTHONUNBUFFERED=1
     volumes:
       - backend_uploads:/app/uploads
     cap_add:

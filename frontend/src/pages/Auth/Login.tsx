@@ -1,17 +1,18 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginApi } from './action';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, TextField, Typography } from '@mui/material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, TextField, Typography, InputAdornment, IconButton } from '@mui/material';
+import { MdVisibility, MdVisibilityOff } from 'react-icons/md';
 import { motion } from 'framer-motion';
 import { useToast } from '../../contexts/ToastContext';
-import { useEffect } from 'react';
 import request from '../../services/request';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [birthdayWish, setBirthdayWish] = useState<{ open: boolean; name: string }>({ open: false, name: '' });
   const [restrictedLoginData, setRestrictedLoginData] = useState<any>(null);
   const dispatch = useDispatch<any>();
@@ -207,11 +208,27 @@ const Login: React.FC = () => {
             <TextField
               fullWidth
               label="Password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               variant="outlined"
               margin="normal"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                        sx={{ color: '#64748b' }}
+                      >
+                        {showPassword ? <MdVisibilityOff size={22} /> : <MdVisibility size={22} />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }
+              }}
             />
 
             <Button

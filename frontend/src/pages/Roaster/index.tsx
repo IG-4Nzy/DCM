@@ -128,24 +128,26 @@ const RoasterPage: React.FC = () => {
 
   const uniqueShifts = ["Shift-1", "Shift-2", "Shift-3", "Leave"];
 
-  const validationErrors = validateRoster(rosterData, weekDates, rows);
+  const validationErrors = validateRoster(rosterData, weekDates, rows, dutySummary?.shifts, dutySummary?.validationRules);
 
 
 
   const fetchRosters = async () => {
     if (!activeDepartment) return;
-    const prevSundayStr = selectedWeek.startOf("isoWeek").subtract(1, "day").format("YYYY-MM-DD");
+    const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
     const endDate = selectedWeek.endOf("isoWeek").format("YYYY-MM-DD");
     try {
-      const data = await dispatch(fetchRostersData({ startDate: prevSundayStr, endDate, department: activeDepartment })).unwrap();
+      const data = await dispatch(fetchRostersData({ startDate, endDate, department: activeDepartment })).unwrap();
       const newRosterData: Record<string, RosterData> = {};
       data.forEach((r: any) => {
-        newRosterData[`${r.date}_${r.shift}`] = {
-          id: r.id || r._id,
-          assignees: r.assignees,
-          updatedAt: r.updatedAt,
-          updatedByFullName: r.updatedByFullName
-        };
+        if (weekDates.includes(r.date)) {
+          newRosterData[`${r.date}_${r.shift}`] = {
+            id: r.id || r._id,
+            assignees: r.assignees,
+            updatedAt: r.updatedAt,
+            updatedByFullName: r.updatedByFullName
+          };
+        }
       });
       setSavedRosterDataByWeek((prev) => ({ ...prev, [currentWeekKey]: newRosterData }));
       setRosterDataByWeek((prev) => {
@@ -529,7 +531,36 @@ const RoasterPage: React.FC = () => {
     );
   }
 
+  const currentWeekRosterEntries = Object.entries(rosterData)
+    .filter(([key]) => weekDates.some(d => key.startsWith(d)))
+    .map(([_, v]) => v)
+    .filter(r => r && r.updatedAt);
+
+  let lastUpdatedTime: number | null = null;
+  let lastUpdatedBy: string | null = null;
+
+  currentWeekRosterEntries.forEach(r => {
+    const t = r.updatedAt ? new Date(r.updatedAt).getTime() : 0;
+    if (t > (lastUpdatedTime || 0)) {
+      lastUpdatedTime = t;
+      lastUpdatedBy = r.updatedByFullName || null;
+    }
+  });
+
+  if (rosterStatus && rosterStatus.updatedAt) {
+    const t = new Date(rosterStatus.updatedAt).getTime();
+    if (t > (lastUpdatedTime || 0)) {
+      lastUpdatedTime = t;
+      lastUpdatedBy = rosterStatus.updatedByFullName || null;
+    }
+  }
+
   const hasRosterData = Object.values(rosterData).some((r) => r.id);
+
+  const cleanDisplayName = (name?: string | null) => {
+    if (!name) return 'Unknown';
+    return name.replace(/\s*\([0-9a-fA-F]{24}[^)]*\)/g, '').trim() || name;
+  };
 
   return (
     <Box className={styles.container}>
@@ -693,13 +724,13 @@ const RoasterPage: React.FC = () => {
             )}
 
               {/* Last Updated Info */}
-          {Object.values(rosterData).some(r => r.updatedAt) && (
+          {lastUpdatedTime && (
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', ml: 2, mr: 2 ,gap: '0px'}}>
               <Typography variant="caption" color="textSecondary" sx={{ fontStyle: 'italic' }}>
-                Roster last updated: {dayjs(Math.max(...Object.values(rosterData).map(r => r.updatedAt ? new Date(r.updatedAt).getTime() : 0))).format('DD MMM YYYY, hh:mm A')}
+                Roster last updated: {dayjs(lastUpdatedTime).format('DD MMM YYYY, hh:mm A')}
               </Typography>
               <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 'bold' }}>
-                by {Object.values(rosterData).sort((a, b) => (b.updatedAt ? new Date(b.updatedAt).getTime() : 0) - (a.updatedAt ? new Date(a.updatedAt).getTime() : 0))[0]?.updatedByFullName || 'Unknown'}
+                by {cleanDisplayName(lastUpdatedBy)}
               </Typography>
             </Box>
           )}

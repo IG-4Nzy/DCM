@@ -248,14 +248,15 @@ const ServerPingMonitoring: React.FC = () => {
     }
   }, [isLogsModalOpen, startDate, endDate]);
 
-  // Auto refresh data every 10 seconds
+  // Auto refresh data every 30 seconds
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (canView) {
       interval = setInterval(() => {
+        if (document.hidden) return;
         loadDashboardMetrics();
         loadServers();
-      }, 10000);
+      }, 30000);
     }
     return () => clearInterval(interval);
   }, [canView, search, sortBy, order]);

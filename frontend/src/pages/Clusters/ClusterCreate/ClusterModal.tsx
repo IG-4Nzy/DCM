@@ -23,6 +23,7 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
         ipAddress: '',
         clusterType: '',
         nodes: [],
+        networkType: 'intranet',
         remarks: ''
     });
 
@@ -54,6 +55,7 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
                     ipAddress: editingItem.ipAddress || '',
                     clusterType: editingItem.clusterType || '',
                     nodes: editingItem.nodes || [],
+                    networkType: editingItem.networkType || 'intranet',
                     remarks: editingItem.remarks || ''
                 });
             } else {
@@ -62,6 +64,7 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
                     ipAddress: '',
                     clusterType: '',
                     nodes: [],
+                    networkType: 'intranet',
                     remarks: ''
                 });
             }
@@ -80,6 +83,7 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
             if (formData.clusterName !== editingItem.clusterName) changedData.clusterName = formData.clusterName;
             if (formData.ipAddress !== editingItem.ipAddress) changedData.ipAddress = formData.ipAddress;
             if (formData.clusterType !== editingItem.clusterType) changedData.clusterType = formData.clusterType;
+            if (formData.networkType !== editingItem.networkType) changedData.networkType = formData.networkType;
             if (formData.remarks !== editingItem.remarks) changedData.remarks = formData.remarks;
             if (JSON.stringify(formData.nodes || []) !== JSON.stringify(editingItem.nodes || [])) {
                 changedData.nodes = formData.nodes;
@@ -120,6 +124,18 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
                             label="Cluster Name"
                             value={formData.clusterName}
                             onChange={(e) => handleChange('clusterName', e.target.value)}
+                        />
+                    </Box>
+                    <Box sx={{ mt: 1, mb: 1 }}>
+                        <Dropdown
+                            label="Network Type"
+                            fullWidth
+                            value={formData.networkType || 'intranet'}
+                            onChange={(val) => handleChange('networkType', val)}
+                            options={[
+                                { label: 'Intranet', value: 'intranet' },
+                                { label: 'Internet', value: 'internet' }
+                            ]}
                         />
                     </Box>
                     <Box>

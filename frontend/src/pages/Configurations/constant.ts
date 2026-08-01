@@ -9,6 +9,7 @@ import BMSChecklistConfig from "./BMSChecklistConfig";
 import ClusterChecklistConfig from "./ClusterChecklistConfig";
 import MorningChecklistConfig from "./MorningChecklistConfig";
 import NotificationSettings from "./NotificationSettings";
+import VCenterConfig from "./VCenterConfig";
 
 export const CONFIG_TABS = [
     { id: 'serverMastersConfig', label: 'Server Masters', value: 'serverMastersConfig' },
@@ -25,6 +26,7 @@ export const SERVER_MASTERS_CONFIGURATIONS = [
     { id: "hypervisors", label: "Hypervisors", value: "hypervisors" },
     { id: "serverModel", label: "Server Model", value: "serverModel" },
     { id: "gpus", label: "GPUs", value: "gpus" },
+    { id: "vcenterConfig", label: "vCenter Refresh", value: "vcenterConfig" },
 ]
 
 export const REQUEST_CONFIGURATIONS = [
@@ -66,6 +68,7 @@ export const CONFIG_TABS_PAGES = {
     hypervisors: Hypervisors,
     serverModel: ServerModels,
     gpus: GPUs,
+    vcenterConfig: VCenterConfig,
     requestRoutings: RequestRoutings,
     attendancePeriod: AttendancePeriodConfig,
     bmsChecklistFields: BMSChecklistConfig,

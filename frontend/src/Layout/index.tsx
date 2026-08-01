@@ -168,26 +168,15 @@ const Layout: React.FC = () => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [dispatch]);
 
-  const fetchUnreadNotifications = async () => {
-    try {
-      const res = await request.get('/api/notifications/unread');
-      setUnreadRoutes(res.data || {});
-    } catch (err) {
-      console.error('Error fetching notifications:', err);
-    }
-  };
-
+  // Notification polling disabled per user preference
   useEffect(() => {
-    if (username) {
-      fetchUnreadNotifications();
-      const interval = setInterval(fetchUnreadNotifications, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [username]);
+    // Unread notifications polling removed
+  }, []);
 
   useEffect(() => {
     if (username) {
       const sendHeartbeat = async () => {
+        if (document.hidden) return;
         try {
           await request.post('/api/users/heartbeat');
         } catch (err) {
@@ -195,7 +184,7 @@ const Layout: React.FC = () => {
         }
       };
       sendHeartbeat();
-      const interval = setInterval(sendHeartbeat, 15000);
+      const interval = setInterval(sendHeartbeat, 60000); // 60s heartbeat
       return () => clearInterval(interval);
     }
   }, [username]);

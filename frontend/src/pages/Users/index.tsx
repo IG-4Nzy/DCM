@@ -102,7 +102,10 @@ const Users: React.FC = () => {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 15000);
+    const interval = setInterval(() => {
+      if (document.hidden) return;
+      loadData();
+    }, 60000); // 60s background refresh
     return () => clearInterval(interval);
   }, [loadData]);
 

@@ -108,7 +108,8 @@ async def refresh_all_vcenters():
     refreshed_count = 0
     for vc in vcenters:
         try:
-            await vcenter_telemetry_scheduler.force_refresh_vcenter(vc)
+            # Fire in background so endpoint returns instantly without timing out Axios
+            asyncio.create_task(vcenter_telemetry_scheduler.force_refresh_vcenter(vc))
             refreshed_count += 1
         except Exception as e:
             logger.error(f"Manual refresh failed for vCenter {vc.get('ipAddress')}: {e}")
@@ -130,10 +131,12 @@ async def refresh_vcenter_by_id(id: str):
 
     from tasks.telemetry_scheduler import vcenter_telemetry_scheduler
     try:
-        await vcenter_telemetry_scheduler.force_refresh_vcenter(vcenter)
+        # Wait up to 10 seconds for synchronous update; continue in background if slower
+        await asyncio.wait_for(vcenter_telemetry_scheduler.force_refresh_vcenter(vcenter), timeout=10.0)
+    except asyncio.TimeoutError:
+        logger.info(f"Manual refresh for vCenter {id} is taking longer than 10s; processing in background")
     except Exception as e:
-        logger.error(f"Manual refresh failed for vCenter {id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to refresh vCenter telemetry: {str(e)}")
+        logger.error(f"Manual refresh error for vCenter {id}: {e}")
 
     snap_col = db.get_collection("vcenter_telemetry")
     snapshot = await snap_col.find_one({"vcenterId": id})

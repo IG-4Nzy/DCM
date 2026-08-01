@@ -62,6 +62,7 @@ const Clusters = () => {
 
     const [searchQuery, setSearchQuery] = useTableState('cluster_search', '');
     const [clusterTypeFilter, setClusterTypeFilter] = useTableState('cluster_typeFilter', '');
+    const [networkTypeFilter, setNetworkTypeFilter] = useTableState('cluster_networkTypeFilter', '');
     const [clusterTypesList, setClusterTypesList] = useState<string[]>([]);
     const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
     const [page, setPage] = useTableState('cluster_page', 0);
@@ -88,6 +89,7 @@ const Clusters = () => {
                 order,
                 search: searchQuery,
                 clusterType: clusterTypeFilter || undefined,
+                networkType: networkTypeFilter || undefined,
                 pagination: true
             });
             setData(result.data);
@@ -97,7 +99,7 @@ const Clusters = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, rowsPerPage, orderBy, order, searchQuery, clusterTypeFilter, showToast]);
+    }, [page, rowsPerPage, orderBy, order, searchQuery, clusterTypeFilter, networkTypeFilter, showToast]);
 
     useEffect(() => {
         loadData();
@@ -221,6 +223,27 @@ const Clusters = () => {
             }
         },
         { id: 'clusterType', label: 'Cluster Type', sortable: true, render: (row) => row.clusterType || '--' },
+        { 
+            id: 'networkType', 
+            label: 'Network Type', 
+            sortable: true, 
+            render: (row) => {
+                const isInternet = (row.networkType || '').toLowerCase() === 'internet';
+                return (
+                    <span style={{
+                        textTransform: 'uppercase',
+                        fontWeight: 600,
+                        fontSize: '0.75rem',
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        color: isInternet ? '#0284c7' : '#16a34a',
+                        backgroundColor: isInternet ? '#e0f2fe' : '#dcfce7'
+                    }}>
+                        {row.networkType || 'intranet'}
+                    </span>
+                );
+            }
+        },
         { id: 'ipAddress', label: 'IP Address', sortable: true },
         {
             id: 'nodes',
@@ -287,10 +310,11 @@ const Clusters = () => {
         });
     }
 
-    const activeFilterCount = clusterTypeFilter ? 1 : 0;
+    const activeFilterCount = (clusterTypeFilter ? 1 : 0) + (networkTypeFilter ? 1 : 0);
 
     const handleClearAllFilters = () => {
         setClusterTypeFilter('');
+        setNetworkTypeFilter('');
         setPage(0);
     };
 
@@ -350,6 +374,23 @@ const Clusters = () => {
                             ...clusterTypesList.map((t) => ({ label: t, value: t }))
                         ]}
                     />
+                    <Box sx={{ mt: 1.5 }}>
+                        <Dropdown
+                            label="Network Type"
+                            size="small"
+                            clearable
+                            value={networkTypeFilter}
+                            onChange={(val) => {
+                                setNetworkTypeFilter(val);
+                                setPage(0);
+                            }}
+                            options={[
+                                { label: 'All Networks', value: '' },
+                                { label: 'Intranet', value: 'intranet' },
+                                { label: 'Internet', value: 'internet' }
+                            ]}
+                        />
+                    </Box>
                 </FilterGroup>
             </FilterDrawer>
 

@@ -7,6 +7,7 @@ export interface ClusterData {
     racks?: string[];
     clusterType?: string;
     nodes?: string[];
+    networkType?: string;
     remarks?: string;
     createdBy?: string;
     createdAt?: string;
@@ -20,6 +21,7 @@ export interface CreateClusterPayload {
     racks?: string[];
     clusterType?: string;
     nodes?: string[];
+    networkType?: string;
     remarks?: string;
 }
 
@@ -29,6 +31,7 @@ export interface UpdateClusterPayload {
     racks?: string[];
     clusterType?: string;
     nodes?: string[];
+    networkType?: string;
     remarks?: string;
 }
 
@@ -38,5 +41,7 @@ export interface FetchClustersParams {
     sortBy?: string;
     order?: 'asc' | 'desc';
     search?: string;
+    clusterType?: string;
+    networkType?: string;
     pagination?: boolean;
 }

@@ -400,6 +400,15 @@ async def get_attendance_config():
                 {"name": "Shift 3 Row 2", "mappedShift": "Shift-3"},
                 {"name": "Leave", "mappedShift": "Leave"}
             ],
+            "validationRules": [
+                {
+                    "id": "rule_default_night",
+                    "fromShift": "Shift-3",
+                    "allowedNextShifts": ["Shift-4", "Leave"],
+                    "restrictedNextShifts": ["Shift-1", "Shift-2", "Shift-3"],
+                    "description": "Persons working Shift-3 (Night) can only take Shift-4 or Leave on the next day."
+                }
+            ],
             "lateLoginRestriction": True
         }
         await config_collection.insert_one(default_config)
@@ -417,6 +426,17 @@ async def get_attendance_config():
             {"name": "Leave", "mappedShift": "Leave"}
         ]
         updates["rosterRows"] = config["rosterRows"]
+    if "validationRules" not in config:
+        config["validationRules"] = [
+            {
+                "id": "rule_default_night",
+                "fromShift": "Shift-3",
+                "allowedNextShifts": ["Shift-4", "Leave"],
+                "restrictedNextShifts": ["Shift-1", "Shift-2", "Shift-3"],
+                "description": "Persons working Shift-3 (Night) can only take Shift-4 or Leave on the next day."
+            }
+        ]
+        updates["validationRules"] = config["validationRules"]
     if "lateLoginRestriction" not in config:
         config["lateLoginRestriction"] = True
         updates["lateLoginRestriction"] = True
@@ -444,6 +464,7 @@ async def update_attendance_config(
         "shifts": [dict(s) for s in payload.shifts],
         "trackedRole": payload.trackedRole or "All Roles",
         "rosterRows": [dict(r) for r in payload.rosterRows],
+        "validationRules": [dict(r) for r in payload.validationRules],
         "lateLoginRestriction": payload.lateLoginRestriction
     }
     if config:

@@ -570,7 +570,9 @@ async def get_duty_summary(
         "trackedRole": config.get("trackedRole", "All Roles"),
         "maxAllowedDays": max_days,
         "weeks": weeks_list,
+        "shifts": config.get("shifts", []),
         "rosterRows": config.get("rosterRows", []),
+        "validationRules": config.get("validationRules", []),
         "summary": summary,
         "splitups": splitups
     }

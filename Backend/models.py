@@ -1307,6 +1307,13 @@ class RosterRowModel(BaseModel):
     name: str
     mappedShift: str
 
+class RosterValidationRuleModel(BaseModel):
+    id: Optional[str] = None
+    fromShift: str
+    allowedNextShifts: List[str] = Field(default_factory=list)
+    restrictedNextShifts: List[str] = Field(default_factory=list)
+    description: Optional[str] = None
+
 class AttendanceConfigModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     startDay: int = 1
@@ -1317,6 +1324,7 @@ class AttendanceConfigModel(BaseModel):
     shifts: List[ShiftInfoModel] = Field(default_factory=list)
     trackedRole: Optional[str] = "All Roles"
     rosterRows: List[RosterRowModel] = Field(default_factory=list)
+    validationRules: List[RosterValidationRuleModel] = Field(default_factory=list)
     lateLoginRestriction: bool = True
 
     model_config = ConfigDict(

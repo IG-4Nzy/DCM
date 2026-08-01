@@ -55,7 +55,19 @@ import {
   MdInfo as InfoIcon,
   MdPerson as PersonIcon
 } from 'react-icons/md';
-import { fetchVCenters, fetchClusters, fetchVCenterTelemetry, createVCenter, fetchNodes, deleteVCenter, fetchVCenterClustersPreview } from './action';
+import { 
+  fetchVCenters, 
+  fetchClusters, 
+  fetchVCenterTelemetry, 
+  createVCenter, 
+  fetchNodes, 
+  deleteVCenter, 
+  fetchVCenterClustersPreview,
+  triggerManualVCenterRefresh,
+  triggerManualRefreshAllVCenters,
+  fetchVCenterConfig
+} from './action';
+import request from '../../services/request';
 import { useToast } from '../../contexts/ToastContext';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
@@ -186,8 +198,49 @@ const ServerMonitoring: React.FC = () => {
   const [loadingList, setLoadingList] = useState(false);
   const [loadingMonitor, setLoadingMonitor] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshingVcId, setRefreshingVcId] = useState<string | null>(null);
+  const [refreshingAll, setRefreshingAll] = useState(false);
   const [vmSearch, setVmSearch] = useState('');
   const [vcenterSearch, setVcenterSearch] = useState('');
+
+  const handleToggleAutoRefresh = async (enabled: boolean) => {
+    setAutoRefresh(enabled);
+    try {
+      await request.put('/api/vcenter-details/config', { autoRefresh: enabled });
+      showToast(`vCenter Auto Refresh is now ${enabled ? 'ENABLED' : 'DISABLED'}`, 'info');
+    } catch (err) {
+      console.error('Failed to sync autoRefresh config:', err);
+    }
+  };
+
+  const handleManualRefreshSingle = async (vcId: string) => {
+    setRefreshingVcId(vcId);
+    try {
+      const data = await triggerManualVCenterRefresh(vcId);
+      setVcenterTelemetryMap(prev => ({ ...prev, [vcId]: data }));
+      if (selectedVcenter && (selectedVcenter.id || selectedVcenter._id) === vcId) {
+        setMonitorData(data);
+      }
+      showToast('vCenter telemetry refreshed successfully!', 'success');
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || 'Manual refresh failed for vCenter', 'error');
+    } finally {
+      setRefreshingVcId(null);
+    }
+  };
+
+  const handleManualRefreshAll = async () => {
+    setRefreshingAll(true);
+    try {
+      const res = await triggerManualRefreshAllVCenters();
+      showToast(res?.message || 'Manual refresh triggered for all vCenters', 'success');
+      await loadInitialData();
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || 'Manual refresh failed', 'error');
+    } finally {
+      setRefreshingAll(false);
+    }
+  };
   
   // Tree expanded rows
   const [expandedVcenterId, setExpandedVcenterId] = useState<string | null>(null);
@@ -243,14 +296,18 @@ const ServerMonitoring: React.FC = () => {
   const loadInitialData = async () => {
     setLoadingList(true);
     try {
-      const [vcList, clusterList, nodesRes] = await Promise.all([
+      const [vcList, clusterList, nodesRes, configRes] = await Promise.all([
         fetchVCenters(),
         fetchClusters(),
-        fetchNodes()
+        fetchNodes(),
+        fetchVCenterConfig().catch(() => ({ autoRefresh: true }))
       ]);
       setVcenters(vcList);
       setClusters(clusterList);
       setNodesList(nodesRes);
+      if (configRes && typeof configRes.autoRefresh === 'boolean') {
+        setAutoRefresh(configRes.autoRefresh);
+      }
 
       if (clusterList && clusterList.length > 0) {
         setNewVcenter(prev => ({ 
@@ -345,8 +402,9 @@ const ServerMonitoring: React.FC = () => {
     if (!autoRefresh) return;
 
     const interval = setInterval(() => {
+      if (document.hidden) return;
       fetchTelemetry(vcId, true);
-    }, 5000); // Poll every 5s
+    }, 20000); // Poll every 20s
 
     return () => clearInterval(interval);
   }, [selectedVcenter, autoRefresh]);
@@ -356,6 +414,7 @@ const ServerMonitoring: React.FC = () => {
     if (selectedVcenter || !autoRefresh) return;
 
     const interval = setInterval(() => {
+      if (document.hidden) return;
       vcenters.forEach((vc) => {
         const id = vc.id || vc._id;
         if (!id) return;
@@ -380,7 +439,7 @@ const ServerMonitoring: React.FC = () => {
             }
           });
       });
-    }, 5000);
+    }, 20000); // Poll every 20s
 
     return () => clearInterval(interval);
   }, [selectedVcenter, autoRefresh, vcenters, offlineVcenterIds]);
@@ -544,16 +603,40 @@ const ServerMonitoring: React.FC = () => {
                 Directory of registered virtual vCenter appliances. Click expand arrows to monitor ESXi Hosts & VM guest lists.
               </Typography>
             </Box>
-            {canCreateVCenter && (
+            <Box display="flex" gap={2} alignItems="center">
+              <FormControlLabel
+                control={
+                  <Switch 
+                    checked={autoRefresh} 
+                    onChange={(e) => handleToggleAutoRefresh(e.target.checked)} 
+                    color="primary"
+                  />
+                }
+                label={<Typography variant="body2" sx={{ fontWeight: 600 }}>Auto-Refresh</Typography>}
+              />
               <Button
-                variant="contained"
+                variant="outlined"
                 color="primary"
-                startIcon={<AddIcon />}
-                onClick={() => setIsModalOpen(true)}
+                startIcon={refreshingAll ? <CircularProgress size={16} /> : <RefreshIcon />}
+                onClick={handleManualRefreshAll}
+                disabled={refreshingAll}
+                size="small"
+                sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
               >
-                Register vCenter
+                Manual Refresh All
               </Button>
-            )}
+              {canCreateVCenter && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<AddIcon />}
+                  onClick={() => setIsModalOpen(true)}
+                  sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
+                >
+                  Register vCenter
+                </Button>
+              )}
+            </Box>
           </header>
 
           {/* Quick Info Strips */}
@@ -822,6 +905,20 @@ const ServerMonitoring: React.FC = () => {
 
                           {/* Actions */}
                           <TableCell align="right" onClick={(e) => e.stopPropagation()}>
+                            <Tooltip title="Manual Refresh vCenter">
+                              <IconButton
+                                color="primary"
+                                onClick={() => handleManualRefreshSingle(vcId)}
+                                size="small"
+                                disabled={refreshingVcId === vcId}
+                              >
+                                {refreshingVcId === vcId ? (
+                                  <CircularProgress size={16} />
+                                ) : (
+                                  <RefreshIcon style={{ fontSize: '1.2rem' }} />
+                                )}
+                              </IconButton>
+                            </Tooltip>
                             {canDeleteVCenter && (
                               <IconButton 
                                 color="error" 
@@ -1019,21 +1116,23 @@ const ServerMonitoring: React.FC = () => {
                 control={
                   <Switch 
                     checked={autoRefresh} 
-                    onChange={(e) => setAutoRefresh(e.target.checked)} 
+                    onChange={(e) => handleToggleAutoRefresh(e.target.checked)} 
                     color="primary"
                   />
                 }
-                label={<Typography variant="body2" sx={{ fontWeight: 600 }}>Auto-Refresh (5s)</Typography>}
+                label={<Typography variant="body2" sx={{ fontWeight: 600 }}>Auto-Refresh</Typography>}
               />
               
               <Button
-                variant="outlined"
-                startIcon={loadingMonitor ? <CircularProgress size={16} /> : <RefreshIcon />}
-                onClick={() => fetchTelemetry(selectedVcenter.id || selectedVcenter._id || '')}
-                disabled={loadingMonitor}
+                variant="contained"
+                color="primary"
+                startIcon={(loadingMonitor || refreshingVcId === (selectedVcenter.id || selectedVcenter._id)) ? <CircularProgress size={16} color="inherit" /> : <RefreshIcon />}
+                onClick={() => handleManualRefreshSingle(selectedVcenter.id || selectedVcenter._id || '')}
+                disabled={loadingMonitor || refreshingVcId === (selectedVcenter.id || selectedVcenter._id)}
                 size="small"
+                sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
               >
-                Refresh
+                Manual Refresh
               </Button>
             </Box>
           </header>

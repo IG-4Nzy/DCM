@@ -129,8 +129,9 @@ const Requests: React.FC = () => {
     useEffect(() => {
         if (!hasViewPrivilege) return;
         const interval = setInterval(() => {
+            if (document.hidden) return;
             loadData(true);
-        }, 30000);
+        }, 60000); // 60s background sync
         return () => clearInterval(interval);
     }, [loadData, hasViewPrivilege]);
 

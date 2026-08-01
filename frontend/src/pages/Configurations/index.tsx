@@ -18,6 +18,7 @@ const Configurations = () => {
             case 'hypervisors':
             case 'serverModel':
             case 'gpus':
+            case 'vcenterConfig':
             case 'attendancePeriod':
             case 'notificationSettings':
                 return hasPrivilege(PRIVILEGES.CONFIGURATION_VIEW);

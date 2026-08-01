@@ -176,8 +176,9 @@ const Works: React.FC = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
+      if (document.hidden) return;
       loadWorks(true);
-    }, 30000);
+    }, 60000); // 60s background sync
     return () => clearInterval(interval);
   }, [loadWorks]);
 

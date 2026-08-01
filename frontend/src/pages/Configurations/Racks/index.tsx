@@ -21,20 +21,56 @@ import request from '../../../services/request';
 
 type Order = 'asc' | 'desc';
 
-const matchesPosition = (nodeRackPosition: string | undefined, posIndex: number) => {
-    if (!nodeRackPosition) return false;
-    const parts = nodeRackPosition.split(',').map(p => p.trim().toLowerCase());
-    const pad2 = String(posIndex).padStart(2, '0');
-    return parts.some(norm =>
-        norm === `m ${posIndex}` || 
-        norm === `m${posIndex}` || 
-        norm === `m-${posIndex}` || 
-        norm === `m ${pad2}` || 
-        norm === `m${pad2}` || 
-        norm === `m-${pad2}` || 
-        norm === `${posIndex}` || 
-        norm === pad2
-    );
+const matchesPosition = (nodeRackPosition: string | number | undefined, posIndex: number) => {
+    if (nodeRackPosition === undefined || nodeRackPosition === null || nodeRackPosition === '') return false;
+    const str = String(nodeRackPosition).trim().toLowerCase();
+    
+    // Split by comma, slash, or semicolon
+    const parts = str.split(/[,;/]+/).map(p => p.trim()).filter(Boolean);
+    
+    for (const part of parts) {
+        // Range matching (e.g. M01-M04, M 01 - M 04, 1-4, U01-U04, U 1 - U 4)
+        const rangeMatch = part.match(/(?:[mu]?\s*-?\s*)?(\d+)\s*[-–—]\s*(?:[mu]?\s*-?\s*)?(\d+)/i);
+        if (rangeMatch) {
+            const start = parseInt(rangeMatch[1], 10);
+            const end = parseInt(rangeMatch[2], 10);
+            const min = Math.min(start, end);
+            const max = Math.max(start, end);
+            if (posIndex >= min && posIndex <= max) {
+                return true;
+            }
+        } else {
+            // Single value extraction (e.g. M01, M-1, U1, 1, 01)
+            const digitsMatch = part.match(/(\d+)/);
+            if (digitsMatch) {
+                const val = parseInt(digitsMatch[1], 10);
+                if (val === posIndex) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+};
+
+const matchesRack = (nodeRack: any, rack: ServerRackData) => {
+    if (!nodeRack || !rack) return false;
+    let nRackStr = typeof nodeRack === 'object'
+        ? (nodeRack.serverRack || nodeRack.name || nodeRack.id || nodeRack._id || '')
+        : String(nodeRack);
+    nRackStr = nRackStr.trim().toLowerCase();
+    const rNameStr = rack.serverRack ? String(rack.serverRack).trim().toLowerCase() : '';
+    const rIdStr = rack.id ? String(rack.id).trim().toLowerCase() : '';
+    const rUnderscoreIdStr = (rack as any)._id ? String((rack as any)._id).trim().toLowerCase() : '';
+
+    if (nRackStr === rNameStr || nRackStr === rIdStr || nRackStr === rUnderscoreIdStr) {
+        return true;
+    }
+    
+    // Normalize string by removing spaces, dashes, and underscores
+    const normNRack = nRackStr.replace(/[\s\-_]/g, '');
+    const normRName = rNameStr.replace(/[\s\-_]/g, '');
+    return normNRack && normRName && normNRack === normRName;
 };
 
 const Racks = () => {
@@ -87,7 +123,8 @@ const Racks = () => {
     const loadNodes = useCallback(async () => {
         try {
             const res = await request.get('/api/nodes/', { params: { pagination: false } });
-            setNodes(res.data.data || []);
+            const list = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+            setNodes(list);
         } catch (err) {
             console.error("Failed to load nodes", err);
         }
@@ -96,7 +133,8 @@ const Racks = () => {
     const loadAllRacks = useCallback(async () => {
         try {
             const result = await fetchServerRacks({ pagination: false, sortBy: 'serverRack', order: 'asc' });
-            setAllRacks(result.data || []);
+            const list = Array.isArray(result) ? result : (result.data || []);
+            setAllRacks(list);
         } catch (err) {
             console.error("Failed to load all racks", err);
         }
@@ -455,7 +493,7 @@ const Racks = () => {
                                                     {posLabel}
                                                 </TableCell>
                                                 {allRacks.map((rack) => {
-                                                    const matchingNodes = nodes.filter(node => node.rack === rack.serverRack && matchesPosition(node.rackPosition, pos));
+                                                    const matchingNodes = nodes.filter(node => matchesRack(node.rack, rack) && matchesPosition(node.rackPosition, pos));
 
                                                     return (
                                                         <TableCell key={rack.id} align="center">
