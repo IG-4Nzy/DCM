@@ -50,6 +50,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
 
     const { isSuperuser, username } = useSelector((state: RootState) => state.auth);
 
+    const isFullAdmin = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const isRestrictedAdmin = !isFullAdmin && !!editingItem && hasPrivilege(PRIVILEGES.UPDATE_VMS_RESTRICTED);
+
     const hasViewAll = isSuperuser || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
     const currentUser = users.find(u => u.username === username);
     const userDept = currentUser?.department;
@@ -361,6 +364,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                             fullWidth
                             searchable
                             clearable
+                            disabled={isRestrictedAdmin}
                             value={formData.clusterId} 
                             onChange={(val) => handleChange('clusterId', val)} 
                             options={clusters.map((c) => ({ label: c.clusterName || c.id, value: c.id || c._id }))}
@@ -379,6 +383,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         fullWidth
                         searchable
                         clearable
+                        disabled={isRestrictedAdmin}
                         value={formData.datastore} 
                         onChange={(val) => handleChange('datastore', val)} 
                         options={datastores.map((ds) => ({ label: `${ds.name || ds.datastoreName || ds.id}${ds.capacity ? ` (${ds.freeSpace || ''} free)` : ''}`, value: ds.name || ds.datastoreName || ds.id || ds._id }))}
@@ -407,6 +412,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         fullWidth
                         searchable
                         clearable
+                        disabled={isRestrictedAdmin}
                         value={formData.node} 
                         onChange={(val) => handleChange('node', val)} 
                         options={nodeOptions}
@@ -424,6 +430,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         className={styles.formGrid__field}
                         value={formData.backupName} 
                         onChange={(e) => handleChange('backupName', e.target.value)} 
+                        disabled={isRestrictedAdmin}
                     />
                     <Dropdown 
                         label="Backup Node" 
@@ -431,6 +438,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         fullWidth
                         searchable
                         clearable
+                        disabled={isRestrictedAdmin}
                         value={formData.backupNode} 
                         onChange={(val) => handleChange('backupNode', val)} 
                         options={backupNodeOptions}
@@ -441,6 +449,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         fullWidth
                         searchable
                         clearable
+                        disabled={isRestrictedAdmin}
                         value={formData.backupStorage} 
                         onChange={(val) => handleChange('backupStorage', val)} 
                         options={nodes.filter(n => n.type === 'storage' || n.isStorage).map(n => {
@@ -454,6 +463,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         fullWidth
                         searchable
                         clearable
+                        disabled={isRestrictedAdmin}
                         value={formData.datastore} 
                         onChange={(val) => handleChange('datastore', val)} 
                         options={datastores.map(d => ({ label: `${d.name} (${d.type} - ${d.capacity})`, value: d.name }))}
@@ -475,6 +485,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         size="small"
                         fullWidth
                         clearable
+                        disabled={isRestrictedAdmin}
                         value={formData.isNetworkConnected !== false ? 'connected' : 'disconnected'} 
                         onChange={(val) => handleChange('isNetworkConnected', val === 'connected')} 
                         options={[
@@ -490,6 +501,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         searchable
                         clearable
                         multiple
+                        disabled={isRestrictedAdmin}
                         value={formData.admin} 
                         onChange={(val) => handleChange('admin', val)} 
                         options={adminOptions}
@@ -508,6 +520,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                 setFormData(prev => ({ ...prev, adminName: names.join(', ') }));
                             }} 
                             required
+                            disabled={isRestrictedAdmin}
                         />
                     )}
                     <TextField 
@@ -564,6 +577,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                     size="small" 
                                     sx={{ flex: 1 }}
                                     value={clone.name} 
+                                    disabled={isRestrictedAdmin}
                                     onChange={(e) => {
                                         const updated = [...(formData.clones || [])];
                                         updated[idx].name = e.target.value;
@@ -575,6 +589,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                     size="small" 
                                     sx={{ flex: 2 }}
                                     value={clone.remarks || ''} 
+                                    disabled={isRestrictedAdmin}
                                     onChange={(e) => {
                                         const updated = [...(formData.clones || [])];
                                         updated[idx].remarks = e.target.value;
@@ -585,6 +600,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                     variant="outlined" 
                                     color="error" 
                                     size="small"
+                                    disabled={isRestrictedAdmin}
                                     onClick={() => {
                                         const updated = (formData.clones || []).filter((_, i) => i !== idx);
                                         setFormData(prev => ({ ...prev, clones: updated }));
@@ -598,6 +614,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                             variant="outlined" 
                             size="small" 
                             sx={{ alignSelf: 'flex-start', mt: 0.5 }}
+                            disabled={isRestrictedAdmin}
                             onClick={() => {
                                 setFormData(prev => ({
                                     ...prev,
@@ -621,6 +638,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                     size="small" 
                                     sx={{ flex: 1 }}
                                     value={snap.name} 
+                                    disabled={isRestrictedAdmin}
                                     onChange={(e) => {
                                         const updated = [...(formData.snapshots || [])];
                                         updated[idx].name = e.target.value;
@@ -632,6 +650,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                     size="small" 
                                     sx={{ flex: 2 }}
                                     value={snap.remarks || ''} 
+                                    disabled={isRestrictedAdmin}
                                     onChange={(e) => {
                                         const updated = [...(formData.snapshots || [])];
                                         updated[idx].remarks = e.target.value;
@@ -642,6 +661,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                     variant="outlined" 
                                     color="error" 
                                     size="small"
+                                    disabled={isRestrictedAdmin}
                                     onClick={() => {
                                         const updated = (formData.snapshots || []).filter((_, i) => i !== idx);
                                         setFormData(prev => ({ ...prev, snapshots: updated }));
@@ -655,6 +675,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                             variant="outlined" 
                             size="small" 
                             sx={{ alignSelf: 'flex-start', mt: 0.5 }}
+                            disabled={isRestrictedAdmin}
                             onClick={() => {
                                 setFormData(prev => ({
                                     ...prev,
@@ -678,6 +699,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                     size="small" 
                                     sx={{ flex: 1 }}
                                     value={tpl.name} 
+                                    disabled={isRestrictedAdmin}
                                     onChange={(e) => {
                                         const updated = [...(formData.templates || [])];
                                         updated[idx].name = e.target.value;
@@ -689,6 +711,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                     size="small" 
                                     sx={{ flex: 2 }}
                                     value={tpl.remarks || ''} 
+                                    disabled={isRestrictedAdmin}
                                     onChange={(e) => {
                                         const updated = [...(formData.templates || [])];
                                         updated[idx].remarks = e.target.value;
@@ -699,6 +722,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                     variant="outlined" 
                                     color="error" 
                                     size="small"
+                                    disabled={isRestrictedAdmin}
                                     onClick={() => {
                                         const updated = (formData.templates || []).filter((_, i) => i !== idx);
                                         setFormData(prev => ({ ...prev, templates: updated }));
@@ -712,6 +736,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                             variant="outlined" 
                             size="small" 
                             sx={{ alignSelf: 'flex-start', mt: 0.5 }}
+                            disabled={isRestrictedAdmin}
                             onClick={() => {
                                 setFormData(prev => ({
                                     ...prev,

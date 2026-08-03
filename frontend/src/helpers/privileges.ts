@@ -153,4 +153,8 @@ export const PRIVILEGES = {
     CREATE_VCENTER_APPLIANCE: "Create vCenter Appliance",
     UPDATE_VCENTER_APPLIANCE: "Update vCenter Appliance",
     DELETE_VCENTER_APPLIANCE: "Delete vCenter Appliance",
+    UPDATE_VMS_RESTRICTED: "Update VMs (Restricted)",
+    UPDATE_NODE_RESTRICTED: "Update Node (Restricted)",
+    UPDATE_STORAGE_RESTRICTED: "Update Storage (Restricted)",
+    UPDATE_NETWORK_RESTRICTED: "Update Network Device (Restricted)",
 }

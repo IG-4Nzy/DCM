@@ -280,12 +280,19 @@ async def create_item(
 
     return await compute_node_details_available_resources(created)
 
-@router.put("/{id}", response_description="Update node details", response_model=NodeDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
-async def update_item(id: str, payload: UpdateNodeDetailsModel = Body(...)):
+@router.put("/{id}", response_description="Update node details", response_model=NodeDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "Update Server Details", "Update Node (Restricted)"]))])
+async def update_item(id: str, payload: UpdateNodeDetailsModel = Body(...), current_user: dict = Depends(get_current_user)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
     item_dict = {k: v for k, v in payload.model_dump().items() if v is not None}
+
+    user_privileges = current_user.get("privileges", [])
+    is_admin = current_user.get("isSuperuser", False) or "Create Server Details" in user_privileges or "Update Server Details" in user_privileges
+
+    if not is_admin and "Update Node (Restricted)" in user_privileges:
+        allowed_keys = {"hostName", "ipAddress", "hypervisor", "networkType", "totalRam", "totalHardisk", "totalCpu", "remarks"}
+        item_dict = {k: v for k, v in item_dict.items() if k in allowed_keys}
 
     if "hostName" in item_dict:
         existing = await collection.find_one({

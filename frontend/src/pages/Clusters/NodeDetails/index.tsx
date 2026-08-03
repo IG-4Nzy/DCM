@@ -42,7 +42,7 @@ const NodeDetails = ({ clusterId }: NodeDetailsProps) => {
 
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
     const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
-    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE) || hasPrivilege(PRIVILEGES.UPDATE_NODE_RESTRICTED);
     const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
 
     const [searchQuery, setSearchQuery] = useTableState(`nodeDetails_${clusterId}_search`, '');

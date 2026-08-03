@@ -7,6 +7,10 @@ import Button from '../../../components/Button';
 import Dropdown from '../../../components/Dropdown';
 import { type NodeDetailsData, type CreateNodeDetailsPayload } from './model';
 import request from '../../../services/request';
+import { useSelector } from 'react-redux';
+import { type RootState } from '../../../store';
+import { hasPrivilege } from '../../../helpers/authUtils';
+import { PRIVILEGES } from '../../../helpers/privileges';
 import styles from './modal.module.scss';
 
 interface NodeDetailsModalProps {
@@ -18,6 +22,9 @@ interface NodeDetailsModalProps {
 }
 
 const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSubmit, editingItem, clusterId }) => {
+    const { isSuperuser } = useSelector((state: RootState) => state.auth);
+    const isFullAdmin = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const isRestrictedAdmin = !isFullAdmin && !!editingItem && hasPrivilege(PRIVILEGES.UPDATE_NODE_RESTRICTED);
     const [formData, setFormData] = useState<CreateNodeDetailsPayload>({
         clusterId: clusterId,
         slNumber: '',
@@ -166,6 +173,7 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                             options={racks.map(r => ({ label: r.serverRack, value: r.serverRack }))}
                             required
                             fullWidth
+                            disabled={isRestrictedAdmin}
                         />
                     </Box>
                     <Box>
@@ -188,10 +196,11 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                             options={models.map(m => ({ label: m.serverModel, value: m.serverModel }))}
                             required
                             fullWidth
+                            disabled={isRestrictedAdmin}
                         />
                     </Box>
                     <Box>
-                        <TextField fullWidth label="Serial Number" value={formData.serialNumber} onChange={(e) => handleChange('serialNumber', e.target.value)} required />
+                        <TextField fullWidth label="Serial Number" value={formData.serialNumber} onChange={(e) => handleChange('serialNumber', e.target.value)} required disabled={isRestrictedAdmin} />
                     </Box>
                     <Box>
                         <Dropdown
@@ -206,6 +215,7 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                             })}
                             required
                             fullWidth
+                            disabled={isRestrictedAdmin}
                         />
                     </Box>
                     <Box>
@@ -222,7 +232,7 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                         />
                     </Box>
                     <Box>
-                        <TextField fullWidth label="Applications" value={formData.applications} onChange={(e) => handleChange('applications', e.target.value)} />
+                        <TextField fullWidth label="Applications" value={formData.applications} onChange={(e) => handleChange('applications', e.target.value)} disabled={isRestrictedAdmin} />
                     </Box>
                     <Box>
                         <Dropdown
@@ -232,19 +242,20 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                             options={clusters.map(c => ({ label: c.clusterType, value: c.clusterType }))}
                             required
                             fullWidth
+                            disabled={isRestrictedAdmin}
                         />
                     </Box>
                     <Box>
-                        <TextField fullWidth label="Indentor" value={formData.indentor} onChange={(e) => handleChange('indentor', e.target.value)} />
+                        <TextField fullWidth label="Indentor" value={formData.indentor} onChange={(e) => handleChange('indentor', e.target.value)} disabled={isRestrictedAdmin} />
                     </Box>
                     <Box>
-                        <TextField fullWidth label="PO Num" value={formData.poNum} onChange={(e) => handleChange('poNum', e.target.value)}  />
+                        <TextField fullWidth label="PO Num" value={formData.poNum} onChange={(e) => handleChange('poNum', e.target.value)} disabled={isRestrictedAdmin} />
                     </Box>
                     <Box>
-                        <TextField fullWidth label="Asset Num" value={formData.assetNum} onChange={(e) => handleChange('assetNum', e.target.value)}  />
+                        <TextField fullWidth label="Asset Num" value={formData.assetNum} onChange={(e) => handleChange('assetNum', e.target.value)} disabled={isRestrictedAdmin} />
                     </Box>
                     <Box>
-                        <TextField fullWidth label="Custodian" value={formData.custodian} onChange={(e) => handleChange('custodian', e.target.value)}  />
+                        <TextField fullWidth label="Custodian" value={formData.custodian} onChange={(e) => handleChange('custodian', e.target.value)} disabled={isRestrictedAdmin} />
                     </Box>
                     <Box>
                         <Dropdown
@@ -257,6 +268,7 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                             ]}
                             required
                             fullWidth
+                            disabled={isRestrictedAdmin}
                         />
                     </Box>
                     

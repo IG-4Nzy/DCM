@@ -48,7 +48,7 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
     const { isSuperuser, username } = useSelector((state: RootState) => state.auth);
     const { users } = useSelector((state: RootState) => state.users || { users: [] });
     const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
-    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE) || hasPrivilege(PRIVILEGES.UPDATE_VMS_RESTRICTED);
     const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
 
     const [clusters, setClusters] = useState<any[]>([]);

@@ -171,7 +171,11 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
   const hasCreate =
     isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
   const hasUpdate =
-    isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    isSuperuser ||
+    hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE) ||
+    hasPrivilege(PRIVILEGES.UPDATE_NODE_RESTRICTED) ||
+    hasPrivilege(PRIVILEGES.UPDATE_STORAGE_RESTRICTED) ||
+    hasPrivilege(PRIVILEGES.UPDATE_NETWORK_RESTRICTED);
   const hasDelete =
     isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
 

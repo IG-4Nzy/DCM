@@ -745,7 +745,7 @@ async def import_vcenter_vms(
         logger.error(f"Unexpected error in import_vcenter_vms: {e}")
         raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
 
-@router.put("/{id}", response_description="Update VM details", response_model=VMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
+@router.put("/{id}", response_description="Update VM details", response_model=VMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "Update Server Details", "Update VMs (Restricted)"]))])
 async def update_item(id: str, payload: UpdateVMDetailsModel = Body(...), current_user: dict = Depends(get_current_user)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -756,6 +756,12 @@ async def update_item(id: str, payload: UpdateVMDetailsModel = Body(...), curren
     old_node = old_vm.get("node")
 
     item_dict = payload.model_dump(exclude_unset=True)
+
+    user_privileges = current_user.get("privileges", [])
+    is_admin = current_user.get("isSuperuser", False) or "Create Server Details" in user_privileges or "Update Server Details" in user_privileges
+    if not is_admin and "Update VMs (Restricted)" in user_privileges:
+        allowed_keys = {"vmName", "ipAddress", "osAndExpiry", "networkType", "applications", "powerStatus", "adminContact", "hdd", "ram", "cpu"}
+        item_dict = {k: v for k, v in item_dict.items() if k in allowed_keys}
 
     if len(item_dict) >= 1:
         item_dict["updatedBy"] = current_user.get("sub", "")

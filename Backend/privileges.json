@@ -149,5 +149,9 @@
     "view_own_vcenter_vm_monitoring",
     "Create vCenter Appliance",
     "Update vCenter Appliance",
-    "Delete vCenter Appliance"
+    "Delete vCenter Appliance",
+    "Update VMs (Restricted)",
+    "Update Node (Restricted)",
+    "Update Storage (Restricted)",
+    "Update Network Device (Restricted)"
 ]

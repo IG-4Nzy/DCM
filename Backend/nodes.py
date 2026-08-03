@@ -340,7 +340,7 @@ async def create_item(
     created = await collection.find_one({"_id": new_item.inserted_id})
     return await compute_available_resources(created)
 
-@router.put("/{id}", response_description="Update a node", response_model=NodeModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Server Details"))])
+@router.put("/{id}", response_description="Update a node", response_model=NodeModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "Update Server Details", "Update Node (Restricted)", "Update Storage (Restricted)", "Update Network Device (Restricted)"]))])
 async def update_item(id: str, payload: UpdateNodeModel = Body(...), current_user: dict = Depends(get_current_user)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -351,6 +351,21 @@ async def update_item(id: str, payload: UpdateNodeModel = Body(...), current_use
         raise HTTPException(status_code=404, detail=f"Node {id} not found")
 
     item_dict = payload.model_dump(exclude_unset=True)
+
+    user_privileges = current_user.get("privileges", [])
+    is_admin = current_user.get("isSuperuser", False) or "Create Server Details" in user_privileges or "Update Server Details" in user_privileges
+
+    if not is_admin:
+        is_storage = old_doc.get("isStorage", False) or item_dict.get("isStorage", False)
+        is_appliance = old_doc.get("isAppliance", False) or item_dict.get("isAppliance", False)
+
+        has_node_res = "Update Node (Restricted)" in user_privileges
+        has_storage_res = "Update Storage (Restricted)" in user_privileges
+        has_net_res = "Update Network Device (Restricted)" in user_privileges
+
+        if (is_storage and has_storage_res) or (is_appliance and has_net_res) or (not is_storage and not is_appliance and has_node_res):
+            allowed_keys = {"node", "ip", "os", "networkType", "totalRam", "totalHardisk", "totalCpu", "gpu", "remarks"}
+            item_dict = {k: v for k, v in item_dict.items() if k in allowed_keys}
 
     if len(item_dict) >= 1:
         if "ip" in item_dict and item_dict["ip"]:

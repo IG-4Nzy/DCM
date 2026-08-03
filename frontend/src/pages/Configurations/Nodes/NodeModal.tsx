@@ -76,6 +76,20 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
 
     const { isSuperuser, username } = useSelector((state: RootState) => state.auth);
 
+    const isFullAdmin = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const hasRestrictedNode = hasPrivilege(PRIVILEGES.UPDATE_NODE_RESTRICTED);
+    const hasRestrictedStorage = hasPrivilege(PRIVILEGES.UPDATE_STORAGE_RESTRICTED);
+    const hasRestrictedNetwork = hasPrivilege(PRIVILEGES.UPDATE_NETWORK_RESTRICTED);
+
+    const isStorageItem = editingItem ? (editingItem.isStorage || nodeType === 'storage') : (nodeType === 'storage');
+    const isApplianceItem = editingItem ? (editingItem.isAppliance || nodeType === 'appliance') : (nodeType === 'appliance');
+
+    const isRestrictedAdmin = !isFullAdmin && !!editingItem && (
+        (isStorageItem && hasRestrictedStorage) ||
+        (isApplianceItem && hasRestrictedNetwork) ||
+        (!isStorageItem && !isApplianceItem && hasRestrictedNode)
+    );
+
     const hasViewAll = isSuperuser || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
     const currentUser = users.find(u => u.username === username);
     const userDept = currentUser?.department;
@@ -339,6 +353,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 color="primary"
                                 value={nodeType}
                                 exclusive
+                                disabled={isRestrictedAdmin}
                                 onChange={(e, val) => {
                                     if (val !== null) {
                                         setNodeType(val);
@@ -361,6 +376,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                     control={
                                         <Checkbox
                                             checked={isPhysical}
+                                            disabled={isRestrictedAdmin}
                                             onChange={(e) => setIsPhysical(e.target.checked)}
                                             color="primary"
                                         />
@@ -429,12 +445,14 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                     fullWidth
                                     searchable
                                     clearable
+                                    disabled={isRestrictedAdmin}
                                     value={serverModel}
                                     onChange={(val) => setServerModel(val)}
                                     options={serverModels.map(sm => ({ label: sm.serverModel, value: sm.serverModel }))}
                                 />
                                 <IconButton 
                                     color="primary" 
+                                    disabled={isRestrictedAdmin}
                                     onClick={() => setShowNewModelModal(true)}
                                     sx={{ mt: 1.5, border: '1px solid #1976d2', borderRadius: '8px', padding: '10px' }}
                                     title="Add New Server Model"
@@ -449,6 +467,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 label="Serial Number"
                                 placeholder="e.g. SN-12345"
                                 value={serialNumber}
+                                disabled={isRestrictedAdmin}
                                 onChange={(e) => setSerialNumber(e.target.value)}
                             />
                         </Grid>
@@ -461,6 +480,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 label="Asset Number"
                                 placeholder="e.g. AST-12345"
                                 value={assetNumber}
+                                disabled={isRestrictedAdmin}
                                 onChange={(e) => setAssetNumber(e.target.value)}
                             />
                         </Grid>
@@ -470,6 +490,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 label="Custodian"
                                 placeholder="e.g. John Doe"
                                 value={custodian}
+                                disabled={isRestrictedAdmin}
                                 onChange={(e) => setCustodian(e.target.value)}
                             />
                         </Grid>
@@ -480,6 +501,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 searchable
                                 clearable
                                 multiple
+                                disabled={isRestrictedAdmin}
                                 value={admin}
                                 onChange={(val) => setAdmin(val)}
                                 options={adminOptions}
@@ -492,6 +514,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                     label="Other Admin Name"
                                     placeholder="Enter name"
                                     value={otherAdminName}
+                                    disabled={isRestrictedAdmin}
                                     onChange={(e) => setOtherAdminName(e.target.value)}
                                     required
                                 />
@@ -510,6 +533,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                     control={
                                         <Checkbox
                                             checked={raidConfiguration.includes(level)}
+                                            disabled={isRestrictedAdmin}
                                             onChange={(e) => handleRaidChange(level, e.target.checked)}
                                         />
                                     }
@@ -567,6 +591,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 fullWidth
                                 required
                                 clearable
+                                disabled={isRestrictedAdmin}
                                 value={rack}
                                 onChange={(val) => setRack(val)}
                                 options={racks.map(r => ({ label: r.serverRack, value: r.serverRack }))}
@@ -580,6 +605,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 clearable
                                 multiple
                                 searchable
+                                disabled={isRestrictedAdmin}
                                 value={rackPosition}
                                 onChange={(val) => setRackPosition(val)}
                                 options={availablePositions}
@@ -591,6 +617,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 type="number"
                                 label="Rack Units (U)"
                                 placeholder="e.g. 2"
+                                disabled={isRestrictedAdmin}
                                 value={rackUnits}
                                 onChange={(e) => setRackUnits(e.target.value)}
                             />
