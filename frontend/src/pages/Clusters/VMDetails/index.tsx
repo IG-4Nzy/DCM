@@ -258,14 +258,15 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
             showToast("This VM does not have an IP address configured. Edit the VM to set an IP first.", "warning");
             return;
         }
+        const vmDisplayName = row.vmName || row.name || row.vmId || "Unnamed VM";
         const isConfirmed = await confirm(
-            `Are you sure you want to add VM ${row.vmId || "this VM"} (${row.ipAddress}) to Ping Monitoring?`,
+            `Are you sure you want to add VM ${vmDisplayName} (${row.ipAddress}) to Ping Monitoring?`,
             "Add to Monitoring"
         );
         if (isConfirmed) {
             try {
                 await request.post('/api/server-ping-monitoring/', {
-                    name: row.vmId || "Unnamed VM",
+                    name: vmDisplayName,
                     ipAddress: row.ipAddress,
                     adminName: row.adminName || "Admin",
                     monitoringType: "ping",

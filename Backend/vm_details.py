@@ -774,8 +774,8 @@ async def update_item(id: str, payload: UpdateVMDetailsModel = Body(...), curren
         if update_result.modified_count == 1:
             # Sync name/ip changes to monitored_servers and monitoring_status collections
             old_ip = old_vm.get("ipAddress")
-            old_name = old_vm.get("vmId")
-            new_name = item_dict.get("vmId")
+            old_name = old_vm.get("vmName") or old_vm.get("vmId")
+            new_name = item_dict.get("vmName") or item_dict.get("vmId")
             new_ip = item_dict.get("ipAddress")
 
             if old_ip or old_name:
