@@ -20,9 +20,10 @@ import {
   Select,
   InputLabel,
   Drawer,
-  Divider
+  Divider,
+  Avatar
 } from "@mui/material";
-import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon, MdPrint as PrintIcon, MdContentCopy as CopyIcon, MdUndo as UndoIcon, MdHistory as HistoryIcon } from "react-icons/md";
+import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon, MdPrint as PrintIcon, MdContentCopy as CopyIcon, MdUndo as UndoIcon, MdHistory as HistoryIcon, MdCalendarToday, MdBusiness } from "react-icons/md";
 import dayjs, { Dayjs } from "dayjs";
 import { getServerTime } from "../../helpers/time";
 import isoWeekPlugin from "dayjs/plugin/isoWeek";
@@ -1304,94 +1305,368 @@ const RoasterPage: React.FC = () => {
         open={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
         PaperProps={{
-          sx: { width: 340, padding: 2.5, backgroundColor: '#fafafa' }
+          sx: {
+            width: { xs: '100%', sm: 420 },
+            backgroundColor: '#f8fafc',
+            boxShadow: '-8px 0 32px rgba(15, 23, 42, 0.12)',
+            display: 'flex',
+            flexDirection: 'column',
+          }
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <HistoryIcon size={22} color="#1976d2" />
-            <Typography variant="h6" sx={{ fontSize: '16px', fontWeight: 'bold', color: '#1a237e' }}>
-              Roaster Change History
-            </Typography>
+        {/* Sleek Dark/Indigo Gradient Header */}
+        <Box
+          sx={{
+            p: 2.5,
+            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+            color: '#ffffff',
+            position: 'relative',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box
+                sx={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 10px rgba(99, 102, 241, 0.4)',
+                }}
+              >
+                <HistoryIcon size={22} color="#ffffff" />
+              </Box>
+              <Box>
+                <Typography variant="h6" sx={{ fontSize: '16px', fontWeight: 800, letterSpacing: '-0.3px', color: '#ffffff' }}>
+                  Roster Audit Trail
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '11px', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <MdBusiness size={12} /> {displayDepartmentValue}
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip
+                label={`${historyList.length} ${historyList.length === 1 ? 'Edit' : 'Edits'}`}
+                size="small"
+                sx={{
+                  bgcolor: 'rgba(255, 255, 255, 0.1)',
+                  color: '#e2e8f0',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  height: 24,
+                }}
+              />
+              <IconButton size="small" onClick={() => setIsHistoryOpen(false)} sx={{ color: '#94a3b8', '&:hover': { color: '#ffffff', bgcolor: 'rgba(255,255,255,0.1)' } }}>
+                <CancelIcon size={20} />
+              </IconButton>
+            </Box>
           </Box>
-          <IconButton size="small" onClick={() => setIsHistoryOpen(false)}>
-            <CancelIcon />
-          </IconButton>
-        </Box>
-        <Typography variant="caption" color="textSecondary" sx={{ mb: 2, display: 'block' }}>
-          Department: <b>{displayDepartmentValue}</b> ({selectedWeek.startOf("isoWeek").format("DD MMM")} - {selectedWeek.endOf("isoWeek").format("DD MMM YYYY")})
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
 
-        {selectedHistory && (
-          <Box sx={{ mb: 2, p: 1.5, backgroundColor: '#fff3e0', borderRadius: 1.5, border: '1px solid #ffe0b2', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box>
-              <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#e65100', display: 'block' }}>
-                Previewing History:
+          {/* Sub Header Date Info */}
+          <Box
+            sx={{
+              mt: 2,
+              pt: 1.5,
+              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: '12px',
+              color: '#cbd5e1',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <MdCalendarToday size={13} style={{ color: '#818cf8' }} />
+              <span>
+                {selectedWeek.startOf("isoWeek").format("DD MMM")} – {selectedWeek.endOf("isoWeek").format("DD MMM YYYY")}
+              </span>
+            </Box>
+            {selectedHistory && (
+              <Button
+                size="small"
+                onClick={() => setSelectedHistory(null)}
+                sx={{
+                  color: '#fbbf24',
+                  fontSize: '11px',
+                  textTransform: 'none',
+                  p: 0,
+                  minWidth: 'auto',
+                  fontWeight: 700,
+                  '&:hover': { textDecoration: 'underline' }
+                }}
+              >
+                Clear Preview
+              </Button>
+            )}
+          </Box>
+        </Box>
+
+        {/* Content Container */}
+        <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 2.5, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {/* Selected History Active Diff Banner */}
+          {selectedHistory && (
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #fffbe6 0%, #fef3c7 100%)',
+                border: '1.5px solid #f59e0b',
+                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 1.5,
+              }}
+            >
+              <Box sx={{ minWidth: 0 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                  <Chip
+                    label="PREVIEWING SNAPSHOT"
+                    size="small"
+                    sx={{
+                      bgcolor: '#f59e0b',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '9px',
+                      height: 18,
+                      letterSpacing: '0.5px'
+                    }}
+                  />
+                  <Typography variant="caption" sx={{ color: '#92400e', fontWeight: 700, fontSize: '11px' }}>
+                    {dayjs(selectedHistory.timestamp).format("DD MMM, hh:mm A")}
+                  </Typography>
+                </Box>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: '#78350f', fontSize: '12.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  Modified by {selectedHistory.changedByFullName || selectedHistory.changedBy}
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#b45309', fontSize: '11px' }}>
+                  Cells highlighted in grid with past values
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => setSelectedHistory(null)}
+                sx={{
+                  bgcolor: '#d97706',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: '11px',
+                  textTransform: 'none',
+                  borderRadius: '8px',
+                  px: 1.5,
+                  py: 0.5,
+                  flexShrink: 0,
+                  '&:hover': { bgcolor: '#b45309' }
+                }}
+              >
+                Reset View
+              </Button>
+            </Box>
+          )}
+
+          {/* Timeline Roster Audit List */}
+          {historyList.length === 0 ? (
+            <Box
+              sx={{
+                py: 8,
+                px: 3,
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1.5,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: '50%',
+                  bgcolor: '#f1f5f9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#94a3b8',
+                }}
+              >
+                <HistoryIcon size={28} />
+              </Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#334155' }}>
+                No Roster Changes Recorded
               </Typography>
-              <Typography variant="caption" sx={{ color: '#424242', fontSize: '11px' }}>
-                {selectedHistory.changedByFullName || selectedHistory.changedBy} ({dayjs(selectedHistory.timestamp).format("DD/MM, hh:mm A")})
+              <Typography variant="body2" sx={{ color: '#64748b', fontSize: '13px', maxWidth: 260 }}>
+                Modifications to duty shifts or assignees for this week will automatically generate audit logs here.
               </Typography>
             </Box>
-            <Button size="small" variant="outlined" color="warning" onClick={() => setSelectedHistory(null)} sx={{ fontSize: '11px', px: 1, py: 0.2 }}>
-              Clear
-            </Button>
-          </Box>
-        )}
+          ) : (
+            <Box sx={{ position: 'relative', pl: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {/* Timeline Connector Bar */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 14,
+                  bottom: 14,
+                  left: 7,
+                  width: '2px',
+                  bgcolor: '#e2e8f0',
+                  borderRadius: '1px',
+                }}
+              />
 
-        {historyList.length === 0 ? (
-          <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', mt: 6, fontStyle: 'italic' }}>
-            No change history recorded for this period yet.
-          </Typography>
-        ) : (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, overflowY: 'auto', maxHeight: 'calc(100vh - 160px)', pr: 0.5 }}>
-            {historyList.map((item) => {
-              const isSelected = selectedHistory?.id === item.id;
-              return (
-                <Paper
-                  key={item.id}
-                  elevation={isSelected ? 3 : 1}
-                  onClick={() => setSelectedHistory(isSelected ? null : item)}
-                  sx={{
-                    p: 1.5,
-                    cursor: 'pointer',
-                    borderRadius: '8px',
-                    border: isSelected ? '2px solid #ed6c02' : '1px solid #e0e0e0',
-                    backgroundColor: isSelected ? '#fff8e1' : '#ffffff',
-                    transition: 'all 0.2s ease',
-                    '&:hover': {
-                      borderColor: '#ed6c02',
-                      backgroundColor: '#fffde7'
-                    }
-                  }}
-                >
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', fontSize: '13px', color: '#1a237e' }}>
-                      {item.changedByFullName || item.changedBy || 'Unknown User'}
-                    </Typography>
-                    <Chip
-                      label={isSelected ? "Active" : "View Diff"}
-                      size="small"
-                      color={isSelected ? "warning" : "default"}
-                      variant={isSelected ? "filled" : "outlined"}
-                      sx={{ height: '20px', fontSize: '10px', fontWeight: 'bold' }}
+              {historyList.map((item) => {
+                const isSelected = selectedHistory?.id === item.id;
+                const authorName = item.changedByFullName || item.changedBy || 'System User';
+                const authorInitials = authorName
+                  .split(' ')
+                  .map((n: string) => n.charAt(0))
+                  .join('')
+                  .substring(0, 2)
+                  .toUpperCase() || 'U';
+
+                return (
+                  <Box key={item.id} sx={{ position: 'relative' }}>
+                    {/* Timeline Node Dot */}
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        left: -21,
+                        top: 16,
+                        width: 14,
+                        height: 14,
+                        borderRadius: '50%',
+                        bgcolor: isSelected ? '#f59e0b' : '#6366f1',
+                        border: '3px solid #ffffff',
+                        boxShadow: isSelected ? '0 0 0 3px rgba(245, 158, 11, 0.25)' : '0 0 0 2px rgba(99, 102, 241, 0.15)',
+                        zIndex: 2,
+                        transition: 'all 0.2s ease',
+                      }}
                     />
+
+                    <Paper
+                      elevation={0}
+                      onClick={() => setSelectedHistory(isSelected ? null : item)}
+                      sx={{
+                        p: 2,
+                        cursor: 'pointer',
+                        borderRadius: '14px',
+                        border: isSelected ? '2px solid #f59e0b' : '1px solid #e2e8f0',
+                        bgcolor: isSelected ? '#fffdf5' : '#ffffff',
+                        boxShadow: isSelected ? '0 8px 24px rgba(245, 158, 11, 0.12)' : '0 2px 8px rgba(15, 23, 42, 0.04)',
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        '&:hover': {
+                          borderColor: isSelected ? '#f59e0b' : '#818cf8',
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 8px 20px rgba(15, 23, 42, 0.08)',
+                        }
+                      }}
+                    >
+                      {/* Item Header */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.25 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+                          <Avatar
+                            sx={{
+                              width: 32,
+                              height: 32,
+                              fontSize: '12px',
+                              fontWeight: 800,
+                              bgcolor: isSelected ? '#fef3c7' : '#e0e7ff',
+                              color: isSelected ? '#b45309' : '#3730a3',
+                              border: isSelected ? '1.5px solid #f59e0b' : '1.5px solid #c7d2fe',
+                            }}
+                          >
+                            {authorInitials}
+                          </Avatar>
+                          <Box>
+                            <Typography sx={{ fontWeight: 800, fontSize: '13px', color: '#1e293b', lineHeight: 1.2 }}>
+                              {authorName}
+                            </Typography>
+                            <Typography sx={{ fontSize: '11px', color: '#64748b', mt: 0.25 }}>
+                              {dayjs(item.timestamp).format("DD MMM YYYY · hh:mm A")}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Chip
+                          label={isSelected ? "Selected" : "Compare Diff"}
+                          size="small"
+                          sx={{
+                            height: 22,
+                            fontSize: '10px',
+                            fontWeight: 800,
+                            bgcolor: isSelected ? '#f59e0b' : '#f1f5f9',
+                            color: isSelected ? '#ffffff' : '#475569',
+                            border: isSelected ? 'none' : '1px solid #cbd5e1',
+                            transition: 'all 0.15s ease',
+                          }}
+                        />
+                      </Box>
+
+                      {/* Changes breakdown chips */}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1.5 }}>
+                        {(item.changes || []).map((c: any, cIdx: number) => {
+                          const prevText = c.previousAssignees?.length ? c.previousAssignees.map(getUserDisplayName).join(', ') : 'Unassigned';
+                          const newText = c.newAssignees?.length ? c.newAssignees.map(getUserDisplayName).join(', ') : 'Unassigned';
+
+                          return (
+                            <Box
+                              key={cIdx}
+                              sx={{
+                                p: 1.25,
+                                borderRadius: '10px',
+                                bgcolor: isSelected ? '#ffffff' : '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                fontSize: '12px',
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
+                                <Chip
+                                  label={`${dayjs(c.date).format("DD MMM")} · ${c.shift}`}
+                                  size="small"
+                                  sx={{
+                                    height: 20,
+                                    fontSize: '10px',
+                                    fontWeight: 700,
+                                    bgcolor: '#e0e7ff',
+                                    color: '#3730a3',
+                                    borderRadius: '6px'
+                                  }}
+                                />
+                              </Box>
+
+                              {/* Diff Row */}
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', fontSize: '11.5px' }}>
+                                <Box sx={{ p: '2px 8px', borderRadius: '6px', bgcolor: '#fee2e2', color: '#991b1b', fontWeight: 600 }}>
+                                  {prevText}
+                                </Box>
+                                <Typography sx={{ fontSize: '12px', color: '#94a3b8', fontWeight: 700 }}>➔</Typography>
+                                <Box sx={{ p: '2px 8px', borderRadius: '6px', bgcolor: '#dcfce7', color: '#166534', fontWeight: 700 }}>
+                                  {newText}
+                                </Box>
+                              </Box>
+
+                              {c.previousNotes !== c.newNotes && (
+                                <Typography sx={{ fontSize: '10.5px', color: '#64748b', mt: 0.75, fontStyle: 'italic' }}>
+                                  Notes updated: "{c.previousNotes || 'None'}" ➔ "{c.newNotes || 'None'}"
+                                </Typography>
+                              )}
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    </Paper>
                   </Box>
-                  <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>
-                    {dayjs(item.timestamp).format("DD MMM YYYY, hh:mm A")}
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    {item.changes.map((c: any, idx: number) => (
-                      <Typography key={idx} variant="caption" sx={{ fontSize: '11px', color: '#333', backgroundColor: isSelected ? '#ffffff' : '#f5f5f5', p: 0.5, borderRadius: '4px', border: '1px solid #eee' }}>
-                        <b>{dayjs(c.date).format("DD MMM")} ({c.shift}):</b> {c.previousAssignees?.length ? c.previousAssignees.map(getUserDisplayName).join(', ') : 'Empty'} ➔ <b>{c.newAssignees?.length ? c.newAssignees.map(getUserDisplayName).join(', ') : 'Empty'}</b>
-                      </Typography>
-                    ))}
-                  </Box>
-                </Paper>
-              );
-            })}
-          </Box>
-        )}
+                );
+              })}
+            </Box>
+          )}
+        </Box>
       </Drawer>
 
     </Box>

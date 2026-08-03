@@ -237,7 +237,7 @@ const Layout: React.FC = () => {
           setDeployEnv(res.data.deploy.toLowerCase().trim());
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -310,214 +310,222 @@ const Layout: React.FC = () => {
         </Box>
       )}
       <Box sx={{ display: 'flex', textAlign: 'left', width: '100%', minHeight: '100vh' }}>
-      <CssBaseline />
-      <AppBar position="fixed" open={open}>
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            onClick={handleDrawerOpen}
-            edge="start"
-            sx={{
-              marginRight: 5,
-              ...(open && { display: 'none' }),
-            }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
-            <label style={{ fontWeight: '500', fontSize: '1.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {wordings.dataCentreManagement}
-            </label>
-            {deployEnv === 'test' && (
-              <Box
-                sx={{
-                  backgroundColor: '#ed6c02',
-                  color: '#ffffff',
-                  fontWeight: 800,
-                  fontSize: '0.75rem',
-                  px: 1.2,
-                  py: 0.3,
-                  borderRadius: '12px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px',
-                  boxShadow: '0 2px 6px rgba(237, 108, 2, 0.4)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  lineHeight: 1,
-                  flexShrink: 0
-                }}
-              >
-                Test
-              </Box>
-            )}
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box
+        <CssBaseline />
+        <AppBar position="fixed" open={open}>
+          <Toolbar>
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              onClick={handleDrawerOpen}
+              edge="start"
               sx={{
-                bgcolor: 'rgba(25, 118, 210, 0.05)',
-                px: 1.5,
-                py: 0.6,
-                borderRadius: '8px',
-                border: '1.5px solid rgba(25, 118, 210, 0.12)',
-                display: { xs: 'none', sm: 'flex' },
-                alignItems: 'center',
-                gap: 1
+                marginRight: 5,
+                ...(open && { display: 'none' }),
               }}
             >
-              <span style={{ fontSize: '10px', fontWeight: 800, color: '#1976d2', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Server Time (IST)
-              </span>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#333', fontFamily: 'monospace' }}>
-                {serverTime}
-              </span>
+              <MenuIcon />
+            </IconButton>
+            <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+              <label style={{ fontWeight: '500', fontSize: '1.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {wordings.dataCentreManagement}
+              </label>
+              {deployEnv === 'test' && (
+                <Box
+                  sx={{
+                    backgroundColor: '#ed6c02',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '0.75rem',
+                    px: 1.2,
+                    py: 0.3,
+                    borderRadius: '12px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
+                    boxShadow: '0 2px 6px rgba(237, 108, 2, 0.4)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    lineHeight: 1,
+                    flexShrink: 0
+                  }}
+                >
+                  Test
+                </Box>
+              )}
             </Box>
-            <label style={{ fontWeight: 'bold', color: '#666', fontSize: '0.875rem' }}>
-              {wordings.welcome}, {userFullName} ({Array.isArray(role) ? role.join(", ") : role})
-            </label>
-            <Tooltip title="My Profile">
-              <Avatar
-                onClick={() => navigate(ROUTE_CONSTANTS.USER_PROFILE)}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box
                 sx={{
-                  width: 38,
-                  height: 38,
-                  cursor: 'pointer',
-                  background: 'linear-gradient(135deg, #1976d2 0%, #7c4dff 100%)',
-                  fontWeight: 700,
-                  fontSize: '0.9rem',
-                  border: '2px solid #e0e0e0',
-                  transition: 'box-shadow 0.2s, transform 0.2s',
-                  '&:hover': {
-                    boxShadow: '0 2px 12px rgba(25,118,210,0.3)',
-                    transform: 'scale(1.08)',
-                  }
+                  bgcolor: 'rgba(25, 118, 210, 0.05)',
+                  px: 1.5,
+                  py: 0.6,
+                  borderRadius: '8px',
+                  border: '1.5px solid rgba(25, 118, 210, 0.12)',
+                  display: { xs: 'none', sm: 'flex' },
+                  alignItems: 'center',
+                  gap: 1
                 }}
               >
-                {userInitials}
-              </Avatar>
-            </Tooltip>
-          </Box>
-        </Toolbar>
-      </AppBar>
-      <Drawer
-        variant="permanent"
-        open={open}
-        onMouseEnter={handleDrawerOpen}
-        onMouseLeave={handleDrawerClose}
-      >
-        <DrawerHeader>
-          <label style={{ fontWeight: 'bold', color: '#1976d2', flexGrow: 1, marginLeft: '16px', fontSize: '1.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {wordings.dcm}
-          </label>
-          <IconButton onClick={handleDrawerClose} sx={{ color: '#1976d2' }}>
-            {theme.direction === 'rtl' ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-          </IconButton>
-        </DrawerHeader>
-        <Divider />
-        <Box sx={{ flexGrow: 1, overflowY: 'auto', overflowX: 'hidden' }}>
-          <List>
-            {
-              SIDEBAR_OPTIONS?.map((option: any, index: number) => {
-                if (option.superuserOnly && !isSuperuser) {
-                  return null;
-                }
-                if (!isSuperuser && option.privileges && !hasAnyPrivilege(option.privileges)) {
-                  return null;
-                }
-
-                let displayLabel = option.label;
-                if (option.subItemPrivileges && Array.isArray(option.subItemPrivileges)) {
-                  const allowedSubItems = option.subItemPrivileges
-                    .filter((sub: any) => isSuperuser || hasAnyPrivilege(sub.privileges))
-                    .map((sub: any) => sub.label);
-                  
-                  if (allowedSubItems.length > 0) {
-                    if (allowedSubItems.length === 1) {
-                      displayLabel = allowedSubItems[0];
-                    } else if (allowedSubItems.length === 2) {
-                      displayLabel = allowedSubItems.join(' & ');
-                    } else {
-                      const last = allowedSubItems.pop();
-                      displayLabel = `${allowedSubItems.join(', ')} & ${last}`;
+                <span style={{ fontSize: '10px', fontWeight: 800, color: '#1976d2', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Server Time (IST)
+                </span>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#333', fontFamily: 'monospace' }}>
+                  {serverTime}
+                </span>
+              </Box>
+              <label style={{ fontWeight: 'bold', color: '#666', fontSize: '0.875rem' }}>
+                {wordings.welcome}, {userFullName} ({Array.isArray(role) ? role.join(", ") : role})
+              </label>
+              <Tooltip title="My Profile">
+                <Avatar
+                  onClick={() => navigate(ROUTE_CONSTANTS.USER_PROFILE)}
+                  sx={{
+                    width: 38,
+                    height: 38,
+                    cursor: 'pointer',
+                    background: 'linear-gradient(135deg, #1976d2 0%, #7c4dff 100%)',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    border: '2px solid #e0e0e0',
+                    transition: 'box-shadow 0.2s, transform 0.2s',
+                    '&:hover': {
+                      boxShadow: '0 2px 12px rgba(25,118,210,0.3)',
+                      transform: 'scale(1.08)',
                     }
+                  }}
+                >
+                  {userInitials}
+                </Avatar>
+              </Tooltip>
+            </Box>
+          </Toolbar>
+        </AppBar>
+        <Drawer
+          variant="permanent"
+          open={open}
+          onMouseEnter={handleDrawerOpen}
+          onMouseLeave={handleDrawerClose}
+        >
+          <DrawerHeader>
+            <label style={{ fontWeight: 'bold', color: '#1976d2', flexGrow: 1, marginLeft: '16px', fontSize: '1.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {wordings.dcm}
+            </label>
+            <IconButton onClick={handleDrawerClose} sx={{ color: '#1976d2' }}>
+              {theme.direction === 'rtl' ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+            </IconButton>
+          </DrawerHeader>
+          <Divider />
+          <Box sx={{ flexGrow: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+            <List>
+              {
+                SIDEBAR_OPTIONS?.map((option: any, index: number) => {
+                  if (option.superuserOnly && !isSuperuser) {
+                    return null;
                   }
-                }
+                  if (!isSuperuser && option.privileges && !hasAnyPrivilege(option.privileges)) {
+                    return null;
+                  }
 
-                const isSelected = location.pathname === option.route;
-                return (
-                  <ListItem key={`sidebar-item-${index}`} disablePadding sx={{ display: 'block' }} title={displayLabel} >
-                    <ListItemButton
-                      onClick={() => navigate(option?.route)}
-                      sx={{
-                        minHeight: 48,
-                        height: 'auto',
-                        py: 1,
-                        justifyContent: open ? 'initial' : 'center',
-                        px: 2.5,
-                        background: isSelected ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
-                        color: isSelected ? '#1976d2' : 'inherit',
-                        borderRight: isSelected ? '3px solid #1976d2' : 'none',
-                        '&:hover': {
-                          background: isSelected ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)',
-                        }
-                      }}
-                    >
-                      <ListItemIcon
+                  const displayLabel = option.label;
+
+                  const isSelected = location.pathname === option.route;
+                  return (
+                    <ListItem key={`sidebar-item-${index}`} disablePadding sx={{ display: 'block' }} title={displayLabel} >
+                      <ListItemButton
+                        onClick={() => navigate(option?.route)}
                         sx={{
-                          minWidth: 0,
-                          mr: open ? 3 : 0,
-                          justifyContent: 'center',
-                          color: isSelected ? '#1976d2' : 'inherit'
+                          minHeight: 48,
+                          height: 'auto',
+                          py: 1,
+                          justifyContent: open ? 'initial' : 'center',
+                          px: 2.5,
+                          background: isSelected ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+                          color: isSelected ? '#1976d2' : 'inherit',
+                          borderRight: isSelected ? '3px solid #1976d2' : 'none',
+                          '&:hover': {
+                            background: isSelected ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)',
+                          }
                         }}
                       >
-                        <Badge
-                          variant="dot"
-                          color="error"
-                          invisible={!unreadRoutes[option.route]}
+                        <ListItemIcon
                           sx={{
-                            '& .MuiBadge-badge': {
-                              right: -2,
-                              top: -2,
-                              border: '1.5px solid #fff',
-                              boxShadow: '0 0 6px rgba(239, 83, 80, 0.4)'
-                            }
+                            minWidth: 0,
+                            mr: open ? 3 : 0,
+                            justifyContent: 'center',
+                            color: isSelected ? '#1976d2' : 'inherit'
                           }}
                         >
-                          <option.icon />
-                        </Badge>
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={
-                          <span style={{
-                            whiteSpace: 'normal',
-                            wordBreak: 'break-word',
-                            lineHeight: 1.25,
-                            fontSize: '0.85rem'
-                          }}>
-                            {displayLabel}
-                          </span>
-                        }
-                        sx={{ opacity: open ? 1 : 0, display: open ? 'block' : 'none', my: 0 }}
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                );
-              })
-            }
-          </List>
-        </Box>
-        <Divider />
+                          <Badge
+                            variant="dot"
+                            color="error"
+                            invisible={!unreadRoutes[option.route]}
+                            sx={{
+                              '& .MuiBadge-badge': {
+                                right: -2,
+                                top: -2,
+                                border: '1.5px solid #fff',
+                                boxShadow: '0 0 6px rgba(239, 83, 80, 0.4)'
+                              }
+                            }}
+                          >
+                            <option.icon />
+                          </Badge>
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={
+                            <span style={{
+                              whiteSpace: 'normal',
+                              wordBreak: 'break-word',
+                              lineHeight: 1.25,
+                              fontSize: '0.85rem'
+                            }}>
+                              {displayLabel}
+                            </span>
+                          }
+                          sx={{ opacity: open ? 1 : 0, display: open ? 'block' : 'none', my: 0 }}
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                  );
+                })
+              }
+            </List>
+          </Box>
+          <Divider />
 
-        <List>
-          {stickyNoteEnabled && (
+          <List>
+            {stickyNoteEnabled && (
+              <ListItem disablePadding sx={{ display: 'block' }}>
+                <ListItemButton
+                  onClick={() => window.dispatchEvent(new Event('openStickyNote'))}
+                  sx={{
+                    minHeight: 48,
+                    justifyContent: open ? 'initial' : 'center',
+                    px: 2.5,
+                    color: '#5c5315'
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      mr: open ? 3 : 0,
+                      justifyContent: 'center',
+                      color: '#f5b041'
+                    }}
+                  >
+                    <StickyNoteIcon size={24} />
+                  </ListItemIcon>
+                  <ListItemText primary="Sticky Note" sx={{ opacity: open ? 1 : 0, display: open ? 'block' : 'none' }} />
+                </ListItemButton>
+              </ListItem>
+            )}
             <ListItem disablePadding sx={{ display: 'block' }}>
               <ListItemButton
-                onClick={() => window.dispatchEvent(new Event('openStickyNote'))}
+                onClick={handleLogout}
                 sx={{
                   minHeight: 48,
                   justifyContent: open ? 'initial' : 'center',
                   px: 2.5,
-                  color: '#5c5315'
+                  color: 'error.main'
                 }}
               >
                 <ListItemIcon
@@ -525,45 +533,21 @@ const Layout: React.FC = () => {
                     minWidth: 0,
                     mr: open ? 3 : 0,
                     justifyContent: 'center',
-                    color: '#f5b041'
+                    color: 'error.main'
                   }}
                 >
-                  <StickyNoteIcon size={24} />
+                  <LogoutIcon />
                 </ListItemIcon>
-                <ListItemText primary="Sticky Note" sx={{ opacity: open ? 1 : 0, display: open ? 'block' : 'none' }} />
+                <ListItemText primary={wordings.logout} sx={{ opacity: open ? 1 : 0, display: open ? 'block' : 'none' }} />
               </ListItemButton>
             </ListItem>
-          )}
-          <ListItem disablePadding sx={{ display: 'block' }}>
-            <ListItemButton
-              onClick={handleLogout}
-              sx={{
-                minHeight: 48,
-                justifyContent: open ? 'initial' : 'center',
-                px: 2.5,
-                color: 'error.main'
-              }}
-            >
-              <ListItemIcon
-                sx={{
-                  minWidth: 0,
-                  mr: open ? 3 : 0,
-                  justifyContent: 'center',
-                  color: 'error.main'
-                }}
-              >
-                <LogoutIcon />
-              </ListItemIcon>
-              <ListItemText primary={wordings.logout} sx={{ opacity: open ? 1 : 0, display: open ? 'block' : 'none' }} />
-            </ListItemButton>
-          </ListItem>
-        </List>
-      </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh', background: '#f5f7fa', boxSizing: 'border-box' }}>
-        <DrawerHeader />
-        <Outlet />
+          </List>
+        </Drawer>
+        <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh', background: '#f5f7fa', boxSizing: 'border-box' }}>
+          <DrawerHeader />
+          <Outlet />
+        </Box>
       </Box>
-    </Box>
     </NotificationPollerProvider>
   );
 }

@@ -402,12 +402,6 @@ const Dashboard: React.FC = () => {
               onViewAllClick={() => navigate(ROUTE_CONSTANTS.OBSERVATIONS)}
             />
           )}
-          {canViewLogs && (
-            <RecentOperationLogsCard
-              openOperationLogs={data.openOperationLogs || []}
-              onViewAllClick={() => navigate(ROUTE_CONSTANTS.OPERATION_LOGS)}
-            />
-          )}
         </Box>
       </Box>
 

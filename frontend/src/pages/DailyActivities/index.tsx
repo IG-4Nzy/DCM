@@ -47,7 +47,7 @@ const DailyActivities: React.FC = () => {
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="h5" sx={{ fontWeight: 700, color: '#1e293b', mb: 1 }}>
-        Daily Activities
+        Checklist
       </Typography>
 
       {tabs.length > 1 && (
