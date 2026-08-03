@@ -18,9 +18,11 @@ import {
   FormControlLabel,
   FormControl,
   Select,
-  InputLabel
+  InputLabel,
+  Drawer,
+  Divider
 } from "@mui/material";
-import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon, MdPrint as PrintIcon, MdContentCopy as CopyIcon, MdUndo as UndoIcon } from "react-icons/md";
+import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon, MdPrint as PrintIcon, MdContentCopy as CopyIcon, MdUndo as UndoIcon, MdHistory as HistoryIcon } from "react-icons/md";
 import dayjs, { Dayjs } from "dayjs";
 import { getServerTime } from "../../helpers/time";
 import isoWeekPlugin from "dayjs/plugin/isoWeek";
@@ -36,7 +38,7 @@ import type { RootState, AppDispatch } from "../../store";
 import { jwtDecode } from "jwt-decode";
 import { validateRoster } from "./validation";
 import { fetchUsers, fetchAllDepartmentsForDropdown } from "../Users/action";
-import { fetchRostersData, fetchRosterStatusData, updateRosterStatus, resetRosterStatus, createRoster, updateRoster, fetchDutySummary, saveRosterSplitup } from "./action";
+import { fetchRostersData, fetchRosterStatusData, updateRosterStatus, resetRosterStatus, createRoster, updateRoster, fetchDutySummary, saveRosterSplitup, fetchRosterHistory, batchSaveRosters } from "./action";
 
 dayjs.extend(isoWeekPlugin);
 
@@ -109,6 +111,31 @@ const RoasterPage: React.FC = () => {
     const displayHr = hr % 12 || 12;
     return `${displayHr.toString().padStart(2, '0')}:${parts[1]} ${ampm}`;
   };
+
+  const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
+  const [historyList, setHistoryList] = useState<any[]>([]);
+  const [selectedHistory, setSelectedHistory] = useState<any | null>(null);
+
+  const loadHistory = async () => {
+    if (!activeDepartment) return;
+    const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
+    const endDate = selectedWeek.endOf("isoWeek").format("YYYY-MM-DD");
+    try {
+      const res = await dispatch(fetchRosterHistory({ department: activeDepartment, startDate, endDate })).unwrap();
+      setHistoryList(res || []);
+    } catch (e) {
+      console.error("Failed to load roaster history", e);
+    }
+  };
+
+  const historyChangesMap = React.useMemo(() => {
+    if (!selectedHistory || !selectedHistory.changes) return {};
+    const map: Record<string, { previousAssignees: string[]; newAssignees: string[]; previousNotes?: string; newNotes?: string }> = {};
+    selectedHistory.changes.forEach((c: any) => {
+      map[`${c.date}_${c.shift}`] = c;
+    });
+    return map;
+  }, [selectedHistory]);
 
   const weekDates = Array.from({ length: 7 }).map((_, index) =>
     selectedWeek.startOf("isoWeek").add(index, "day").format("YYYY-MM-DD")
@@ -470,51 +497,29 @@ const RoasterPage: React.FC = () => {
   const handleSave = async () => {
     try {
       const currentRosterData = rosterDataByWeek[currentWeekKey] || {};
-      const promises = Object.entries(currentRosterData).map(async ([key, data]) => {
+      const items = Object.entries(currentRosterData).map(([key, data]) => {
         const [date, shift] = key.split("_");
-        // Skip past weeks (allow past days within the current week) to prevent past weeks modifications
-        if (!isSuperuser && dayjs(date).isBefore(getServerTime().startOf("isoWeek"), "day")) {
-          return;
-        }
-        const cleanAssignees = data.assignees ? data.assignees.filter(Boolean) : [];
-        if (data.id) {
-          await dispatch(updateRoster({
-            id: data.id,
-            date,
-            shift,
-            assignees: cleanAssignees,
-            department: activeDepartment || 'General',
-          })).unwrap();
-        } else if (cleanAssignees.length > 0) {
-          await dispatch(createRoster({
-            date,
-            shift,
-            assignees: cleanAssignees,
-            department: activeDepartment || 'General',
-          })).unwrap();
-        }
+        return {
+          date,
+          shift,
+          assignees: data.assignees ? data.assignees.filter(Boolean) : [],
+          notes: (data as any).notes
+        };
       });
-      await Promise.all(promises);
-      
-      // Automatically reset status to Pending when edits are made
-      if (activeDepartment) {
-        try {
-          const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
-          const data = await dispatch(resetRosterStatus({
-            weekStartDate: startDate,
-            department: activeDepartment,
-            status: "Pending"
-          })).unwrap();
-          setRosterStatus(data);
-        } catch (e) {
-          console.error("Failed to reset status", e);
-        }
-      }
+
+      const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
+      await dispatch(batchSaveRosters({
+        department: activeDepartment || 'General',
+        items,
+        weekStartDate: startDate
+      })).unwrap();
 
       showToast("Roster saved successfully", "success");
       setEditModes(prev => ({ ...prev, [currentWeekKey]: false }));
       fetchRosters();
+      fetchRosterStatus();
       fetchSummary();
+      loadHistory();
     } catch (e: any) {
       console.error(e);
       showToast(typeof e === 'string' ? `Failed to save roster: ${e}` : "Failed to save roster", "error");
@@ -773,6 +778,18 @@ const RoasterPage: React.FC = () => {
             value={selectedWeek}
             onChange={(newVal) => setSelectedWeek(newVal)}
           />
+          <Button
+            variant={isHistoryOpen ? "contained" : "outlined"}
+            size="small"
+            onClick={() => {
+              setIsHistoryOpen(!isHistoryOpen);
+              if (!isHistoryOpen) loadHistory();
+            }}
+            className="hide-on-print"
+            sx={{ height: '32px', fontSize: '12px', gap: '4px' }}
+          >
+            <HistoryIcon size={16} /> History {historyList.length > 0 ? `(${historyList.length})` : ''}
+          </Button>
           <Tooltip title="Print Roster">
             <IconButton
               className="hide-on-print"
@@ -886,13 +903,49 @@ const RoasterPage: React.FC = () => {
                       .flatMap((s) => rosterData[`${dateStr}_${s}`]?.assignees || []);
 
                     const isLeave = shiftName === "Leave";
+                    const historyChange = historyChangesMap[key];
+
+                    const historyTooltipContent = historyChange ? (
+                      <Tooltip
+                        title={`Past Value before change by ${selectedHistory?.changedByFullName || 'User'} on ${dayjs(selectedHistory?.timestamp).format("DD MMM YYYY, hh:mm A")}`}
+                        arrow
+                      >
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: '-12px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            zIndex: 25,
+                            backgroundColor: '#ed6c02',
+                            color: '#ffffff',
+                            px: 1,
+                            py: 0.2,
+                            borderRadius: '10px',
+                            fontSize: '10px',
+                            fontWeight: 'bold',
+                            whiteSpace: 'nowrap',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Past: {historyChange.previousAssignees && historyChange.previousAssignees.length > 0 ? historyChange.previousAssignees.map(getUserDisplayName).join(', ') : 'Empty'}
+                        </Box>
+                      </Tooltip>
+                    ) : null;
 
                     if (isLeave) {
                       return (
                         <div
                           key={shiftName}
                           className={`${styles["container__roasterContainer__table--body-cell--row2"]} hide-on-print`}
+                          style={{
+                            position: 'relative',
+                            border: historyChange ? '2px solid #ed6c02' : undefined,
+                            backgroundColor: historyChange ? '#fff8e1' : undefined
+                          }}
                         >
+                          {historyTooltipContent}
                           {isEditMode && (isSuperuser || !dayjs(dateStr).isBefore(getServerTime().startOf("isoWeek"), "day")) ? (
                             <Autocomplete
                               multiple
@@ -974,7 +1027,13 @@ const RoasterPage: React.FC = () => {
                       <div
                         key={shiftName}
                         className={styles["container__roasterContainer__table--body-cell--row2"]}
+                        style={{
+                          position: 'relative',
+                          border: historyChange ? '2px solid #ed6c02' : undefined,
+                          backgroundColor: historyChange ? '#fff8e1' : undefined
+                        }}
                       >
+                        {historyTooltipContent}
                         {shiftRows.map((row, slotIdx) => {
                           const username = assignees[slotIdx];
                           const error = validationErrors.find(
@@ -1238,6 +1297,102 @@ const RoasterPage: React.FC = () => {
           </Paper>
         </section>
       )}
+
+      {/* Roaster Change History Right Sidebar Drawer */}
+      <Drawer
+        anchor="right"
+        open={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        PaperProps={{
+          sx: { width: 340, padding: 2.5, backgroundColor: '#fafafa' }
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <HistoryIcon size={22} color="#1976d2" />
+            <Typography variant="h6" sx={{ fontSize: '16px', fontWeight: 'bold', color: '#1a237e' }}>
+              Roaster Change History
+            </Typography>
+          </Box>
+          <IconButton size="small" onClick={() => setIsHistoryOpen(false)}>
+            <CancelIcon />
+          </IconButton>
+        </Box>
+        <Typography variant="caption" color="textSecondary" sx={{ mb: 2, display: 'block' }}>
+          Department: <b>{displayDepartmentValue}</b> ({selectedWeek.startOf("isoWeek").format("DD MMM")} - {selectedWeek.endOf("isoWeek").format("DD MMM YYYY")})
+        </Typography>
+        <Divider sx={{ mb: 2 }} />
+
+        {selectedHistory && (
+          <Box sx={{ mb: 2, p: 1.5, backgroundColor: '#fff3e0', borderRadius: 1.5, border: '1px solid #ffe0b2', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#e65100', display: 'block' }}>
+                Previewing History:
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#424242', fontSize: '11px' }}>
+                {selectedHistory.changedByFullName || selectedHistory.changedBy} ({dayjs(selectedHistory.timestamp).format("DD/MM, hh:mm A")})
+              </Typography>
+            </Box>
+            <Button size="small" variant="outlined" color="warning" onClick={() => setSelectedHistory(null)} sx={{ fontSize: '11px', px: 1, py: 0.2 }}>
+              Clear
+            </Button>
+          </Box>
+        )}
+
+        {historyList.length === 0 ? (
+          <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', mt: 6, fontStyle: 'italic' }}>
+            No change history recorded for this period yet.
+          </Typography>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, overflowY: 'auto', maxHeight: 'calc(100vh - 160px)', pr: 0.5 }}>
+            {historyList.map((item) => {
+              const isSelected = selectedHistory?.id === item.id;
+              return (
+                <Paper
+                  key={item.id}
+                  elevation={isSelected ? 3 : 1}
+                  onClick={() => setSelectedHistory(isSelected ? null : item)}
+                  sx={{
+                    p: 1.5,
+                    cursor: 'pointer',
+                    borderRadius: '8px',
+                    border: isSelected ? '2px solid #ed6c02' : '1px solid #e0e0e0',
+                    backgroundColor: isSelected ? '#fff8e1' : '#ffffff',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      borderColor: '#ed6c02',
+                      backgroundColor: '#fffde7'
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', fontSize: '13px', color: '#1a237e' }}>
+                      {item.changedByFullName || item.changedBy || 'Unknown User'}
+                    </Typography>
+                    <Chip
+                      label={isSelected ? "Active" : "View Diff"}
+                      size="small"
+                      color={isSelected ? "warning" : "default"}
+                      variant={isSelected ? "filled" : "outlined"}
+                      sx={{ height: '20px', fontSize: '10px', fontWeight: 'bold' }}
+                    />
+                  </Box>
+                  <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>
+                    {dayjs(item.timestamp).format("DD MMM YYYY, hh:mm A")}
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    {item.changes.map((c: any, idx: number) => (
+                      <Typography key={idx} variant="caption" sx={{ fontSize: '11px', color: '#333', backgroundColor: isSelected ? '#ffffff' : '#f5f5f5', p: 0.5, borderRadius: '4px', border: '1px solid #eee' }}>
+                        <b>{dayjs(c.date).format("DD MMM")} ({c.shift}):</b> {c.previousAssignees?.length ? c.previousAssignees.map(getUserDisplayName).join(', ') : 'Empty'} ➔ <b>{c.newAssignees?.length ? c.newAssignees.map(getUserDisplayName).join(', ') : 'Empty'}</b>
+                      </Typography>
+                    ))}
+                  </Box>
+                </Paper>
+              );
+            })}
+          </Box>
+        )}
+      </Drawer>
 
     </Box>
   );

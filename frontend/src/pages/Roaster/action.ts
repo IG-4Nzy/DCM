@@ -102,4 +102,32 @@ export const saveRosterSplitup = createAsyncThunk(
   }
 );
 
+export const fetchRosterHistory = createAsyncThunk(
+  'roaster/fetchRosterHistory',
+  async ({ department, startDate, endDate }: { department: string; startDate?: string; endDate?: string }, { rejectWithValue }) => {
+    try {
+      let url = `/api/roasters/history?department=${department}`;
+      if (startDate && endDate) {
+        url += `&startDate=${startDate}&endDate=${endDate}`;
+      }
+      const res = await request.get(url);
+      return res.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to fetch roaster history');
+    }
+  }
+);
+
+export const batchSaveRosters = createAsyncThunk(
+  'roaster/batchSaveRosters',
+  async ({ department, items, weekStartDate }: { department: string; items: any[]; weekStartDate?: string }, { rejectWithValue }) => {
+    try {
+      const res = await request.post('/api/roasters/batch', { department, items, weekStartDate });
+      return res.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to save roasters');
+    }
+  }
+);
+
 

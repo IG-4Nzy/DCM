@@ -166,6 +166,192 @@ async def list_roasters(
 
     return {"data": roasters, "total": total}
 
+async def record_roaster_history(
+    department: str,
+    changed_by_user: dict,
+    changes: List[dict],
+    batch_id: Optional[str] = None
+):
+    if not changes:
+        return
+
+    users_collection = db.get_collection("users")
+    user = await users_collection.find_one({"username": changed_by_user.get("sub", "")})
+    name_str = "Unknown"
+    if user:
+        first_name = user.get("firstName", "")
+        last_name = user.get("lastName", "")
+        name_str = f"{first_name} {last_name}".strip()
+        if not name_str:
+            name_str = user.get("username", "Unknown")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    b_id = batch_id or f"batch_{int(datetime.now(timezone.utc).timestamp()*1000)}"
+
+    history_doc = {
+        "batchId": b_id,
+        "department": department,
+        "changedBy": changed_by_user.get("sub", ""),
+        "changedByFullName": name_str,
+        "timestamp": now_iso,
+        "date": changes[0]["date"] if len(changes) > 0 else "",
+        "affectedDates": list(set([c["date"] for c in changes])),
+        "changes": changes
+    }
+    await db.get_collection("roaster_history").insert_one(history_doc)
+
+@router.get("/history", response_description="Get roaster change history")
+async def get_roaster_history(
+    department: str = Query(...),
+    startDate: Optional[str] = Query(None),
+    endDate: Optional[str] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1),
+    current_user: dict = Depends(get_current_user)
+):
+    is_superuser = current_user.get("isSuperuser", False)
+    privileges = current_user.get("privileges", [])
+    if not is_superuser and "View Roaster" not in privileges and "View All Roaster" not in privileges:
+        raise HTTPException(status_code=403, detail="Not enough permissions to view roaster history")
+
+    dept_doc = await db.get_collection("departments").find_one({
+        "$or": [
+            {"name": department},
+            {"_id": ObjectId(department) if ObjectId.is_valid(department) else None}
+        ]
+    })
+    dept_match = [department]
+    if dept_doc:
+        dept_match = list(set([d for d in [department, str(dept_doc["_id"]), dept_doc.get("name", "")] if d]))
+
+    query = {"department": {"$in": dept_match}}
+    if startDate and endDate:
+        query["$or"] = [
+            {"date": {"$gte": startDate, "$lte": endDate}},
+            {"affectedDates": {"$elemMatch": {"$gte": startDate, "$lte": endDate}}}
+        ]
+
+    history_col = db.get_collection("roaster_history")
+    cursor = history_col.find(query).sort("timestamp", -1).skip(skip).limit(limit)
+    history_docs = await cursor.to_list(length=limit)
+
+    result = []
+    for doc in history_docs:
+        doc["id"] = str(doc["_id"])
+        del doc["_id"]
+        result.append(doc)
+
+    return result
+
+@router.post("/batch", response_description="Batch create/update roaster entries with change history")
+async def batch_save_roasters(
+    payload: dict = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    is_superuser = current_user.get("isSuperuser", False)
+    privileges = current_user.get("privileges", [])
+    if not is_superuser and "Create Roaster" not in privileges and "Update Roaster" not in privileges:
+        raise HTTPException(status_code=403, detail="Not enough permissions to edit roasters")
+
+    items = payload.get("items", [])
+    department = payload.get("department") or "General"
+    if not items:
+        return {"status": "success", "updatedCount": 0}
+
+    today = date.today()
+    start_of_current_iso_week_str = (today - timedelta(days=today.weekday())).isoformat()
+
+    users_collection = db.get_collection("users")
+    user = await users_collection.find_one({"username": current_user.get("sub", "")})
+    name_str = "Unknown"
+    if user:
+        first_name = user.get("firstName", "")
+        last_name = user.get("lastName", "")
+        name_str = f"{first_name} {last_name}".strip()
+        if not name_str:
+            name_str = user.get("username", "Unknown")
+
+    changes_list = []
+    now_iso = datetime.now(timezone.utc).isoformat()
+    b_id = f"batch_{int(datetime.now(timezone.utc).timestamp()*1000)}"
+
+    for item in items:
+        item_date = item.get("date")
+        item_shift = item.get("shift")
+        new_assignees = item.get("assignees", [])
+        new_notes = item.get("notes")
+
+        if not item_date or not item_shift:
+            continue
+
+        if not is_superuser and item_date < start_of_current_iso_week_str:
+            continue
+
+        existing = await roasters_collection.find_one({
+            "date": item_date,
+            "shift": item_shift,
+            "department": department
+        })
+
+        prev_assignees = existing.get("assignees", []) if existing else []
+        prev_notes = existing.get("notes") if existing else None
+
+        if prev_assignees != new_assignees or prev_notes != new_notes:
+            changes_list.append({
+                "date": item_date,
+                "shift": item_shift,
+                "previousAssignees": prev_assignees,
+                "newAssignees": new_assignees,
+                "previousNotes": prev_notes,
+                "newNotes": new_notes
+            })
+
+            if existing:
+                await roasters_collection.update_one(
+                    {"_id": existing["_id"]},
+                    {"$set": {
+                        "assignees": new_assignees,
+                        "notes": new_notes,
+                        "updatedAt": now_iso,
+                        "updatedByFullName": name_str
+                    }}
+                )
+            else:
+                new_doc = {
+                    "date": item_date,
+                    "shift": item_shift,
+                    "assignees": new_assignees,
+                    "department": department,
+                    "notes": new_notes,
+                    "createdBy": current_user.get("sub", ""),
+                    "updatedAt": now_iso,
+                    "updatedByFullName": name_str
+                }
+                await roasters_collection.insert_one(new_doc)
+
+    if changes_list:
+        await record_roaster_history(department, current_user, changes_list, batch_id=b_id)
+        
+        # Reset status to Pending
+        week_start_date = payload.get("weekStartDate") or (items[0]["date"] if items else None)
+        if week_start_date:
+            await roaster_status_collection.update_one(
+                {"weekStartDate": week_start_date, "department": department},
+                {"$set": {
+                    "weekStartDate": week_start_date,
+                    "department": department,
+                    "status": "Pending",
+                    "updatedByFullName": name_str,
+                    "updatedAt": now_iso
+                }},
+                upsert=True
+            )
+
+        from notification_helper import log_page_update
+        await log_page_update("roasters", department=department, username=current_user.get("sub"))
+
+    return {"status": "success", "updatedCount": len(changes_list)}
+
 @router.post("/", response_description="Create a roster entry", response_model=RoasterModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False)
 async def create_roaster(
     roaster: CreateRoasterModel = Body(...),
@@ -179,17 +365,14 @@ async def create_roaster(
 
     roaster_dict = roaster.model_dump()
     
-    # Enforce no past weeks (allow past days within the current week)
     today = date.today()
-    start_of_current_iso_week = today - timedelta(days=today.weekday())
-    start_of_current_iso_week_str = start_of_current_iso_week.isoformat()
+    start_of_current_iso_week_str = (today - timedelta(days=today.weekday())).isoformat()
     if not is_superuser and roaster_dict["date"] < start_of_current_iso_week_str:
         raise HTTPException(status_code=400, detail="Cannot create roster entry for past weeks")
 
     roaster_dict["createdBy"] = current_user.get("sub", "")
     roaster_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
 
-    # Get User Details
     users_collection = db.get_collection("users")
     user = await users_collection.find_one({"username": current_user.get("sub", "")})
     user_dept = "General"
@@ -197,7 +380,6 @@ async def create_roaster(
         user_dept = user.get("department", "General")
         first_name = user.get("firstName", "")
         last_name = user.get("lastName", "")
-        role = user.get("role", "Unknown")
         name_str = f"{first_name} {last_name}".strip()
         if not name_str:
             name_str = user.get("username", "Unknown")
@@ -205,16 +387,35 @@ async def create_roaster(
 
     roaster_dict["department"] = roaster.department or user_dept
 
-    # Check for duplicate: same date + shift + department
     existing = await roasters_collection.find_one({
         "date": roaster_dict["date"],
         "shift": roaster_dict["shift"],
         "department": roaster_dict["department"]
     })
+    
+    prev_assignees = existing.get("assignees", []) if existing else []
+    new_assignees = roaster_dict.get("assignees", [])
+    prev_notes = existing.get("notes") if existing else None
+    new_notes = roaster_dict.get("notes")
+
+    if prev_assignees != new_assignees or prev_notes != new_notes:
+        await record_roaster_history(
+            roaster_dict["department"],
+            current_user,
+            [{
+                "date": roaster_dict["date"],
+                "shift": roaster_dict["shift"],
+                "previousAssignees": prev_assignees,
+                "newAssignees": new_assignees,
+                "previousNotes": prev_notes,
+                "newNotes": new_notes
+            }]
+        )
+
     if existing:
         update_fields = {
-            "assignees": roaster_dict.get("assignees", []),
-            "notes": roaster_dict.get("notes"),
+            "assignees": new_assignees,
+            "notes": new_notes,
             "updatedAt": datetime.now(timezone.utc).isoformat(),
             "updatedByFullName": roaster_dict.get("updatedByFullName")
         }
@@ -246,10 +447,8 @@ async def update_roaster(id: str, roaster: UpdateRoasterModel = Body(...), curre
     if not existing:
         raise HTTPException(status_code=404, detail=f"Roster {id} not found")
 
-    # Enforce no past weeks (allow past days within the current week)
     today = date.today()
-    start_of_current_iso_week = today - timedelta(days=today.weekday())
-    start_of_current_iso_week_str = start_of_current_iso_week.isoformat()
+    start_of_current_iso_week_str = (today - timedelta(days=today.weekday())).isoformat()
     roster_date = roaster_dict.get("date") or existing.get("date")
     is_superuser = current_user.get("isSuperuser", False)
     if not is_superuser and roster_date and roster_date < start_of_current_iso_week_str:
@@ -258,18 +457,34 @@ async def update_roaster(id: str, roaster: UpdateRoasterModel = Body(...), curre
     if len(roaster_dict) >= 1:
         roaster_dict["updatedAt"] = datetime.now(timezone.utc).isoformat()
         
-        # Get User Details
         users_collection = db.get_collection("users")
         user = await users_collection.find_one({"username": current_user.get("sub", "")})
         if user:
             first_name = user.get("firstName", "")
             last_name = user.get("lastName", "")
-            department = user.get("department", "Unknown")
-            role = user.get("role", "Unknown")
             name_str = f"{first_name} {last_name}".strip()
             if not name_str:
                 name_str = user.get("username", "Unknown")
             roaster_dict["updatedByFullName"] = name_str
+
+        prev_assignees = existing.get("assignees", [])
+        new_assignees = roaster_dict.get("assignees", prev_assignees)
+        prev_notes = existing.get("notes")
+        new_notes = roaster_dict.get("notes", prev_notes)
+
+        if prev_assignees != new_assignees or prev_notes != new_notes:
+            await record_roaster_history(
+                existing.get("department", "General"),
+                current_user,
+                [{
+                    "date": existing.get("date"),
+                    "shift": existing.get("shift"),
+                    "previousAssignees": prev_assignees,
+                    "newAssignees": new_assignees,
+                    "previousNotes": prev_notes,
+                    "newNotes": new_notes
+                }]
+            )
 
         update_result = await roasters_collection.update_one(
             {"_id": ObjectId(id)}, {"$set": roaster_dict}
