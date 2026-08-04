@@ -162,13 +162,14 @@ const RoasterPage: React.FC = () => {
 
   const fetchRosters = async () => {
     if (!activeDepartment) return;
+    const prevSundayStr = selectedWeek.startOf("isoWeek").subtract(1, "day").format("YYYY-MM-DD");
     const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
     const endDate = selectedWeek.endOf("isoWeek").format("YYYY-MM-DD");
     try {
-      const data = await dispatch(fetchRostersData({ startDate, endDate, department: activeDepartment })).unwrap();
+      const data = await dispatch(fetchRostersData({ startDate: prevSundayStr, endDate, department: activeDepartment })).unwrap();
       const newRosterData: Record<string, RosterData> = {};
       data.forEach((r: any) => {
-        if (weekDates.includes(r.date)) {
+        if (weekDates.includes(r.date) || r.date === prevSundayStr) {
           newRosterData[`${r.date}_${r.shift}`] = {
             id: r.id || r._id,
             assignees: r.assignees,
@@ -496,17 +497,27 @@ const RoasterPage: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (validationErrors && validationErrors.length > 0) {
+      const err = validationErrors[0];
+      showToast(`Validation Error: ${getUserDisplayName(err.username)} - ${err.reason} (${err.date})`, "error");
+      return;
+    }
     try {
       const currentRosterData = rosterDataByWeek[currentWeekKey] || {};
-      const items = Object.entries(currentRosterData).map(([key, data]) => {
-        const [date, shift] = key.split("_");
-        return {
-          date,
-          shift,
-          assignees: data.assignees ? data.assignees.filter(Boolean) : [],
-          notes: (data as any).notes
-        };
-      });
+      const items = Object.entries(currentRosterData)
+        .filter(([key]) => {
+          const date = key.split("_")[0];
+          return weekDates.includes(date);
+        })
+        .map(([key, data]) => {
+          const [date, shift] = key.split("_");
+          return {
+            date,
+            shift,
+            assignees: data.assignees ? data.assignees.filter(Boolean) : [],
+            notes: (data as any).notes
+          };
+        });
 
       const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
       await dispatch(batchSaveRosters({
@@ -561,7 +572,9 @@ const RoasterPage: React.FC = () => {
     }
   }
 
-  const hasRosterData = Object.values(rosterData).some((r) => r.id);
+  const hasRosterData = Object.entries(rosterData)
+    .filter(([key]) => weekDates.some(d => key.startsWith(d)))
+    .some(([_, r]) => r.id);
 
   const cleanDisplayName = (name?: string | null) => {
     if (!name) return 'Unknown';
@@ -841,6 +854,34 @@ const RoasterPage: React.FC = () => {
           </label>
         </header>
 
+        {validationErrors.length > 0 && (
+          <Box
+            sx={{
+              my: 2,
+              p: 1.5,
+              borderRadius: '8px',
+              backgroundColor: '#fef2f2',
+              border: '1.5px solid #ef4444',
+              color: '#991b1b',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.12)'
+            }}
+            className="hide-on-print"
+          >
+            <Box sx={{ fontSize: '20px' }}>⚠️</Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" fontWeight={700} sx={{ color: '#991b1b', fontSize: '13px' }}>
+                {validationErrors.length} Shift Policy {validationErrors.length === 1 ? 'Violation' : 'Violations'} Detected
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#b91c1c', display: 'block', mt: 0.25 }}>
+                {validationErrors.map(e => `${getUserDisplayName(e.username)} (${e.date} - ${e.shift}): ${e.reason}`).join(' • ')}
+              </Typography>
+            </Box>
+          </Box>
+        )}
+
         <section className={styles["container__roasterContainer__table"]}>
           <article
             className={styles["container__roasterContainer__table--header"]}
@@ -986,11 +1027,12 @@ const RoasterPage: React.FC = () => {
                                       e.username === option
                                   );
                                   return (
-                                    <Tooltip title={error ? error.reason : ""} key={option}>
+                                    <Tooltip title={error ? error.reason : ""} key={option} arrow>
                                       <Chip
                                         {...getTagProps({ index })}
-                                        label={option}
+                                        label={getUserDisplayName(option)}
                                         color={error ? "error" : "default"}
+                                        sx={error ? { backgroundColor: '#d32f2f', color: '#ffffff', fontWeight: 700 } : {}}
                                       />
                                     </Tooltip>
                                   );
@@ -1076,7 +1118,29 @@ const RoasterPage: React.FC = () => {
                                     }));
                                   }}
                                   renderInput={(params) => (
-                                    <TextField {...params} variant="standard" placeholder={row.name} sx={{ '& input': { fontSize: '12px', textAlign: 'center' } }} />
+                                    <Tooltip title={error ? `${getUserDisplayName(username)}: ${error.reason}` : ""} arrow placement="top">
+                                      <TextField
+                                        {...params}
+                                        variant="standard"
+                                        error={Boolean(error)}
+                                        placeholder={row.name}
+                                        sx={{
+                                          '& input': {
+                                            fontSize: '12px',
+                                            textAlign: 'center',
+                                            color: error ? '#d32f2f !important' : 'inherit',
+                                            fontWeight: error ? 700 : 'normal'
+                                          },
+                                          '& .MuiInput-underline:after': {
+                                            borderBottomColor: error ? '#d32f2f !important' : undefined
+                                          },
+                                          backgroundColor: error ? 'rgba(211, 47, 47, 0.15)' : 'transparent',
+                                          borderRadius: '4px',
+                                          p: error ? '2px 4px' : 0,
+                                          border: error ? '1.5px solid #d32f2f' : 'none'
+                                        }}
+                                      />
+                                    </Tooltip>
                                   )}
                                   // @ts-ignore
                                   renderTags={() => null}

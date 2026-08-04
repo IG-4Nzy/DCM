@@ -112,6 +112,22 @@ export const validateRoster = (
       });
     });
 
+    // Also include Leave column assignees
+    const leaveAssignees = rosterData[`${date}_Leave`]?.assignees || [];
+    leaveAssignees.forEach((username) => {
+      if (username) {
+        if (!userShifts[username]) {
+          userShifts[username] = [];
+        }
+        userShifts[username].push({
+          actualShift: 'Leave',
+          colShift: 'Leave',
+          rowName: 'Leave',
+          rIdx: 0
+        });
+      }
+    });
+
     return userShifts;
   };
 
@@ -243,27 +259,60 @@ export const validateRoster = (
     }
   });
 
-  // Default Prev Sunday Rule for Night Duty
-  if ((!validationRules || validationRules.length === 0) && weekDates.length > 0) {
+  // Unified Prev Sunday Rule (supports both dynamic validationRules and default Night Duty constraint)
+  if (weekDates.length > 0) {
     const monday = weekDates[0];
     const prevSunday = dayjs(monday).subtract(1, 'day').format('YYYY-MM-DD');
     const prevSundayUserShifts = getUserShiftsForDate(prevSunday);
+    const userShiftsMonday = getUserShiftsForDate(monday);
 
     Object.entries(prevSundayUserShifts).forEach(([username, sundayMappings]) => {
-      const sundayNightShifts = sundayMappings.filter(isNightDuty);
-      if (sundayNightShifts.length > 0) {
-        const mondayMappings = getUserShiftsForDate(monday)[username] || [];
-        const mondayRestrictedShifts = mondayMappings.filter(isRestrictedNextDayShift);
+      const mondayMappings = userShiftsMonday[username] || [];
+      if (mondayMappings.length === 0) return;
 
-        mondayRestrictedShifts.forEach((mondayS) => {
-          errors.push({
-            date: monday,
-            shift: mondayS.colShift,
-            username,
-            reason: `Cannot enter ${mondayS.rowName || mondayS.colShift} on Monday after being in night duty on Sunday of the previous week`,
+      sundayMappings.forEach(sundayS => {
+        if (validationRules && validationRules.length > 0) {
+          validationRules.forEach(rule => {
+            if (matchesShiftTarget(sundayS, rule.fromShift)) {
+              mondayMappings.forEach(mondayS => {
+                let isViolated = false;
+                if (rule.restrictedNextShifts && rule.restrictedNextShifts.length > 0) {
+                  if (rule.restrictedNextShifts.some(rTarget => matchesShiftTarget(mondayS, rTarget))) {
+                    isViolated = true;
+                  }
+                } else if (rule.allowedNextShifts && rule.allowedNextShifts.length > 0) {
+                  if (!rule.allowedNextShifts.some(aTarget => matchesShiftTarget(mondayS, aTarget))) {
+                    isViolated = true;
+                  }
+                }
+
+                if (isViolated) {
+                  errors.push({
+                    date: monday,
+                    shift: mondayS.colShift,
+                    username,
+                    reason: rule.description || `Cannot take ${mondayS.rowName || mondayS.colShift} on Monday after ${sundayS.rowName || sundayS.colShift} on Sunday`,
+                  });
+                }
+              });
+            }
           });
-        });
-      }
+        } else {
+          // Default Night Duty Constraint Logic (Fallback)
+          const sundayNightShifts = sundayMappings.filter(isNightDuty);
+          if (sundayNightShifts.length > 0) {
+            const mondayRestrictedShifts = mondayMappings.filter(isRestrictedNextDayShift);
+            mondayRestrictedShifts.forEach((mondayS) => {
+              errors.push({
+                date: monday,
+                shift: mondayS.colShift,
+                username,
+                reason: `Cannot enter ${mondayS.rowName || mondayS.colShift} on Monday after being in night duty on Sunday of the previous week`,
+              });
+            });
+          }
+        }
+      });
     });
   }
 

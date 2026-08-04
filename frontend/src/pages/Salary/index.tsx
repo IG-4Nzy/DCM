@@ -1324,6 +1324,7 @@ const Salary = () => {
             {`
               @page {
                 size: landscape;
+                margin: 0;
               }
               @media print {
                 body * {
@@ -1337,6 +1338,8 @@ const Salary = () => {
                   left: 0;
                   top: 0;
                   width: 100%;
+                  padding: 1.6cm !important;
+                  box-sizing: border-box;
                 }
                 .no-print {
                   display: none !important;
@@ -1346,7 +1349,7 @@ const Salary = () => {
           </style>
           
           <Box sx={{ p: 4, bgcolor: 'white', color: 'black' }}>
-            <Box sx={{ textAlign: 'center', mb: 4 }}>
+            <Box sx={{ textAlign: 'center', mb: 4, '& .MuiTypography-root': { whiteSpace: 'nowrap' } }}>
               <Typography variant="h5" fontWeight="bold">{globalCompanyName || 'Company Name Not Set'}</Typography>
               <Typography variant="subtitle1" sx={{ mt: 1 }}>PO Number: {globalPoNumber || 'N/A'}</Typography>
               <Typography variant="subtitle2" sx={{ mt: 1 }}>Salary Report: Individual Members</Typography>

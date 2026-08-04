@@ -61,6 +61,7 @@ const SalarySplitupModal: React.FC<SalarySplitupModalProps> = ({
           {`
             @page {
               size: landscape;
+              margin: 0;
             }
             @media print {
               body * {
@@ -74,6 +75,8 @@ const SalarySplitupModal: React.FC<SalarySplitupModalProps> = ({
                 left: 0;
                 top: 0;
                 width: 100%;
+                padding: 1.6cm !important;
+                box-sizing: border-box;
               }
               .no-print {
                 display: none !important;

@@ -3,6 +3,7 @@ import ClusterTypes from "./ClusterTypes";
 import Hypervisors from "./Hypervisors";
 import ServerModels from "./ServerModels";
 import GPUs from "./GPUs";
+import Datastores from "./Datastores";
 import RequestRoutings from "./RequestRoutings";
 import AttendancePeriodConfig from "./AttendancePeriodConfig";
 import BMSChecklistConfig from "./BMSChecklistConfig";
@@ -26,6 +27,7 @@ export const SERVER_MASTERS_CONFIGURATIONS = [
     { id: "hypervisors", label: "Hypervisors", value: "hypervisors" },
     { id: "serverModel", label: "Server Model", value: "serverModel" },
     { id: "gpus", label: "GPUs", value: "gpus" },
+    { id: "datastores", label: "Datastores", value: "datastores" },
     { id: "vcenterConfig", label: "vCenter Refresh", value: "vcenterConfig" },
 ]
 
@@ -68,6 +70,7 @@ export const CONFIG_TABS_PAGES = {
     hypervisors: Hypervisors,
     serverModel: ServerModels,
     gpus: GPUs,
+    datastores: Datastores,
     vcenterConfig: VCenterConfig,
     requestRoutings: RequestRoutings,
     attendancePeriod: AttendancePeriodConfig,

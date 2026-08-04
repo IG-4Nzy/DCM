@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Box, TextField, MenuItem, FormControl, InputLabel, Select, Checkbox, FormControlLabel } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, TextField, MenuItem, FormControl, InputLabel, Select, Checkbox, FormControlLabel, Autocomplete } from '@mui/material';
 import Button from '../../components/Button';
 import type { RequestData } from './model';
 import type { RootState, AppDispatch } from '../../store';
@@ -348,33 +348,57 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
               <>
                 {!editingRequest ? (
                   <>
-                    <FormControl fullWidth required>
-                      <InputLabel>Select VM</InputLabel>
-                      <Select
-                        value={details.vmId || ''}
-                        label="Select VM"
-                        onChange={(e) => {
-                          const selectedVm = vmsList.find(v => (v.id || v._id) === e.target.value);
+                    <Autocomplete
+                      options={vmsList}
+                      getOptionLabel={(vm: any) => {
+                        if (!vm) return '';
+                        if (typeof vm === 'string') return vm;
+                        const vmCode = vm.vmId ? `[${vm.vmId}] ` : '';
+                        const vmName = vm.applications || 'Unnamed VM';
+                        const vmIp = vm.ipAddress ? ` (${vm.ipAddress})` : '';
+                        return `${vmCode}${vmName}${vmIp}`;
+                      }}
+                      isOptionEqualToValue={(option: any, val: any) => {
+                        if (!option || !val) return false;
+                        const optionId = option.id || option._id;
+                        const valId = typeof val === 'object' ? (val.id || val._id) : val;
+                        return optionId === valId;
+                      }}
+                      value={vmsList.find(v => (v.id || v._id) === details.vmId) || null}
+                      onChange={(_, selectedVm: any) => {
+                        if (selectedVm) {
                           setDetails((prev: any) => ({
                             ...prev,
-                            vmId: e.target.value,
-                            vmName: selectedVm ? (selectedVm.applications || selectedVm.vmId || '') : '',
-                            osVersion: selectedVm ? (selectedVm.osAndExpiry || '') : '',
-                            ram: selectedVm ? (selectedVm.ram || '') : '',
-                            hdd: selectedVm ? (selectedVm.hdd || '') : '',
-                            cpu: selectedVm ? (selectedVm.cpu || '') : '',
-                            ip: selectedVm ? (selectedVm.ipAddress || '') : '',
+                            vmId: selectedVm.id || selectedVm._id,
+                            vmName: selectedVm.applications || selectedVm.vmId || '',
+                            osVersion: selectedVm.osAndExpiry || '',
+                            ram: selectedVm.ram || '',
+                            hdd: selectedVm.hdd || '',
+                            cpu: selectedVm.cpu || '',
+                            ip: selectedVm.ipAddress || '',
                           }));
-                        }}
-                        MenuProps={SELECT_MENU_PROPS}
-                      >
-                        {vmsList.map((vm: any) => (
-                          <MenuItem key={vm.id || vm._id} value={vm.id || vm._id}>
-                            {vm.vmId ? `[${vm.vmId}] ` : ''}{vm.applications || 'Unnamed VM'} {vm.ipAddress ? `(${vm.ipAddress})` : ''}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                        } else {
+                          setDetails((prev: any) => ({
+                            ...prev,
+                            vmId: '',
+                            vmName: '',
+                            osVersion: '',
+                            ram: '',
+                            hdd: '',
+                            cpu: '',
+                            ip: '',
+                          }));
+                        }
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Select VM"
+                          required
+                          placeholder="Type to search VM by name, ID, or IP..."
+                        />
+                      )}
+                    />
                     {details.vmId && (
                       <>
                         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>

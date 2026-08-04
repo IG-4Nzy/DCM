@@ -1,6 +1,5 @@
-from fastapi import APIRouter, HTTPException, Query, Depends, status
+from fastapi import APIRouter, HTTPException, Query, Depends, status, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timezone
 import re
@@ -9,6 +8,7 @@ from bson import ObjectId
 from database import db
 from models import DatastoreModel, CreateDatastoreModel, UpdateDatastoreModel, PaginatedDatastoresModel
 from auth_utils import get_current_user
+from history_helper import record_audit_log, compute_diff_details, get_client_ip
 
 router = APIRouter()
 collection = db.get_collection("datastores")
@@ -35,7 +35,10 @@ async def list_datastores(
             "$or": [
                 {"name": search_regex},
                 {"type": search_regex},
+                {"node": search_regex},
+                {"mountPath": search_regex},
                 {"capacity": search_regex},
+                {"remarks": search_regex},
                 {"createdBy": search_regex},
             ]
         }
@@ -59,7 +62,11 @@ async def list_datastores(
     return {"data": items, "total": total}
 
 @router.post("/", response_description="Create a datastore", response_model=DatastoreModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False)
-async def create_datastore(payload: CreateDatastoreModel, current_user: dict = Depends(get_current_user)):
+async def create_datastore(
+    request: Request,
+    payload: CreateDatastoreModel,
+    current_user: dict = Depends(get_current_user)
+):
     item_dict = payload.model_dump()
     item_dict["createdBy"] = current_user.get("sub", "")
     now = datetime.now(timezone.utc).isoformat()
@@ -72,10 +79,27 @@ async def create_datastore(payload: CreateDatastoreModel, current_user: dict = D
 
     new_item = await collection.insert_one(item_dict)
     created = await collection.find_one({"_id": new_item.inserted_id})
+
+    if created:
+        actor_name = current_user.get("sub") or current_user.get("username") or "Unknown"
+        actor_ip = get_client_ip(request)
+        await record_audit_log(
+            request=request,
+            current_user=current_user,
+            action=f"Create Datastore: {created.get('name')}",
+            details=f"Datastore '{created.get('name')}' (Type: {created.get('type', '--')}, Node: {created.get('node', '--')}) created by '{actor_name}' from IP {actor_ip}",
+            after_state=created
+        )
+
     return created
 
 @router.put("/{id}", response_description="Update a datastore", response_model=DatastoreModel, response_model_by_alias=False)
-async def update_datastore(id: str, payload: UpdateDatastoreModel, current_user: dict = Depends(get_current_user)):
+async def update_datastore(
+    id: str,
+    request: Request,
+    payload: UpdateDatastoreModel,
+    current_user: dict = Depends(get_current_user)
+):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -94,15 +118,46 @@ async def update_datastore(id: str, payload: UpdateDatastoreModel, current_user:
 
     await collection.update_one({"_id": ObjectId(id)}, {"$set": update_data})
     updated = await collection.find_one({"_id": ObjectId(id)})
+
+    if updated:
+        actor_name = current_user.get("sub") or current_user.get("username") or "Unknown"
+        actor_ip = get_client_ip(request)
+        diff_text = compute_diff_details(existing, updated)
+        await record_audit_log(
+            request=request,
+            current_user=current_user,
+            action=f"Update Datastore: {existing.get('name')}",
+            details=f"Updated fields for datastore '{existing.get('name')}': {diff_text} by '{actor_name}' from IP {actor_ip}",
+            before_state=existing,
+            after_state=updated
+        )
+
     return updated
 
 @router.delete("/{id}", response_description="Delete a datastore")
-async def delete_datastore(id: str, current_user: dict = Depends(get_current_user)):
+async def delete_datastore(
+    id: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
+    existing = await collection.find_one({"_id": ObjectId(id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Datastore {id} not found")
+
     delete_result = await collection.delete_one({"_id": ObjectId(id)})
     if delete_result.deleted_count == 1:
+        actor_name = current_user.get("sub") or current_user.get("username") or "Unknown"
+        actor_ip = get_client_ip(request)
+        await record_audit_log(
+            request=request,
+            current_user=current_user,
+            action=f"Delete Datastore: {existing.get('name')}",
+            details=f"Deleted datastore '{existing.get('name')}' (ID: {id}) by '{actor_name}' from IP {actor_ip}",
+            before_state=existing
+        )
         return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "Datastore deleted successfully"})
 
     raise HTTPException(status_code=404, detail=f"Datastore {id} not found")

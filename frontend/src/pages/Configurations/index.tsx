@@ -18,6 +18,7 @@ const Configurations = () => {
             case 'hypervisors':
             case 'serverModel':
             case 'gpus':
+            case 'datastores':
             case 'vcenterConfig':
             case 'attendancePeriod':
             case 'notificationSettings':

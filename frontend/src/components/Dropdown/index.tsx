@@ -62,14 +62,29 @@ const Dropdown: React.FC<DropdownProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = React.useState('');
 
+  // Ensure all selected values are present in options to prevent MUI out-of-range warnings
+  const effectiveOptions = React.useMemo(() => {
+    const opts = [...(options || [])];
+    const optionValues = new Set(opts.map(o => String(o.value)));
+    const displayVal = multiple ? (Array.isArray(value) ? value : []) : (value !== undefined && value !== null ? [value] : []);
+    
+    displayVal.forEach((v) => {
+      if (v !== '' && v !== null && v !== undefined && !optionValues.has(String(v))) {
+        opts.push({ label: String(v), value: v });
+        optionValues.add(String(v));
+      }
+    });
+    return opts;
+  }, [options, value, multiple]);
+
   const filteredOptions = React.useMemo(() => {
-    if (!searchable || !searchTerm) return options || [];
-    return (options || []).filter((opt) =>
+    if (!searchable || !searchTerm) return effectiveOptions;
+    return effectiveOptions.filter((opt) =>
       opt && opt.label
         ? String(opt.label).toLowerCase().includes(searchTerm.toLowerCase())
         : false
     );
-  }, [options, searchable, searchTerm]);
+  }, [effectiveOptions, searchable, searchTerm]);
 
   const handleChange = (event: SelectChangeEvent<any>) => {
     onChange(event.target.value);

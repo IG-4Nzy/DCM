@@ -1392,8 +1392,11 @@ class PaginatedPhysicalServersModel(BaseModel):
 class DatastoreModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     name: str = Field(...)
-    type: str = Field(...)
-    capacity: str = Field(...)
+    type: Optional[str] = None
+    capacity: Optional[str] = None
+    node: Optional[str] = None
+    mountPath: Optional[str] = None
+    remarks: Optional[str] = None
     createdBy: Optional[str] = None
     createdAt: Optional[str] = None
     updatedBy: Optional[str] = None
@@ -1406,13 +1409,19 @@ class DatastoreModel(BaseModel):
 
 class CreateDatastoreModel(BaseModel):
     name: str = Field(...)
-    type: str = Field(...)
-    capacity: str = Field(...)
+    type: Optional[str] = None
+    capacity: Optional[str] = None
+    node: Optional[str] = None
+    mountPath: Optional[str] = None
+    remarks: Optional[str] = None
 
 class UpdateDatastoreModel(BaseModel):
     name: Optional[str] = None
     type: Optional[str] = None
     capacity: Optional[str] = None
+    node: Optional[str] = None
+    mountPath: Optional[str] = None
+    remarks: Optional[str] = None
 
 class PaginatedDatastoresModel(BaseModel):
     data: List[DatastoreModel]
