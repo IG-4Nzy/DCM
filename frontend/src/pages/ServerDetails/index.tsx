@@ -23,11 +23,11 @@ const ServerDetails = () => {
 
     const hasRacksView = isSuperuser || hasPrivilege(PRIVILEGES.RACKS_VIEW) || hasViewAll || hasCreatePerm;
     const hasClusterView = isSuperuser || hasPrivilege(PRIVILEGES.CLUSTER_VIEW_TAB) || hasViewAll || hasCreatePerm;
-    const hasNodesView = isSuperuser || hasPrivilege(PRIVILEGES.NODES_VIEW) || hasViewAll || hasViewOwn || hasCreatePerm;
-    const hasVMView = isSuperuser || hasPrivilege(PRIVILEGES.VM_VIEW) || hasViewAll || hasViewOwn || hasCreatePerm;
-    const hasPhysicalServerView = isSuperuser || hasPrivilege(PRIVILEGES.PHYSICAL_SERVER_VIEW) || hasViewAll || hasCreatePerm;
-    const hasNetworkDevicesView = isSuperuser || hasPrivilege(PRIVILEGES.NETWORK_DEVICE_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_NETWORK_DEVICE) || hasViewAll || hasCreatePerm;
-    const hasStorageSystemsView = isSuperuser || hasPrivilege(PRIVILEGES.STORAGE_DEVICE_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_STORAGE_DEVICE) || hasViewAll || hasCreatePerm;
+    const hasNodesView = isSuperuser || hasPrivilege(PRIVILEGES.NODES_VIEW) || hasViewAll || hasViewOwn || hasCreatePerm || hasPrivilege(PRIVILEGES.UPDATE_NODE_RESTRICTED);
+    const hasVMView = isSuperuser || hasPrivilege(PRIVILEGES.VM_VIEW) || hasViewAll || hasViewOwn || hasCreatePerm || hasPrivilege(PRIVILEGES.UPDATE_VMS_RESTRICTED);
+    const hasPhysicalServerView = isSuperuser || hasPrivilege(PRIVILEGES.PHYSICAL_SERVER_VIEW) || hasViewAll || hasCreatePerm || hasPrivilege(PRIVILEGES.UPDATE_NODE_RESTRICTED);
+    const hasNetworkDevicesView = isSuperuser || hasPrivilege(PRIVILEGES.NETWORK_DEVICE_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_NETWORK_DEVICE) || hasViewAll || hasCreatePerm || hasPrivilege(PRIVILEGES.UPDATE_NETWORK_RESTRICTED);
+    const hasStorageSystemsView = isSuperuser || hasPrivilege(PRIVILEGES.STORAGE_DEVICE_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_STORAGE_DEVICE) || hasViewAll || hasCreatePerm || hasPrivilege(PRIVILEGES.UPDATE_STORAGE_RESTRICTED);
     const hasDatastoresView = isSuperuser || hasViewAll || hasCreatePerm;
 
     const tabs: TabItem[] = [];
