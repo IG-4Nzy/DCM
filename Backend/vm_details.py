@@ -88,7 +88,7 @@ async def sync_node_resources(node_name: str):
             }}
         )
 
-@router.get("/", response_description="List all VM details", response_model=PaginatedVMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details", "VM View", "Create Request", "Update Request", "View Request"]))])
+@router.get("/", response_description="List all VM details", response_model=PaginatedVMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details", "VM View", "Create Request", "Update Request", "View Request", "Update VMs (Restricted)"]))])
 async def list_items(
     clusterId: Optional[str] = Query(None, description="The ID of the cluster"),
     admin: Optional[str] = Query(None, description="Filter by admin username"),
@@ -108,7 +108,7 @@ async def list_items(
     and_conditions = []
     
     privs = current_user.get("privileges", [])
-    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs
+    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Update VMs (Restricted)" in privs
     
     # Conditions that match records with no admin assigned
     no_admin_conditions = [

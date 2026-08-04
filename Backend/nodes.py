@@ -70,7 +70,7 @@ async def compute_available_resources(node_doc: dict):
     
     return node_doc
 
-@router.get("/", response_description="List all nodes", response_model=PaginatedNodesModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details", "Nodes View", "Create Request", "Update Request", "View Request"]))])
+@router.get("/", response_description="List all nodes", response_model=PaginatedNodesModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details", "Nodes View", "Create Request", "Update Request", "View Request", "Update Node (Restricted)", "Update Storage (Restricted)", "Update Network Device (Restricted)"]))])
 async def list_items(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),
@@ -93,7 +93,7 @@ async def list_items(
     and_conditions = []
     
     privs = current_user.get("privileges", [])
-    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Racks View" in privs
+    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Racks View" in privs or "Update Node (Restricted)" in privs or "Update Storage (Restricted)" in privs or "Update Network Device (Restricted)" in privs
     
     # Conditions that match records with no admin assigned
     no_admin_conditions = [
