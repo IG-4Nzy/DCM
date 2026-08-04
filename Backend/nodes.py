@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
+from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response, Request
 from auth_utils import require_privilege, get_current_user, require_any_privilege
+from history_helper import log_entity_update
 from fastapi.responses import JSONResponse
 from typing import Optional, List
 import re
@@ -341,7 +342,7 @@ async def create_item(
     return await compute_available_resources(created)
 
 @router.put("/{id}", response_description="Update a node", response_model=NodeModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "Update Server Details", "Update Node (Restricted)", "Update Storage (Restricted)", "Update Network Device (Restricted)"]))])
-async def update_item(id: str, payload: UpdateNodeModel = Body(...), current_user: dict = Depends(get_current_user)):
+async def update_item(id: str, request: Request, payload: UpdateNodeModel = Body(...), current_user: dict = Depends(get_current_user)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -390,6 +391,12 @@ async def update_item(id: str, payload: UpdateNodeModel = Body(...), current_use
 
         # Sync name/ip changes to monitored_servers and monitoring_status collections
         if update_result.modified_count == 1:
+            is_storage = old_doc.get("isStorage", False)
+            is_appliance = old_doc.get("isAppliance", False)
+            is_physical = old_doc.get("isPhysicalServer", False)
+            entity_type = "storage_device" if is_storage else ("network_device" if is_appliance else ("physical_server" if is_physical else "node"))
+            node_display_name = old_doc.get("node") or old_doc.get("ip") or "Node"
+            await log_entity_update(request, current_user, entity_type, id, node_display_name, old_doc, item_dict)
             old_ip = old_doc.get("ip")
             old_name = old_doc.get("node")
             new_name = item_dict.get("node")

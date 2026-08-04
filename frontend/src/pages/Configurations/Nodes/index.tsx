@@ -17,7 +17,9 @@ import {
   MdDelete as DeleteIcon,
   MdMonitor as MonitorIcon,
   MdFilterList as FilterListIcon,
+  MdHistory as UpdateHistoryIcon,
 } from "react-icons/md";
+import InfrastructureUpdateHistoryModal from "../../../components/InfrastructureUpdateHistoryModal";
 import { FilterDrawer, FilterGroup } from "../../../components/FilterDrawer";
 import Dropdown from "../../../components/Dropdown";
 import Button from "../../../components/Button";
@@ -53,6 +55,23 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
   const [serverModelsList, setServerModelsList] = useState<string[]>([]);
   const [racksList, setRacksList] = useState<string[]>([]);
   const [monitoredIps, setMonitoredIps] = useState<Set<string>>(new Set());
+
+  const [isUpdateHistoryModalOpen, setIsUpdateHistoryModalOpen] = useState(false);
+  const [selectedUpdateHistoryItem, setSelectedUpdateHistoryItem] = useState<{ id: string; name: string; typeLabel: string } | null>(null);
+
+  const handleOpenUpdateHistory = (row: NodeData) => {
+    const isStorage = row.isStorage;
+    const isAppliance = row.isAppliance;
+    const isPhysical = row.isPhysicalServer;
+    const typeLabel = isStorage ? "Storage Device" : (isAppliance ? "Network Device" : (isPhysical ? "Physical Server" : "Node"));
+    
+    setSelectedUpdateHistoryItem({
+      id: row.id || row._id || '',
+      name: row.node || row.ip || 'Device',
+      typeLabel: typeLabel
+    });
+    setIsUpdateHistoryModalOpen(true);
+  };
 
   const fetchMonitoredIps = useCallback(async () => {
     try {
@@ -564,6 +583,19 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
               </IconButton>
             </Tooltip>
           )}
+          <Tooltip title="Update History">
+            <IconButton
+              size="small"
+              color="secondary"
+              sx={{ backgroundColor: "rgba(156, 39, 176, 0.04)" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenUpdateHistory(row);
+              }}
+            >
+              <UpdateHistoryIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           {hasDelete && (
             <Tooltip title="Delete">
               <IconButton
@@ -894,6 +926,14 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
               : usersMap[selectedViewItem.admin] || selectedViewItem.admin
             : undefined
         }
+      />
+
+      <InfrastructureUpdateHistoryModal
+        open={isUpdateHistoryModalOpen}
+        onClose={() => setIsUpdateHistoryModalOpen(false)}
+        entityId={selectedUpdateHistoryItem?.id || ''}
+        entityName={selectedUpdateHistoryItem?.name || ''}
+        entityTypeLabel={selectedUpdateHistoryItem?.typeLabel || 'Device'}
       />
     </Box>
   );

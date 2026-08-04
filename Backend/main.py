@@ -44,6 +44,7 @@ from notifications import router as notifications_router
 from periodic_activities import router as periodic_activities_router
 from announcements import router as announcements_router
 from phone_directory import router as phone_directory_router
+from infrastructure_history import router as infrastructure_history_router
 from routers.about import router as about_router
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -405,7 +406,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         method = request.method
         
-        if path.startswith("/uploads") or path.startswith("/static") or path == "/" or path == "/favicon.ico" or method == "GET" or "heartbeat" in path:
+        if path.startswith("/uploads") or path.startswith("/static") or path == "/" or path == "/favicon.ico" or method == "GET" or "heartbeat" in path or "notifications" in path or "logs" in path:
             return await call_next(request)
             
         parts = [p for p in path.split("/") if p]
@@ -581,6 +582,7 @@ app.include_router(notifications_router, tags=["notifications"], prefix="/api/no
 app.include_router(server_ping_monitoring_router, tags=["server_ping_monitoring"], prefix="/api/server-ping-monitoring")
 app.include_router(salary_router, tags=["salary"], prefix="/api/salary")
 app.include_router(about_router, tags=["about"], prefix="/api/about")
+app.include_router(infrastructure_history_router, tags=["infrastructure_history"], prefix="/api/infrastructure-history")
 
 # Mount the new split telemetry monitor endpoints under same prefix for backwards compatibility
 app.include_router(vcenter_monitor_router, tags=["vcenter_telemetry"], prefix="/api/vcenter-details")

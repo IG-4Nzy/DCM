@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
+from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response, Request
 from auth_utils import require_privilege, require_any_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import List, Optional
 from database import db
 from models import UserModel, CreateUserModel, UpdateUserModel, PaginatedUsersModel
 from bson import ObjectId
+from history_helper import record_audit_log, compute_diff_details, get_client_ip
 import bcrypt
 
 async def sync_department_head(username: str, department: Optional[str], is_dept_head: Optional[bool], old_username: Optional[str] = None):
@@ -193,7 +194,11 @@ async def list_users(
     return {"data": users, "total": total}
 
 @router.post("/", response_description="Create a new user", response_model=UserModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create User"))])
-async def create_user(user: CreateUserModel = Body(...)):
+async def create_user(
+    request: Request,
+    user: CreateUserModel = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
     user_dict = user.model_dump()
     is_dept_head = user_dict.pop("isDepartmentHead", None)
     
@@ -219,6 +224,17 @@ async def create_user(user: CreateUserModel = Body(...)):
     if created_user:
         created_user["isDepartmentHead"] = is_dept_head or False
         await populate_replacement_names(created_user)
+        
+        actor_name = current_user.get("sub") or current_user.get("username") or "Unknown"
+        actor_ip = get_client_ip(request)
+        target_name = f"{created_user.get('firstName', '')} {created_user.get('lastName', '')}".strip() or created_user.get("username")
+        await record_audit_log(
+            request=request,
+            current_user=current_user,
+            action=f"Create User: {created_user.get('username')}",
+            details=f"User '{created_user.get('username')}' ({target_name}) created in department '{created_user.get('department', '--')}' with role '{created_user.get('role', '--')}' by '{actor_name}' from IP {actor_ip}",
+            after_state=created_user
+        )
     return created_user
 
 @router.get("/{id}", response_description="Get a single user", response_model=UserModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["View All Users", "View Department Users"]))])
@@ -250,7 +266,12 @@ async def show_user(id: str, current_user: dict = Depends(get_current_user)):
     raise HTTPException(status_code=404, detail=f"User {id} not found")
 
 @router.put("/{id}", response_description="Update a user", response_model=UserModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update User"))])
-async def update_user(id: str, user: UpdateUserModel = Body(...)):
+async def update_user(
+    id: str,
+    request: Request,
+    user: UpdateUserModel = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -300,18 +321,48 @@ async def update_user(id: str, user: UpdateUserModel = Body(...)):
         is_head = await departments_collection.find_one({"departmentHead": updated_user.get("username")}) is not None
         updated_user["isDepartmentHead"] = is_head
         await populate_replacement_names(updated_user)
+
+        actor_name = current_user.get("sub") or current_user.get("username") or "Unknown"
+        actor_ip = get_client_ip(request)
+        diff_text = compute_diff_details(existing_user, updated_user)
+        await record_audit_log(
+            request=request,
+            current_user=current_user,
+            action=f"Update User: {existing_user.get('username')}",
+            details=f"Updated fields for '{existing_user.get('username')}': {diff_text} by '{actor_name}' from IP {actor_ip}",
+            before_state=existing_user,
+            after_state=updated_user
+        )
         return updated_user
 
     raise HTTPException(status_code=404, detail=f"User {id} not found")
 
 @router.delete("/{id}", response_description="Delete a user", dependencies=[Depends(require_privilege("Delete User"))])
-async def delete_user(id: str):
+async def delete_user(
+    id: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    existing_user = await users_collection.find_one({"_id": ObjectId(id)})
+    if not existing_user:
+        raise HTTPException(status_code=404, detail=f"User {id} not found")
 
     delete_result = await users_collection.delete_one({"_id": ObjectId(id)})
 
     if delete_result.deleted_count == 1:
+        actor_name = current_user.get("sub") or current_user.get("username") or "Unknown"
+        actor_ip = get_client_ip(request)
+        user_label = f"{existing_user.get('username')} ({existing_user.get('firstName', '')} {existing_user.get('lastName', '')})".strip()
+        await record_audit_log(
+            request=request,
+            current_user=current_user,
+            action=f"Delete User: {existing_user.get('username')}",
+            details=f"Deleted user '{user_label}' (Department: {existing_user.get('department', '--')}) by '{actor_name}' from IP {actor_ip}",
+            before_state=existing_user
+        )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     raise HTTPException(status_code=404, detail=f"User {id} not found")

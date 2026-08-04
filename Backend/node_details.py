@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, UploadFile, File, Response
+from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, UploadFile, File, Response, Request
 from auth_utils import require_privilege, require_any_privilege, get_current_user
+from history_helper import log_entity_update
 from fastapi.responses import JSONResponse
 from typing import Optional, List
 from database import db
@@ -281,9 +282,13 @@ async def create_item(
     return await compute_node_details_available_resources(created)
 
 @router.put("/{id}", response_description="Update node details", response_model=NodeDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "Update Server Details", "Update Node (Restricted)"]))])
-async def update_item(id: str, payload: UpdateNodeDetailsModel = Body(...), current_user: dict = Depends(get_current_user)):
+async def update_item(id: str, request: Request, payload: UpdateNodeDetailsModel = Body(...), current_user: dict = Depends(get_current_user)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    old_doc = await collection.find_one({"_id": ObjectId(id)})
+    if not old_doc:
+        raise HTTPException(status_code=404, detail=f"Node details {id} not found")
 
     item_dict = {k: v for k, v in payload.model_dump().items() if v is not None}
 
@@ -310,6 +315,8 @@ async def update_item(id: str, payload: UpdateNodeDetailsModel = Body(...), curr
         )
 
         if update_result.modified_count == 1:
+            display_name = old_doc.get("hostName") or old_doc.get("ipAddress") or "Node Detail"
+            await log_entity_update(request, current_user, "node", id, display_name, old_doc, item_dict)
             updated = await collection.find_one({"_id": ObjectId(id)})
             if updated is not None:
                 # Synchronize node into the global nodes collection

@@ -1,7 +1,8 @@
 import re
 import logging
-from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
+from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response, Request
 from auth_utils import require_privilege, require_any_privilege, get_current_user
+from history_helper import log_entity_update
 from fastapi.responses import JSONResponse
 from typing import Optional, List
 from database import db
@@ -746,7 +747,7 @@ async def import_vcenter_vms(
         raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
 
 @router.put("/{id}", response_description="Update VM details", response_model=VMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "Update Server Details", "Update VMs (Restricted)"]))])
-async def update_item(id: str, payload: UpdateVMDetailsModel = Body(...), current_user: dict = Depends(get_current_user)):
+async def update_item(id: str, request: Request, payload: UpdateVMDetailsModel = Body(...), current_user: dict = Depends(get_current_user)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -778,6 +779,8 @@ async def update_item(id: str, payload: UpdateVMDetailsModel = Body(...), curren
         )
 
         if update_result.modified_count == 1:
+            vm_display_name = old_vm.get("vmName") or old_vm.get("applications") or old_vm.get("vmId") or "VM"
+            await log_entity_update(request, current_user, "vm", id, vm_display_name, old_vm, item_dict)
             # Sync name/ip changes to monitored_servers and monitoring_status collections
             old_ip = old_vm.get("ipAddress")
             old_name = old_vm.get("vmName") or old_vm.get("vmId")

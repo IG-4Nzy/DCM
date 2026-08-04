@@ -2,7 +2,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dayjs from 'dayjs';
 import { Box, Tooltip, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
-import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdMonitor as MonitorIcon, MdCloudDownload as CloudDownloadIcon, MdFilterList as FilterListIcon, MdPowerSettingsNew as PowerIcon, MdWifi as NetworkOnIcon, MdWifiOff as NetworkOffIcon, MdWarning as WarningIcon, MdCameraAlt as SnapshotIcon } from 'react-icons/md';
+import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdMonitor as MonitorIcon, MdCloudDownload as CloudDownloadIcon, MdFilterList as FilterListIcon, MdPowerSettingsNew as PowerIcon, MdWifi as NetworkOnIcon, MdWifiOff as NetworkOffIcon, MdWarning as WarningIcon, MdCameraAlt as SnapshotIcon, MdHistory as UpdateHistoryIcon } from 'react-icons/md';
+import InfrastructureUpdateHistoryModal from '../../../components/InfrastructureUpdateHistoryModal';
 import { FilterDrawer, FilterGroup } from '../../../components/FilterDrawer';
 import Dropdown from '../../../components/Dropdown';
 import request from '../../../services/request';
@@ -41,6 +42,17 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
 
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [selectedHistoryVm, setSelectedHistoryVm] = useState<VMDetailsData | null>(null);
+
+    const [isUpdateHistoryModalOpen, setIsUpdateHistoryModalOpen] = useState(false);
+    const [selectedUpdateHistoryItem, setSelectedUpdateHistoryItem] = useState<{ id: string; name: string } | null>(null);
+
+    const handleOpenUpdateHistory = (row: VMDetailsData) => {
+        setSelectedUpdateHistoryItem({
+            id: row.id || row._id || '',
+            name: row.vmName || row.applications || row.vmId || 'VM'
+        });
+        setIsUpdateHistoryModalOpen(true);
+    };
 
     const { showToast } = useToast();
     const { confirm } = useConfirm();
@@ -756,6 +768,11 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                                                             </IconButton>
                                                         </Tooltip>
                                                     )}
+                                                    <Tooltip title="Update History">
+                                                        <IconButton size="small" color="secondary" className={styles.tableWrapper__actions__editBtn} onClick={() => handleOpenUpdateHistory(row)}>
+                                                            <UpdateHistoryIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
                                                     {hasDelete && (
                                                         <Tooltip title="Delete">
                                                             <IconButton size="small" color="error" className={styles.tableWrapper__actions__deleteBtn} onClick={() => handleDelete(row.id || '', row.ipAddress || '')}>
@@ -800,6 +817,14 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                 open={isHistoryModalOpen}
                 onClose={handleCloseHistoryModal}
                 vm={selectedHistoryVm}
+            />
+
+            <InfrastructureUpdateHistoryModal
+                open={isUpdateHistoryModalOpen}
+                onClose={() => setIsUpdateHistoryModalOpen(false)}
+                entityId={selectedUpdateHistoryItem?.id || ''}
+                entityName={selectedUpdateHistoryItem?.name || ''}
+                entityTypeLabel="VM"
             />
         </Box>
     );

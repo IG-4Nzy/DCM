@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response
+from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response, Request
 from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional
 from database import db
 from models import DepartmentModel, CreateDepartmentModel, UpdateDepartmentModel, PaginatedDepartmentsModel
 from bson import ObjectId
+from history_helper import record_audit_log, compute_diff_details, get_client_ip
 
 router = APIRouter()
 departments_collection = db.get_collection("departments")
@@ -55,7 +56,11 @@ async def list_departments(
     return {"data": departments, "total": total}
 
 @router.post("/", response_description="Create a new department", response_model=DepartmentModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_privilege("Create Department"))])
-async def create_department(department: CreateDepartmentModel = Body(...)):
+async def create_department(
+    request: Request,
+    department: CreateDepartmentModel = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
     department_dict = department.model_dump()
     
     # Check if department with same name exists
@@ -65,6 +70,17 @@ async def create_department(department: CreateDepartmentModel = Body(...)):
         
     new_department = await departments_collection.insert_one(department_dict)
     created_department = await departments_collection.find_one({"_id": new_department.inserted_id})
+    if created_department:
+        actor_name = current_user.get("sub") or current_user.get("username") or "Unknown"
+        actor_ip = get_client_ip(request)
+        dept_head_str = created_department.get("departmentHead") or "None"
+        await record_audit_log(
+            request=request,
+            current_user=current_user,
+            action=f"Create Department: {created_department.get('name')}",
+            details=f"Department '{created_department.get('name')}' created (Head: {dept_head_str}) by '{actor_name}' from IP {actor_ip}",
+            after_state=created_department
+        )
     return created_department
 
 @router.get("/{id}", response_description="Get a single department", response_model=DepartmentModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Department"))])
@@ -79,9 +95,18 @@ async def show_department(id: str):
     return department
 
 @router.put("/{id}", response_description="Update a department", response_model=DepartmentModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("Update Department"))])
-async def update_department(id: str, department: UpdateDepartmentModel = Body(...)):
+async def update_department(
+    id: str,
+    request: Request,
+    department: UpdateDepartmentModel = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    existing_department = await departments_collection.find_one({"_id": ObjectId(id)})
+    if not existing_department:
+        raise HTTPException(status_code=404, detail=f"Department {id} not found")
 
     department_dict = {k: v for k, v in department.model_dump().items() if v is not None}
 
@@ -98,23 +123,48 @@ async def update_department(id: str, department: UpdateDepartmentModel = Body(..
             {"_id": ObjectId(id)}, {"$set": department_dict}
         )
 
-        if update_result.modified_count == 1:
-            if (updated_department := await departments_collection.find_one({"_id": ObjectId(id)})) is not None:
-                return updated_department
-
-    if (existing_department := await departments_collection.find_one({"_id": ObjectId(id)})) is not None:
-        return existing_department
+    updated_department = await departments_collection.find_one({"_id": ObjectId(id)})
+    if updated_department:
+        actor_name = current_user.get("sub") or current_user.get("username") or "Unknown"
+        actor_ip = get_client_ip(request)
+        diff_text = compute_diff_details(existing_department, updated_department)
+        await record_audit_log(
+            request=request,
+            current_user=current_user,
+            action=f"Update Department: {existing_department.get('name')}",
+            details=f"Updated fields for department '{existing_department.get('name')}': {diff_text} by '{actor_name}' from IP {actor_ip}",
+            before_state=existing_department,
+            after_state=updated_department
+        )
+        return updated_department
 
     raise HTTPException(status_code=404, detail=f"Department {id} not found")
 
 @router.delete("/{id}", response_description="Delete a department", dependencies=[Depends(require_privilege("Delete Department"))])
-async def delete_department(id: str):
+async def delete_department(
+    id: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    existing_department = await departments_collection.find_one({"_id": ObjectId(id)})
+    if not existing_department:
+        raise HTTPException(status_code=404, detail=f"Department {id} not found")
 
     delete_result = await departments_collection.delete_one({"_id": ObjectId(id)})
 
     if delete_result.deleted_count == 1:
+        actor_name = current_user.get("sub") or current_user.get("username") or "Unknown"
+        actor_ip = get_client_ip(request)
+        await record_audit_log(
+            request=request,
+            current_user=current_user,
+            action=f"Delete Department: {existing_department.get('name')}",
+            details=f"Deleted department '{existing_department.get('name')}' (ID: {id}) by '{actor_name}' from IP {actor_ip}",
+            before_state=existing_department
+        )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     raise HTTPException(status_code=404, detail=f"Department {id} not found")

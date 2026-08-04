@@ -16,7 +16,8 @@ import {
   Divider, 
   CircularProgress,
   ToggleButton,
-  ToggleButtonGroup
+  ToggleButtonGroup,
+  Button
 } from '@mui/material';
 import { 
   MdSearch as SearchIcon, 
@@ -30,9 +31,11 @@ import {
   MdOutlineCalendarToday as DateIcon,
   MdPerson as PersonIcon,
   MdBookmarkBorder as TagIcon,
-  MdInfoOutline as InfoIcon
+  MdInfoOutline as InfoIcon,
+  MdHistory as HistoryIcon
 } from 'react-icons/md';
 import request from '../../services/request';
+import InfrastructureUpdateHistoryModal from '../../components/InfrastructureUpdateHistoryModal';
 
 interface SearchResultItem {
   type: 'node' | 'vm' | 'cluster' | 'rack' | 'physical_server' | 'inventory';
@@ -119,6 +122,18 @@ const Search: React.FC = () => {
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<SearchResultItem | null>(null);
+
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<{ id: string; name: string; typeLabel: string } | null>(null);
+
+  const handleOpenHistory = (item: SearchResultItem) => {
+    setHistoryTarget({
+      id: item.id,
+      name: item.name,
+      typeLabel: getChipLabel(item.type)
+    });
+    setIsHistoryOpen(true);
+  };
 
   // Debounce the search query
   useEffect(() => {
@@ -479,6 +494,16 @@ const Search: React.FC = () => {
                     </Typography>
                   )}
                 </Box>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  size="small"
+                  startIcon={<HistoryIcon />}
+                  onClick={() => handleOpenHistory(selectedItem)}
+                  sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600, mr: 1 }}
+                >
+                  Update History
+                </Button>
                 <Chip 
                   label={getChipLabel(selectedItem.type)}
                   color={getChipColor(selectedItem.type)}
@@ -1030,6 +1055,14 @@ const Search: React.FC = () => {
           )}
         </Paper>
       </Box>
+
+      <InfrastructureUpdateHistoryModal
+        open={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        entityId={historyTarget?.id || ''}
+        entityName={historyTarget?.name || ''}
+        entityTypeLabel={historyTarget?.typeLabel || 'Item'}
+      />
     </Box>
   );
 };
