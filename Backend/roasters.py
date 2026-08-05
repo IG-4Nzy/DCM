@@ -3,13 +3,45 @@ from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional, List
 from database import db, get_local_now
-from models import RoasterModel, CreateRoasterModel, UpdateRoasterModel, PaginatedRoastersModel, RoasterStatusModel, CreateRoasterStatusModel
+from models import RoasterModel, CreateRoasterModel, UpdateRoasterModel, PaginatedRoastersModel, RoasterStatusModel, CreateRoasterStatusModel, RoleRosterMappingModel, CreateRoleRosterMappingModel
 from bson import ObjectId
 from datetime import datetime, timezone, date, timedelta
 
 router = APIRouter()
 roasters_collection = db.get_collection("roasters")
 roaster_status_collection = db.get_collection("roaster_status")
+role_roster_mappings_collection = db.get_collection("role_roster_mappings")
+
+async def get_mapped_department(current_user: dict) -> Optional[str]:
+    is_superuser = current_user.get("isSuperuser", False)
+    if is_superuser:
+        return None
+    
+    role_ids = current_user.get("roleIds", [])
+    if isinstance(role_ids, str):
+        role_ids = [role_ids]
+    if not role_ids:
+        return None
+        
+    role_names = []
+    roles_col = db.get_collection("roles")
+    for rid in role_ids:
+        if ObjectId.is_valid(rid):
+            r_doc = await roles_col.find_one({"_id": ObjectId(rid)})
+            if r_doc:
+                role_names.append(r_doc.get("name"))
+        else:
+            role_names.append(rid)
+
+    mapping = await role_roster_mappings_collection.find_one({
+        "$or": [
+            {"roleId": {"$in": role_ids}},
+            {"roleName": {"$in": role_names}}
+        ]
+    })
+    if mapping:
+        return mapping.get("departmentName")
+    return None
 
 @router.get("/status", response_description="Get roster status", response_model=RoasterStatusModel, response_model_by_alias=False)
 async def get_roaster_status(
@@ -17,6 +49,10 @@ async def get_roaster_status(
     department: str = Query(...),
     current_user: dict = Depends(get_current_user)
 ):
+    mapped_dept = await get_mapped_department(current_user)
+    if mapped_dept:
+        department = mapped_dept
+
     dept_doc = await db.get_collection("departments").find_one({
         "$or": [
             {"name": department},
@@ -128,6 +164,10 @@ async def list_roasters(
     pagination: bool = Query(True),
     current_user: dict = Depends(get_current_user)
 ):
+    mapped_dept = await get_mapped_department(current_user)
+    if mapped_dept:
+        department = mapped_dept
+
     is_superuser = current_user.get("isSuperuser", False)
     privileges = current_user.get("privileges", [])
 
@@ -209,6 +249,10 @@ async def get_roaster_history(
     limit: int = Query(100, ge=1),
     current_user: dict = Depends(get_current_user)
 ):
+    mapped_dept = await get_mapped_department(current_user)
+    if mapped_dept:
+        department = mapped_dept
+
     is_superuser = current_user.get("isSuperuser", False)
     privileges = current_user.get("privileges", [])
     if not is_superuser and "View Roaster" not in privileges and "View All Roaster" not in privileges:
@@ -604,6 +648,10 @@ async def get_duty_summary(
     date_str: Optional[str] = Query(None, alias="date"),
     current_user: dict = Depends(get_current_user)
 ):
+    mapped_dept = await get_mapped_department(current_user)
+    if mapped_dept:
+        department = mapped_dept
+
     is_superuser = current_user.get("isSuperuser", False)
     privileges = current_user.get("privileges", [])
     if not is_superuser and "View Roaster" not in privileges and "View All Roaster" not in privileges:
@@ -822,5 +870,33 @@ async def save_roaster_splitup(
         upsert=True
     )
     return {"status": "success"}
+
+@router.get("/role-mappings", response_description="List role roster mappings", response_model=List[RoleRosterMappingModel], response_model_by_alias=False)
+async def list_role_mappings(current_user: dict = Depends(get_current_user)):
+    cursor = role_roster_mappings_collection.find()
+    return await cursor.to_list(length=None)
+
+@router.post("/role-mappings", response_description="Create or update role roster mapping", response_model=RoleRosterMappingModel, response_model_by_alias=False)
+async def create_or_update_role_mapping(
+    payload: CreateRoleRosterMappingModel = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    mapping_dict = payload.model_dump()
+    await role_roster_mappings_collection.update_one(
+        {"roleId": payload.roleId},
+        {"$set": mapping_dict},
+        upsert=True
+    )
+    created = await role_roster_mappings_collection.find_one({"roleId": payload.roleId})
+    return created
+
+@router.delete("/role-mappings/{id}", response_description="Delete role roster mapping")
+async def delete_role_mapping(id: str, current_user: dict = Depends(get_current_user)):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    result = await role_roster_mappings_collection.delete_one({"_id": ObjectId(id)})
+    if result.deleted_count == 1:
+        return {"status": "deleted"}
+    raise HTTPException(status_code=404, detail="Mapping not found")
 
 

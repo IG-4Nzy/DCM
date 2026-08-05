@@ -1426,3 +1426,21 @@ class UpdateDatastoreModel(BaseModel):
 class PaginatedDatastoresModel(BaseModel):
     data: List[DatastoreModel]
     total: int
+
+class RoleRosterMappingModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    roleId: str
+    roleName: str
+    departmentId: str
+    departmentName: str
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateRoleRosterMappingModel(BaseModel):
+    roleId: str
+    roleName: str
+    departmentId: str
+    departmentName: str

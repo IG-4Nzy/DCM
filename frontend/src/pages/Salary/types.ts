@@ -11,6 +11,7 @@ export type Template = {
   activities: Activity[];
   allottedAmount?: number | string;
   maxStaffs?: number | string;
+  initialConsumedUnits?: number | string;
 };
 
 export type Member = {

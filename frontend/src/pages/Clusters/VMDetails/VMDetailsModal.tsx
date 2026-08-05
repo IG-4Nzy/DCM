@@ -74,6 +74,15 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         ]
         : filteredUserOptions;
 
+    const restrictedAdminOptions = useMemo(() => {
+        const currentUserName = currentUser ? (`${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.username) : username;
+        const currentUserId = currentUser?._id || currentUser?.id || username;
+        return [
+            { label: 'Unassigned', value: 'unassigned' },
+            { label: currentUserName, value: currentUserId }
+        ];
+    }, [currentUser, username]);
+
     useEffect(() => {
         if (open) {
             const activeClusterId = editingItem ? editingItem.clusterId : (formData.clusterId || clusterId);
@@ -179,11 +188,17 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     setOtherAdminName('');
                 }
 
-                const finalAdminIds = updatedAdminList.map(adVal => {
+                let finalAdminIds = updatedAdminList.map(adVal => {
                     if (adVal === 'Other') return adVal;
                     const foundUser = users.find(u => String(u.username) === String(adVal) || String(u._id) === String(adVal) || String(u.id) === String(adVal));
                     return foundUser ? (foundUser.id || foundUser._id) : adVal;
                 });
+
+                if (isRestrictedAdmin) {
+                    const currentUserId = currentUser?._id || currentUser?.id || username;
+                    const hasCurrentUser = finalAdminIds.some(id => id === currentUserId);
+                    finalAdminIds = hasCurrentUser ? [currentUserId] : ['unassigned'];
+                }
 
                 setFormData(prev => ({
                     ...prev,
@@ -194,7 +209,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                 setResolvedAdmins(true);
             }
         }
-    }, [open, editingItem, users, resolvedAdmins]);
+    }, [open, editingItem, users, resolvedAdmins, isRestrictedAdmin, currentUser, username]);
 
     const handleChange = (field: keyof CreateVMDetailsPayload, value: any) => {
         setFormData(prev => {
@@ -208,7 +223,17 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                 }
             }
             if (field === 'admin') {
-                const selectedIds = Array.isArray(value) ? value : [value];
+                let selectedIds = Array.isArray(value) ? value : [value];
+                if (isRestrictedAdmin) {
+                    const currentUserId = currentUser?._id || currentUser?.id || username;
+                    if (selectedIds.includes('unassigned')) {
+                        selectedIds = ['unassigned'];
+                    } else if (selectedIds.length === 0) {
+                        selectedIds = ['unassigned'];
+                    } else {
+                        selectedIds = selectedIds.filter(id => id === currentUserId);
+                    }
+                }
                 const selectedUsers = users.filter(u => selectedIds.includes(u._id || u.id));
                 const names = selectedUsers.map(u => [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || u.username);
                 if (selectedIds.includes('Other') && otherAdminName.trim()) {
@@ -216,6 +241,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                 }
                 next.adminName = names.join(', ');
                 next.adminContact = selectedUsers.map(u => u.mobile || u.phoneNumber || '').filter(Boolean).join(', ');
+                next.admin = selectedIds;
             }
             return next;
         });
@@ -291,6 +317,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         if (currentAdmin.includes('Other')) {
             const withoutOther = currentAdmin.filter(a => a !== 'Other');
             currentAdmin = otherAdminName.trim() ? [...withoutOther, otherAdminName.trim()] : withoutOther;
+        }
+        if (currentAdmin.includes('unassigned')) {
+            currentAdmin = currentAdmin.filter(a => a !== 'unassigned');
         }
 
         if (editingItem) {
@@ -501,10 +530,10 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         searchable
                         clearable
                         multiple
-                        disabled={isRestrictedAdmin}
+                        disabled={!isFullAdmin && !isRestrictedAdmin}
                         value={formData.admin} 
                         onChange={(val) => handleChange('admin', val)} 
-                        options={adminOptions}
+                        options={isRestrictedAdmin ? restrictedAdminOptions : adminOptions}
                     />
                     {Array.isArray(formData.admin) && formData.admin.includes('Other') && (
                         <TextField 

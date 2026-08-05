@@ -338,11 +338,14 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
     const adminOptions = hasViewAll
         ? [
             { label: 'All Admins', value: '' },
+            { label: 'My & Unassigned', value: 'my_unassigned' },
             { label: 'Unassigned', value: 'unassigned' },
             { label: 'Other', value: 'other' },
             ...filteredAdmins
         ]
         : [
+            { label: 'All My & Unassigned', value: '' },
+            { label: 'My & Unassigned', value: 'my_unassigned' },
             { label: 'Unassigned', value: 'unassigned' },
             ...filteredAdmins
         ];

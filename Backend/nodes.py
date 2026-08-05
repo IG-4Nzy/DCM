@@ -91,10 +91,41 @@ async def list_items(
     networkType: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
+    if not isinstance(admin, str):
+        admin = None
+    if not isinstance(clusterId, str):
+        clusterId = None
+    if not isinstance(serverModel, str):
+        serverModel = None
+    if not isinstance(rack, str):
+        rack = None
+    if not isinstance(os, str):
+        os = None
+    if not isinstance(custodian, str):
+        custodian = None
+    if not isinstance(gpu, str):
+        gpu = None
+    if not isinstance(nodeTypeFilter, str):
+        nodeTypeFilter = None
+    if not isinstance(networkType, str):
+        networkType = None
+    if not isinstance(sortBy, str):
+        sortBy = None
+    if not isinstance(sort_by, str):
+        sort_by = None
+    if not isinstance(order, str):
+        order = "asc"
+    if not isinstance(skip, int):
+        skip = 0
+    if not isinstance(limit, int):
+        limit = 10
+    if not isinstance(pagination, bool):
+        pagination = True
+
     and_conditions = []
     
     privs = current_user.get("privileges", [])
-    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Racks View" in privs or "Update Node (Restricted)" in privs or "Update Storage (Restricted)" in privs or "Update Network Device (Restricted)" in privs
+    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs
     
     # Conditions that match records with no admin assigned
     no_admin_conditions = [
@@ -112,59 +143,64 @@ async def list_items(
     if target_user_id:
         user_admin_identifiers.append(target_user_id)
 
-    if not can_view_all:
-        if admin:
-            if admin.lower() == "unassigned":
-                and_conditions.append({"$or": no_admin_conditions})
+    known_ids = set()
+    if admin and admin.lower() == "other":
+        users_col_adm = db.get_collection("users")
+        all_users = await users_col_adm.find({}, {"_id": 1, "username": 1}).to_list(length=None)
+        for u in all_users:
+            known_ids.add(str(u["_id"]))
+            if u.get("username"):
+                known_ids.add(u["username"])
+
+    admin_vals = set()
+    if admin and admin.lower() not in ("unassigned", "assigned", "my_unassigned", "other"):
+        users_col_adm = db.get_collection("users")
+        adm_doc = await users_col_adm.find_one({"username": admin})
+        if not adm_doc and ObjectId.is_valid(admin):
+            adm_doc = await users_col_adm.find_one({"_id": ObjectId(admin)})
+        admin_vals.add(admin)
+        if adm_doc:
+            admin_vals.add(str(adm_doc["_id"]))
+            if adm_doc.get("username"):
+                admin_vals.add(adm_doc["username"])
+
+    is_superuser = current_user.get("isSuperuser", False)
+    has_appliance_all = is_superuser or "View All Server Details" in privs or "View All Network Device" in privs
+    has_storage_all = is_superuser or "View All Server Details" in privs or "View All Storage Device" in privs
+    has_node_all = is_superuser or "View All Server Details" in privs
+    has_physical_all = is_superuser or "View All Server Details" in privs
+
+    def get_category_admin_cond(allow_all: bool) -> dict:
+        if allow_all:
+            if not admin:
+                return {}
+            elif admin.lower() == "unassigned":
+                return {"$or": no_admin_conditions}
             elif admin.lower() == "assigned":
-                and_conditions.append({"admin": {"$in": user_admin_identifiers}})
-            else:
-                # Restrict to current user's nodes or unassigned
-                and_conditions.append({
-                    "$or": [
-                        {"admin": {"$in": user_admin_identifiers}},
-                        *no_admin_conditions
-                    ]
-                })
-        else:
-            and_conditions.append({
-                "$or": [
-                    {"admin": {"$in": user_admin_identifiers}},
-                    *no_admin_conditions
-                ]
-            })
-    else:
-        if admin:
-            if admin.lower() == "unassigned":
-                and_conditions.append({"$or": no_admin_conditions})
-            elif admin.lower() == "assigned":
-                and_conditions.append({"admin": {"$in": user_admin_identifiers}})
+                return {"admin": {"$in": user_admin_identifiers}}
+            elif admin.lower() == "my_unassigned":
+                return {"$or": [{"admin": {"$in": user_admin_identifiers}}, *no_admin_conditions]}
             elif admin.lower() == "other":
-                users_col_adm = db.get_collection("users")
-                all_users = await users_col_adm.find({}, {"_id": 1, "username": 1}).to_list(length=None)
-                known_ids = set()
-                for u in all_users:
-                    known_ids.add(str(u["_id"]))
-                    if u.get("username"):
-                        known_ids.add(u["username"])
-                and_conditions.append({
+                return {
                     "$and": [
                         {"admin": {"$exists": True, "$ne": None, "$ne": "", "$ne": []}},
                         {"admin": {"$nin": list(known_ids)}}
                     ]
-                })
+                }
             else:
-                users_col_adm = db.get_collection("users")
-                adm_doc = await users_col_adm.find_one({"username": admin})
-                if not adm_doc and ObjectId.is_valid(admin):
-                    adm_doc = await users_col_adm.find_one({"_id": ObjectId(admin)})
-                admin_vals = set()
-                admin_vals.add(admin)
-                if adm_doc:
-                    admin_vals.add(str(adm_doc["_id"]))
-                    if adm_doc.get("username"):
-                        admin_vals.add(adm_doc["username"])
-                and_conditions.append({"admin": {"$in": list(admin_vals)}})
+                return {"admin": {"$in": list(admin_vals)}}
+        else:
+            if not admin:
+                return {"admin": {"$in": user_admin_identifiers}}
+            elif admin.lower() == "unassigned":
+                return {"$or": no_admin_conditions}
+            elif admin.lower() == "assigned":
+                return {"admin": {"$in": user_admin_identifiers}}
+            elif admin.lower() == "my_unassigned":
+                return {"$or": [{"admin": {"$in": user_admin_identifiers}}, *no_admin_conditions]}
+            else:
+                return {"admin": {"$in": user_admin_identifiers}}
+
 
     if os and os.strip():
         and_conditions.append({"os": {"$regex": re.escape(os.strip()), "$options": "i"}})
@@ -197,54 +233,47 @@ async def list_items(
         else:
             and_conditions.append({"clusterId": {"$in": cluster_ids_to_match}})
     
-    has_appliance_priv = current_user.get("isSuperuser", False) or "View All Server Details" in privs
-    if not has_appliance_priv:
-        target_username = current_user.get("sub")
-        users_col = db.get_collection("users")
-        user_doc = await users_col.find_one({"username": target_username})
-        target_user_id = str(user_doc["_id"]) if user_doc else None
-        admins = [target_username]
-        if target_user_id:
-            admins.append(target_user_id)
-        and_conditions.append({
-            "$or": [
-                {"isAppliance": {"$ne": True}},
-                {"$and": [
-                    {"isAppliance": True},
-                    {"admin": {"$in": admins}}
-                ]}
-            ]
-        })
-
     if nodeTypeFilter:
         if nodeTypeFilter.lower() == "appliance":
-            and_conditions.append({"isAppliance": True})
-            has_appliance_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "View All Network Device" in privs
-            if not has_appliance_all:
-                target_username = current_user.get("sub")
-                users_col = db.get_collection("users")
-                user_doc = await users_col.find_one({"username": target_username})
-                target_user_id = str(user_doc["_id"]) if user_doc else None
-                admins = [target_username]
-                if target_user_id:
-                    admins.append(target_user_id)
-                and_conditions.append({"admin": {"$in": admins}})
+            and_conditions.append({"isAppliance": True, **get_category_admin_cond(has_appliance_all)})
         elif nodeTypeFilter.lower() == "storage":
-            and_conditions.append({"isStorage": True})
-            has_storage_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "View All Storage Device" in privs
-            if not has_storage_all:
-                target_username = current_user.get("sub")
-                users_col = db.get_collection("users")
-                user_doc = await users_col.find_one({"username": target_username})
-                target_user_id = str(user_doc["_id"]) if user_doc else None
-                admins = [target_username]
-                if target_user_id:
-                    admins.append(target_user_id)
-                and_conditions.append({"admin": {"$in": admins}})
+            and_conditions.append({"isStorage": True, **get_category_admin_cond(has_storage_all)})
         elif nodeTypeFilter.lower() == "physical":
-            and_conditions.append({"isPhysical": True})
+            and_conditions.append({"isPhysical": True, **get_category_admin_cond(has_physical_all)})
         elif nodeTypeFilter.lower() == "node":
-            and_conditions.append({"isAppliance": {"$ne": True}, "isStorage": {"$ne": True}, "isPhysical": {"$ne": True}})
+            and_conditions.append({
+                "isAppliance": {"$ne": True},
+                "isStorage": {"$ne": True},
+                "isPhysical": {"$ne": True},
+                **get_category_admin_cond(has_node_all)
+            })
+    else:
+        # All Devices
+        app_cond = {"isAppliance": True}
+        app_admin = get_category_admin_cond(has_appliance_all)
+        if app_admin:
+            app_cond.update(app_admin)
+
+        store_cond = {"isStorage": True}
+        store_admin = get_category_admin_cond(has_storage_all)
+        if store_admin:
+            store_cond.update(store_admin)
+
+        other_cond = {
+            "isAppliance": {"$ne": True},
+            "isStorage": {"$ne": True}
+        }
+        other_admin = get_category_admin_cond(has_node_all)
+        if other_admin:
+            other_cond.update(other_admin)
+
+        and_conditions.append({
+            "$or": [
+                app_cond,
+                store_cond,
+                other_cond
+            ]
+        })
 
     if serverModel:
         and_conditions.append({"serverModel": serverModel})
@@ -365,8 +394,25 @@ async def update_item(id: str, request: Request, payload: UpdateNodeModel = Body
         has_net_res = "Update Network Device (Restricted)" in user_privileges
 
         if (is_storage and has_storage_res) or (is_appliance and has_net_res) or (not is_storage and not is_appliance and has_node_res):
-            allowed_keys = {"node", "ip", "os", "networkType", "totalRam", "totalHardisk", "totalCpu", "gpu", "remarks"}
+            allowed_keys = {"node", "ip", "os", "networkType", "totalRam", "totalHardisk", "totalCpu", "gpu", "remarks", "admin"}
             item_dict = {k: v for k, v in item_dict.items() if k in allowed_keys}
+            if "admin" in item_dict:
+                target_username = current_user.get("sub")
+                users_col = db.get_collection("users")
+                user_doc = await users_col.find_one({"username": target_username})
+                allowed_admin_vals = {target_username}
+                if user_doc:
+                    allowed_admin_vals.add(str(user_doc["_id"]))
+                    if user_doc.get("username"):
+                        allowed_admin_vals.add(user_doc["username"])
+
+                new_admins = item_dict["admin"]
+                if new_admins:
+                    if isinstance(new_admins, str):
+                        new_admins = [new_admins]
+                    for ad in new_admins:
+                        if ad not in allowed_admin_vals:
+                            raise HTTPException(status_code=403, detail="Restricted admins can only assign themselves or leave the admin field unassigned.")
 
     if len(item_dict) >= 1:
         if "ip" in item_dict and item_dict["ip"]:

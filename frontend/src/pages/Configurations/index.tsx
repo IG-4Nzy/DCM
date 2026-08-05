@@ -21,6 +21,7 @@ const Configurations = () => {
             case 'datastores':
             case 'vcenterConfig':
             case 'attendancePeriod':
+            case 'rosterRoleMapping':
             case 'notificationSettings':
                 return hasPrivilege(PRIVILEGES.CONFIGURATION_VIEW);
             case 'requestRoutings':

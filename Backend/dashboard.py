@@ -41,14 +41,54 @@ async def get_dashboard_summary(
     
     active_dept_doc = await depts_col.find_one({"_id": ObjectId(active_dept)}) if ObjectId.is_valid(active_dept) else None
     active_dept_name = active_dept_doc["name"] if active_dept_doc else active_dept
-    
+
+    # Resolve role-roster mapping for current user to restrict roster rendering
+    mapped_department_name = None
+    if not is_superuser:
+        role_ids = current_user.get("roleIds", [])
+        if isinstance(role_ids, str):
+            role_ids = [role_ids]
+        role_names = []
+        roles_col = db.get_collection("roles")
+        for rid in role_ids:
+            if ObjectId.is_valid(rid):
+                r_doc = await roles_col.find_one({"_id": ObjectId(rid)})
+                if r_doc:
+                    role_names.append(r_doc.get("name"))
+            else:
+                role_names.append(rid)
+
+        # Match against either roleId or roleName
+        mapped_depts_cursor = db.get_collection("role_roster_mappings").find({
+            "$or": [
+                {"roleId": {"$in": role_ids}},
+                {"roleName": {"$in": role_names}}
+            ]
+        })
+        mapped_depts = await mapped_depts_cursor.to_list(length=None)
+        if mapped_depts:
+            mapped_department_name = mapped_depts[0].get("departmentName")
+
+    # If mapped department name exists, use it for roster rendering
+    roster_dept = mapped_department_name if mapped_department_name else active_dept_name
+    roster_dept_match = [roster_dept]
+    if roster_dept:
+        dept_doc = await depts_col.find_one({
+            "$or": [
+                {"name": roster_dept},
+                {"_id": ObjectId(roster_dept) if ObjectId.is_valid(roster_dept) else None}
+            ]
+        })
+        if dept_doc:
+            roster_dept_match = [str(dept_doc["_id"]), dept_doc.get("name", "")]
+
     # Reconcile roster leaves for past dates in this department
     await reconcile_roster_leaves(active_dept, get_local_now())
     
     # 2. Fetch roaster shifts for today
     roaster_query = {"date": date}
     if not is_superuser:
-        roaster_query["department"] = active_dept
+        roaster_query["department"] = {"$in": roster_dept_match}
         
     roasters_cursor = roasters_col.find(roaster_query)
     roasters_list = await roasters_cursor.to_list(length=100)
@@ -88,7 +128,7 @@ async def get_dashboard_summary(
     except Exception:
         week_start_str = date
         
-    status_doc = await roaster_status_col.find_one({"weekStartDate": week_start_str, "department": active_dept})
+    status_doc = await roaster_status_col.find_one({"weekStartDate": week_start_str, "department": {"$in": roster_dept_match}})
     roaster_status = status_doc.get("status", "Pending") if status_doc else "Pending"
         
     # 3. Check checklists status for today (BMS, Morning, and Cluster)
@@ -125,7 +165,7 @@ async def get_dashboard_summary(
             
             next_week_roster = await roasters_col.find_one({
                 "date": {"$gte": next_week_start_str, "$lte": next_week_end_str},
-                "department": active_dept
+                "department": {"$in": roster_dept_match}
             })
             if not next_week_roster:
                 show_roaster_reminder = True
@@ -447,6 +487,7 @@ async def get_dashboard_summary(
         "isDepartmentHead": is_dept_head,
         "userDepartment": active_dept,
         "userDepartmentName": active_dept_name,
+        "rosterDepartment": roster_dept_match,
         "shiftConfig": shift_config,
         "todayAttendance": enriched_attendance,
         "periodicActivities": alert_activities,

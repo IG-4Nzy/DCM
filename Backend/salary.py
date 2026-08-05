@@ -18,6 +18,7 @@ class TemplateModel(BaseModel):
     activities: List[ActivityModel] = []
     allottedAmount: Optional[Union[float, str]] = 0
     maxStaffs: Optional[Union[int, str]] = 0
+    initialConsumedUnits: Optional[Union[float, str]] = 0
 
 class MemberModel(BaseModel):
     id: str

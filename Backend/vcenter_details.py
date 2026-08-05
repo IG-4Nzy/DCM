@@ -122,7 +122,10 @@ async def refresh_all_vcenters():
     }
 
 @router.post("/{id}/refresh", response_description="Trigger manual telemetry refresh for a specific vCenter")
-async def refresh_vcenter_by_id(id: str):
+async def refresh_vcenter_by_id(
+    id: str,
+    current_user: dict = Depends(require_any_privilege(["View Server Monitoring", "view_own_vcenter_vm_monitoring", "View Own vCenter VM Monitoring"]))
+):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
@@ -143,6 +146,15 @@ async def refresh_vcenter_by_id(id: str):
     snapshot = await snap_col.find_one({"vcenterId": id})
     if snapshot:
         snapshot.pop("_id", None)
+        # Enrich with vcenter metadata (same as monitor endpoint)
+        snapshot["id"] = id
+        snapshot["name"] = vcenter.get("name")
+        snapshot["ipAddress"] = vcenter.get("ipAddress", "")
+        snapshot["version"] = vcenter.get("vcenterVersion", "8.0.2")
+        snapshot["type"] = vcenter.get("vcenterType", "vCenter Server Appliance")
+        snapshot["licenceExpiry"] = vcenter.get("licenceExpiry", "2029-12-31")
+        # Filter VMs based on user privilege — same as monitor endpoint
+        snapshot["vms"] = await filter_vms_by_owner_ip(snapshot.get("vms") or [], current_user)
         return snapshot
     
     return {"status": "success", "message": f"Telemetry refresh triggered for vCenter {id}"}
@@ -151,7 +163,7 @@ async def refresh_vcenter_by_id(id: str):
 # CRUD ENDPOINTS (preserved from original)
 # ─────────────────────────────────────────────────────────
 
-@router.get("/", response_description="List all vCenter details", response_model=PaginatedVCenterDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["View Cluster", "View Server Monitoring", "view_own_vcenter_vm_monitoring"]))])
+@router.get("/", response_description="List all vCenter details", response_model=PaginatedVCenterDetailsModel, response_model_by_alias=False)
 async def list_items(
     clusterId: Optional[str] = Query(None, description="The ID of the cluster"),
     skip: int = Query(0, ge=0),
@@ -160,11 +172,105 @@ async def list_items(
     search: Optional[str] = None,
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
-    order: str = Query("desc")
+    order: str = Query("desc"),
+    current_user: dict = Depends(require_any_privilege(["View Cluster", "View Server Monitoring", "view_own_vcenter_vm_monitoring", "View Own vCenter VM Monitoring"]))
 ):
     query = {}
-    if clusterId:
-        query["clusterId"] = clusterId
+    
+    privs = current_user.get("privileges", [])
+    has_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs
+    
+    if not has_view_all:
+        username = current_user.get("sub") or current_user.get("username")
+        # Find user's admin identifiers
+        users_col = db.get_collection("users")
+        user_doc = await users_col.find_one({"username": username})
+        admins = {username}
+        if user_doc:
+            admins.add(str(user_doc["_id"]))
+            if user_doc.get("username"):
+                admins.add(user_doc["username"])
+        
+        # Get all VMs where user is admin (by admin field)
+        vm_col = db.get_collection("vm_details")
+        user_vms = await vm_col.find({"admin": {"$in": list(admins)}}).to_list(length=None)
+        user_cluster_ids = {vm.get("clusterId") for vm in user_vms if vm.get("clusterId")}
+
+        # Also find clusters via IP mapping (matches filter_vms_by_owner_ip logic)
+        # Get IPs from user's owned VMs
+        owned_ips = set()
+        for vm in user_vms:
+            ip_val = vm.get("ipAddress") or vm.get("ip")
+            if ip_val:
+                if isinstance(ip_val, list):
+                    for item in ip_val:
+                        if item and str(item).strip() and str(item).strip() != "0.0.0.0":
+                            owned_ips.add(str(item).strip())
+                elif isinstance(ip_val, str):
+                    for item in ip_val.replace(",", " ").split():
+                        item_clean = item.strip()
+                        if item_clean and item_clean != "0.0.0.0":
+                            owned_ips.add(item_clean)
+
+        # If user has owned IPs, find ALL VMs with those IPs to discover additional clusters
+        if owned_ips:
+            ip_regex = "|".join([ip.replace(".", "\\.") for ip in owned_ips])
+            ip_matched_vms = await vm_col.find({
+                "$or": [
+                    {"ipAddress": {"$in": list(owned_ips)}},
+                    {"ipAddress": {"$regex": ip_regex}},
+                    {"ip": {"$in": list(owned_ips)}}
+                ]
+            }).to_list(length=None)
+            for vm in ip_matched_vms:
+                cid = vm.get("clusterId")
+                if cid and cid != "undefined":
+                    user_cluster_ids.add(cid)
+
+        # Also check vcenter telemetry for VMs matching user's IPs
+        if owned_ips:
+            telemetry_col = db.get_collection("vcenter_telemetry")
+            all_telemetry = await telemetry_col.find({}).to_list(length=None)
+            for t_doc in all_telemetry:
+                vms_data = t_doc.get("vms") or []
+                for tvm in vms_data:
+                    tvm_ip = tvm.get("ipAddress") or tvm.get("ip") or tvm.get("guest_ip") or ""
+                    tvm_ips = set()
+                    if isinstance(tvm_ip, list):
+                        for item in tvm_ip:
+                            if item and str(item).strip() and str(item).strip() != "0.0.0.0":
+                                tvm_ips.add(str(item).strip())
+                    elif isinstance(tvm_ip, str):
+                        for item in tvm_ip.replace(",", " ").split():
+                            item_clean = item.strip()
+                            if item_clean and item_clean != "0.0.0.0":
+                                tvm_ips.add(item_clean)
+                    if any(ip in owned_ips for ip in tvm_ips):
+                        # This vcenter has a VM matching the user's IP
+                        vc_id = t_doc.get("vcenterId")
+                        if vc_id:
+                            # Find the vcenter's clusterId
+                            vc_doc = await collection.find_one({"_id": ObjectId(vc_id) if ObjectId.is_valid(str(vc_id)) else vc_id})
+                            if vc_doc and vc_doc.get("clusterId"):
+                                user_cluster_ids.add(vc_doc["clusterId"])
+                        break  # Already found a match in this vcenter
+        
+        # Remove invalid cluster IDs
+        user_cluster_ids.discard("")
+        user_cluster_ids.discard("undefined")
+        user_cluster_ids.discard(None)
+
+        if clusterId:
+            if clusterId in user_cluster_ids:
+                query["clusterId"] = clusterId
+            else:
+                # Force query to return nothing since user has no access to this cluster
+                query["clusterId"] = "non-existent-cluster-id"
+        else:
+            query["clusterId"] = {"$in": list(user_cluster_ids)}
+    else:
+        if clusterId:
+            query["clusterId"] = clusterId
     
     if search:
         query["$or"] = [
@@ -175,19 +281,39 @@ async def list_items(
     actual_sort_by = sortBy or sort_by or "createdAt"
     sort_order = 1 if order == "asc" else -1
 
-    total = await collection.count_documents(query)
     cursor = collection.find(query).sort(actual_sort_by, sort_order)
-    
-    if pagination:
-        cursor = cursor.skip(skip).limit(limit)
-        items = await cursor.to_list(length=limit)
+    raw_items = await cursor.to_list(length=None)
+
+    # If user doesn't have View All Server Details, verify each vCenter actually contains at least 1 VM for this user
+    if not has_view_all:
+        filtered_items = []
+        snap_col = db.get_collection("vcenter_telemetry")
+        for item in raw_items:
+            vc_id = str(item["_id"])
+            snapshot = await snap_col.find_one({"vcenterId": vc_id})
+            if snapshot and snapshot.get("vms"):
+                user_vms_in_vc = await filter_vms_by_owner_ip(snapshot.get("vms"), current_user)
+                if len(user_vms_in_vc) > 0:
+                    filtered_items.append(item)
+            else:
+                # If no telemetry snapshot yet, check if vm_details has any VM for this clusterId belonging to user
+                vc_cluster_id = item.get("clusterId")
+                if vc_cluster_id and vc_cluster_id in user_cluster_ids:
+                    filtered_items.append(item)
+        items = filtered_items
     else:
-        items = await cursor.to_list(length=None)
+        items = raw_items
+
+    total = len(items)
+    if pagination:
+        start_idx = skip
+        end_idx = skip + limit
+        items = items[start_idx:end_idx]
 
     return {"data": items, "total": total}
 
 
-@router.post("/", response_description="Create vCenter Details", response_model=VCenterDetailsModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create vCenter Appliance", "Create Cluster"]))])
+@router.post("/", response_description="Create vCenter Details", response_model=VCenterDetailsModel, status_code=status.HTTP_201_CREATED, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create vCenter Appliance", "Create Cluster", "Create Server Monitoring"]))])
 async def create_item(
     payload: CreateVCenterDetailsModel = Body(...),
     current_user: dict = Depends(get_current_user)
@@ -231,7 +357,7 @@ async def create_item(
     return created
 
 
-@router.post("/fetch-clusters-preview", response_description="Fetch cluster names directly from live vCenter REST API", dependencies=[Depends(require_any_privilege(["Create vCenter Appliance", "Create Cluster"]))])
+@router.post("/fetch-clusters-preview", response_description="Fetch cluster names directly from live vCenter REST API", dependencies=[Depends(require_any_privilege(["Create vCenter Appliance", "Create Cluster", "Create Server Monitoring"]))])
 async def fetch_clusters_preview(
     payload: dict = Body(...)
 ):
@@ -280,7 +406,7 @@ async def fetch_clusters_preview(
         )
 
 
-@router.put("/{id}", response_description="Update vCenter details", response_model=VCenterDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Update vCenter Appliance", "Update Cluster"]))])
+@router.put("/{id}", response_description="Update vCenter details", response_model=VCenterDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Update vCenter Appliance", "Update Cluster", "Update Server Monitoring"]))])
 async def update_item(id: str, payload: UpdateVCenterDetailsModel = Body(...)):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -304,7 +430,7 @@ async def update_item(id: str, payload: UpdateVCenterDetailsModel = Body(...)):
     raise HTTPException(status_code=404, detail="vCenter Details not found")
 
 
-@router.delete("/{id}", response_description="Delete vCenter details", dependencies=[Depends(require_any_privilege(["Delete vCenter Appliance", "Delete Cluster"]))])
+@router.delete("/{id}", response_description="Delete vCenter details", dependencies=[Depends(require_any_privilege(["Delete vCenter Appliance", "Delete Cluster", "Delete Server Monitoring"]))])
 async def delete_item(id: str):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")

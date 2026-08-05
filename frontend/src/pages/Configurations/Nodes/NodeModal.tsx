@@ -111,6 +111,15 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         ]
         : filteredUserOptions;
 
+    const restrictedAdminOptions = React.useMemo(() => {
+        const currentUserName = currentUser ? (`${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.username) : username;
+        const currentUserId = currentUser?._id || currentUser?.id || username;
+        return [
+            { label: 'Unassigned', value: 'unassigned' },
+            { label: currentUserName, value: currentUserId }
+        ];
+    }, [currentUser, username]);
+
     useEffect(() => {
         if (open) {
             fetchServerRacks({ pagination: false })
@@ -217,11 +226,17 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                     setOtherAdminName('');
                 }
 
-                const finalAdminIds = updatedAdminList.map(adVal => {
+                let finalAdminIds = updatedAdminList.map(adVal => {
                     if (adVal === 'Other') return adVal;
                     const foundUser = users.find(u => u.username === adVal || u._id === adVal || u.id === adVal);
                     return foundUser ? (foundUser.id || foundUser._id) : adVal;
                 });
+
+                if (isRestrictedAdmin) {
+                    const currentUserId = currentUser?._id || currentUser?.id || username;
+                    const hasCurrentUser = finalAdminIds.some(id => id === currentUserId);
+                    finalAdminIds = hasCurrentUser ? [currentUserId] : ['unassigned'];
+                }
 
                 setAdmin(finalAdminIds);
                 setResolvedAdmins(true);
@@ -229,7 +244,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                 setResolvedAdmins(true);
             }
         }
-    }, [open, editingItem, users, resolvedAdmins]);
+    }, [open, editingItem, users, resolvedAdmins, isRestrictedAdmin, currentUser, username]);
 
     useEffect(() => {
         if (Array.isArray(rackPosition) && rackPosition.length > 0) {
@@ -255,7 +270,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         // Compute final admin array including custom admin name if 'Other' selected
         let finalAdmin: string[] | undefined = undefined;
         if (admin && admin.length > 0) {
-            const listWithoutOther = admin.filter(a => a !== 'Other');
+            const listWithoutOther = admin.filter(a => a !== 'Other' && a !== 'unassigned');
             if (admin.includes('Other') && otherAdminName.trim()) {
                 finalAdmin = [...listWithoutOther, otherAdminName.trim()];
             } else {
@@ -501,10 +516,23 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 searchable
                                 clearable
                                 multiple
-                                disabled={isRestrictedAdmin}
+                                disabled={!isFullAdmin && !isRestrictedAdmin}
                                 value={admin}
-                                onChange={(val) => setAdmin(val)}
-                                options={adminOptions}
+                                onChange={(val) => {
+                                    let selectedIds = Array.isArray(val) ? val : [val];
+                                    if (isRestrictedAdmin) {
+                                        const currentUserId = currentUser?._id || currentUser?.id || username;
+                                        if (selectedIds.includes('unassigned')) {
+                                            selectedIds = ['unassigned'];
+                                        } else if (selectedIds.length === 0) {
+                                            selectedIds = ['unassigned'];
+                                        } else {
+                                            selectedIds = selectedIds.filter(id => id === currentUserId);
+                                        }
+                                    }
+                                    setAdmin(selectedIds);
+                                }}
+                                options={isRestrictedAdmin ? restrictedAdminOptions : adminOptions}
                             />
                         </Grid>
                         {admin.includes('Other') && (

@@ -106,10 +106,35 @@ async def list_items(
     clusterType: Optional[str] = Query(None, description="Filter by cluster type"),
     current_user: dict = Depends(get_current_user)
 ):
+    if not isinstance(admin, str):
+        admin = None
+    if not isinstance(clusterId, str):
+        clusterId = None
+    if not isinstance(node, str):
+        node = None
+    if not isinstance(powerStatus, str):
+        powerStatus = None
+    if not isinstance(networkType, str):
+        networkType = None
+    if not isinstance(clusterType, str):
+        clusterType = None
+    if not isinstance(sortBy, str):
+        sortBy = None
+    if not isinstance(sort_by, str):
+        sort_by = None
+    if not isinstance(order, str):
+        order = "asc"
+    if not isinstance(skip, int):
+        skip = 0
+    if not isinstance(limit, int):
+        limit = 10
+    if not isinstance(pagination, bool):
+        pagination = True
+
     and_conditions = []
     
     privs = current_user.get("privileges", [])
-    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Update VMs (Restricted)" in privs
+    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs
     
     # Conditions that match records with no admin assigned
     no_admin_conditions = [
@@ -119,51 +144,74 @@ async def list_items(
         {"admin": {"$exists": False}}
     ]
 
-    if admin and admin.lower() == "unassigned":
-        and_conditions.append({"$or": no_admin_conditions})
-    elif admin and admin.lower() == "other":
-        users_col_adm = db.get_collection("users")
-        all_users = await users_col_adm.find({}, {"_id": 1, "username": 1}).to_list(length=None)
-        known_ids = set()
-        for u in all_users:
-            known_ids.add(str(u["_id"]))
-            if u.get("username"):
-                known_ids.add(u["username"])
-        and_conditions.append({
-            "$and": [
-                {"admin": {"$exists": True, "$ne": None, "$ne": "", "$ne": []}},
-                {"admin": {"$nin": list(known_ids)}}
-            ]
-        })
-    else:
-        target_username = None
-        if not can_view_all:
-            target_username = current_user.get("sub")
-        elif admin:
-            target_username = admin
+    # Resolve current user admin identifiers
+    target_username = current_user.get("sub")
+    users_col = db.get_collection("users")
+    user_doc = await users_col.find_one({"username": target_username})
+    if not user_doc and ObjectId.is_valid(target_username):
+        user_doc = await users_col.find_one({"_id": ObjectId(target_username)})
+    user_admins = set()
+    user_admins.add(target_username)
+    if user_doc:
+        user_admins.add(str(user_doc["_id"]))
+        if user_doc.get("username"):
+            user_admins.add(user_doc["username"])
 
-        if target_username:
-            users_col = db.get_collection("users")
-            user_doc = await users_col.find_one({"username": target_username})
-            if not user_doc and ObjectId.is_valid(target_username):
-                user_doc = await users_col.find_one({"_id": ObjectId(target_username)})
-            admins = set()
-            admins.add(target_username)
-            if user_doc:
-                admins.add(str(user_doc["_id"]))
-                if user_doc.get("username"):
-                    admins.add(user_doc["username"])
-            if not can_view_all:
-                # Standard user: show VMs assigned to them OR VMs with no admin
+    if can_view_all:
+        if admin:
+            if admin.lower() == "unassigned":
+                and_conditions.append({"$or": no_admin_conditions})
+            elif admin.lower() == "my_unassigned":
                 and_conditions.append({
                     "$or": [
-                        {"admin": {"$in": list(admins)}},
+                        {"admin": {"$in": list(user_admins)}},
                         *no_admin_conditions
                     ]
                 })
+            elif admin.lower() == "assigned":
+                and_conditions.append({"admin": {"$in": list(user_admins)}})
+            elif admin.lower() == "other":
+                users_col_adm = db.get_collection("users")
+                all_users = await users_col_adm.find({}, {"_id": 1, "username": 1}).to_list(length=None)
+                known_ids = set()
+                for u in all_users:
+                    known_ids.add(str(u["_id"]))
+                    if u.get("username"):
+                        known_ids.add(u["username"])
+                and_conditions.append({
+                    "$and": [
+                        {"admin": {"$exists": True, "$ne": None, "$ne": "", "$ne": []}},
+                        {"admin": {"$nin": list(known_ids)}}
+                    ]
+                })
             else:
-                # Admin explicitly filtering by a specific user
-                and_conditions.append({"admin": {"$in": list(admins)}})
+                adm_doc = await users_col.find_one({"username": admin})
+                if not adm_doc and ObjectId.is_valid(admin):
+                    adm_doc = await users_col.find_one({"_id": ObjectId(admin)})
+                target_admins = set()
+                target_admins.add(admin)
+                if adm_doc:
+                    target_admins.add(str(adm_doc["_id"]))
+                    if adm_doc.get("username"):
+                        target_admins.add(adm_doc["username"])
+                and_conditions.append({"admin": {"$in": list(target_admins)}})
+    else:
+        if admin:
+            if admin.lower() == "unassigned":
+                and_conditions.append({"$or": no_admin_conditions})
+            elif admin.lower() == "my_unassigned":
+                and_conditions.append({
+                    "$or": [
+                        {"admin": {"$in": list(user_admins)}},
+                        *no_admin_conditions
+                    ]
+                })
+            elif admin.lower() == "assigned":
+                and_conditions.append({"admin": {"$in": list(user_admins)}})
+            else:
+                and_conditions.append({"admin": {"$in": list(user_admins)}})
+        else:
+            and_conditions.append({"admin": {"$in": list(user_admins)}})
     
     if clusterId:
         and_conditions.append({"clusterId": clusterId})
@@ -761,8 +809,25 @@ async def update_item(id: str, request: Request, payload: UpdateVMDetailsModel =
     user_privileges = current_user.get("privileges", [])
     is_admin = current_user.get("isSuperuser", False) or "Create Server Details" in user_privileges or "Update Server Details" in user_privileges
     if not is_admin and "Update VMs (Restricted)" in user_privileges:
-        allowed_keys = {"vmName", "ipAddress", "osAndExpiry", "networkType", "applications", "powerStatus", "adminContact", "hdd", "ram", "cpu"}
+        allowed_keys = {"vmName", "ipAddress", "osAndExpiry", "networkType", "applications", "powerStatus", "adminContact", "hdd", "ram", "cpu", "admin", "adminName"}
         item_dict = {k: v for k, v in item_dict.items() if k in allowed_keys}
+        if "admin" in item_dict:
+            target_username = current_user.get("sub")
+            users_col = db.get_collection("users")
+            user_doc = await users_col.find_one({"username": target_username})
+            allowed_admin_vals = {target_username}
+            if user_doc:
+                allowed_admin_vals.add(str(user_doc["_id"]))
+                if user_doc.get("username"):
+                    allowed_admin_vals.add(user_doc["username"])
+
+            new_admins = item_dict["admin"]
+            if new_admins:
+                if isinstance(new_admins, str):
+                    new_admins = [new_admins]
+                for ad in new_admins:
+                    if ad not in allowed_admin_vals:
+                        raise HTTPException(status_code=403, detail="Restricted admins can only assign themselves or leave the admin field unassigned.")
 
     if len(item_dict) >= 1:
         item_dict["updatedBy"] = current_user.get("sub", "")

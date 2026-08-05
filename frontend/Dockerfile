@@ -1,5 +1,5 @@
 # Build Stage
-FROM node:22-alpine AS build
+FROM node:22-alpine3.20 AS build
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ ENV VITE_DEPLOY_ENV=RUNTIME_DEPLOY_ENV_PLACEHOLDER
 RUN npx vite build
 
 # Production Stage
-FROM nginx:alpine
+FROM dcm-frontend:latest
 
 # Copy the build output to Nginx's web root
 COPY --from=build /app/dist /usr/share/nginx/html

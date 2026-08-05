@@ -6,6 +6,7 @@ import GPUs from "./GPUs";
 import Datastores from "./Datastores";
 import RequestRoutings from "./RequestRoutings";
 import AttendancePeriodConfig from "./AttendancePeriodConfig";
+import RosterRoleMappingConfig from "./RosterRoleMappingConfig";
 import BMSChecklistConfig from "./BMSChecklistConfig";
 import ClusterChecklistConfig from "./ClusterChecklistConfig";
 import MorningChecklistConfig from "./MorningChecklistConfig";
@@ -37,6 +38,7 @@ export const REQUEST_CONFIGURATIONS = [
 
 export const ATTENDANCE_CONFIGURATIONS = [
     { id: "attendancePeriod", label: "Attendance Period", value: "attendancePeriod" },
+    { id: "rosterRoleMapping", label: "Roster Role Mapping", value: "rosterRoleMapping" },
 ]
 
 export const BMS_CHECKLIST_CONFIGURATIONS = [
@@ -74,6 +76,7 @@ export const CONFIG_TABS_PAGES = {
     vcenterConfig: VCenterConfig,
     requestRoutings: RequestRoutings,
     attendancePeriod: AttendancePeriodConfig,
+    rosterRoleMapping: RosterRoleMappingConfig,
     bmsChecklistFields: BMSChecklistConfig,
     clusterChecklistFields: ClusterChecklistConfig,
     morningChecklistFields: MorningChecklistConfig,

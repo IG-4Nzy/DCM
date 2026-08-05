@@ -165,8 +165,8 @@ interface MonitorData {
 const ServerMonitoring: React.FC = () => {
   const { showToast } = useToast();
   const { isSuperuser } = useSelector((state: RootState) => state.auth);
-  const canCreateVCenter = isSuperuser || hasPrivilege(PRIVILEGES.CREATE_VCENTER_APPLIANCE) || hasPrivilege(PRIVILEGES.CLUSTER_CREATE);
-  const canDeleteVCenter = isSuperuser || hasPrivilege(PRIVILEGES.DELETE_VCENTER_APPLIANCE) || hasPrivilege(PRIVILEGES.CLUSTER_DELETE);
+  const canCreateVCenter = isSuperuser || hasPrivilege(PRIVILEGES.CREATE_VCENTER_APPLIANCE) || hasPrivilege(PRIVILEGES.SERVER_MONITORING_CREATE);
+  const canDeleteVCenter = isSuperuser || hasPrivilege(PRIVILEGES.DELETE_VCENTER_APPLIANCE) || hasPrivilege(PRIVILEGES.SERVER_MONITORING_DELETE);
   const [vcenters, setVcenters] = useState<VCenterItem[]>([]);
 
   const playAlarmSound = () => {
@@ -325,6 +325,13 @@ const ServerMonitoring: React.FC = () => {
         fetchVCenterTelemetry(id)
           .then((data) => {
             setVcenterTelemetryMap(prev => ({ ...prev, [id]: data }));
+            // If this vCenter is currently open, sync monitorData immediately
+            setSelectedVcenter(prev => {
+              if (prev && (prev.id || prev._id) === id) {
+                setMonitorData(data);
+              }
+              return prev;
+            });
           })
           .catch(() => {
             setOfflineVcenterIds(prev => prev.includes(id) ? prev : [...prev, id]);
@@ -397,7 +404,9 @@ const ServerMonitoring: React.FC = () => {
     const vcId = selectedVcenter.id || selectedVcenter._id;
     if (!vcId) return;
 
-    fetchTelemetry(vcId);
+    // If we already have cached data, do a silent refresh; otherwise show loading
+    const hasCachedData = !!vcenterTelemetryMap[vcId];
+    fetchTelemetry(vcId, hasCachedData);
 
     if (!autoRefresh) return;
 
@@ -800,6 +809,11 @@ const ServerMonitoring: React.FC = () => {
                             if (isOffline) {
                               showToast(`vCenter appliance at ${vc.ipAddress} is unreachable. Check physical connection.`, 'error');
                             } else {
+                              // Pre-seed monitorData from cache so data shows instantly
+                              const cachedData = vcenterTelemetryMap[vcId];
+                              if (cachedData) {
+                                setMonitorData(cachedData);
+                              }
                               setSelectedVcenter(vc);
                             }
                           }}

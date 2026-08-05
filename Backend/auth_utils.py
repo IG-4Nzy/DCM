@@ -214,14 +214,15 @@ async def filter_vms_by_owner_ip(vms_list: list, current_user: dict) -> list:
     is_superuser = current_user.get("isSuperuser", False)
     privileges = current_user.get("privileges", [])
 
-    # Superusers and users with "View Server Monitoring" see ALL VMs
-    if is_superuser or "View Server Monitoring" in privileges:
+    # Superusers and users with "View All Server Details" see ALL VMs
+    if is_superuser or "View All Server Details" in privileges:
         return vms_list
 
-    # Check if user has "view_own_vcenter_vm_monitoring" or "View Own vCenter VM Monitoring"
+    # Check if user has privilege to view monitoring (either general or own-only)
     has_own_privilege = (
         "view_own_vcenter_vm_monitoring" in privileges or
-        "View Own vCenter VM Monitoring" in privileges
+        "View Own vCenter VM Monitoring" in privileges or
+        "View Server Monitoring" in privileges
     )
     if not has_own_privilege:
         return []

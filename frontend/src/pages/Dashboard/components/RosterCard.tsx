@@ -73,8 +73,9 @@ export const RosterCard: React.FC<RosterCardProps> = ({ data }) => {
                 activeRows.find((r: any) => r.name === `${colShift.replace('-', ' ')} Row 2`) || { name: `${colShift.replace('-', ' ')} Row 2`, mappedShift: colShift }
               ];
 
+              const rosterDepts = data.rosterDepartment || [data.userDepartment];
               const matchedRoaster = data.roasterShifts.find(
-                (r: any) => r.shift === colShift && r.department === data.userDepartment
+                (r: any) => r.shift === colShift && rosterDepts.includes(r.department)
               );
 
               colRows.forEach((row: any, rIdx: number) => {
@@ -119,8 +120,9 @@ export const RosterCard: React.FC<RosterCardProps> = ({ data }) => {
 
           {/* Show Leave row if someone is marked on leave */}
           {(() => {
+            const rosterDepts = data.rosterDepartment || [data.userDepartment];
             const leaveRoaster = data.roasterShifts.find(
-              (r: any) => r.shift === 'Leave' && r.department === data.userDepartment
+              (r: any) => r.shift === 'Leave' && rosterDepts.includes(r.department)
             );
             const leaveAssignees = leaveRoaster?.assigneeDetails || [];
             const leaveNames = leaveAssignees

@@ -1066,7 +1066,17 @@ const PeriodicActivities: React.FC = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {selectedAmcActivity.services.map((service) => {
+                    {[...(selectedAmcActivity.services || [])]
+                      .map((s, idx) => ({ ...s, _origIdx: idx }))
+                      .sort((a, b) => {
+                        const dateA = a.completedDate || a.date || a.dueDate || a.createdAt || '';
+                        const dateB = b.completedDate || b.date || b.dueDate || b.createdAt || '';
+                        if (dateA && dateB && dateA !== dateB) {
+                          return dayjs(dateB).valueOf() - dayjs(dateA).valueOf();
+                        }
+                        return b._origIdx - a._origIdx;
+                      })
+                      .map((service) => {
                       const isServiceCompleted = service.status === 'completed' || (!service.status && service.date);
                       return (
                         <TableRow key={service.id}>

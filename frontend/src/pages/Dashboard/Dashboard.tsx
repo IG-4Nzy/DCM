@@ -160,8 +160,7 @@ const Dashboard: React.FC = () => {
           accentColor={colors.purple}
           accentBg={colors.purpleLight}
           onClick={() => {
-            const userId = data.userId || currentUser?.username;
-            navigate(ROUTE_CONSTANTS.SERVER_DETAILS, { state: { tab: 'vms', adminFilter: userId || '' } });
+            navigate(ROUTE_CONSTANTS.SERVER_DETAILS, { state: { tab: 'vms', adminFilter: 'my_unassigned' } });
           }}
         />
         <KpiCard
@@ -171,8 +170,7 @@ const Dashboard: React.FC = () => {
           accentColor={colors.indigo}
           accentBg={colors.indigoLight}
           onClick={() => {
-            const userId = data.userId || currentUser?.username;
-            navigate(ROUTE_CONSTANTS.SERVER_DETAILS, { state: { tab: 'nodes', adminFilter: userId || '' } });
+            navigate(ROUTE_CONSTANTS.SERVER_DETAILS, { state: { tab: 'nodes', adminFilter: 'my_unassigned' } });
           }}
         />
         {canViewObservations && (

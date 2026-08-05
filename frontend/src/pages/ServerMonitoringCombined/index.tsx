@@ -16,8 +16,8 @@ const ServerMonitoringCombined: React.FC = () => {
   const canViewPingMonitoring = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_PING_MONITORING_VIEW);
 
   const availableTabs = [
-    ...(canViewServerMonitoring ? [{ id: 'vcenter', label: 'vCenter Monitoring' }] : []),
     ...(canViewPingMonitoring ? [{ id: 'ping', label: 'Server Ping Monitoring' }] : []),
+    ...(canViewServerMonitoring ? [{ id: 'vcenter', label: 'vCenter Monitoring' }] : []),
   ];
 
   const [activeTab, setActiveTab] = useState<string>(() => {
@@ -44,8 +44,8 @@ const ServerMonitoringCombined: React.FC = () => {
           textColor="primary"
           indicatorColor="primary"
         >
-          {canViewServerMonitoring && <Tab label="vCenter Monitoring" value="vcenter" sx={{ fontWeight: 600 }} />}
           {canViewPingMonitoring && <Tab label="Server Ping Monitoring" value="ping" sx={{ fontWeight: 600 }} />}
+          {canViewServerMonitoring && <Tab label="vCenter Monitoring" value="vcenter" sx={{ fontWeight: 600 }} />}
         </Tabs>
       </Box>
 

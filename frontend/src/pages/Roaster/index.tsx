@@ -40,6 +40,7 @@ import { jwtDecode } from "jwt-decode";
 import { validateRoster } from "./validation";
 import { fetchUsers, fetchAllDepartmentsForDropdown } from "../Users/action";
 import { fetchRostersData, fetchRosterStatusData, updateRosterStatus, resetRosterStatus, createRoster, updateRoster, fetchDutySummary, saveRosterSplitup, fetchRosterHistory, batchSaveRosters } from "./action";
+import request from "../../services/request";
 
 dayjs.extend(isoWeekPlugin);
 
@@ -72,6 +73,7 @@ const RoasterPage: React.FC = () => {
   const [splitupHistory, setSplitupHistory] = useState<any[]>([]);
   const isSuperuser = useSelector((state: RootState) => state.auth.isSuperuser);
   const token = useSelector((state: RootState) => state.auth.token);
+  const role = useSelector((state: RootState) => state.auth.role);
   const { users, availableDepartments: departmentsList } = useSelector((state: RootState) => state.users);
   
   const canView = isSuperuser || hasPrivilege(PRIVILEGES.ROASTER_VIEW) || hasPrivilege(PRIVILEGES.VIEW_ALL_ROASTER);
@@ -87,6 +89,28 @@ const RoasterPage: React.FC = () => {
   const userDepartment = currentUserObj ? currentUserObj.department : tokenDept;
 
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+  const [mappedDepartment, setMappedDepartment] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserRoleMapping = async () => {
+      try {
+        const response = await request.get('/api/roasters/role-mappings');
+        const mappings = response.data || [];
+        const userRoles = Array.isArray(role) ? role : [role];
+        const userMapping = mappings.find((m: any) => 
+          userRoles.includes(m.roleName) || userRoles.includes(m.roleId)
+        );
+        if (userMapping) {
+          setMappedDepartment(userMapping.departmentName);
+        }
+      } catch (e) {
+        console.error("Failed to fetch role mappings", e);
+      }
+    };
+    if (role && !isSuperuser) {
+      fetchUserRoleMapping();
+    }
+  }, [role, isSuperuser]);
 
   useEffect(() => {
     if (userDepartment && !selectedDepartment) {
@@ -94,7 +118,7 @@ const RoasterPage: React.FC = () => {
     }
   }, [userDepartment]);
 
-  const activeDepartment = selectedDepartment || userDepartment || '';
+  const activeDepartment = mappedDepartment || selectedDepartment || userDepartment || '';
 
   const activeDeptObj = (departmentsList || []).find((d: any) => 
     d.name === activeDepartment || 
@@ -757,7 +781,7 @@ const RoasterPage: React.FC = () => {
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {hasViewAllRoaster && (
-            <FormControl size="small" className="hide-on-print" sx={{ minWidth: 160 }}>
+            <FormControl size="small" className="hide-on-print" sx={{ minWidth: 160 }} disabled={!!mappedDepartment}>
               <InputLabel id="roaster-dept-label" sx={{ fontSize: '12px' }}>Department</InputLabel>
               <Select
                 labelId="roaster-dept-label"
@@ -766,14 +790,20 @@ const RoasterPage: React.FC = () => {
                 onChange={(e) => setSelectedDepartment(e.target.value)}
                 sx={{ fontSize: '12px', height: '32px' }}
               >
-                {Array.from(new Set([
-                  ...((departmentsList || []).map((d: any) => typeof d === 'string' ? d : d.name).filter(Boolean)),
-                  ...(displayDepartmentValue ? [displayDepartmentValue] : [])
-                ])).map((deptName) => (
-                  <MenuItem key={deptName} value={deptName} sx={{ fontSize: '12px' }}>
-                    {deptName}
+                {mappedDepartment ? (
+                  <MenuItem value={mappedDepartment} sx={{ fontSize: '12px' }}>
+                    {mappedDepartment}
                   </MenuItem>
-                ))}
+                ) : (
+                  Array.from(new Set([
+                    ...((departmentsList || []).map((d: any) => typeof d === 'string' ? d : d.name).filter(Boolean)),
+                    ...(displayDepartmentValue ? [displayDepartmentValue] : [])
+                  ])).map((deptName) => (
+                    <MenuItem key={deptName} value={deptName} sx={{ fontSize: '12px' }}>
+                      {deptName}
+                    </MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
           )}

@@ -79,7 +79,7 @@ async def list_items(
     and_conditions = []
     
     privs = current_user.get("privileges", [])
-    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs or "Racks View" in privs or "Update Node (Restricted)" in privs
+    can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs
 
     # Conditions that match records with no admin assigned
     no_admin_conditions = [
