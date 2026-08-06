@@ -27,7 +27,9 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import { 
   MdAdd as AddIcon, 
@@ -50,67 +52,85 @@ import { type RootState } from '../../store';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
 import { useToast } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import type { Activity, Template, Member, Group } from './types';
 import SalarySplitupModal from './components/SalarySplitupModal';
 
-export const distributeInitialConsumedUnits = (
-  templateInitialConsumed: number,
+export const distributeInitialConsumedAmount = (
+  templateInitialConsumedAmount: number,
   activities: any[],
   maxStaffs: number,
   remainingMonths: number
 ) => {
   const futureCapacity = maxStaffs * remainingMonths * 30;
   
-  // Calculate limits for each activity
+  // Calculate limit amounts for each activity
   const limits = activities.map(act => {
+    const rate = Number(act.rate) || 0;
     const maxUnits = Number(act.maxUnits) || 0;
+    const maxAmount = maxUnits * rate;
     const capForFuture = Math.max(0, maxUnits - futureCapacity);
+    const capAmountForFuture = capForFuture * rate;
     return {
       id: act.id,
+      rate,
       maxUnits,
-      capForFuture
+      maxAmount,
+      capAmountForFuture
     };
   });
 
-  const distributed: Record<string, number> = {};
+  const distributedAmount: Record<string, number> = {};
   activities.forEach(act => {
-    distributed[act.id] = 0;
+    distributedAmount[act.id] = 0;
   });
 
-  let remainingToDistribute = templateInitialConsumed;
+  let remainingToDistribute = templateInitialConsumedAmount;
 
-  // First pass: distribute up to capForFuture proportionally
-  const totalCapForFuture = limits.reduce((sum, l) => sum + l.capForFuture, 0);
-  if (totalCapForFuture > 0 && remainingToDistribute > 0) {
-    const amountToDistribute = Math.min(remainingToDistribute, totalCapForFuture);
+  // First pass: distribute up to capAmountForFuture proportionally
+  const totalCapAmountForFuture = limits.reduce((sum, l) => sum + l.capAmountForFuture, 0);
+  if (totalCapAmountForFuture > 0 && remainingToDistribute > 0) {
+    const amountToDistribute = Math.min(remainingToDistribute, totalCapAmountForFuture);
     limits.forEach(l => {
-      distributed[l.id] += amountToDistribute * l.capForFuture / totalCapForFuture;
+      distributedAmount[l.id] += amountToDistribute * l.capAmountForFuture / totalCapAmountForFuture;
     });
     remainingToDistribute -= amountToDistribute;
   }
 
-  // Second pass: distribute to remaining capacity up to maxUnits
+  // Second pass: distribute to remaining capacity up to maxAmount
   if (remainingToDistribute > 0) {
     const remainingCaps = limits.map(l => ({
       id: l.id,
-      remCap: Math.max(0, l.maxUnits - distributed[l.id])
+      remCapAmount: Math.max(0, l.maxAmount - distributedAmount[l.id])
     }));
-    const totalRemCap = remainingCaps.reduce((sum, c) => sum + c.remCap, 0);
-    if (totalRemCap > 0) {
-      const amountToDistribute = Math.min(remainingToDistribute, totalRemCap);
+    const totalRemCapAmount = remainingCaps.reduce((sum, c) => sum + c.remCapAmount, 0);
+    if (totalRemCapAmount > 0) {
+      const amountToDistribute = Math.min(remainingToDistribute, totalRemCapAmount);
       remainingCaps.forEach(c => {
-        distributed[c.id] += amountToDistribute * c.remCap / totalRemCap;
+        distributedAmount[c.id] += amountToDistribute * c.remCapAmount / totalRemCapAmount;
       });
       remainingToDistribute -= amountToDistribute;
     }
   }
 
-  return distributed;
+  // Now convert distributed amount (₹) back to units for each activity
+  const distributedUnits: Record<string, number> = {};
+  activities.forEach(act => {
+    const rate = Number(act.rate) || 0;
+    const distAmt = distributedAmount[act.id] || 0;
+    distributedUnits[act.id] = rate > 0 ? distAmt / rate : 0;
+  });
+
+  return {
+    distributedAmount,
+    distributedUnits
+  };
 };
 
 const Salary = () => {
   const { username, displayName, isSuperuser } = useSelector((state: RootState) => state.auth);
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
 
   const canView = isSuperuser || hasPrivilege(PRIVILEGES.SALARY_CALCULATION_VIEW);
   const canManage = isSuperuser || hasPrivilege(PRIVILEGES.SALARY_CALCULATION_CREATE) || hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE);
@@ -133,6 +153,10 @@ const Salary = () => {
   const [tempPoEndDate, setTempPoEndDate] = useState('');
   
   const [splitupGroup, setSplitupGroup] = useState<Group | null>(null);
+  const [reserveModalOpen, setReserveModalOpen] = useState(false);
+  const [reserveTargetTemplateId, setReserveTargetTemplateId] = useState<string | null>(null);
+  const [reserveTypeState, setReserveTypeState] = useState<'percentage' | 'amount'>('percentage');
+  const [reserveValueState, setReserveValueState] = useState<string>('5');
   const [showSalaryPrint, setShowSalaryPrint] = useState(false);
 
   useEffect(() => {
@@ -269,6 +293,20 @@ const Salary = () => {
     if (e) e.stopPropagation();
 
     if (editingGroupIds.includes(id)) {
+      const groupSaving = groups.find(g => g.id === id);
+      if (groupSaving && groupSaving.templateId) {
+        const stats = getTemplateStats(groupSaving.templateId);
+        if (stats && stats.remainingAmount < 0) {
+          const confirmed = await confirm(
+            `The remaining amount has been depleted. Do you want to utilize the reserved amount of ₹${stats.reservedAmount.toLocaleString('en-IN')}?`,
+            'Use Reserved Amount'
+          );
+          if (!confirmed) {
+            return;
+          }
+        }
+      }
+
       let updatedGroups = groups;
       updatedGroups = groups.map(g => {
         if (g.id === id) {
@@ -391,7 +429,18 @@ const Salary = () => {
     const totalAmount = template.activities.reduce((sum, act) => sum + (Number(act.rate) || 0) * (Number(act.maxUnits) || 0), 0);
     const totalAllottedUnits = template.activities.reduce((sum, act) => sum + (Number(act.maxUnits) || 0), 0);
 
-    const templateInitialConsumedUnits = Number(template.initialConsumedUnits) || 0;
+    let reservedAmount = 0;
+    if (template.reserveEnabled) {
+      const rType = template.reserveType || 'percentage';
+      const rVal = template.reserveValue !== undefined ? Number(template.reserveValue) : 5;
+      if (rType === 'percentage') {
+        reservedAmount = totalAmount * (rVal / 100);
+      } else {
+        reservedAmount = rVal;
+      }
+    }
+
+    const templateInitialConsumedAmountVal = Number(template.initialConsumedAmount) || 0;
 
     const sortedMonths = Object.keys(salaryData)
       .filter(m => {
@@ -404,21 +453,18 @@ const Salary = () => {
       ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${startMonth}-01`).startOf('month'), 'month') + 1) 
       : 1;
 
-    const initialConsumedMap = distributeInitialConsumedUnits(
-      templateInitialConsumedUnits,
+    const distribution = distributeInitialConsumedAmount(
+      templateInitialConsumedAmountVal,
       template.activities,
       Number(template.maxStaffs) || 0,
       remainingMonthsFromStart
     );
 
-    let initialConsumedAmount = 0;
-    template.activities.forEach(act => {
-      const actInitialConsumed = initialConsumedMap[act.id] || 0;
-      initialConsumedAmount += actInitialConsumed * (Number(act.rate) || 0);
-    });
+    const actualInitialConsumedAmount = Object.values(distribution.distributedAmount).reduce((sum, val) => sum + val, 0);
+    const actualInitialConsumedUnits = Object.values(distribution.distributedUnits).reduce((sum, val) => sum + val, 0);
 
-    let consumedAmount = initialConsumedAmount;
-    let consumedUnits = templateInitialConsumedUnits;
+    let consumedAmount = actualInitialConsumedAmount;
+    let consumedUnits = actualInitialConsumedUnits;
 
     // Calculate consumed amount and units across all months in salaryData
     Object.values(salaryData).forEach(gList => {
@@ -435,11 +481,12 @@ const Salary = () => {
       });
     });
 
-    const remainingAmount = totalAmount - consumedAmount;
+    const remainingAmount = totalAmount - consumedAmount - reservedAmount;
     const remainingUnits = totalAllottedUnits - consumedUnits;
 
     return {
       totalAmount,
+      reservedAmount,
       consumedAmount,
       remainingAmount,
       totalAllottedUnits,
@@ -456,23 +503,24 @@ const Salary = () => {
       })
       .sort();
 
-    const templateInitialConsumedUnits = Number(template.initialConsumedUnits) || 0;
+    const templateInitialConsumedAmountVal = Number(template.initialConsumedAmount) || 0;
 
     const startMonth = sortedMonths.length > 0 ? sortedMonths[0] : currentMonth;
     const remainingMonthsFromStart = globalPoEndDate 
       ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${startMonth}-01`).startOf('month'), 'month') + 1) 
       : 1;
 
-    const initialConsumedMap = distributeInitialConsumedUnits(
-      templateInitialConsumedUnits,
+    const distribution = distributeInitialConsumedAmount(
+      templateInitialConsumedAmountVal,
       template.activities,
       Number(template.maxStaffs) || 0,
       remainingMonthsFromStart
     );
+    const initialConsumedUnitsMap = distribution.distributedUnits;
 
     const consumedUnitsMap: Record<string, number> = {};
     template.activities.forEach(act => {
-      consumedUnitsMap[act.id] = initialConsumedMap[act.id] || 0;
+      consumedUnitsMap[act.id] = initialConsumedUnitsMap[act.id] || 0;
     });
 
     sortedMonths.forEach(m => {
@@ -542,7 +590,7 @@ const Salary = () => {
       activities: [],
       allottedAmount: 0,
       maxStaffs: 0,
-      initialConsumedUnits: 0
+      initialConsumedAmount: 0
     };
     const newTemplates = [newTemplate, ...templates];
     setTemplates(newTemplates);
@@ -551,7 +599,7 @@ const Salary = () => {
   };
 
   const updateTemplate = (id: string, field: keyof Template, value: any) => {
-    setTemplates(templates.map(t => t.id === id ? { ...t, [field]: value } : t));
+    setTemplates(prev => prev.map(t => t.id === id ? { ...t, [field]: value } : t));
   };
 
   const deleteTemplate = async (id: string) => {
@@ -941,19 +989,26 @@ const Salary = () => {
                           {group.templateId && (() => {
                             const stats = getTemplateStats(group.templateId);
                             if (!stats) return null;
+                            const template = templates.find(t => t.id === group.templateId);
                             const remainingMonths = globalPoEndDate ? Math.max(0, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${currentMonth}-01`).startOf('month'), 'month')) : 0;
                             return (
                               <Box sx={{ mb: 2, p: 1.5, bgcolor: 'grey.50', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
                                 <Grid container spacing={2}>
-                                  <Grid item xs={6} sm={4}>
+                                  <Grid item xs={6} sm={3}>
                                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Allotted Amount</Typography>
                                     <Typography variant="body2" fontWeight="700">₹ {stats.totalAmount.toLocaleString('en-IN')}</Typography>
                                   </Grid>
-                                  <Grid item xs={6} sm={4}>
+                                  <Grid item xs={6} sm={3}>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Reserved Amount ({template?.reserveType === 'amount' ? 'Custom' : `${template?.reserveValue || 5}%`})</Typography>
+                                    <Typography variant="body2" fontWeight="700" color={stats.reservedAmount > 0 ? "warning.main" : "text.secondary"}>
+                                      {stats.reservedAmount > 0 ? `₹ ${stats.reservedAmount.toLocaleString('en-IN')}` : 'Disabled'}
+                                    </Typography>
+                                  </Grid>
+                                  <Grid item xs={6} sm={3}>
                                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Consumed Amount</Typography>
                                     <Typography variant="body2" fontWeight="700" color="primary.main">₹ {stats.consumedAmount.toLocaleString('en-IN')}</Typography>
                                   </Grid>
-                                  <Grid item xs={6} sm={4}>
+                                  <Grid item xs={6} sm={3}>
                                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Remaining Amount</Typography>
                                     <Typography variant="body2" fontWeight="700" color={stats.remainingAmount >= 0 ? "success.main" : "error.main"}>
                                       ₹ {stats.remainingAmount.toLocaleString('en-IN')}
@@ -1224,10 +1279,10 @@ const Salary = () => {
                             <TextField 
                               size="small" 
                               type="number"
-                              label="Initial Consumed Units" 
-                              value={template.initialConsumedUnits ?? 0} 
-                              onChange={(e) => updateTemplate(template.id, 'initialConsumedUnits', e.target.value)} 
-                              sx={{ backgroundColor: 'white', width: 170 }}
+                              label="Initial Consumed Amount (₹)" 
+                              value={template.initialConsumedAmount ?? 0} 
+                              onChange={(e) => updateTemplate(template.id, 'initialConsumedAmount', e.target.value)} 
+                              sx={{ backgroundColor: 'white', width: 220 }}
                               inputProps={{ min: 0 }}
                             />
                             <TextField 
@@ -1237,17 +1292,64 @@ const Salary = () => {
                               value={template.activities.reduce((sum, act) => sum + (Number(act.rate) || 0) * (Number(act.maxUnits) || 0), 0)} 
                               sx={{ backgroundColor: 'grey.100', width: 180 }}
                             />
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    checked={!!template.reserveEnabled}
+                                    onChange={async (e) => {
+                                      const nextChecked = e.target.checked;
+                                      if (nextChecked) {
+                                        setReserveTargetTemplateId(template.id);
+                                        setReserveTypeState(template.reserveType || 'percentage');
+                                        setReserveValueState(template.reserveValue !== undefined ? String(template.reserveValue) : '5');
+                                        setReserveModalOpen(true);
+                                      } else {
+                                        const confirmed = await confirm(
+                                          `Are you sure you want to disable the reserve amount for this template?`,
+                                          'Disable Reserve Amount'
+                                        );
+                                        if (confirmed) {
+                                          updateTemplate(template.id, 'reserveEnabled', false);
+                                        }
+                                      }
+                                    }}
+                                    color="primary"
+                                  />
+                                }
+                                label="Reserve Amount"
+                                sx={{ ml: 1 }}
+                              />
+                              {template.reserveEnabled && (
+                                <Tooltip title="Configure Reserve Settings">
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
+                                    onClick={() => {
+                                      setReserveTargetTemplateId(template.id);
+                                      setReserveTypeState(template.reserveType || 'percentage');
+                                      setReserveValueState(template.reserveValue !== undefined ? String(template.reserveValue) : '5');
+                                      setReserveModalOpen(true);
+                                    }}
+                                    sx={{ ml: -0.5 }}
+                                  >
+                                    <SettingsIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                            </Box>
                           </Box>
                         ) : (() => {
                           const stats = getTemplateStats(template.id);
                           const allotted = stats?.totalAmount ?? 0;
+                          const reserved = stats?.reservedAmount ?? 0;
                           const remaining = stats?.remainingAmount ?? 0;
                           return (
                             <Box>
                               <Typography variant="subtitle1" fontWeight="600">{template.title}</Typography>
                               <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                                Allotted Amount: ₹{allotted.toLocaleString('en-IN')} &nbsp;&bull;&nbsp; Remaining Amount: ₹{remaining.toLocaleString('en-IN')} &nbsp;&bull;&nbsp; Max Staffs: {template.maxStaffs || 0}
-                                {template.initialConsumedUnits !== undefined && template.initialConsumedUnits !== 0 && ` \u00a0\u2022\u00a0 Initial Consumed: ${template.initialConsumedUnits} units`}
+                                Allotted Amount: ₹{allotted.toLocaleString('en-IN')} &nbsp;&bull;&nbsp; Reserved Amount ({template.reserveType === 'amount' ? 'Custom' : `${template.reserveValue || 5}%`}): {template.reserveEnabled ? `₹${reserved.toLocaleString('en-IN')}` : 'Disabled'} &nbsp;&bull;&nbsp; Remaining Amount: ₹{remaining.toLocaleString('en-IN')} &nbsp;&bull;&nbsp; Max Staffs: {template.maxStaffs || 0}
+                                {template.initialConsumedAmount !== undefined && template.initialConsumedAmount !== 0 && ` \u00a0\u2022\u00a0 Initial Consumed: ₹${Number(template.initialConsumedAmount).toLocaleString('en-IN')}`}
                               </Typography>
                             </Box>
                           );
@@ -1293,6 +1395,7 @@ const Salary = () => {
                                 <TableCell sx={{ fontWeight: 600, py: 1, width: 100 }}>Max Units</TableCell>
                                 <TableCell sx={{ fontWeight: 600, py: 1, width: 120 }}>Consumed Units</TableCell>
                                 <TableCell sx={{ fontWeight: 600, py: 1, width: 120 }}>Remaining Units</TableCell>
+                                <TableCell sx={{ fontWeight: 600, py: 1, width: 150 }}>Remaining Amount (₹)</TableCell>
                                 <TableCell sx={{ fontWeight: 600, py: 1, width: 120, textAlign: 'right' }}>Total (₹)</TableCell>
                                 {isEditing && <TableCell sx={{ width: 60, py: 1 }}></TableCell>}
                               </TableRow>
@@ -1300,7 +1403,7 @@ const Salary = () => {
                             <TableBody>
                               {template.activities.length === 0 ? (
                                 <TableRow>
-                                  <TableCell colSpan={isEditing ? 7 : 6} align="center" sx={{ py: 3 }}>
+                                  <TableCell colSpan={isEditing ? 8 : 7} align="center" sx={{ py: 3 }}>
                                     <Typography variant="body2" color="text.secondary">
                                       No activities added.
                                     </Typography>
@@ -1364,6 +1467,11 @@ const Salary = () => {
                                           color={stats.isNotEnough ? 'error.main' : 'text.primary'}
                                         >
                                           {stats.remainingUnits.toFixed(2)}
+                                        </Typography>
+                                      </TableCell>
+                                      <TableCell>
+                                        <Typography variant="body2" fontWeight="500">
+                                          ₹ {((stats.remainingUnits || 0) * (Number(act.rate) || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </Typography>
                                       </TableCell>
                                       <TableCell sx={{ textAlign: 'right' }}>
@@ -1528,6 +1636,86 @@ const Salary = () => {
         </DialogContent>
         <DialogActions className="no-print">
           <Button onClick={() => setShowSalaryPrint(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog 
+        open={reserveModalOpen} 
+        onClose={() => setReserveModalOpen(false)}
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 3,
+              p: 1.5,
+              minWidth: 400,
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 'bold' }}>Configure Reserve Amount</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1.5 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="reserve-type-label">Reservation Type</InputLabel>
+              <Select
+                labelId="reserve-type-label"
+                label="Reservation Type"
+                value={reserveTypeState}
+                onChange={(e) => {
+                  const newType = e.target.value as 'percentage' | 'amount';
+                  setReserveTypeState(newType);
+                  if (newType === 'percentage') {
+                    setReserveValueState('5');
+                  } else {
+                    const template = templates.find(t => t.id === reserveTargetTemplateId);
+                    const totalAllotted = template?.activities.reduce((sum, act) => sum + (Number(act.rate) || 0) * (Number(act.maxUnits) || 0), 0) || 0;
+                    setReserveValueState(String(Math.round(totalAllotted * 0.05)));
+                  }
+                }}
+              >
+                <MenuItem value="percentage">Percentage (%)</MenuItem>
+                <MenuItem value="amount">Custom Fixed Amount (₹)</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              fullWidth
+              size="small"
+              type="number"
+              label={reserveTypeState === 'percentage' ? "Percentage Value (%)" : "Custom Amount (₹)"}
+              value={reserveValueState}
+              onChange={(e) => setReserveValueState(e.target.value)}
+              inputProps={{ min: 0 }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 1 }}>
+          <Button onClick={() => setReserveModalOpen(false)} color="inherit" sx={{ borderRadius: 2 }}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={() => {
+              if (reserveTargetTemplateId) {
+                setTemplates(prev => prev.map(t => {
+                  if (t.id === reserveTargetTemplateId) {
+                    return {
+                      ...t,
+                      reserveEnabled: true,
+                      reserveType: reserveTypeState,
+                      reserveValue: Number(reserveValueState) || 0
+                    };
+                  }
+                  return t;
+                }));
+              }
+              setReserveModalOpen(false);
+            }} 
+            color="primary" 
+            variant="contained" 
+            sx={{ borderRadius: 2 }}
+          >
+            Save Configuration
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

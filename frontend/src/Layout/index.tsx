@@ -29,7 +29,7 @@ const {
   ChevronRightIcon
 } = Icons;
 import { useDispatch, useSelector } from 'react-redux';
-import { logout } from '../store/authSlice';
+import { logout, logoutUser } from '../store/authSlice';
 import type { RootState } from '../store';
 import wordings from '../helpers/wordings';
 import { SIDEBAR_OPTIONS } from './constants';
@@ -266,7 +266,7 @@ const Layout: React.FC = () => {
   };
 
   const handleLogout = () => {
-    dispatch(logout());
+    dispatch(logoutUser());
   };
 
   return (

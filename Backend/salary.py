@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from typing import List, Optional, Union
 from database import db
 from auth_utils import get_current_user
@@ -18,7 +18,18 @@ class TemplateModel(BaseModel):
     activities: List[ActivityModel] = []
     allottedAmount: Optional[Union[float, str]] = 0
     maxStaffs: Optional[Union[int, str]] = 0
-    initialConsumedUnits: Optional[Union[float, str]] = 0
+    initialConsumedAmount: Optional[Union[float, str]] = 0
+    reserveEnabled: Optional[bool] = False
+    reserveType: Optional[str] = 'percentage'
+    reserveValue: Optional[Union[float, str]] = 5
+
+    @model_validator(mode='before')
+    @classmethod
+    def populate_initial_consumed_amount(cls, data):
+        if isinstance(data, dict):
+            if 'initialConsumedUnits' in data and 'initialConsumedAmount' not in data:
+                data['initialConsumedAmount'] = data.get('initialConsumedUnits', 0)
+        return data
 
 class MemberModel(BaseModel):
     id: str

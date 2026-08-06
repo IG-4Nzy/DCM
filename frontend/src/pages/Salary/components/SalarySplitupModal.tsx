@@ -18,59 +18,75 @@ import {
 import { MdPrint as PrintIcon } from 'react-icons/md';
 import dayjs from 'dayjs';
 import styles from './index.module.scss';
-const distributeInitialConsumedUnits = (
-  templateInitialConsumed: number,
+const distributeInitialConsumedAmount = (
+  templateInitialConsumedAmount: number,
   activities: any[],
   maxStaffs: number,
   remainingMonths: number
 ) => {
   const futureCapacity = maxStaffs * remainingMonths * 30;
   
-  // Calculate limits for each activity
+  // Calculate limit amounts for each activity
   const limits = activities.map(act => {
+    const rate = Number(act.rate) || 0;
     const maxUnits = Number(act.maxUnits) || 0;
+    const maxAmount = maxUnits * rate;
     const capForFuture = Math.max(0, maxUnits - futureCapacity);
+    const capAmountForFuture = capForFuture * rate;
     return {
       id: act.id,
+      rate,
       maxUnits,
-      capForFuture
+      maxAmount,
+      capAmountForFuture
     };
   });
 
-  const distributed: Record<string, number> = {};
+  const distributedAmount: Record<string, number> = {};
   activities.forEach(act => {
-    distributed[act.id] = 0;
+    distributedAmount[act.id] = 0;
   });
 
-  let remainingToDistribute = templateInitialConsumed;
+  let remainingToDistribute = templateInitialConsumedAmount;
 
-  // First pass: distribute up to capForFuture proportionally
-  const totalCapForFuture = limits.reduce((sum, l) => sum + l.capForFuture, 0);
-  if (totalCapForFuture > 0 && remainingToDistribute > 0) {
-    const amountToDistribute = Math.min(remainingToDistribute, totalCapForFuture);
+  // First pass: distribute up to capAmountForFuture proportionally
+  const totalCapAmountForFuture = limits.reduce((sum, l) => sum + l.capAmountForFuture, 0);
+  if (totalCapAmountForFuture > 0 && remainingToDistribute > 0) {
+    const amountToDistribute = Math.min(remainingToDistribute, totalCapAmountForFuture);
     limits.forEach(l => {
-      distributed[l.id] += amountToDistribute * l.capForFuture / totalCapForFuture;
+      distributedAmount[l.id] += amountToDistribute * l.capAmountForFuture / totalCapAmountForFuture;
     });
     remainingToDistribute -= amountToDistribute;
   }
 
-  // Second pass: distribute to remaining capacity up to maxUnits
+  // Second pass: distribute to remaining capacity up to maxAmount
   if (remainingToDistribute > 0) {
     const remainingCaps = limits.map(l => ({
       id: l.id,
-      remCap: Math.max(0, l.maxUnits - distributed[l.id])
+      remCapAmount: Math.max(0, l.maxAmount - distributedAmount[l.id])
     }));
-    const totalRemCap = remainingCaps.reduce((sum, c) => sum + c.remCap, 0);
-    if (totalRemCap > 0) {
-      const amountToDistribute = Math.min(remainingToDistribute, totalRemCap);
+    const totalRemCapAmount = remainingCaps.reduce((sum, c) => sum + c.remCapAmount, 0);
+    if (totalRemCapAmount > 0) {
+      const amountToDistribute = Math.min(remainingToDistribute, totalRemCapAmount);
       remainingCaps.forEach(c => {
-        distributed[c.id] += amountToDistribute * c.remCap / totalRemCap;
+        distributedAmount[c.id] += amountToDistribute * c.remCapAmount / totalRemCapAmount;
       });
       remainingToDistribute -= amountToDistribute;
     }
   }
 
-  return distributed;
+  // Now convert distributed amount (₹) back to units for each activity
+  const distributedUnits: Record<string, number> = {};
+  activities.forEach(act => {
+    const rate = Number(act.rate) || 0;
+    const distAmt = distributedAmount[act.id] || 0;
+    distributedUnits[act.id] = rate > 0 ? distAmt / rate : 0;
+  });
+
+  return {
+    distributedAmount,
+    distributedUnits
+  };
 };
 
 export interface SalarySplitupModalProps {
@@ -166,23 +182,24 @@ const SalarySplitupModal: React.FC<SalarySplitupModalProps> = ({
             })
             .sort();
 
-          const templateInitialConsumedUnits = Number(template.initialConsumedUnits) || 0;
+          const templateInitialConsumedAmountVal = Number(template.initialConsumedAmount) || 0;
 
           const startMonth = sortedMonths.length > 0 ? sortedMonths[0] : currentMonth;
           const remainingMonthsFromStart = globalPoEndDate 
             ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${startMonth}-01`).startOf('month'), 'month') + 1) 
             : 1;
 
-          const initialConsumedMap = distributeInitialConsumedUnits(
-            templateInitialConsumedUnits,
+          const distribution = distributeInitialConsumedAmount(
+            templateInitialConsumedAmountVal,
             template.activities,
             Number(template.maxStaffs) || 0,
             remainingMonthsFromStart
           );
+          const initialConsumedUnitsMap = distribution.distributedUnits;
 
           const consumedUnitsMap: Record<string, number> = {};
           template.activities.forEach(act => {
-            consumedUnitsMap[act.id] = initialConsumedMap[act.id] || 0;
+            consumedUnitsMap[act.id] = initialConsumedUnitsMap[act.id] || 0;
           });
 
           let finalSplitupResults: Record<string, { amount: number; units: number }> = {};

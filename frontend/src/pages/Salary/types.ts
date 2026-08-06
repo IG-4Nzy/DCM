@@ -11,7 +11,10 @@ export type Template = {
   activities: Activity[];
   allottedAmount?: number | string;
   maxStaffs?: number | string;
-  initialConsumedUnits?: number | string;
+  initialConsumedAmount?: number | string;
+  reserveEnabled?: boolean;
+  reserveType?: 'percentage' | 'amount';
+  reserveValue?: number | string;
 };
 
 export type Member = {

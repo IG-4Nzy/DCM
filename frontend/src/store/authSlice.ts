@@ -1,7 +1,7 @@
-// @ts-nocheck
-import { createSlice,type PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
 import { LOCAL_STORAGE_PARAMETERS } from '../helpers/constants';
 import { getItemFromLocalstorage, removeItemFromLocalstorage, setItemToLocalstorage } from '../helpers/utils';
+import request from '../services/request';
 
 interface AuthState {
   token: string | null;
@@ -22,6 +22,19 @@ const initialState: AuthState = {
   isSuperuser: getItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.IS_SUPERUSER) === true,
   isAuthenticated: !!getItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.TOKEN),
 };
+
+export const logoutUser = createAsyncThunk(
+  'auth/logoutUser',
+  async (_, { dispatch }) => {
+    try {
+      await request.post('/api/auth/logout');
+    } catch (error) {
+      console.error('Logout API call failed:', error);
+    } finally {
+      dispatch(logout());
+    }
+  }
+);
 
 const authSlice = createSlice({
   name: 'auth',
