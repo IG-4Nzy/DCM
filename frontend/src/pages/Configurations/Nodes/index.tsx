@@ -231,6 +231,14 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
     }
   }, [dashboardAdminFilter]);
 
+  // Sync nodeTypeFilter prop to local filter state when it changes from parent / navigation
+  useEffect(() => {
+    if (nodeTypeFilter) {
+      setDeviceTypeFilter(nodeTypeFilter);
+      setPage(0);
+    }
+  }, [nodeTypeFilter]);
+
 
   // Build unique OS, Custodian, and GPU lists for filter dropdowns
   useEffect(() => {
@@ -635,14 +643,13 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
   const adminOptions = hasViewAll
     ? [
         { label: "All Admins", value: "" },
-        { label: "My & Unassigned", value: "my_unassigned" },
+        { label: "Me & Unassigned", value: "my_unassigned" },
         { label: "Unassigned", value: "unassigned" },
         { label: "Other", value: "other" },
         ...filteredAdmins
       ]
     : [
-        { label: "All My & Unassigned", value: "" },
-        { label: "My & Unassigned", value: "my_unassigned" },
+        { label: "Me & Unassigned", value: "my_unassigned" },
         { label: "Assigned to Me", value: "assigned" },
         { label: "Unassigned", value: "unassigned" }
       ];
@@ -852,7 +859,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
             size="small"
             searchable
             clearable
-            value={adminFilter}
+            value={!hasViewAll && adminFilter === "" ? "my_unassigned" : adminFilter}
             onChange={(val) => {
               setAdminFilter(val);
               setPage(0);

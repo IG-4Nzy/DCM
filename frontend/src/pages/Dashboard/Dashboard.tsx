@@ -170,7 +170,7 @@ const Dashboard: React.FC = () => {
           accentColor={colors.indigo}
           accentBg={colors.indigoLight}
           onClick={() => {
-            navigate(ROUTE_CONSTANTS.SERVER_DETAILS, { state: { tab: 'nodes', adminFilter: 'my_unassigned' } });
+            navigate(ROUTE_CONSTANTS.SERVER_DETAILS, { state: { tab: 'nodes', adminFilter: 'my_unassigned', deviceTypeFilter: 'node' } });
           }}
         />
         {canViewObservations && (

@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://admin:password@localhost:27017/dcm_database?authSource=admin")
 
-client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
+client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI, maxPoolSize=200, minPoolSize=10)
 
 # Parse database name from the URI path, fallback to 'dcm_database'
 _parsed = urlparse(MONGO_URI)

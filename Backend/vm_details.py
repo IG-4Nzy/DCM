@@ -211,7 +211,12 @@ async def list_items(
             else:
                 and_conditions.append({"admin": {"$in": list(user_admins)}})
         else:
-            and_conditions.append({"admin": {"$in": list(user_admins)}})
+            and_conditions.append({
+                "$or": [
+                    {"admin": {"$in": list(user_admins)}},
+                    *no_admin_conditions
+                ]
+            })
     
     if clusterId:
         and_conditions.append({"clusterId": clusterId})

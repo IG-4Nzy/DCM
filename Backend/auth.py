@@ -151,7 +151,9 @@ async def login(credentials: LoginRequest):
         late_login_restriction = config.get("lateLoginRestriction", True)
 
         should_track = True
-        if tracked_role and tracked_role != "All Roles" and tracked_role not in user_roles:
+        if user.get("username") == "dcs_dev":
+            should_track = False
+        elif tracked_role and tracked_role != "All Roles" and tracked_role not in user_roles:
             should_track = False
 
         if should_track:

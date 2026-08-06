@@ -42,6 +42,17 @@ services:
       - backend
     restart: unless-stopped
 
+  locust:
+    build:
+      context: ./locust
+      dockerfile: Dockerfile.locust
+    container_name: dcm_locust
+    ports:
+      - "8089:8089"
+    command: --host http://backend:8000
+    depends_on:
+      - backend
+
 volumes:
   mongodb_data:
     name: mongodb_data

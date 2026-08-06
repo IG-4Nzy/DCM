@@ -126,6 +126,8 @@ async def list_items(
     
     privs = current_user.get("privileges", [])
     can_view_all = current_user.get("isSuperuser", False) or "View All Server Details" in privs
+    if not can_view_all and not admin:
+        admin = "my_unassigned"
     
     # Conditions that match records with no admin assigned
     no_admin_conditions = [
@@ -168,7 +170,7 @@ async def list_items(
     has_appliance_all = is_superuser or "View All Server Details" in privs or "View All Network Device" in privs
     has_storage_all = is_superuser or "View All Server Details" in privs or "View All Storage Device" in privs
     has_node_all = is_superuser or "View All Server Details" in privs
-    has_physical_all = is_superuser or "View All Server Details" in privs
+    has_physical_all = is_superuser or "View All Server Details" in privs or "Physical Server View" in privs
 
     def get_category_admin_cond(allow_all: bool) -> dict:
         if allow_all:
@@ -191,7 +193,7 @@ async def list_items(
                 return {"admin": {"$in": list(admin_vals)}}
         else:
             if not admin:
-                return {"admin": {"$in": user_admin_identifiers}}
+                return {"$or": [{"admin": {"$in": user_admin_identifiers}}, *no_admin_conditions]}
             elif admin.lower() == "unassigned":
                 return {"$or": no_admin_conditions}
             elif admin.lower() == "assigned":
@@ -241,11 +243,21 @@ async def list_items(
         elif nodeTypeFilter.lower() == "physical":
             and_conditions.append({"isPhysical": True, **get_category_admin_cond(has_physical_all)})
         elif nodeTypeFilter.lower() == "node":
-            and_conditions.append({
+            node_cond = {
                 "isAppliance": {"$ne": True},
                 "isStorage": {"$ne": True},
                 "isPhysical": {"$ne": True},
                 **get_category_admin_cond(has_node_all)
+            }
+            physical_cond = {
+                "isPhysical": True,
+                **get_category_admin_cond(has_physical_all)
+            }
+            and_conditions.append({
+                "$or": [
+                    node_cond,
+                    physical_cond
+                ]
             })
     else:
         # All Devices
@@ -259,19 +271,26 @@ async def list_items(
         if store_admin:
             store_cond.update(store_admin)
 
-        other_cond = {
+        physical_cond = {"isPhysical": True}
+        physical_admin = get_category_admin_cond(has_physical_all)
+        if physical_admin:
+            physical_cond.update(physical_admin)
+
+        node_cond = {
             "isAppliance": {"$ne": True},
-            "isStorage": {"$ne": True}
+            "isStorage": {"$ne": True},
+            "isPhysical": {"$ne": True}
         }
-        other_admin = get_category_admin_cond(has_node_all)
-        if other_admin:
-            other_cond.update(other_admin)
+        node_admin = get_category_admin_cond(has_node_all)
+        if node_admin:
+            node_cond.update(node_admin)
 
         and_conditions.append({
             "$or": [
                 app_cond,
                 store_cond,
-                other_cond
+                physical_cond,
+                node_cond
             ]
         })
 
@@ -318,19 +337,143 @@ async def list_items(
 
     query = {"$and": and_conditions} if len(and_conditions) > 1 else (and_conditions[0] if and_conditions else {})
 
-    actual_sort_by = sortBy or sort_by or "nodeId"
-    sort_order = 1 if order == "asc" else -1
+    nodes_cursor = collection.find(query)
+    nodes_list = await nodes_cursor.to_list(length=None)
+    
+    merged_items = [dict(item) for item in nodes_list]
+    
+    physical_query = None
+    if not nodeTypeFilter or nodeTypeFilter.lower() in ("physical", "node"):
+        physical_and = []
+        if not has_physical_all:
+            physical_and.append({
+                "$or": [
+                    {"admin": {"$in": user_admin_identifiers}},
+                    *no_admin_conditions
+                ]
+            })
+        else:
+            if admin:
+                if admin.lower() == "unassigned":
+                    physical_and.append({"$or": no_admin_conditions})
+                elif admin.lower() == "my_unassigned":
+                    physical_and.append({
+                        "$or": [
+                            {"admin": {"$in": user_admin_identifiers}},
+                            *no_admin_conditions
+                        ]
+                    })
+                elif admin.lower() == "assigned":
+                    physical_and.append({"admin": {"$in": user_admin_identifiers}})
+                elif admin.lower() == "other":
+                    users_col_adm = db.get_collection("users")
+                    all_users = await users_col_adm.find({}, {"_id": 1, "username": 1}).to_list(length=None)
+                    known_ids = set()
+                    for u in all_users:
+                        known_ids.add(str(u["_id"]))
+                        if u.get("username"):
+                            known_ids.add(u["username"])
+                    physical_and.append({
+                        "$and": [
+                            {"admin": {"$exists": True, "$ne": None, "$ne": "", "$ne": []}},
+                            {"admin": {"$nin": list(known_ids)}}
+                        ]
+                    })
+                else:
+                    physical_and.append({"admin": {"$in": list(admin_vals)}})
+                    
+        if clusterId:
+            physical_and.append({"clusterId": clusterId})
+            
+        if serverModel:
+            physical_and.append({"serverModel": serverModel})
+            
+        if search:
+            import re
+            escaped_search = re.escape(search)
+            physical_and.append({
+                "$or": [
+                    {"node": {"$regex": escaped_search, "$options": "i"}},
+                    {"ipAddress": {"$regex": escaped_search, "$options": "i"}},
+                    {"applications": {"$regex": escaped_search, "$options": "i"}},
+                    {"ram": {"$regex": escaped_search, "$options": "i"}},
+                    {"hdd": {"$regex": escaped_search, "$options": "i"}},
+                    {"cpu": {"$regex": escaped_search, "$options": "i"}},
+                    {"backupLocation": {"$regex": escaped_search, "$options": "i"}},
+                    {"remarks": {"$regex": escaped_search, "$options": "i"}}
+                ]
+            })
+            
+        physical_query = {"$and": physical_and} if len(physical_and) > 1 else (physical_and[0] if physical_and else {})
 
-    total = await collection.count_documents(query)
-    cursor = collection.find(query).sort(actual_sort_by, sort_order)
+    if physical_query is not None:
+        ps_col = db.get_collection("physical_servers")
+        ps_cursor = ps_col.find(physical_query)
+        ps_list = await ps_cursor.to_list(length=None)
+        for ps in ps_list:
+            node_doc = {
+                "_id": ps["_id"],
+                "nodeId": ps.get("nodeId") or f"PS-{str(ps['_id'])[-5:]}",
+                "node": ps.get("node"),
+                "totalRam": ps.get("ram"),
+                "totalHardisk": ps.get("hdd"),
+                "totalCpu": ps.get("cpu"),
+                "clusterId": ps.get("clusterId"),
+                "admin": ps.get("admin"),
+                "ip": ps.get("ipAddress"),
+                "isAppliance": False,
+                "isStorage": False,
+                "isPhysical": True,
+                "os": ps.get("osAndExpiry"),
+                "remarks": ps.get("remarks") or ps.get("backupLocation") or "",
+                "createdBy": ps.get("createdBy"),
+                "createdAt": ps.get("createdAt"),
+                "updatedBy": ps.get("updatedBy"),
+                "updatedAt": ps.get("updatedAt")
+            }
+            merged_items.append(node_doc)
+
+    sort_key = sortBy or sort_by or "nodeId"
+    reverse = (order == "desc")
+    
+    def get_sort_val(item):
+        val = item.get(sort_key)
+        if val is None:
+            # Fallbacks for physical server specific keys
+            if sort_key == "totalRam":
+                val = item.get("ram")
+            elif sort_key == "totalHardisk":
+                val = item.get("hdd")
+            elif sort_key == "totalCpu":
+                val = item.get("cpu")
+            elif sort_key == "ip":
+                val = item.get("ipAddress")
+                
+        if val is None:
+            return ""
+        if isinstance(val, (int, float)):
+            return val
+        if isinstance(val, str):
+            val_strip = val.strip().lower()
+            digits = "".join([c for c in val_strip if c.isdigit() or c == "."])
+            if digits:
+                try:
+                    return float(digits)
+                except ValueError:
+                    pass
+            return val_strip
+        return str(val).lower()
+        
+    merged_items.sort(key=get_sort_val, reverse=reverse)
+    
+    total = len(merged_items)
     
     if pagination:
-        cursor = cursor.skip(skip).limit(limit)
-        items = await cursor.to_list(length=limit)
+        paginated_items = merged_items[skip:skip + limit]
     else:
-        items = await cursor.to_list(length=None)
+        paginated_items = merged_items
 
-    items = [await compute_available_resources(item) for item in items]
+    items = [await compute_available_resources(item) for item in paginated_items]
 
     return {"data": items, "total": total}
 

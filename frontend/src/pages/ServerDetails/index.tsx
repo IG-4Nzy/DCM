@@ -58,6 +58,10 @@ const ServerDetails = () => {
         return location.state?.adminFilter || '';
     });
 
+    const [dashboardDeviceTypeFilter, setDashboardDeviceTypeFilter] = useState<string>(() => {
+        return location.state?.deviceTypeFilter || '';
+    });
+
     useEffect(() => {
         const navTab = location.state?.tab;
         if (navTab && tabs.some(tab => String(tab.value) === navTab)) {
@@ -67,6 +71,11 @@ const ServerDetails = () => {
             setDashboardAdminFilter(location.state.adminFilter);
         } else {
             setDashboardAdminFilter('');
+        }
+        if (location.state?.deviceTypeFilter) {
+            setDashboardDeviceTypeFilter(location.state.deviceTypeFilter);
+        } else {
+            setDashboardDeviceTypeFilter('');
         }
     }, [location.state]);
 
@@ -143,7 +152,7 @@ const ServerDetails = () => {
             <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 {activeTab === 'racks' && <Racks key={activeTab} />}
                 {activeTab === 'clusters' && <Clusters key={activeTab} />}
-                {activeTab === 'nodes' && <Nodes key={activeTab} dashboardAdminFilter={dashboardAdminFilter} />}
+                {activeTab === 'nodes' && <Nodes key={activeTab} dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter={dashboardDeviceTypeFilter || undefined} />}
                 {activeTab === 'vms' && <VMs key={activeTab} dashboardAdminFilter={dashboardAdminFilter} />}
                 {activeTab === 'physical_servers' && <Nodes key={activeTab} dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="physical" />}
                 {activeTab === 'network_devices' && <Nodes key={activeTab} dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="appliance" />}

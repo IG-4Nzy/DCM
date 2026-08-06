@@ -72,6 +72,18 @@ docker run -d \
   dcm-frontend
 
 
+docker save -o dcm-locust.tar dcm-locust
+
+docker build -t dcm-locust -f locust/Dockerfile.locust locust/
+
+ulimit -n 65535
+
+
+# Start the container and map port 8089:
+docker run -d --name dcm_locust -p 8089:8089 dcm-locust --host http://<TARGET_BACKEND_IP>:8000
+
+# Alternative (If backend is running locally on host loopback 127.0.0.1:8000):
+docker run -d --name dcm_locust --net=host dcm-locust --host http://127.0.0.1:8000
 
 
 

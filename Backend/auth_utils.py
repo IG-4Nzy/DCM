@@ -12,13 +12,30 @@ except ImportError:
     SECRET_KEY = "super-secret-jwt-key-replace-me-in-production"
     ALGORITHM = "HS256"
 
+# Simple in-memory cache to prevent database bottlenecks under heavy concurrent load
+from datetime import datetime, timezone
+_last_active_cache = {}
+_last_attendance_cache = {}
+_config_cache = {
+    "data": None,
+    "last_fetched": None
+}
+
+async def get_cached_attendance_config(db):
+    now = datetime.now(timezone.utc)
+    if _config_cache["data"] is None or _config_cache["last_fetched"] is None or (now - _config_cache["last_fetched"]).total_seconds() > 300:
+        config_collection = db.get_collection("attendance_config")
+        config = await config_collection.find_one({}) or {}
+        _config_cache["data"] = config
+        _config_cache["last_fetched"] = now
+    return _config_cache["data"]
+
 async def update_attendance_on_request(username: str, user_dept: str, user_roles_ids: list):
     try:
         from database import db, get_local_now
         from datetime import datetime
         
-        config_collection = db.get_collection("attendance_config")
-        config = await config_collection.find_one({}) or {}
+        config = await get_cached_attendance_config(db)
         tracked_role = config.get("trackedRole")
 
         should_track = True
@@ -153,14 +170,25 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             role_ids = payload.get("roleIds", [])
             department = payload.get("department", "")
 
-            async def _update_last_active():
-                await users_col.update_one(
-                    {"username": username},
-                    {"$set": {"lastActive": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}}
-                )
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc)
 
-            asyncio.create_task(_update_last_active())
-            asyncio.create_task(update_attendance_on_request(username, department, role_ids))
+            # Throttle lastActive updates to DB: at most once every 5 minutes (300 seconds) per user
+            last_active_time = _last_active_cache.get(username)
+            if last_active_time is None or (now - last_active_time).total_seconds() > 300:
+                _last_active_cache[username] = now
+                async def _update_last_active():
+                    await users_col.update_one(
+                        {"username": username},
+                        {"$set": {"lastActive": now.isoformat().replace("+00:00", "Z")}}
+                    )
+                asyncio.create_task(_update_last_active())
+
+            # Throttle attendance updates to DB: at most once every 5 minutes (300 seconds) per user
+            last_att_time = _last_attendance_cache.get(username)
+            if last_att_time is None or (now - last_att_time).total_seconds() > 300:
+                _last_attendance_cache[username] = now
+                asyncio.create_task(update_attendance_on_request(username, department, role_ids))
         except Exception as e:
             print("Error updating user activity:", e)
         return payload

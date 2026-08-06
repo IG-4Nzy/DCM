@@ -19,5 +19,5 @@ ENV PYTHONUNBUFFERED=1
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Start the application with access logging enabled
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--access-log"]
+# Start the application with optimized worker processes
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

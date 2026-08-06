@@ -338,14 +338,14 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
     const adminOptions = hasViewAll
         ? [
             { label: 'All Admins', value: '' },
-            { label: 'My & Unassigned', value: 'my_unassigned' },
+            { label: 'Me & Unassigned', value: 'my_unassigned' },
             { label: 'Unassigned', value: 'unassigned' },
             { label: 'Other', value: 'other' },
             ...filteredAdmins
         ]
         : [
-            { label: 'All My & Unassigned', value: '' },
-            { label: 'My & Unassigned', value: 'my_unassigned' },
+            { label: 'Me & Unassigned', value: 'my_unassigned' },
+            { label: 'Assigned to Me', value: 'assigned' },
             { label: 'Unassigned', value: 'unassigned' },
             ...filteredAdmins
         ];
@@ -499,7 +499,7 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                             size="small"
                             searchable
                             clearable
-                            value={adminFilter}
+                            value={!hasViewAll && adminFilter === "" ? "my_unassigned" : adminFilter}
                             onChange={(val) => {
                                 setAdminFilter(val);
                                 setPage(0);
