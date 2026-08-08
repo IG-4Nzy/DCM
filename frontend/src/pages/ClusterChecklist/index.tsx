@@ -7,7 +7,7 @@ import { jwtDecode } from 'jwt-decode';
 import {
   Box, Typography, Tabs, Tab, Button, IconButton, Chip,
   Tooltip, Dialog, DialogTitle, DialogContent, DialogActions,
-  FormControl, InputLabel, Select, MenuItem
+  FormControl, InputLabel, Select, MenuItem, TextField
 } from '@mui/material';
 import {
   MdAdd, MdDelete, MdDownload, MdCheckCircle, MdHistory, MdExpandMore,
@@ -34,6 +34,7 @@ import { useToast } from '../../contexts/ToastContext';
 import DatePicker from '../../components/DatePicker';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import DaySummary from '../../components/DaySummary';
+import EmailSelectInput from '../../components/EmailSelectInput';
 
 // ─── Tolerance Check ───
 function hasDeviation(value: string, bmsReading: string): boolean {
@@ -370,6 +371,24 @@ const ClusterChecklist: React.FC = () => {
 
   // UI state
   const [searchQuery, setSearchQuery] = useState('');
+  const [emailList, setEmailList] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [hasMappedEmails, setHasMappedEmails] = useState(false);
+
+  useEffect(() => {
+    const checkMappedEmails = async () => {
+      try {
+        const res = await request.get('/api/mail-config/saved-emails?module=daily');
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          setHasMappedEmails(true);
+          setEmailList(res.data.join(', '));
+        }
+      } catch (err) {
+        console.error("Error checking mapped emails:", err);
+      }
+    };
+    checkMappedEmails();
+  }, []);
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
   const [collapsedDevs, setCollapsedDevs] = useState<Set<string>>(new Set());
   const [categoryRemarks, setCategoryRemarks] = useState<{[cat: string]: string}>({});
@@ -688,6 +707,60 @@ const ClusterChecklist: React.FC = () => {
     } catch (e: any) {
       const errMsg = e?.response?.data?.detail || 'Failed to save checklist';
       showToast(errMsg, 'error');
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!checklist) return;
+    const clId = checklist.id || (checklist as any)._id;
+    if (!clId || clId.startsWith('cluster_')) {
+      showToast('Please save the checklist as a draft or complete it first.', 'warning');
+      return;
+    }
+    if (!emailList) {
+      showToast('Please enter at least one email address.', 'warning');
+      return;
+    }
+    const isConfirmed = await confirm(
+      `Are you sure you want to send this Cluster checklist report to the following email(s)?\n\n${emailList}`,
+      "Confirm Send Email"
+    );
+    if (!isConfirmed) return;
+
+    try {
+      setEmailLoading(true);
+      let slNo = 0;
+      const pdfRows = rows.map(row => {
+        slNo++;
+        return [slNo, row.category, row.device, row.parameter, row.value || '-', row.unit || '-', row.remarks || '-'];
+      });
+      const pdfBase64 = await exportChecklistPdf({
+        title: 'Cluster Checklist',
+        date: checklist.date,
+        time: checklist.time,
+        preparedBy: checklist.preparedBy,
+        status: checklist.status,
+        department: departments.find(d => d.id === checklist.department)?.name || checklist.department,
+        completedBy: checklist.completedBy,
+        columns: ['#', 'Category', 'Fields Group', 'Parameter', 'Value', 'Unit', 'Remarks'],
+        rows: pdfRows,
+        categoryRemarks: categoryRemarks,
+        fileName: `Cluster_Checklist_${checklist.date}`,
+        includeDaySummary: true,
+        outputBase64: true,
+      });
+
+      await request.post(`/api/cluster-checklists/${clId}/send-email`, {
+        emails: emailList,
+        pdfBase64: pdfBase64
+      });
+      showToast('Checklist email sent successfully!', 'success');
+      setEmailList('');
+    } catch (e: any) {
+      console.error(e);
+      showToast(e.response?.data?.detail || 'Failed to send email.', 'error');
+    } finally {
+      setEmailLoading(false);
     }
   };
 
@@ -1530,6 +1603,31 @@ const ClusterChecklist: React.FC = () => {
                   >
                     Export CSV
                   </Button>
+                  
+                  {checklist && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, borderLeft: '1px solid #cbd5e1', pl: 2, ml: 1 }}>
+                      {!hasMappedEmails && (
+                        <EmailSelectInput
+                          placeholder="Mails..."
+                          value={emailList}
+                          onChange={(val) => setEmailList(val)}
+                          department={departments.find(d => d.id === checklist?.department)?.name || checklist?.department || 'General'}
+                          module="daily"
+                          size="small"
+                          height="36.5px"
+                          width="180px"
+                        />
+                      )}
+                      <Button
+                        variant="contained"
+                        onClick={handleSendEmail}
+                        disabled={emailLoading || !emailList}
+                        sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px', height: '36.5px', fontSize: '11px', whiteSpace: 'nowrap' }}
+                      >
+                        {emailLoading ? "Sending..." : "Send Mail"}
+                      </Button>
+                    </Box>
+                  )}
                 </Box>
               </Box>
 

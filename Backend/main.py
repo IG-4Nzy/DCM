@@ -46,6 +46,7 @@ from announcements import router as announcements_router
 from phone_directory import router as phone_directory_router
 from infrastructure_history import router as infrastructure_history_router
 from routers.about import router as about_router
+from routers.mail_config import router as mail_config_router
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from database import db
@@ -583,6 +584,7 @@ app.include_router(server_ping_monitoring_router, tags=["server_ping_monitoring"
 app.include_router(salary_router, tags=["salary"], prefix="/api/salary")
 app.include_router(about_router, tags=["about"], prefix="/api/about")
 app.include_router(infrastructure_history_router, tags=["infrastructure_history"], prefix="/api/infrastructure-history")
+app.include_router(mail_config_router, tags=["mail_config"], prefix="/api/mail-config")
 
 # Mount the new split telemetry monitor endpoints under same prefix for backwards compatibility
 app.include_router(vcenter_monitor_router, tags=["vcenter_telemetry"], prefix="/api/vcenter-details")

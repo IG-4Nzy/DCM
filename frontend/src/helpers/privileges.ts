@@ -157,4 +157,6 @@ export const PRIVILEGES = {
     UPDATE_NODE_RESTRICTED: "Update Node (Restricted)",
     UPDATE_STORAGE_RESTRICTED: "Update Storage (Restricted)",
     UPDATE_NETWORK_RESTRICTED: "Update Network Device (Restricted)",
+    MAIL_CONFIG_VIEW: "Mail Config View",
+    MAIL_CONFIG_UPDATE: "Mail Config Update",
 }

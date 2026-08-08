@@ -76,6 +76,8 @@ const Attendance: React.FC = () => {
     const [selectedPeriod, setSelectedPeriod] = useState<string>('');
     const [departmentFilter, setDepartmentFilter] = useState<string>('');
     const [departments, setDepartments] = useState<any[]>([]);
+    const [employees, setEmployees] = useState<any[]>([]);
+    const [employeeFilter, setEmployeeFilter] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState('');
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -126,6 +128,17 @@ const Attendance: React.FC = () => {
     const canDelete = hasPrivilege(PRIVILEGES.ATTENDANCE_DELETE, privileges) || isSuperuser;
     const canViewVerification = hasPrivilege(PRIVILEGES.VIEW_ATTENDANCE_VERIFICATION, privileges) || isSuperuser || hasPrivilege(PRIVILEGES.ATTENDANCE_VERIFY, privileges);
     const canVerify = hasPrivilege(PRIVILEGES.ATTENDANCE_VERIFY, privileges) || isSuperuser;
+    
+    const canViewOthers = canViewAll || canViewDepartmental;
+    const filteredEmployees = employees.filter(emp => {
+        if (canViewAll) {
+            if (departmentFilter) {
+                return emp.department === departmentFilter || (departments.find(d => d.id === departmentFilter)?.name === emp.department);
+            }
+            return true;
+        }
+        return emp.department === userDept || (departments.find(d => d.id === userDept)?.name === emp.department);
+    });
 
     const { showToast } = useToast();
     const { confirm } = useConfirm();
@@ -214,6 +227,20 @@ const Attendance: React.FC = () => {
         }
     }, []);
 
+    // Fetch Employees List (for Filter Dropdown)
+    const loadEmployees = useCallback(async () => {
+        try {
+            const res = await request.get('/api/users/', {
+                params: { pagination: false }
+            });
+            if (res.data && res.data.data) {
+                setEmployees(res.data.data);
+            }
+        } catch (e) {
+            // Silently fail or ignore if not allowed
+        }
+    }, []);
+
     // 3. Load Attendance Logs
     const loadAttendance = useCallback(async () => {
         setLoading(true);
@@ -237,6 +264,10 @@ const Attendance: React.FC = () => {
                 params.department = departmentFilter;
             }
 
+            if (employeeFilter) {
+                params.username = employeeFilter;
+            }
+
             const response = await request.get('/api/attendance/', {
                 params
             });
@@ -249,7 +280,7 @@ const Attendance: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, rowsPerPage, searchQuery, selectedPeriod, departmentFilter, periods, canViewAll, showToast]);
+    }, [page, rowsPerPage, searchQuery, selectedPeriod, departmentFilter, employeeFilter, periods, canViewAll, showToast]);
 
     const isRecordLate = (row: AttendanceRecord) => {
         if (!row.firstLogin) return false;
@@ -323,6 +354,9 @@ const Attendance: React.FC = () => {
             if (canViewAll && departmentFilter) {
                 params.department = departmentFilter;
             }
+            if (employeeFilter) {
+                params.username = employeeFilter;
+            }
             const res = await request.get('/api/attendance/summary', { params });
             setSummaryData(res.data || []);
         } catch (e: any) {
@@ -330,15 +364,17 @@ const Attendance: React.FC = () => {
         } finally {
             setLoadingSummary(false);
         }
-    }, [selectedPeriod, departmentFilter, periods, canViewAll, showToast]);
+    }, [selectedPeriod, departmentFilter, employeeFilter, periods, canViewAll, showToast]);
 
     useEffect(() => {
         loadCycleConfig();
         loadDepartments();
-    }, [loadCycleConfig, loadDepartments]);
+        loadEmployees();
+    }, [loadCycleConfig, loadDepartments, loadEmployees]);
 
     useEffect(() => {
         setPage(0);
+        setEmployeeFilter('');
     }, [searchQuery, departmentFilter]);
 
     useEffect(() => {
@@ -346,7 +382,7 @@ const Attendance: React.FC = () => {
             loadAttendance();
             loadSummary();
         }
-    }, [periods, selectedPeriod, page, rowsPerPage, searchQuery, departmentFilter, loadAttendance, loadSummary]);
+    }, [periods, selectedPeriod, page, rowsPerPage, searchQuery, departmentFilter, employeeFilter, loadAttendance, loadSummary]);
 
     // Actions
     const handleOpenRegModal = (row: AttendanceRecord) => {
@@ -993,6 +1029,27 @@ const Attendance: React.FC = () => {
                                     {departments.map((dept, idx) => (
                                         <MenuItem key={idx} value={dept.id}>
                                             {dept.name}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Box>
+                    )}
+
+                    {canViewOthers && (
+                        <Box className={styles['attendance-filters__item']}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Employee Filter</InputLabel>
+                                <Select
+                                    fullWidth
+                                    value={employeeFilter}
+                                    label="Employee Filter"
+                                    onChange={(e) => setEmployeeFilter(e.target.value)}
+                                >
+                                    <MenuItem value="">All Employees</MenuItem>
+                                    {filteredEmployees.map((emp, idx) => (
+                                        <MenuItem key={idx} value={emp.username}>
+                                            {emp.firstName || emp.lastName ? `${emp.firstName || ''} ${emp.lastName || ''}`.trim() : emp.username}
                                         </MenuItem>
                                     ))}
                                 </Select>

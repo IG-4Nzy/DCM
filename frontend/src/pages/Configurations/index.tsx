@@ -24,6 +24,8 @@ const Configurations = () => {
             case 'rosterRoleMapping':
             case 'notificationSettings':
                 return hasPrivilege(PRIVILEGES.CONFIGURATION_VIEW);
+            case 'mailConfigSettings':
+                return hasPrivilege(PRIVILEGES.MAIL_CONFIG_VIEW) || hasPrivilege(PRIVILEGES.MAIL_CONFIG_UPDATE) || hasPrivilege(PRIVILEGES.CONFIGURATION_VIEW);
             case 'requestRoutings':
                 return hasPrivilege(PRIVILEGES.REQUEST_VIEW) || hasPrivilege(PRIVILEGES.CONFIGURATION_VIEW);
             case 'bmsChecklistFields':

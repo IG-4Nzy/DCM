@@ -23,11 +23,13 @@ import {
   Divider,
   Avatar
 } from "@mui/material";
-import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon, MdPrint as PrintIcon, MdContentCopy as CopyIcon, MdUndo as UndoIcon, MdHistory as HistoryIcon, MdCalendarToday, MdBusiness } from "react-icons/md";
+import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon, MdPrint as PrintIcon, MdContentCopy as CopyIcon, MdUndo as UndoIcon, MdHistory as HistoryIcon, MdCalendarToday, MdBusiness, MdDownload as DownloadIcon } from "react-icons/md";
 import dayjs, { Dayjs } from "dayjs";
 import { getServerTime } from "../../helpers/time";
 import isoWeekPlugin from "dayjs/plugin/isoWeek";
 import WeekPicker from "../../components/WeekPicker";
+import EmailSelectInput from "../../components/EmailSelectInput";
+import { exportRosterPdf } from "../../helpers/exportRosterPdf";
 import styles from "./index.module.scss";
 import { tableHeader } from "./constant";
 import { useToast } from "../../contexts/ToastContext";
@@ -61,6 +63,24 @@ const RoasterPage: React.FC = () => {
   const [savedRosterDataByWeek, setSavedRosterDataByWeek] = useState<Record<string, Record<string, RosterData>>>({});
   const [activeTab, setActiveTab] = useState<number>(0);
   const [localSplitups, setLocalSplitups] = useState<any>({});
+  const [officerEmails, setOfficerEmails] = useState("");
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [hasMappedEmails, setHasMappedEmails] = useState(false);
+
+  useEffect(() => {
+    const checkMappedEmails = async () => {
+      try {
+        const res = await request.get('/api/mail-config/saved-emails?module=roster');
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          setHasMappedEmails(true);
+          setOfficerEmails(res.data.join(', '));
+        }
+      } catch (err) {
+        console.error("Error checking mapped emails:", err);
+      }
+    };
+    checkMappedEmails();
+  }, []);
 
   const currentWeekKey = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
   const isEditMode = !!editModes[currentWeekKey];
@@ -562,6 +582,56 @@ const RoasterPage: React.FC = () => {
     }
   };
 
+  const handleSendRosterEmail = async () => {
+    if (!officerEmails) {
+      showToast("Please enter at least one email address", "warning");
+      return;
+    }
+    const isConfirmed = await confirm(
+      `Are you sure you want to send this week's roster to the following email(s)?\n\n${officerEmails}`,
+      "Confirm Send Email"
+    );
+    if (!isConfirmed) return;
+
+    try {
+      setEmailLoading(true);
+      const startDate = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
+      
+      const element = document.querySelector(`.${styles.container__roasterContainer}`) as HTMLElement;
+      if (!element) {
+        showToast("Roster element not found on page.", "error");
+        return;
+      }
+
+      element.classList.add(styles.container__generatingPdf);
+      
+      let pdfBase64 = "";
+      try {
+        pdfBase64 = await exportRosterPdf({
+          element: element,
+          filename: `Duty_Roster_${displayDepartmentValue.replace(/[^a-zA-Z0-9]/g, '_')}_${startDate}.pdf`
+        });
+      } finally {
+        element.classList.remove(styles.container__generatingPdf);
+      }
+
+      await request.post("/api/roasters/send-email", {
+        emails: officerEmails,
+        department: activeDepartment || 'General',
+        weekStartDate: startDate,
+        pdfBase64: pdfBase64
+      });
+      showToast("Roster email sent successfully!", "success");
+      setOfficerEmails("");
+      fetchRosterStatus();
+    } catch (e: any) {
+      console.error(e);
+      showToast(e.response?.data?.detail || "Failed to send email", "error");
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
   if (!canView) {
     return (
       <Box className={styles.container} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -595,6 +665,9 @@ const RoasterPage: React.FC = () => {
       lastUpdatedBy = rosterStatus.updatedByFullName || null;
     }
   }
+
+  const isRosterApproved = rosterStatus?.status === 'Approved';
+  const hasEmailBeenSent = rosterStatus?.emailSent === true;
 
   const hasRosterData = Object.entries(rosterData)
     .filter(([key]) => weekDates.some(d => key.startsWith(d)))
@@ -844,6 +917,40 @@ const RoasterPage: React.FC = () => {
               <PrintIcon size={20} />
             </IconButton>
           </Tooltip>
+
+          <Box className="hide-on-print" sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1 }}>
+            {!hasMappedEmails && (
+              <EmailSelectInput
+                placeholder="Officer email(s)"
+                value={officerEmails}
+                onChange={(val) => setOfficerEmails(val)}
+                department={activeDepartment || 'General'}
+                module="roster"
+                size="small"
+                height="32px"
+                width="210px"
+              />
+            )}
+            <Tooltip title={
+              !isRosterApproved 
+                ? "Roster must be approved before sending email" 
+                : hasEmailBeenSent 
+                  ? "Roster email has already been sent for this approval" 
+                  : "Send roster email with PDF"
+            }>
+              <span>
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={handleSendRosterEmail}
+                  disabled={emailLoading || !officerEmails || !isRosterApproved || hasEmailBeenSent}
+                  sx={{ height: '32px', fontSize: '11px', whiteSpace: 'nowrap' }}
+                >
+                  {emailLoading ? "Sending..." : "Send Mail"}
+                </Button>
+              </span>
+            </Tooltip>
+          </Box>
         </Box>
       </header>
 

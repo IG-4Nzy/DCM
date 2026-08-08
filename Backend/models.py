@@ -351,6 +351,7 @@ class RoasterStatusModel(BaseModel):
     status: str
     updatedByFullName: Optional[str] = None
     updatedAt: Optional[str] = None
+    emailSent: Optional[bool] = False
 
     model_config = ConfigDict(
         populate_by_name=True,

@@ -153,5 +153,7 @@
     "Update VMs (Restricted)",
     "Update Node (Restricted)",
     "Update Storage (Restricted)",
-    "Update Network Device (Restricted)"
+    "Update Network Device (Restricted)",
+    "Mail Config View",
+    "Mail Config Update"
 ]

@@ -1,0 +1,138 @@
+import logging
+from typing import Optional, List
+from fastapi import APIRouter, HTTPException, status, Depends, Query
+from pydantic import BaseModel, Field
+from database import db
+from auth_utils import require_privilege, get_current_user
+
+router = APIRouter()
+logger = logging.getLogger("mail_config.router")
+
+class MailConfigSchema(BaseModel):
+    host: str = Field(..., description="SMTP server hostname or IP")
+    port: int = Field(..., description="SMTP server port")
+    username: str = Field(..., description="SMTP login username")
+    password: str = Field(..., description="SMTP login password")
+    fromEmail: str = Field(..., description="Sender from email address")
+    useTls: bool = Field(False, description="Enable TLS connection")
+    useSsl: bool = Field(False, description="Enable SSL connection")
+    savedEmails: Optional[List[str]] = Field(default=[], description="List of general saved emails")
+    savedEmailsRoster: Optional[List[str]] = Field(default=[], description="List of default emails for roster")
+    savedEmailsDailyChecklist: Optional[List[str]] = Field(default=[], description="List of default emails for daily/cluster checklist")
+    savedEmailsBmsChecklist: Optional[List[str]] = Field(default=[], description="List of default emails for BMS checklist")
+
+class TestMailSchema(BaseModel):
+    toEmail: str = Field(..., description="Recipient email address")
+    subject: Optional[str] = Field("Test Connection Email", description="Subject line for testing")
+    body: Optional[str] = Field("This is a test email from Datacentre Management System (DCM).", description="Email body text")
+
+@router.get("/", response_description="Get Mail Configuration", dependencies=[Depends(require_privilege("Mail Config View"))])
+async def get_mail_config():
+    config_col = db.get_collection("mail_config")
+    config = await config_col.find_one({"_id": "mail_config"})
+    if not config:
+        # Default fallback
+        config = {
+            "_id": "mail_config",
+            "host": "localhost",
+            "port": 1025,
+            "username": "your_username_placeholder",
+            "password": "your_password_placeholder",
+            "fromEmail": "noreply@dcm.local",
+            "useTls": False,
+            "useSsl": False,
+            "savedEmails": [],
+            "savedEmailsRoster": [],
+            "savedEmailsDailyChecklist": [],
+            "savedEmailsBmsChecklist": []
+        }
+        await config_col.insert_one(config)
+    
+    config["_id"] = str(config["_id"])
+    if "savedEmails" not in config:
+        config["savedEmails"] = []
+    if "savedEmailsRoster" not in config:
+        config["savedEmailsRoster"] = []
+    if "savedEmailsDailyChecklist" not in config:
+        config["savedEmailsDailyChecklist"] = []
+    if "savedEmailsBmsChecklist" not in config:
+        config["savedEmailsBmsChecklist"] = []
+    return config
+
+@router.put("/", response_description="Update Mail Configuration", dependencies=[Depends(require_privilege("Mail Config Update"))])
+async def update_mail_config(payload: MailConfigSchema):
+    config_col = db.get_collection("mail_config")
+    
+    update_data = {
+        "host": payload.host,
+        "port": payload.port,
+        "username": payload.username,
+        "password": payload.password,
+        "fromEmail": payload.fromEmail,
+        "useTls": payload.useTls,
+        "useSsl": payload.useSsl,
+        "savedEmails": payload.savedEmails or [],
+        "savedEmailsRoster": payload.savedEmailsRoster or [],
+        "savedEmailsDailyChecklist": payload.savedEmailsDailyChecklist or [],
+        "savedEmailsBmsChecklist": payload.savedEmailsBmsChecklist or []
+    }
+    
+    await config_col.update_one(
+        {"_id": "mail_config"},
+        {"$set": update_data},
+        upsert=True
+    )
+    return {"message": "Mail configuration updated successfully", "config": update_data}
+
+@router.get("/saved-emails", response_description="Get list of saved emails")
+async def get_saved_emails(
+    module: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user)
+):
+    config_col = db.get_collection("mail_config")
+    config = await config_col.find_one({"_id": "mail_config"})
+    if not config:
+        return []
+    
+    if module == "roster":
+        val = config.get("savedEmailsRoster")
+        if val is not None and len(val) > 0:
+            return val
+    elif module == "daily" or module == "daily_checklist" or module == "cluster":
+        val = config.get("savedEmailsDailyChecklist")
+        if val is not None and len(val) > 0:
+            return val
+    elif module == "bms" or module == "bms_checklist":
+        val = config.get("savedEmailsBmsChecklist")
+        if val is not None and len(val) > 0:
+            return val
+
+    return config.get("savedEmails", [])
+
+@router.get("/last-sent", response_description="Get last sent emails for a department")
+async def get_last_sent_email(
+    department: str = Query(...),
+    current_user: dict = Depends(get_current_user)
+):
+    col = db.get_collection("last_sent_emails")
+    doc = await col.find_one({"_id": department})
+    if not doc:
+        return {"emails": ""}
+    return {"emails": doc.get("emails", "")}
+
+@router.post("/test", response_description="Send a test email", dependencies=[Depends(require_privilege("Mail Config Update"))])
+async def test_send_mail(payload: TestMailSchema):
+    from mail_utils import send_email
+    try:
+        await send_email(
+            to_emails=[payload.toEmail],
+            subject=payload.subject,
+            body=payload.body
+        )
+        return {"success": True, "message": f"Test email successfully sent to {payload.toEmail}"}
+    except Exception as e:
+        logger.error(f"Failed to send test email: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send email: {str(e)}"
+        )

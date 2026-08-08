@@ -81,6 +81,7 @@ async def list_attendance(
     pagination: bool = Query(True),
     search: Optional[str] = None,
     department: Optional[str] = None,
+    username: Optional[str] = None,
     startDate: Optional[str] = None,
     endDate: Optional[str] = None,
     sortBy: Optional[str] = Query(None),
@@ -96,8 +97,16 @@ async def list_attendance(
     if is_superuser or "View All Attendance" in privileges:
         if department:
             query["department"] = department
+        if username:
+            query["username"] = username
     elif "View Departmental Attendance" in privileges:
         query["department"] = current_user.get("department") or "None"
+        if username:
+            user_doc = await db.get_collection("users").find_one({"username": username})
+            if user_doc and user_doc.get("department") == current_user.get("department"):
+                query["username"] = username
+            else:
+                query["username"] = "__non_existent_user__"
     elif "View Self Attendance" in privileges:
         query["username"] = current_user.get("sub")
     else:
@@ -481,6 +490,7 @@ async def get_attendance_summary(
     startDate: str = Query(...),
     endDate: str = Query(...),
     department: Optional[str] = Query(None),
+    username: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
     is_superuser = current_user.get("isSuperuser", False)
@@ -492,8 +502,16 @@ async def get_attendance_summary(
     if is_superuser or "View All Attendance" in privileges:
         if department:
             query["department"] = department
+        if username:
+            query["username"] = username
     elif "View Departmental Attendance" in privileges:
         query["department"] = current_user.get("department") or "None"
+        if username:
+            user_doc = await db.get_collection("users").find_one({"username": username})
+            if user_doc and user_doc.get("department") == current_user.get("department"):
+                query["username"] = username
+            else:
+                query["username"] = "__non_existent_user__"
     elif "View Self Attendance" in privileges:
         query["username"] = current_user.get("sub")
     else:

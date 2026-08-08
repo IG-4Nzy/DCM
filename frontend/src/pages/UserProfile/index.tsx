@@ -34,6 +34,7 @@ interface UserProfileData {
     mobile: string;
     bloodGroup: string;
     address: string;
+    passNumber?: string;
     dateOfJoin: string;
     department: string;
     stickyNoteEnabled?: boolean;
@@ -65,6 +66,7 @@ const UserProfile: React.FC = () => {
         mobile: "",
         bloodGroup: "",
         address: "",
+        passNumber: "",
         stickyNoteEnabled: false,
     });
 
@@ -80,6 +82,7 @@ const UserProfile: React.FC = () => {
                 mobile: res.data.mobile || "",
                 bloodGroup: res.data.bloodGroup || "",
                 address: res.data.address || "",
+                passNumber: res.data.passNumber || "",
                 stickyNoteEnabled: res.data.stickyNoteEnabled || false,
             });
         } catch (err: any) {
@@ -105,6 +108,7 @@ const UserProfile: React.FC = () => {
                 mobile: profile.mobile || "",
                 bloodGroup: profile.bloodGroup || "",
                 address: profile.address || "",
+                passNumber: profile.passNumber || "",
                 stickyNoteEnabled: profile.stickyNoteEnabled || false,
             });
         }
@@ -289,10 +293,15 @@ const UserProfile: React.FC = () => {
                                 className={styles.field}
                             />
                             <TextField
-
                                 label="Last Name"
                                 value={form.lastName}
                                 onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                                className={styles.field}
+                            />
+                            <TextField
+                                label="Pass Number"
+                                value={form.passNumber}
+                                onChange={(e) => setForm({ ...form, passNumber: e.target.value })}
                                 className={styles.field}
                             />
                         </Box>
@@ -300,6 +309,7 @@ const UserProfile: React.FC = () => {
                         <Box className={styles.infoGrid}>
                             <InfoRow label="First Name" value={profile.firstName} />
                             <InfoRow label="Last Name" value={profile.lastName} />
+                            <InfoRow label="Pass Number" value={profile.passNumber} />
                         </Box>
                     )}
                 </Paper>

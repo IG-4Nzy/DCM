@@ -20,6 +20,57 @@
     }
   }
 
+  &__generatingPdf {
+    width: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    border: #333 solid 1px !important;
+
+    :global(.hide-on-print) {
+      display: none !important;
+    }
+
+    .container__roasterContainer__footer {
+      margin-bottom: 0px !important;
+      margin-top: 12px !important;
+      
+      .container__roasterContainer__footer--section2 {
+        margin-top: 24px !important;
+      }
+    }
+
+    .container__roasterContainer__table--body-cell {
+      min-height: 3.5rem !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+
+      &:nth-child(even) {
+        background-color: #f3f4f6 !important;
+      }
+      &:nth-child(odd) {
+        background-color: #ffffff !important;
+      }
+    }
+
+    .container__roasterContainer__table--body-cell--row2 {
+      min-height: 35px !important;
+    }
+
+    .container__roasterContainer__table--header-cell:nth-last-child(2) {
+      border-right: none !important;
+    }
+    .container__roasterContainer__table--header-cell label {
+      font-weight: 400 !important;
+    }
+    .container__roasterContainer__table--body-cell--row2 label {
+      color: #333 !important;
+      font-weight: 400 !important;
+    }
+    .container__roasterContainer__table--body-cell--row2:nth-last-child(2) > label {
+      border-right: none !important;
+    }
+  }
+
   &__roasterContainer {
     border: #333 solid 1px;
     overflow: hidden;

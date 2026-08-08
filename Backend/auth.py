@@ -33,6 +33,7 @@ class UpdateProfileModel(BaseModel):
     mobile: Optional[str] = None
     bloodGroup: Optional[str] = None
     address: Optional[str] = None
+    passNumber: Optional[str] = None
     stickyNoteEnabled: Optional[bool] = None
     stickyNoteContent: Optional[str] = None
     stickyNotePositionX: Optional[int] = None
@@ -515,6 +516,7 @@ async def get_my_profile(current_user: dict = Depends(get_current_user)):
         "mobile": user.get("mobile", ""),
         "bloodGroup": user.get("bloodGroup", ""),
         "address": user.get("address", ""),
+        "passNumber": user.get("passNumber", ""),
         "dateOfJoin": user.get("dateOfJoin", ""),
         "department": dept_val,
         "stickyNoteEnabled": user.get("stickyNoteEnabled", False),
@@ -530,6 +532,18 @@ async def update_my_profile(profile: UpdateProfileModel = Body(...), current_use
     
     update_data = {k: v for k, v in profile.model_dump().items() if v is not None}
     
+    if "passNumber" in update_data:
+        pass_number = update_data["passNumber"]
+        if pass_number:
+            pass_number_stripped = pass_number.strip()
+            existing = await users_collection.find_one({
+                "passNumber": pass_number_stripped,
+                "username": {"$ne": username}
+            })
+            if existing:
+                raise HTTPException(status_code=400, detail="Pass number already exists")
+            update_data["passNumber"] = pass_number_stripped
+
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
     

@@ -16,6 +16,7 @@ interface ChecklistPdfOptions {
   categoryRemarks?: Record<string, string>;
   fileName?: string;
   includeDaySummary?: boolean;
+  outputBase64?: boolean;
 }
 
 import { fetchDaySummaryData } from './daySummary';
@@ -24,7 +25,7 @@ import dayjs from 'dayjs';
 /**
  * Export checklist data as a professionally formatted PDF.
  */
-export async function exportChecklistPdf(options: ChecklistPdfOptions) {
+export async function exportChecklistPdf(options: ChecklistPdfOptions): Promise<any> {
   const {
     title,
     date,
@@ -238,7 +239,11 @@ export async function exportChecklistPdf(options: ChecklistPdfOptions) {
     }
   }
 
-  // ─── Save ───
+  // ─── Save / Output ───
+  if (options.outputBase64) {
+    return doc.output('datauristring');
+  }
   const safeName = fileName || `${title.replace(/[^a-zA-Z0-9]/g, '_')}_${date}`;
   doc.save(`${safeName}.pdf`);
 }
+

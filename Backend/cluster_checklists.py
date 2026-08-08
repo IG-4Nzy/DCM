@@ -181,3 +181,181 @@ async def delete_cluster_checklist(id: str):
         raise HTTPException(status_code=404, detail="Cluster checklist not found")
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{id}/send-email",
+    response_description="Send Cluster Checklist via email",
+)
+async def send_cluster_checklist_email(
+    id: str,
+    payload: dict = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        if not ObjectId.is_valid(id):
+            raise HTTPException(status_code=400, detail="Invalid ID format")
+
+        doc = await collection.find_one({"_id": ObjectId(id)})
+        if not doc:
+            raise HTTPException(status_code=404, detail="Cluster checklist not found")
+
+        emails_str = payload.get("emails", "")
+        if not emails_str:
+            raise HTTPException(status_code=400, detail="Emails list is required")
+
+        emails = [e.strip() for e in emails_str.split(",") if e.strip()]
+        if not emails:
+            raise HTTPException(status_code=400, detail="No valid email addresses provided")
+
+        dept_id = doc.get("department")
+        dept_name = "General"
+        if dept_id:
+            dept_doc = await db.get_collection("departments").find_one({
+                "$or": [
+                    {"name": dept_id},
+                    {"_id": ObjectId(dept_id) if ObjectId.is_valid(dept_id) else None}
+                ]
+            })
+            if dept_doc:
+                dept_name = str(dept_doc.get("name", dept_id))
+            else:
+                dept_name = str(dept_id)
+
+        # Fetch observations & visitors HTML
+        from mail_utils import get_day_summary_html
+        summary_html = await get_day_summary_html(doc.get("date"))
+
+        data_dict = doc.get("data", {})
+        if isinstance(data_dict, str):
+            import json
+            try:
+                data_dict = json.loads(data_dict)
+            except Exception:
+                data_dict = {}
+                
+        rows_html = ""
+        if isinstance(data_dict, dict):
+            for category, devices in data_dict.items():
+                rows_html += f"""
+                <tr style="background-color: #e2e8f0;">
+                    <td colspan="4" style="border: 1px solid #cbd5e1; padding: 10px; font-weight: bold; text-align: left; font-size: 14px; color: #1e293b;">
+                        {category}
+                    </td>
+                </tr>
+                """
+                if isinstance(devices, dict):
+                    for device, parameters in devices.items():
+                        if isinstance(parameters, dict):
+                            for param, raw_val in parameters.items():
+                                val = ""
+                                bms_reading = ""
+                                unit = ""
+                                remarks = ""
+                                
+                                if isinstance(raw_val, dict):
+                                    val = raw_val.get("value", "")
+                                    bms_reading = raw_val.get("BMS_Reading", "")
+                                    unit = raw_val.get("unit", "")
+                                    remarks = raw_val.get("remarks", "")
+                                else:
+                                    val = str(raw_val)
+                 
+                                rows_html += f"""
+                                <tr>
+                                    <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: left;">{device}</td>
+                                    <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: left;">{param}</td>
+                                    <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: center; font-weight: bold;">{val} {unit}</td>
+                                    <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: left; font-style: italic; color: #475569;">{remarks if remarks else '-'}</td>
+                                </tr>
+                                """
+     
+        html_body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; color: #1e293b; line-height: 1.6;">
+            <h2 style="color: #0f172a; border-bottom: 2px solid #3b82f6; padding-bottom: 8px;">Cluster Checklist Report</h2>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
+                <tr>
+                    <td style="padding: 6px 0;"><strong>Date:</strong> {doc.get('date')}</td>
+                    <td style="padding: 6px 0;"><strong>Time:</strong> {doc.get('time')}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 0;"><strong>Prepared By:</strong> {doc.get('preparedBy')}</td>
+                    <td style="padding: 6px 0;"><strong>Department:</strong> {dept_name}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 0;"><strong>Status:</strong> <span style="font-weight: bold; color: {'#10b981' if doc.get('status') == 'Completed' else '#f59e0b'};">{doc.get('status')}</span></td>
+                    <td></td>
+                </tr>
+            </table>
+            
+            <table style="border-collapse: collapse; width: 100%; font-size: 13px; border: 1px solid #cbd5e1;">
+                <thead>
+                    <tr style="background-color: #f1f5f9;">
+                        <th style="border: 1px solid #cbd5e1; padding: 10px; text-align: left; width: 30%;">Device</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 10px; text-align: left; width: 30%;">Parameter</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 10px; text-align: center; width: 20%;">Value / Unit</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 10px; text-align: left; width: 20%;">Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows_html}
+                </tbody>
+            </table>
+            
+            {summary_html}
+            
+            <p style="margin-top: 25px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 8px;">
+                This is an automated report sent from the Datacentre Management System (DCM).
+            </p>
+        </body>
+        </html>
+        """
+     
+        plain_body = f"Cluster Checklist Report\nDate: {doc.get('date')} - {doc.get('time')}\nPrepared By: {doc.get('preparedBy')}\nStatus: {doc.get('status')}\n\nPlease find attached the PDF report for this Cluster Checklist."
+     
+        from mail_utils import send_email, html_to_pdf_bytes
+        
+        attachments = None
+        try:
+            pdf_base64 = payload.get("pdf_base64") or payload.get("pdfBase64")
+            if pdf_base64:
+                import base64
+                if "," in pdf_base64:
+                    pdf_base64 = pdf_base64.split(",")[1]
+                pdf_bytes = base64.b64decode(pdf_base64)
+            else:
+                pdf_bytes = await html_to_pdf_bytes(html_body)
+ 
+            date_clean = (doc.get("date") or "date").replace("-", "")
+            time_clean = (doc.get("time") or "time").replace(":", "")
+            filename = f"Cluster_Checklist_{date_clean}_{time_clean}.pdf"
+            attachments = [{
+                "filename": filename,
+                "content": pdf_bytes,
+                "content_type": "application/pdf"
+            }]
+        except Exception as pdf_err:
+            print("ERROR GENERATING CLUSTER CHECKLIST PDF:", pdf_err)
+     
+        await send_email(
+            to_emails=emails,
+            subject=f"Cluster Checklist Report - {doc.get('date')} - {dept_name}",
+            body=plain_body,
+            html_body=html_body,
+            attachments=attachments
+        )
+        dept = str(doc.get("department")) if doc.get("department") else "General"
+        await db.get_collection("last_sent_emails").update_one(
+            {"_id": dept},
+            {"$set": {"emails": emails_str}},
+            upsert=True
+        )
+        return {"success": True, "message": f"Checklist report successfully sent to {', '.join(emails)}"}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+

@@ -12,6 +12,7 @@ import ClusterChecklistConfig from "./ClusterChecklistConfig";
 import MorningChecklistConfig from "./MorningChecklistConfig";
 import NotificationSettings from "./NotificationSettings";
 import VCenterConfig from "./VCenterConfig";
+import MailConfigSettings from "./MailConfigSettings";
 
 export const CONFIG_TABS = [
     { id: 'serverMastersConfig', label: 'Server Masters', value: 'serverMastersConfig' },
@@ -21,6 +22,7 @@ export const CONFIG_TABS = [
     { id: 'clusterChecklistConfig', label: 'Cluster Checklist', value: 'clusterChecklistConfig' },
     { id: 'morningChecklistConfig', label: 'Morning Checklist', value: 'morningChecklistConfig' },
     { id: 'notificationConfig', label: 'Notifications', value: 'notificationConfig' },
+    { id: 'mailConfig', label: 'Mail Config', value: 'mailConfig' },
 ];
 
 export const SERVER_MASTERS_CONFIGURATIONS = [
@@ -57,6 +59,10 @@ export const NOTIFICATION_CONFIGURATIONS = [
     { id: "notificationSettings", label: "Notification Settings", value: "notificationSettings" },
 ]
 
+export const MAIL_CONFIGURATIONS = [
+    { id: "mailConfigSettings", label: "Mail Settings", value: "mailConfigSettings" },
+]
+
 export const CONFIG_SUBTABS = {
     serverMastersConfig: SERVER_MASTERS_CONFIGURATIONS,
     requestConfig: REQUEST_CONFIGURATIONS,
@@ -65,6 +71,7 @@ export const CONFIG_SUBTABS = {
     clusterChecklistConfig: CLUSTER_CHECKLIST_CONFIGURATIONS,
     morningChecklistConfig: MORNING_CHECKLIST_CONFIGURATIONS,
     notificationConfig: NOTIFICATION_CONFIGURATIONS,
+    mailConfig: MAIL_CONFIGURATIONS,
 }
 
 export const CONFIG_TABS_PAGES = {
@@ -81,4 +88,5 @@ export const CONFIG_TABS_PAGES = {
     clusterChecklistFields: ClusterChecklistConfig,
     morningChecklistFields: MorningChecklistConfig,
     notificationSettings: NotificationSettings,
+    mailConfigSettings: MailConfigSettings,
 }

@@ -95,7 +95,8 @@ async def update_roaster_status(
         "department": status_data.department,
         "status": status_data.status,
         "updatedByFullName": name_str,
-        "updatedAt": datetime.now(timezone.utc).isoformat()
+        "updatedAt": datetime.now(timezone.utc).isoformat(),
+        "emailSent": False
     }
 
     result = await roaster_status_collection.update_one(
@@ -137,7 +138,8 @@ async def reset_roaster_status(
         "department": status_data.department,
         "status": "Pending",
         "updatedByFullName": name_str,
-        "updatedAt": datetime.now(timezone.utc).isoformat()
+        "updatedAt": datetime.now(timezone.utc).isoformat(),
+        "emailSent": False
     }
 
     await roaster_status_collection.update_one(
@@ -898,5 +900,456 @@ async def delete_role_mapping(id: str, current_user: dict = Depends(get_current_
     if result.deleted_count == 1:
         return {"status": "deleted"}
     raise HTTPException(status_code=404, detail="Mapping not found")
+
+
+def format_time(t_str):
+    if not t_str:
+        return ""
+    try:
+        dt = datetime.strptime(t_str, "%H:%M")
+        return dt.strftime("%I:%M %p")
+    except Exception:
+        return t_str
+
+async def generate_roster_pdf_bytes(department: str, week_start_date: str, rosters: list, user_names: dict):
+    config_collection = db.get_collection("attendance_config")
+    config = await config_collection.find_one({}) or {}
+    config_shifts = config.get("shifts", [])
+    config_roster_rows = config.get("rosterRows", [])
+    
+    from datetime import datetime, timedelta
+    start_dt = datetime.strptime(week_start_date, "%Y-%m-%d")
+    week_dates = [(start_dt + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
+    
+    start_formatted = start_dt.strftime("%d-%m-%Y")
+    end_formatted = (start_dt + timedelta(days=6)).strftime("%d-%m-%Y")
+    year_str = start_dt.strftime("%Y")
+    
+    roster_map = {}
+    for r in rosters:
+        roster_map[(r["date"], r["shift"])] = r.get("assignees", [])
+        
+    shifts = ["Shift-1", "Shift-2", "Shift-3"]
+    
+    headers_html = ""
+    for shift_name in shifts:
+        cfg_shift = next((s for s in config_shifts if s.get("name") == shift_name), None)
+        header_label = shift_name
+        if shift_name == "Shift-1":
+            header_label = "Shift-1 (06-30 AM to 2:30 PM)"
+        elif shift_name == "Shift-2":
+            header_label = "Shift - 2 (02:30 PM to 10:30 PM)"
+        elif shift_name == "Shift-3":
+            header_label = "Shift - 3 (10:30 PM to 06:30 AM)"
+        elif cfg_shift:
+            s_time = format_time(cfg_shift.get("startTime"))
+            e_time = format_time(cfg_shift.get("endTime"))
+            header_label = f"{shift_name} ({s_time} to {e_time})"
+            
+        headers_html += f"<th>{header_label}</th>"
+        
+    table_rows_html = ""
+    for idx, d_str in enumerate(week_dates):
+        d_val = datetime.strptime(d_str, "%Y-%m-%d")
+        day_formatted = d_val.strftime("%d/%m/%y")
+        day_name = d_val.strftime("%A")
+        
+        bg_color = "#ffffff" if idx % 2 == 0 else "#f5f5f5"
+        
+        row_html = f"<tr style='background-color: {bg_color};'>"
+        row_html += f"<td class='day-cell'>{day_formatted}<span class='day-name'>{day_name}</span></td>"
+        
+        for shift_name in shifts:
+            assignees = roster_map.get((d_str, shift_name), [])
+            shift_rows = [r for r in config_roster_rows if r.get("mappedShift") == shift_name]
+            num_slots = len(shift_rows) if shift_rows else 2
+            
+            slots_html = ""
+            for i in range(num_slots):
+                username = assignees[i] if i < len(assignees) else None
+                display_name = user_names.get(username, username) if username else "-"
+                slots_html += f"<div class='slot-label'>{display_name}</div>"
+                
+            row_html += f"<td><div class='slots-container'>{slots_html}</div></td>"
+            
+        row_html += "</tr>"
+        table_rows_html += row_html
+        
+    html_content = f"""<!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="utf-8">
+    <style>
+      @page {{
+        size: A4 portrait;
+        margin: 15mm;
+      }}
+      body {{
+        font-family: 'Segoe UI', Arial, sans-serif;
+        color: #333;
+        line-height: 1.4;
+        margin: 0;
+        padding: 0;
+      }}
+      .roaster-container {{
+        width: 100%;
+        margin: 0 auto;
+      }}
+      .header {{
+        text-align: center;
+        margin-bottom: 20px;
+      }}
+      .header .label {{
+        display: block;
+        font-size: 13px;
+        font-weight: bold;
+        color: #444;
+        margin-bottom: 3px;
+      }}
+      .header .label:nth-child(2) {{
+        font-size: 15px;
+        color: #111;
+        margin-bottom: 5px;
+      }}
+      .header .label:nth-child(3) {{
+        font-size: 14px;
+        color: #222;
+      }}
+      .header .label:nth-child(4) {{
+        font-size: 11px;
+        font-weight: normal;
+        color: #666;
+        margin-top: 5px;
+      }}
+      
+      table {{
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        border: 1px solid #000;
+      }}
+      
+      th, td {{
+        border: 1px solid #000;
+        padding: 6px;
+        text-align: center;
+        vertical-align: middle;
+      }}
+      
+      th {{
+        font-size: 13px;
+        font-weight: bold;
+        background-color: #f3f4f6;
+      }}
+      
+      .day-cell {{
+        font-size: 13px;
+        font-weight: bold;
+        background-color: #fafafa;
+        width: 100px;
+        min-width: 100px;
+      }}
+      
+      .day-name {{
+        font-size: 11px;
+        font-weight: normal;
+        color: #555;
+        display: block;
+        margin-top: 2px;
+      }}
+      
+      .slots-container {{
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 48px;
+        justify-content: center;
+      }}
+      
+      .slot-label {{
+        display: block;
+        padding: 4px 0;
+        font-size: 13px;
+        font-weight: 500;
+        border-bottom: 1px solid #eee;
+      }}
+      .slot-label:last-child {{
+        border-bottom: none;
+      }}
+      
+      .footer {{
+        margin-top: 30px;
+      }}
+      .kindly-label {{
+        display: block;
+        font-size: 12px;
+        font-style: italic;
+        text-align: center;
+        margin-bottom: 25px;
+      }}
+      .footer-section1 {{
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        font-weight: bold;
+        margin-bottom: 50px;
+      }}
+      .footer-section2 {{
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+      }}
+      .footer-section2-left {{
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }}
+      .footer-section2-right {{
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        text-align: right;
+        font-weight: bold;
+      }}
+    </style>
+    </head>
+    <body>
+    <div class="roaster-container">
+        <div class="header">
+            <span class="label">VSSC/DCS/{year_str}</span>
+            <span class="label">SCHEDULE FOR ROUND THE CLOCK MANNING OF DATA CENTRE FACILITY</span>
+            <span class="label">CITG VSSC From {start_formatted} to {end_formatted}</span>
+            <span class="label">The contract staff identified by respective contractors for operations in DCS FACILITY for shift duty and holidays are as follows.</span>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Day</th>
+                    {headers_html}
+                </tr>
+            </thead>
+            <tbody>
+                {table_rows_html}
+            </tbody>
+        </table>
+        
+        <div class="footer">
+            <span class="kindly-label">* Kindly permit the persons on shift 3 from 08:00 PM and shift 2 from 09:00 am onwards.</span>
+            <div class="footer-section1">
+                <span>MANAGER DCS</span>
+                <span>Approved By</span>
+            </div>
+            <div class="footer-section2">
+                <div class="footer-section2-left">
+                    <span>CC:Asst.Commandant</span>
+                    <span>CC:Head,TOMD</span>
+                    <span>CC:Duty Officer</span>
+                    <span>CC:File</span>
+                </div>
+                <div class="footer-section2-right">
+                    <span>SUJITH S</span>
+                    <span>GD,CITG</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    </body>
+    </html>
+    """
+    
+    import subprocess
+    import tempfile
+    import os
+    
+    with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as html_file:
+        html_file.write(html_content.encode("utf-8"))
+        html_path = html_file.name
+        
+    pdf_path = html_path.replace(".html", ".pdf")
+    
+    try:
+        cmd = [
+            "google-chrome",
+            "--headless=new",
+            "--disable-gpu",
+            "--no-sandbox",
+            "--no-pdf-header-footer",
+            f"--print-to-pdf={pdf_path}",
+            html_path
+        ]
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, timeout=15)
+        
+        with open(pdf_path, "rb") as f:
+            pdf_bytes = f.read()
+        return pdf_bytes
+    finally:
+        if os.path.exists(html_path):
+            os.remove(html_path)
+        if os.path.exists(pdf_path):
+            os.remove(pdf_path)
+
+
+@router.post("/send-email", response_description="Send duty roster via email")
+async def send_roster_email(
+    payload: dict = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    emails_str = payload.get("emails", "")
+    department = payload.get("department", "General")
+    week_start_date = payload.get("weekStartDate")
+    
+    if not emails_str:
+        raise HTTPException(status_code=400, detail="Emails list is required")
+    if not week_start_date:
+        raise HTTPException(status_code=400, detail="Week start date is required")
+        
+    emails = [e.strip() for e in emails_str.split(",") if e.strip()]
+    if not emails:
+        raise HTTPException(status_code=400, detail="No valid email addresses provided")
+        
+    from datetime import datetime, timedelta
+    
+    try:
+        start_dt = datetime.strptime(week_start_date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid weekStartDate format. Use YYYY-MM-DD")
+        
+    week_dates = [(start_dt + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
+    
+    dept_doc = await db.get_collection("departments").find_one({
+        "$or": [
+            {"name": department},
+            {"_id": ObjectId(department) if ObjectId.is_valid(department) else None}
+        ]
+    })
+    dept_match = [department]
+    if dept_doc:
+        dept_match = list(set([d for d in [department, str(dept_doc["_id"]), dept_doc.get("name", "")] if d]))
+
+    dept_name = dept_doc.get("name", department) if dept_doc else department
+
+    status_doc = await roaster_status_collection.find_one({"weekStartDate": week_start_date, "department": {"$in": dept_match}})
+    if not status_doc or status_doc.get("status") != "Approved":
+        raise HTTPException(status_code=400, detail="Roster must be approved before sending email.")
+    if status_doc.get("emailSent") is True:
+        raise HTTPException(status_code=400, detail="Roster email has already been sent for this approval.")
+
+    rosters = await roasters_collection.find({
+        "date": {"$in": week_dates},
+        "department": {"$in": dept_match}
+    }).to_list(length=None)
+    
+    shifts = ["Shift-1", "Shift-2", "Shift-3", "Leave"]
+    
+    roster_map = {}
+    notes_map = {}
+    for r in rosters:
+        roster_map[(r["date"], r["shift"])] = r.get("assignees", [])
+        if r.get("notes"):
+            notes_map[(r["date"], r["shift"])] = r["notes"]
+            
+    all_usernames = set()
+    for r in rosters:
+        all_usernames.update(r.get("assignees", []))
+    
+    users_col = db.get_collection("users")
+    user_docs = await users_col.find({"username": {"$in": list(all_usernames)}}).to_list(length=None)
+    user_names = {u["username"]: f"{u.get('firstName', '')} {u.get('lastName', '')}".strip() or u["username"] for u in user_docs}
+    
+    headers_html = "".join([f"<th style='border: 1px solid #cbd5e1; padding: 10px; background-color: #f1f5f9; text-align: center;'>{datetime.strptime(d, '%Y-%m-%d').strftime('%a, %d %b')}</th>" for d in week_dates])
+    rows_html = ""
+    for shift in ["Shift-1", "Shift-2", "Shift-3"]:
+        shift_label = shift
+        if shift == "Shift-1":
+            shift_label = "Shift-1 (06:30 AM to 02:30 PM)"
+        elif shift == "Shift-2":
+            shift_label = "Shift-2 (02:30 PM to 10:30 PM)"
+        elif shift == "Shift-3":
+            shift_label = "Shift-3 (10:30 PM to 06:30 AM)"
+
+        rows_html += f"<tr><td style='border: 1px solid #cbd5e1; padding: 10px; font-weight: bold; background-color: #f8fafc; text-align: left; white-space: nowrap;'>{shift_label}</td>"
+        for d in week_dates:
+            assignees = roster_map.get((d, shift), [])
+            names = [user_names.get(u, u) for u in assignees]
+            names_str = ", ".join(names) if names else "<span style='color: #94a3b8; font-style: italic;'>Unassigned</span>"
+            notes = notes_map.get((d, shift))
+            notes_html = f"<div style='font-size: 11px; color: #64748b; margin-top: 4px; font-style: italic;'>Note: {notes}</div>" if notes else ""
+            rows_html += f"<td style='border: 1px solid #cbd5e1; padding: 10px; text-align: center; vertical-align: top;'>{names_str}{notes_html}</td>"
+        rows_html += "</tr>"
+        
+    html_body = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; color: #1e293b; line-height: 1.6;">
+        <h2 style="color: #0f172a; border-bottom: 2px solid #3b82f6; padding-bottom: 8px;">Duty Roster Summary</h2>
+        <p><strong>Department:</strong> {dept_name}</p>
+        <p><strong>Week:</strong> {week_dates[0]} to {week_dates[-1]}</p>
+        
+        <p>Please find attached the printable PDF version of the duty roster.</p>
+
+        <table style="border-collapse: collapse; width: 100%; font-size: 14px; margin-top: 15px; border: 1px solid #cbd5e1;">
+            <thead>
+                <tr>
+                    <th style="border: 1px solid #cbd5e1; padding: 10px; background-color: #f1f5f9; text-align: left;">Shift</th>
+                    {headers_html}
+                </tr>
+            </thead>
+            <tbody>
+                {rows_html}
+            </tbody>
+        </table>
+        
+        <p style="margin-top: 25px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 8px;">
+            This is an automated notification from the Datacentre Management System (DCM).
+        </p>
+    </body>
+    </html>
+    """
+    
+    plain_body = f"Duty Roster - {dept_name}\nWeek: {week_dates[0]} to {week_dates[-1]}\n\nPlease find attached the printable PDF version of the duty roster."
+    
+    attachments = None
+    try:
+        pdf_base64 = payload.get("pdf_base64") or payload.get("pdfBase64")
+        if pdf_base64:
+            import base64
+            if "," in pdf_base64:
+                pdf_base64 = pdf_base64.split(",")[1]
+            pdf_bytes = base64.b64decode(pdf_base64)
+        else:
+            pdf_bytes = await generate_roster_pdf_bytes(dept_name, week_start_date, rosters, user_names)
+
+        dept_clean = "".join([c if c.isalnum() else "_" for c in dept_name])
+        pdf_filename = f"Duty_Roster_{dept_clean}_{week_start_date}.pdf"
+        attachments = [{
+            "filename": pdf_filename,
+            "content": pdf_bytes,
+            "content_type": "application/pdf"
+        }]
+    except Exception as pdf_err:
+        print("ERROR GENERATING ROSTER PDF:", pdf_err)
+
+    from mail_utils import send_email
+    try:
+        await send_email(
+            to_emails=emails,
+            subject=f"Duty Roster - {dept_name} - Week {week_dates[0]} - {week_dates[-1]}",
+            body=plain_body,
+            html_body=html_body,
+            attachments=attachments
+        )
+        await roaster_status_collection.update_many(
+            {"weekStartDate": week_start_date, "department": {"$in": dept_match}},
+            {"$set": {"emailSent": True}}
+        )
+        await db.get_collection("last_sent_emails").update_one(
+            {"_id": department},
+            {"$set": {"emails": emails_str}},
+            upsert=True
+        )
+        return {"success": True, "message": f"Roster email successfully sent to {', '.join(emails)}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+
 
 
