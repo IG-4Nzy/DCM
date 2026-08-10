@@ -73,6 +73,7 @@ const Users: React.FC = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [formReplacementFor, setFormReplacementFor] = useState("");
   const [formPassNumber, setFormPassNumber] = useState("");
+  const [formIsMonitorUser, setFormIsMonitorUser] = useState(false);
   const [allSystemUsers, setAllSystemUsers] = useState<UserData[]>([]);
 
   useEffect(() => {
@@ -176,6 +177,7 @@ const Users: React.FC = () => {
       setFormDepartment(user.department || "");
       setFormReplacementFor(user.replacementFor || "");
       setFormPassNumber(user.passNumber || "");
+      setFormIsMonitorUser(user.isMonitorUser || false);
       loadSystemUsers();
     } else {
       setIsEditMode(true);
@@ -194,6 +196,7 @@ const Users: React.FC = () => {
       setFormDepartment("");
       setFormReplacementFor("");
       setFormPassNumber("");
+      setFormIsMonitorUser(false);
       loadSystemUsers();
     }
     setIsModalOpen(true);
@@ -222,6 +225,7 @@ const Users: React.FC = () => {
           department: formDepartment,
           replacementFor: formReplacementFor || null,
           passNumber: formPassNumber ? formPassNumber.trim() : "",
+          isMonitorUser: formIsMonitorUser,
         };
         if (formPassword) {
           payload.password = formPassword;
@@ -245,6 +249,7 @@ const Users: React.FC = () => {
               department: formDepartment,
               replacementFor: formReplacementFor || null,
               passNumber: formPassNumber ? formPassNumber.trim() : "",
+              isMonitorUser: formIsMonitorUser,
             },
             showToast,
           }),
@@ -553,6 +558,8 @@ const Users: React.FC = () => {
         onViewReplacedUser={handleViewReplacedUser}
         formPassNumber={formPassNumber}
         setFormPassNumber={setFormPassNumber}
+        formIsMonitorUser={formIsMonitorUser}
+        setFormIsMonitorUser={setFormIsMonitorUser}
       />
     </Box>
   );

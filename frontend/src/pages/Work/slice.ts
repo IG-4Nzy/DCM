@@ -1,11 +1,13 @@
 // @ts-nocheck
 import { createSlice } from '@reduxjs/toolkit';
-import { fetchWorks, createWork, updateWork, deleteWork, transferWork } from './action';
-import type { WorkData } from './model';
+import { fetchWorks, createWork, updateWork, deleteWork, transferWork, fetchWorkLogs, createWorkLog, updateWorkLog, deleteWorkLog } from './action';
+import type { WorkData, WorkLogData } from './model';
 
 interface WorksState {
   works: WorkData[];
   totalCount: number;
+  workLogs: WorkLogData[];
+  workLogsTotalCount: number;
   loading: boolean;
   error: string | null;
 }
@@ -13,6 +15,8 @@ interface WorksState {
 const initialState: WorksState = {
   works: [],
   totalCount: 0,
+  workLogs: [],
+  workLogsTotalCount: 0,
   loading: false,
   error: null,
 };
@@ -24,6 +28,8 @@ const worksSlice = createSlice({
     clearWorksState: (state) => {
       state.works = [];
       state.totalCount = 0;
+      state.workLogs = [];
+      state.workLogsTotalCount = 0;
       state.error = null;
     }
   },
@@ -71,6 +77,36 @@ const worksSlice = createSlice({
       })
       // deleteWork
       .addCase(deleteWork.fulfilled, (state) => {
+        state.loading = false;
+      })
+      // fetchWorkLogs
+      .addCase(fetchWorkLogs.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchWorkLogs.fulfilled, (state, action) => {
+        state.loading = false;
+        state.workLogs = action.payload.data;
+        state.workLogsTotalCount = action.payload.total;
+      })
+      .addCase(fetchWorkLogs.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(createWorkLog.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(updateWorkLog.fulfilled, (state, action) => {
+        const index = state.workLogs.findIndex((log) => {
+          const logId = log.id || log._id;
+          const payloadId = action.payload.id || action.payload._id;
+          return logId && payloadId && logId === payloadId;
+        });
+        if (index !== -1) {
+          state.workLogs[index] = action.payload;
+        }
+      })
+      .addCase(deleteWorkLog.fulfilled, (state) => {
         state.loading = false;
       });
   },

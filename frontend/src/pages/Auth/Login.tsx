@@ -31,7 +31,7 @@ const Login: React.FC = () => {
           setDeployEnv(res.data.deploy.toLowerCase().trim());
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ const Login: React.FC = () => {
     e.preventDefault();
     const result = await dispatch(loginApi({
       credentials: { username, password },
-      navigateToDashboard: () => {},
+      navigateToDashboard: () => { },
       showToast
     }));
 
@@ -269,11 +269,11 @@ const Login: React.FC = () => {
           </Typography>
           {restrictedLoginData?.privileges?.length > 0 ? (
             <Typography sx={{ color: '#475569' }}>
-              However, you can still access the checklists.
+              However, you can still access checklists and work logs.
             </Typography>
           ) : (
             <Typography sx={{ color: '#9e9e9e', fontStyle: 'italic' }}>
-              You do not have any checklist privileges assigned to access.
+              You do not have any checklist or work log privileges assigned to access.
             </Typography>
           )}
         </DialogContent>
@@ -302,7 +302,7 @@ const Login: React.FC = () => {
               variant="contained" 
               sx={{ textTransform: 'none', fontWeight: 600 }}
             >
-              Go to Checklists
+              Continue
             </Button>
           )}
         </DialogActions>

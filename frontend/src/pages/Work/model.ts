@@ -55,3 +55,48 @@ export interface FetchWorksParams {
   tab?: string;
   showToast?: (msg: string, severity?: 'error' | 'success') => void;
 }
+
+export interface WorkLogEntry {
+  id?: string;
+  startTime: string;
+  endTime: string;
+  activity: string;
+}
+
+export interface WorkLogData {
+  id?: string;
+  _id?: string;
+  date: string;
+  username: string;
+  userId?: string;
+  userFullName?: string;
+  department?: string;
+  entries: WorkLogEntry[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateWorkLogPayload {
+  date: string;
+  username?: string;
+  entries: WorkLogEntry[];
+}
+
+export interface UpdateWorkLogPayload {
+  id: string;
+  date?: string;
+  username?: string;
+  entries?: WorkLogEntry[];
+}
+
+export interface FetchWorkLogsParams {
+  skip: number;
+  limit: number;
+  sortBy?: string;
+  order?: string;
+  search?: string;
+  user?: string;
+  date?: string;
+  showToast?: (msg: string, severity?: 'error' | 'success') => void;
+}
+

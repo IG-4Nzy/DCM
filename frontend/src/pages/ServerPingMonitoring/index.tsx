@@ -62,6 +62,24 @@ const ServerPingMonitoring: React.FC = () => {
   const [audioFileName, setAudioFileName] = useState(() => localStorage.getItem('dcm_alert_audio_name') || '');
   const audioIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Individual Muted Servers State
+  const [mutedServerIds, setMutedServerIds] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('dcm_muted_server_ids');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const handleToggleMuteServer = (serverId: string) => {
+    const nextMuted = mutedServerIds.includes(serverId)
+      ? mutedServerIds.filter(id => id !== serverId)
+      : [...mutedServerIds, serverId];
+    setMutedServerIds(nextMuted);
+    localStorage.setItem('dcm_muted_server_ids', JSON.stringify(nextMuted));
+  };
+
   // Refs for tracking transitions of offline servers
   const prevOfflineServersRef = useRef<string[]>([]);
   const isFirstLoadRef = useRef(true);
@@ -139,14 +157,15 @@ const ServerPingMonitoring: React.FC = () => {
 
   // Sound Loop management
   useEffect(() => {
-    const hasOfflineServers = metrics.offline > 0 || servers.some(s => 
-      s.status === 'DOWN' || 
-      ((s.monitoringType === 'both' || s.monitoringType === 'port') && 
-       s.portsStatus && 
-       Object.values(s.portsStatus).includes('DOWN'))
-    );
+    const hasUnmutedOfflineServers = servers.some(s => {
+      if (mutedServerIds.includes(s.id)) return false;
+      return s.status === 'DOWN' || 
+        ((s.monitoringType === 'both' || s.monitoringType === 'port') && 
+         s.portsStatus && 
+         Object.values(s.portsStatus).includes('DOWN'));
+    });
 
-    if (hasOfflineServers && !isMuted) {
+    if (hasUnmutedOfflineServers && !isMuted) {
       if (!audioIntervalRef.current) {
         triggerAlarmSound();
         audioIntervalRef.current = setInterval(() => {
@@ -166,7 +185,34 @@ const ServerPingMonitoring: React.FC = () => {
         audioIntervalRef.current = null;
       }
     };
-  }, [metrics.offline, servers, isMuted]);
+  }, [servers, isMuted, mutedServerIds]);
+
+  // Automatically unmute servers that have come back online
+  useEffect(() => {
+    if (servers.length === 0) return;
+    
+    let changed = false;
+    const nextMutedIds = mutedServerIds.filter(id => {
+      const srv = servers.find(s => s.id === id);
+      if (!srv) return true; // Keep if not found in list
+      
+      const isOffline = srv.status === 'DOWN' || 
+                        ((srv.monitoringType === 'both' || srv.monitoringType === 'port') && 
+                         srv.portsStatus && 
+                         Object.values(srv.portsStatus).includes('DOWN'));
+                         
+      if (!isOffline) {
+        changed = true;
+        return false; // Remove from muted list (unmute)
+      }
+      return true;
+    });
+    
+    if (changed) {
+      setMutedServerIds(nextMutedIds);
+      localStorage.setItem('dcm_muted_server_ids', JSON.stringify(nextMutedIds));
+    }
+  }, [servers, mutedServerIds]);
 
   // Load dashboard metrics
   const loadDashboardMetrics = async () => {
@@ -557,32 +603,56 @@ const ServerPingMonitoring: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell sx={{ py: 0.75 }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      <span className={`${styles.container__statusChip} ${styles[srv.status]}`} style={{ padding: '2px 8px', fontSize: '0.7rem', width: 'fit-content' }}>
-                        {srv.status === 'UP' && <CheckIcon size={12} />}
-                        {srv.status === 'DOWN' && <ErrorIcon size={12} />}
-                        {srv.status}
-                      </span>
-                      {srv.monitoringType === 'both' && srv.portsStatus && Object.keys(srv.portsStatus).length > 0 && (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.25 }}>
-                          {Object.entries(srv.portsStatus).map(([port, status]) => (
-                            <Tooltip key={port} title={`Port ${port}: ${status}`}>
-                              <Chip
-                                size="small"
-                                label={`${port}:${status}`}
-                                sx={{
-                                  fontSize: '0.62rem',
-                                  height: '16px',
-                                  px: 0.5,
-                                  fontWeight: 600,
-                                  color: status === 'UP' ? '#15803d' : '#b91c1c',
-                                  bgcolor: status === 'UP' ? '#f0fdf4' : '#fef2f2',
-                                  border: `1px solid ${status === 'UP' ? '#bbf7d0' : '#fca5a5'}`,
-                                }}
-                              />
-                            </Tooltip>
-                          ))}
-                        </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <span className={`${styles.container__statusChip} ${styles[srv.status]}`} style={{ padding: '2px 8px', fontSize: '0.7rem', width: 'fit-content' }}>
+                          {srv.status === 'UP' && <CheckIcon size={12} />}
+                          {srv.status === 'DOWN' && <ErrorIcon size={12} />}
+                          {srv.status}
+                        </span>
+                        {srv.monitoringType === 'both' && srv.portsStatus && Object.keys(srv.portsStatus).length > 0 && (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.25 }}>
+                            {Object.entries(srv.portsStatus).map(([port, status]) => (
+                              <Tooltip key={port} title={`Port ${port}: ${status}`}>
+                                <Chip
+                                  size="small"
+                                  label={`${port}:${status}`}
+                                  sx={{
+                                    fontSize: '0.62rem',
+                                    height: '16px',
+                                    px: 0.5,
+                                    fontWeight: 600,
+                                    color: status === 'UP' ? '#15803d' : '#b91c1c',
+                                    bgcolor: status === 'UP' ? '#f0fdf4' : '#fef2f2',
+                                    border: `1px solid ${status === 'UP' ? '#bbf7d0' : '#fca5a5'}`,
+                                  }}
+                                />
+                              </Tooltip>
+                            ))}
+                          </Box>
+                        )}
+                      </Box>
+
+                      {/* Individual Mute/Alarm toggle */}
+                      {(srv.status === 'DOWN' || 
+                        ((srv.monitoringType === 'both' || srv.monitoringType === 'port') && 
+                         srv.portsStatus && 
+                         Object.values(srv.portsStatus).includes('DOWN'))) && (
+                        <Tooltip title={mutedServerIds.includes(srv.id) ? "Unmute this server alert" : "Mute this server alert"}>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => handleToggleMuteServer(srv.id)}
+                            sx={{
+                              p: 0.5,
+                              color: mutedServerIds.includes(srv.id) ? '#64748b' : '#ef4444',
+                              border: '1px solid',
+                              borderColor: mutedServerIds.includes(srv.id) ? '#cbd5e1' : '#fecaca',
+                              background: mutedServerIds.includes(srv.id) ? '#f8fafc' : '#fef2f2',
+                            }}
+                          >
+                            {mutedServerIds.includes(srv.id) ? <VolumeOffIcon size={14} /> : <VolumeUpIcon size={14} />}
+                          </IconButton>
+                        </Tooltip>
                       )}
                     </Box>
                   </TableCell>

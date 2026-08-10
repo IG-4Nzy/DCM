@@ -1,3 +1,3 @@
-give fixed width for every nodes inside the node placement view
+in salary calculation,individual salary report pdf should contain in single portrait page, redesign the header.
 
-in node and VM Create/Update , give option to choose Other in admin dropdown and if Other is choosed ,give option to enter the admin name (Text field).
+in salary calculation,

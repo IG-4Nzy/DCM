@@ -55,6 +55,8 @@ interface PropType {
     onViewReplacedUser?: (id: string) => void;
     formPassNumber: string;
     setFormPassNumber: (v: string) => void;
+    formIsMonitorUser: boolean;
+    setFormIsMonitorUser: (v: boolean) => void;
 }
 
 const BLOOD_GROUPS = [
@@ -95,7 +97,8 @@ const UserFormModal = ({
     availableDepartments,
     formReplacementFor, setFormReplacementFor,
     inactiveUsers, onViewReplacedUser,
-    formPassNumber, setFormPassNumber
+    formPassNumber, setFormPassNumber,
+    formIsMonitorUser, setFormIsMonitorUser
 }: PropType) => {
     
     const canEdit = isEditMode;
@@ -194,6 +197,9 @@ const UserFormModal = ({
                                             {editingUser.replacementForName || 'View Details'}
                                         </span>
                                     </div>
+                                )}
+                                {formIsMonitorUser && (
+                                    <ViewField label="Monitor User" value="Yes — bypasses token expiry & session logout" />
                                 )}
                             </div>
                         </div>
@@ -295,6 +301,20 @@ const UserFormModal = ({
                                     value={formReplacementFor || ""}
                                     onChange={(val) => setFormReplacementFor(val)}
                                     clearable
+                                />
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={formIsMonitorUser}
+                                            onChange={(e) => setFormIsMonitorUser(e.target.checked)}
+                                            size="small"
+                                        />
+                                    }
+                                    label="Monitor User (bypass token expiry & session logout)"
+                                    sx={{ 
+                                        gridColumn: '1 / -1',
+                                        '& .MuiFormControlLabel-label': { fontSize: '0.875rem', color: '#475569' }
+                                    }}
                                 />
                             </div>
                         </div>

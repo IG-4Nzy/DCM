@@ -122,11 +122,17 @@ async def login(credentials: LoginRequest):
     is_superuser = user.get("is_superuser", False)
     
     import uuid
-    session_key = str(uuid.uuid4())
+    is_monitor = user.get("isMonitorUser", False)
+    if is_monitor:
+        session_key = user.get("session_key") or str(uuid.uuid4())
+    else:
+        session_key = str(uuid.uuid4())
     await users_collection.update_one(
         {"username": user["username"]},
         {"$set": {"session_key": session_key}}
     )
+    
+    token_expiry = timedelta(days=3650) if is_monitor else timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
     # Generate the JWT
     access_token = create_access_token(
@@ -137,9 +143,10 @@ async def login(credentials: LoginRequest):
         "privileges": privileges,
         "isSuperuser": is_superuser,
         "department": user.get("department", ""),
-        "session_key": session_key
+        "session_key": session_key,
+        "isMonitorUser": is_monitor
     },
-    expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expires_delta=token_expiry
 )
     
     is_first_login_today = False
@@ -193,7 +200,8 @@ async def login(credentials: LoginRequest):
                     all_checklist_privileges = [
                         "View BMS Checklist", "View All Department BMS Checklist", "Create BMS Checklist", "Update BMS Checklist", "Delete BMS Checklist", "Edit BMS Checklist Field",
                         "View Cluster Checklist", "View All Department Cluster Checklist", "Create Cluster Checklist", "Update Cluster Checklist", "Delete Cluster Checklist", "Edit Cluster Checklist Field",
-                        "View Morning Checklist", "Create Morning Checklist", "Update Morning Checklist", "Delete Morning Checklist", "Edit Morning Checklist Field"
+                        "View Morning Checklist", "Create Morning Checklist", "Update Morning Checklist", "Delete Morning Checklist", "Edit Morning Checklist Field",
+                        "View Work Log", "View All Work Logs", "Create Work Log", "Update Work Log", "Delete Work Log"
                     ]
                     restricted_privileges = [p for p in all_checklist_privileges if p in privileges]
                     restricted_token = create_access_token(
@@ -264,7 +272,8 @@ async def login(credentials: LoginRequest):
                         all_checklist_privileges = [
                             "View BMS Checklist", "View All Department BMS Checklist", "Create BMS Checklist", "Update BMS Checklist", "Delete BMS Checklist", "Edit BMS Checklist Field",
                             "View Cluster Checklist", "View All Department Cluster Checklist", "Create Cluster Checklist", "Update Cluster Checklist", "Delete Cluster Checklist", "Edit Cluster Checklist Field",
-                            "View Morning Checklist", "Create Morning Checklist", "Update Morning Checklist", "Delete Morning Checklist", "Edit Morning Checklist Field"
+                            "View Morning Checklist", "Create Morning Checklist", "Update Morning Checklist", "Delete Morning Checklist", "Edit Morning Checklist Field",
+                            "View Work Log", "View All Work Logs", "Create Work Log", "Update Work Log", "Delete Work Log"
                         ]
                         restricted_privileges = [p for p in all_checklist_privileges if p in privileges]
                         restricted_token = create_access_token(

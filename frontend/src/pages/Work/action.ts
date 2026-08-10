@@ -84,3 +84,68 @@ export const transferWork = createAsyncThunk(
     }
   }
 );
+
+const WORK_LOGS_ENDPOINT = '/api/work-logs';
+
+export const fetchWorkLogs = createAsyncThunk(
+  'works/fetchWorkLogs',
+  async ({ skip, limit, sortBy, order, search, user, date, department, showToast }: any, { rejectWithValue }) => {
+    try {
+      const response = await request.get(WORK_LOGS_ENDPOINT, {
+        params: { skip, limit, sort_by: sortBy, order, search, user, date, department }
+      });
+      return response.data;
+    } catch (error: any) {
+      const msg = error.response?.data?.detail || 'Failed to fetch work logs';
+      if (showToast) showToast(msg, 'error');
+      return rejectWithValue(msg);
+    }
+  }
+);
+
+export const createWorkLog = createAsyncThunk(
+  'works/createWorkLog',
+  async ({ payload, showToast }: { payload: any; showToast: ToastFunction }, { rejectWithValue }) => {
+    try {
+      const response = await request.post(WORK_LOGS_ENDPOINT, payload);
+      showToast('Work log created successfully', 'success');
+      return response.data;
+    } catch (error: any) {
+      const msg = error.response?.data?.detail || 'Failed to create work log';
+      showToast(msg, 'error');
+      return rejectWithValue(msg);
+    }
+  }
+);
+
+export const updateWorkLog = createAsyncThunk(
+  'works/updateWorkLog',
+  async ({ payload, showToast }: { payload: any; showToast: ToastFunction }, { rejectWithValue }) => {
+    try {
+      const { id, ...data } = payload;
+      const response = await request.put(`${WORK_LOGS_ENDPOINT}/${id}`, data);
+      showToast('Work log updated successfully', 'success');
+      return response.data;
+    } catch (error: any) {
+      const msg = error.response?.data?.detail || 'Failed to update work log';
+      showToast(msg, 'error');
+      return rejectWithValue(msg);
+    }
+  }
+);
+
+export const deleteWorkLog = createAsyncThunk(
+  'works/deleteWorkLog',
+  async ({ id, showToast }: { id: string; showToast: ToastFunction }, { rejectWithValue }) => {
+    try {
+      await request.delete(`${WORK_LOGS_ENDPOINT}/${id}`);
+      showToast('Work log deleted successfully', 'success');
+      return id;
+    } catch (error: any) {
+      const msg = error.response?.data?.detail || 'Failed to delete work log';
+      showToast(msg, 'error');
+      return rejectWithValue(msg);
+    }
+  }
+);
+

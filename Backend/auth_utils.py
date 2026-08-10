@@ -153,7 +153,8 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             
         user_session_key = user.get("session_key")
         token_session_key = payload.get("session_key")
-        if user_session_key and user_session_key != token_session_key:
+        is_monitor = user.get("isMonitorUser", False) or payload.get("isMonitorUser", False)
+        if not is_monitor and user_session_key and user_session_key != token_session_key:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Session expired: logged in from another location",

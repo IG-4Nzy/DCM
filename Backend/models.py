@@ -62,6 +62,7 @@ class UserModel(BaseModel):
     replacementForName: Optional[str] = None
     passNumber: Optional[str] = None
     lastActive: Optional[str] = None
+    isMonitorUser: Optional[bool] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -85,6 +86,7 @@ class CreateUserModel(BaseModel):
     replacementFor: Optional[str] = None
     passNumber: Optional[str] = None
     lastActive: Optional[str] = None
+    isMonitorUser: Optional[bool] = None
 
 class UpdateUserModel(BaseModel):
     username: Optional[str] = None
@@ -103,6 +105,7 @@ class UpdateUserModel(BaseModel):
     replacementFor: Optional[str] = None
     passNumber: Optional[str] = None
     lastActive: Optional[str] = None
+    isMonitorUser: Optional[bool] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -275,6 +278,46 @@ class UpdateWorkModel(BaseModel):
 
 class PaginatedWorksModel(BaseModel):
     data: List[WorkModel]
+    total: int
+
+class WorkLogEntryModel(BaseModel):
+    id: Optional[str] = None
+    startTime: str
+    endTime: str
+    activity: str
+
+class WorkLogModel(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    date: str
+    username: str
+    userId: Optional[str] = None
+    userFullName: Optional[str] = None
+    department: Optional[str] = None
+    entries: List[WorkLogEntryModel] = Field(default_factory=list)
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+
+class CreateWorkLogModel(BaseModel):
+    date: str
+    username: Optional[str] = None
+    entries: List[WorkLogEntryModel] = Field(default_factory=list)
+
+class UpdateWorkLogModel(BaseModel):
+    date: Optional[str] = None
+    username: Optional[str] = None
+    entries: Optional[List[WorkLogEntryModel]] = None
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+class PaginatedWorkLogsModel(BaseModel):
+    data: List[WorkLogModel]
     total: int
 
 class DepartmentModel(BaseModel):
