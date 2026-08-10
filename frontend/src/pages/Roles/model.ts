@@ -4,6 +4,7 @@ export interface RoleData {
   name: string;
   status: boolean;
   privileges: string[];
+  lateLoginPrivileges?: string[];
   usersCount?: number;
 }
 
@@ -11,6 +12,7 @@ export interface CreateRolePayload {
   name: string;
   status: boolean;
   privileges: string[];
+  lateLoginPrivileges?: string[];
   usersCount?: number;
 }
 
@@ -19,6 +21,7 @@ export interface UpdateRolePayload {
   name: string;
   status: boolean;
   privileges: string[];
+  lateLoginPrivileges?: string[];
   usersCount?: number;
 }
 

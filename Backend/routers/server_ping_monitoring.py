@@ -48,6 +48,9 @@ class UploadAlarmSoundSchema(BaseModel):
     dataUrl: str = Field(..., description="Base64 Data URL of the audio file")
     filename: str = Field(..., description="Original filename of the audio file")
 
+class ServerAcknowledgeSchema(BaseModel):
+    isAcknowledged: bool
+
 # Helper to convert MongoDB object IDs to strings
 def serialize_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
     if not doc:
@@ -303,6 +306,9 @@ class ServerPingScheduler:
         last_failed_time = curr_status.get("lastFailedTime")
         last_success_time = curr_status.get("lastSuccessTime")
 
+        # Get existing acknowledgment status
+        is_acknowledged = curr_status.get("isAcknowledged", False) or server.get("isAcknowledged", False)
+
         now_str = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
         if target_status == "UP":
@@ -317,6 +323,11 @@ class ServerPingScheduler:
                     last_outage_dur = round((now_dt - failed_dt).total_seconds(), 1)
                 except Exception:
                     pass
+            # Turn off acknowledgement automatically when it comes back online
+            if is_acknowledged:
+                is_acknowledged = False
+                servers_col = db.get_collection("monitored_servers")
+                await servers_col.update_one({"_id": ObjectId(server_id)}, {"$set": {"isAcknowledged": False}})
         else: # DOWN
             if prev_state != "DOWN":
                 outages_count += 1
@@ -346,6 +357,7 @@ class ServerPingScheduler:
             "totalSuccessChecks": total_success,
             "lastOutageDuration": last_outage_dur,
             "outagesCount": outages_count,
+            "isAcknowledged": is_acknowledged,
             "lastUpdated": now_str
         }
 
@@ -394,7 +406,7 @@ class ServerPingScheduler:
                             "resolvedAt": None
                         }
                         await alert_history_col.insert_one(alert_doc)
-                        await self._dispatch_notifications(name, ip, "UP", "DOWN", alert_msg)
+                        await self._dispatch_notifications(name, ip, "UP", "DOWN", alert_msg, is_acknowledged)
                     elif curr_p_status == "UP":
                         # Port recovered
                         alert_msg = f"Server {name} ({ip}) Port {p} recovered (Online)"
@@ -414,7 +426,7 @@ class ServerPingScheduler:
                             "resolvedAt": now_str
                         }
                         await alert_history_col.insert_one(alert_doc)
-                        await self._dispatch_notifications(name, ip, "DOWN", "UP", alert_msg)
+                        await self._dispatch_notifications(name, ip, "DOWN", "UP", alert_msg, is_acknowledged)
 
         # Log drop details to database if DOWN
         if target_status == "DOWN" and prev_state != "DOWN":
@@ -467,9 +479,12 @@ class ServerPingScheduler:
             await alert_history_col.insert_one(alert_doc)
 
             # Trigger Dispatch notifications
-            await self._dispatch_notifications(name, ip, prev_state, target_status, alert_msg)
+            await self._dispatch_notifications(name, ip, prev_state, target_status, alert_msg, is_acknowledged)
 
-    async def _dispatch_notifications(self, name: str, ip: str, from_st: str, to_st: str, msg: str):
+    async def _dispatch_notifications(self, name: str, ip: str, from_st: str, to_st: str, msg: str, is_acknowledged: bool = False):
+        if is_acknowledged:
+            logger.info(f"Skipping notifications for acknowledged server: {name}")
+            return
         # Fetch enabled channels
         channels_col = db.get_collection("notification_channels")
         cursor = channels_col.find({"isEnabled": True})
@@ -611,6 +626,7 @@ async def receive_heartbeat(payload: HeartbeatPayload):
             "retryCount": 3,
             "ports": [],
             "isEnabled": True,
+            "isAcknowledged": False,
             "createdBy": "agent",
             "createdAt": now_str,
             "updatedAt": now_str
@@ -631,6 +647,8 @@ async def receive_heartbeat(payload: HeartbeatPayload):
             "lastHeartbeatTime": time.time(),
             "name": name,
             "ipAddress": payload.ipAddress
+        }, "$setOnInsert": {
+            "isAcknowledged": False
         }},
         upsert=True
     )
@@ -659,6 +677,7 @@ async def create_monitored_server(
         "retryCount": data.retryCount,
         "ports": data.ports,
         "isEnabled": data.isEnabled,
+        "isAcknowledged": False,
         "createdBy": current_user.get("username", "admin"),
         "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "updatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -691,6 +710,7 @@ async def create_monitored_server(
             "totalSuccessChecks": 0,
             "lastOutageDuration": 0.0,
             "outagesCount": 0,
+            "isAcknowledged": False,
             "lastUpdated": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         }},
         upsert=True
@@ -735,7 +755,7 @@ async def list_monitored_servers(
     sort_dir = 1 if order == "asc" else -1
 
     total = await status_col.count_documents(status_query)
-    cursor = status_col.find(status_query).sort([("status", 1), (sort_field, sort_dir)]).skip(skip).limit(limit)
+    cursor = status_col.find(status_query).sort([("isAcknowledged", 1), ("status", 1), (sort_field, sort_dir)]).skip(skip).limit(limit)
     status_list = await cursor.to_list(length=limit)
 
     # Hydrate configuration details into status representation
@@ -752,6 +772,7 @@ async def list_monitored_servers(
         item["retryCount"] = cfg.get("retryCount", 3)
         item["ports"] = cfg.get("ports", [])
         item["monitoringType"] = cfg.get("monitoringType", "ping")
+        item["isAcknowledged"] = cfg.get("isAcknowledged", False) or st.get("isAcknowledged", False)
         hydrated.append(item)
 
     return {"data": hydrated, "total": total}
@@ -795,6 +816,27 @@ async def update_monitored_server(
     refreshed = await servers_col.find_one({"_id": ObjectId(id)})
     return serialize_doc(refreshed)
 
+@router.post("/{id}/acknowledge", response_description="Acknowledge or unacknowledge a monitored server")
+async def acknowledge_server(
+    id: str,
+    payload: ServerAcknowledgeSchema,
+    current_user: dict = Depends(require_privilege("Update Server Ping Monitoring"))
+):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    servers_col = db.get_collection("monitored_servers")
+    status_col = db.get_collection("monitoring_status")
+
+    server = await servers_col.find_one({"_id": ObjectId(id)})
+    if not server:
+        raise HTTPException(status_code=404, detail="Monitored server not found")
+
+    await servers_col.update_one({"_id": ObjectId(id)}, {"$set": {"isAcknowledged": payload.isAcknowledged}})
+    await status_col.update_one({"serverId": id}, {"$set": {"isAcknowledged": payload.isAcknowledged}})
+
+    return {"detail": "Server acknowledgment status updated successfully"}
+
 @router.delete("/{id}", response_description="Delete monitored server")
 async def delete_monitored_server(
     id: str,
@@ -831,7 +873,11 @@ async def get_dashboard(
     # Counts by status, scoped to existing servers
     total = len(server_ids)
     online = await status_col.count_documents({"serverId": {"$in": server_ids}, "status": "UP"})
-    offline = await status_col.count_documents({"serverId": {"$in": server_ids}, "status": "DOWN"})
+    offline = await status_col.count_documents({
+        "serverId": {"$in": server_ids},
+        "status": "DOWN",
+        "isAcknowledged": {"$ne": True}
+    })
 
     return {
         "metrics": {

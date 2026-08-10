@@ -1060,6 +1060,9 @@ async def get_vm_history(id: str):
                     extra_req_details.append(f"Snapshot Name: {snap_name}")
                 if req_details.get("remarks"):
                     extra_req_details.append(f"Remarks: {req_details.get('remarks')}")
+            elif operation_type == "Delete VM":
+                if req_details.get("justification"):
+                    extra_req_details.append(f"Justification: {req_details.get('justification')}")
             else:
                 if req_details.get("ip") or req_details.get("ipAddress"):
                     extra_req_details.append(f"IP: {req_details.get('ip') or req_details.get('ipAddress')}")

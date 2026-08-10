@@ -414,6 +414,42 @@ async def add_vm_details_on_completion(existing_request: dict, username: str):
 
             # Mark vmReflected = True
             await collection.update_one({"_id": existing_request["_id"]}, {"$set": {"vmReflected": True}})
+        elif request_type == "VM Management":
+            details = existing_request.get("details") or {}
+            operation_type = details.get("operationType")
+            if operation_type == "Delete VM":
+                vm_id_str = details.get("vmId")
+                if vm_id_str:
+                    vms_col = db.get_collection("vm_details")
+                    # Try finding by ObjectId or by vmId string
+                    query = {}
+                    if ObjectId.is_valid(vm_id_str):
+                        query["_id"] = ObjectId(vm_id_str)
+                    else:
+                        query["vmId"] = vm_id_str
+                    
+                    vm = await vms_col.find_one(query)
+                    if vm:
+                        node_name = vm.get("node")
+                        # Delete the VM details
+                        delete_result = await vms_col.delete_one({"_id": vm["_id"]})
+                        if delete_result.deleted_count == 1:
+                            if node_name:
+                                from vm_details import sync_node_resources
+                                await sync_node_resources(node_name)
+                            
+                            # Log to audit logs
+                            audit_col = db.get_collection("audit_logs")
+                            await audit_col.insert_one({
+                                "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                                "user": username or "system",
+                                "ipAddress": "127.0.0.1",
+                                "action": f"Deleted VM: {vm.get('vmName') or vm.get('applications') or vm_id_str}",
+                                "details": f"VM deleted automatically on VM deletion request completion. VM ID: {vm.get('vmId') or vm_id_str}. Justification: {details.get('justification') or 'No justification provided'}"
+                            })
+                    
+                    # Mark vmReflected = True
+                    await collection.update_one({"_id": existing_request["_id"]}, {"$set": {"vmReflected": True}})
     except Exception as e:
         print(f"Error in add_vm_details_on_completion: {e}")
 

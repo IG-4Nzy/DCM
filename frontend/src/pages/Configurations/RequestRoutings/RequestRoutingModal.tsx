@@ -497,6 +497,7 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                             { value: 'Template', label: 'Template' },
                             { value: 'Backup', label: 'Backup' },
                             { value: 'Resource Upgrade', label: 'Resource Upgrade' },
+                            { value: 'Delete VM', label: 'Delete VM' },
                             { value: 'Others', label: 'Others' },
                           ],
                           requestType: [
@@ -609,6 +610,7 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                             { value: 'Template', label: 'Template' },
                             { value: 'Backup', label: 'Backup' },
                             { value: 'Resource Upgrade', label: 'Resource Upgrade' },
+                            { value: 'Delete VM', label: 'Delete VM' },
                             { value: 'Others', label: 'Others' },
                           ],
                           requestType: [

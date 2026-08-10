@@ -120,6 +120,7 @@ class RoleModel(BaseModel):
     name: str
     status: bool
     privileges: List[str] = Field(default_factory=list)
+    lateLoginPrivileges: List[str] = Field(default_factory=list)
     usersCount: Optional[int] = None
 
     model_config = ConfigDict(
@@ -131,12 +132,14 @@ class CreateRoleModel(BaseModel):
     name: str
     status: bool = True
     privileges: List[str] = Field(default_factory=list)
+    lateLoginPrivileges: List[str] = Field(default_factory=list)
     usersCount: Optional[int] = None
 
 class UpdateRoleModel(BaseModel):
     name: Optional[str] = None
     status: Optional[bool] = None
     privileges: Optional[List[str]] = None
+    lateLoginPrivileges: Optional[List[str]] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -1172,7 +1175,7 @@ class PaginatedVMDetailsModel(BaseModel):
     data: List[VMDetailsModel]
     total: int
 class CreateRequestModel(BaseModel):
-    requestType: str = Field(..., description="VM Creation, DC Entry, Hardware Issuance, Hardware Replacement")
+    requestType: str = Field(..., description="VM Creation, VM Management, DC Entry, Hardware Issuance, Hardware Replacement")
     description: Optional[str] = None
     purpose: Optional[str] = None
     details: Optional[dict] = None

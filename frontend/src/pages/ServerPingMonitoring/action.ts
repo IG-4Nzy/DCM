@@ -21,6 +21,11 @@ export const deleteMonitoredServer = async (id: string) => {
   return response.data;
 };
 
+export const acknowledgeServer = async (id: string, isAcknowledged: boolean) => {
+  const response = await request.post(`/api/server-ping-monitoring/${id}/acknowledge`, { isAcknowledged });
+  return response.data;
+};
+
 export const fetchDashboardData = async () => {
   const response = await request.get('/api/server-ping-monitoring/dashboard');
   return response.data;

@@ -594,6 +594,15 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                         </Grid>
                       </>
                     )}
+                    {request.details?.operationType === 'Delete VM' && (
+                      <>
+                        <Grid size={{xs: 12}}  ><Divider sx={{ opacity: 0.6 }} /></Grid>
+                        <Grid size={{xs: 12}}   >
+                          <Typography variant="caption" color="textSecondary">Justification for Deletion</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#d32f2f' }}>{request.details?.justification || '-'}</Typography>
+                        </Grid>
+                      </>
+                    )}
 
                     <Grid size={{xs: 12}}  ><Divider sx={{ opacity: 0.6 }} /></Grid>
                     <Grid size={{xs: 12, sm: 4}}   >

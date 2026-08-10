@@ -72,6 +72,8 @@ async def list_roles(
             role["status"] = True
         if "privileges" not in role:
             role["privileges"] = []
+        if "lateLoginPrivileges" not in role:
+            role["lateLoginPrivileges"] = []
         
         role_id_str = str(role["_id"])
         users_count = await users_collection.count_documents({
@@ -134,6 +136,8 @@ async def show_role(id: str):
             role["status"] = True
         if "privileges" not in role:
             role["privileges"] = []
+        if "lateLoginPrivileges" not in role:
+            role["lateLoginPrivileges"] = []
         return role
     raise HTTPException(status_code=404, detail=f"Role {id} not found")
 
@@ -164,6 +168,8 @@ async def update_role(
             updated_role["status"] = True
         if "privileges" not in updated_role:
             updated_role["privileges"] = []
+        if "lateLoginPrivileges" not in updated_role:
+            updated_role["lateLoginPrivileges"] = []
             
         actor_name = current_user.get("sub") or current_user.get("username") or "Unknown"
         actor_ip = get_client_ip(request)

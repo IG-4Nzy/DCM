@@ -36,6 +36,7 @@ const Roles: React.FC = () => {
   const [formName, setFormName] = useState('');
   const [formStatus, setFormStatus] = useState(true);
   const [formPrivileges, setFormPrivileges] = useState<string[]>([]);
+  const [formLateLoginPrivileges, setFormLateLoginPrivileges] = useState<string[]>([]);
 
   useEffect(() => {
     dispatch(fetchPrivileges());
@@ -62,11 +63,13 @@ const Roles: React.FC = () => {
       setFormName(role.name);
       setFormStatus(role.status);
       setFormPrivileges(role.privileges || []);
+      setFormLateLoginPrivileges(role.lateLoginPrivileges || []);
     } else {
       setEditingRole(null);
       setFormName('');
       setFormStatus(true);
       setFormPrivileges([]);
+      setFormLateLoginPrivileges([]);
     }
     setIsModalOpen(true);
   };
@@ -83,7 +86,8 @@ const Roles: React.FC = () => {
           id: editingRole.id,
           name: formName,
           status: formStatus,
-          privileges: formPrivileges
+          privileges: formPrivileges,
+          lateLoginPrivileges: formLateLoginPrivileges
         };
         await dispatch(updateRole({ payload, showToast })).unwrap();
       } else {
@@ -91,7 +95,8 @@ const Roles: React.FC = () => {
           payload: {
             name: formName,
             status: formStatus,
-            privileges: formPrivileges
+            privileges: formPrivileges,
+            lateLoginPrivileges: formLateLoginPrivileges
           },
           showToast
         })).unwrap();
@@ -250,6 +255,8 @@ const Roles: React.FC = () => {
         setFormStatus={setFormStatus}
         formPrivileges={formPrivileges}
         setFormPrivileges={setFormPrivileges}
+        formLateLoginPrivileges={formLateLoginPrivileges}
+        setFormLateLoginPrivileges={setFormLateLoginPrivileges}
         availablePrivileges={availablePrivileges}
         handleSubmit={handleSubmit}
       />

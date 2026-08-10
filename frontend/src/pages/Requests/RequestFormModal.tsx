@@ -431,6 +431,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                                 snapshotName: undefined,
                                 templateName: undefined,
                                 backupName: undefined,
+                                justification: undefined,
                               }));
                             }}
                             MenuProps={SELECT_MENU_PROPS}
@@ -441,6 +442,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                             <MenuItem value="Template">Template</MenuItem>
                             <MenuItem value="Backup">Backup</MenuItem>
                             <MenuItem value="Resource Upgrade">Resource Upgrade</MenuItem>
+                            <MenuItem value="Delete VM">Delete VM</MenuItem>
                             <MenuItem value="Others">Others</MenuItem>
                           </Select>
                         </FormControl>
@@ -563,6 +565,20 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                             placeholder="Enter backup name"
                           />
                         )}
+
+                        {/* Delete VM: justification */}
+                        {details.operationType === 'Delete VM' && (
+                          <TextField
+                            label="Justification for Deletion"
+                            fullWidth
+                            required
+                            multiline
+                            rows={3}
+                            value={details.justification || ''}
+                            onChange={(e) => handleDetailChange('justification', e.target.value)}
+                            placeholder="Please provide the business justification for deleting this VM"
+                          />
+                        )}
                       </>
                     )}
                   </>
@@ -586,7 +602,17 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                     {details.operationType === 'Clone' && <TextField label="Clone Name" fullWidth disabled value={details.cloneName || ''} />}
                     {details.operationType === 'Snapshot' && <TextField label="Snapshot Name" fullWidth disabled value={details.snapshotName || ''} />}
                     {details.operationType === 'Template' && <TextField label="Template Name" fullWidth disabled value={details.templateName || ''} />}
-                    {details.operationType === 'Backup' && <TextField label="Backup Name" fullWidth disabled value={details.backupName || ''} />}
+                     {details.operationType === 'Backup' && <TextField label="Backup Name" fullWidth disabled value={details.backupName || ''} />}
+                    {details.operationType === 'Delete VM' && (
+                      <TextField
+                        label="Justification for Deletion"
+                        fullWidth
+                        disabled
+                        multiline
+                        rows={3}
+                        value={details.justification || ''}
+                      />
+                    )}
                     <TextField label="OS and Version" fullWidth disabled value={details.osVersion || ''} />
                     <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                       <TextField label="RAM" disabled value={details.ram || ''} sx={{ flex: 1 }} />

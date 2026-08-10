@@ -16,7 +16,9 @@ import {
   MdVolumeUp as VolumeUpIcon, 
   MdVolumeOff as VolumeOffIcon,
   MdUploadFile as UploadIcon,
-  MdClose as ClearIcon
+  MdClose as ClearIcon,
+  MdNotificationsActive as NotificationsActiveIcon,
+  MdNotificationsOff as NotificationsOffIcon
 } from 'react-icons/md';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
@@ -25,7 +27,7 @@ import TextField from '../../components/TextField';
 import request from '../../services/request';
 import { 
   fetchMonitoredServers, createMonitoredServer, updateMonitoredServer, deleteMonitoredServer,
-  fetchDashboardData, fetchPingDropLogs, exportPingDropLogs
+  fetchDashboardData, fetchPingDropLogs, exportPingDropLogs, acknowledgeServer
 } from './action';
 import styles from './index.module.scss';
 
@@ -45,6 +47,7 @@ interface MonitoredServer {
   responseTimeMs: number;
   availabilityPct: number;
   isEnabled: boolean;
+  isAcknowledged?: boolean;
   lastUpdated: string;
   lastFailedTime?: string;
 }
@@ -122,6 +125,7 @@ const ServerPingMonitoring: React.FC = () => {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleteTargetName, setDeleteTargetName] = useState<string>('');
   const [editingServer, setEditingServer] = useState<MonitoredServer | null>(null);
+  const [ackTargetServer, setAckTargetServer] = useState<MonitoredServer | null>(null);
   const [serverForm, setServerForm] = useState({
     name: '',
     ipAddress: '',
@@ -163,6 +167,7 @@ const ServerPingMonitoring: React.FC = () => {
   useEffect(() => {
     const hasUnmutedOfflineServers = servers.some(s => {
       if (mutedServerIds.includes(s.id)) return false;
+      if (s.isAcknowledged) return false;
       return s.status === 'DOWN' || 
         ((s.monitoringType === 'both' || s.monitoringType === 'port') && 
          s.portsStatus && 
@@ -530,6 +535,20 @@ const ServerPingMonitoring: React.FC = () => {
     }
   };
 
+  // Perform server acknowledgment/unacknowledgement after confirmation
+  const handleConfirmAcknowledge = async () => {
+    if (!ackTargetServer) return;
+    try {
+      const nextState = !ackTargetServer.isAcknowledged;
+      await acknowledgeServer(ackTargetServer.id, nextState);
+      setAckTargetServer(null);
+      await loadServers();
+      await loadDashboardMetrics();
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to update server acknowledgment status");
+    }
+  };
+
   return (
     <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
       {/* Header Row (Extremely compact, with metrics side-by-side) */}
@@ -682,6 +701,14 @@ const ServerPingMonitoring: React.FC = () => {
                           {srv.status === 'DOWN' && <ErrorIcon size={12} />}
                           {srv.status}
                         </span>
+                        {srv.isAcknowledged && (
+                          <Chip 
+                            size="small" 
+                            label="Acknowledged" 
+                            color="warning" 
+                            sx={{ fontWeight: 600, fontSize: '0.65rem', height: '18px', mt: 0.25 }} 
+                          />
+                        )}
                         {srv.monitoringType === 'both' && srv.portsStatus && Object.keys(srv.portsStatus).length > 0 && (
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.25 }}>
                             {Object.entries(srv.portsStatus).map(([port, status]) => (
@@ -745,6 +772,20 @@ const ServerPingMonitoring: React.FC = () => {
                           <IconButton size="small" onClick={() => handleOpenServerModal(srv)} sx={{ color: '#3b82f6', p: 0.5 }}>
                             <EditIcon size={16} />
                           </IconButton>
+                        )}
+                        {canUpdate && (srv.status === 'DOWN' || 
+                          ((srv.monitoringType === 'both' || srv.monitoringType === 'port') && 
+                           srv.portsStatus && 
+                           Object.values(srv.portsStatus).includes('DOWN'))) && (
+                          <Tooltip title={srv.isAcknowledged ? "Unacknowledge Server" : "Acknowledge Server"}>
+                            <IconButton 
+                              size="small" 
+                              onClick={() => setAckTargetServer(srv)} 
+                              sx={{ color: srv.isAcknowledged ? '#f59e0b' : '#64748b', p: 0.5 }}
+                            >
+                              {srv.isAcknowledged ? <NotificationsOffIcon size={16} /> : <NotificationsActiveIcon size={16} />}
+                            </IconButton>
+                          </Tooltip>
                         )}
                         {canDelete && (
                           <IconButton size="small" onClick={() => handleDeleteClick(srv.id, srv.name)} sx={{ color: '#ef4444', p: 0.5 }}>
@@ -970,6 +1011,36 @@ const ServerPingMonitoring: React.FC = () => {
               sx={{ background: '#ef4444', '&:hover': { background: '#dc2626' } }}
             >
               Delete
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
+
+      {/* Acknowledge Confirmation Modal */}
+      <Modal
+        open={Boolean(ackTargetServer)}
+        handleClose={() => setAckTargetServer(null)}
+        title={ackTargetServer?.isAcknowledged ? "Confirm Unacknowledgement" : "Confirm Acknowledgement"}
+      >
+        <Box sx={{ p: 0.5 }}>
+          <Typography sx={{ mb: 2, fontSize: '0.9rem', color: '#1e293b' }}>
+            {ackTargetServer?.isAcknowledged ? (
+              <>Are you sure you want to unacknowledge server <strong>{ackTargetServer?.name}</strong>? Alerts and notifications will be re-enabled.</>
+            ) : (
+              <>Are you sure you want to acknowledge server <strong>{ackTargetServer?.name}</strong>? This will silence all notifications and alarms for it until it comes back online.</>
+            )}
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+            <Button size="small" variant="outlined" onClick={() => setAckTargetServer(null)}>
+              Cancel
+            </Button>
+            <Button 
+              size="small" 
+              variant="contained" 
+              onClick={handleConfirmAcknowledge}
+              sx={{ background: '#f59e0b', '&:hover': { background: '#d97706' } }}
+            >
+              {ackTargetServer?.isAcknowledged ? "Unacknowledge" : "Acknowledge"}
             </Button>
           </Box>
         </Box>

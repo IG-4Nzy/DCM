@@ -16,6 +16,8 @@ interface PropType {
     setFormStatus: (value: boolean) => void;
     formPrivileges: string[];
     setFormPrivileges: (value: string[]) => void;
+    formLateLoginPrivileges: string[];
+    setFormLateLoginPrivileges: (value: string[]) => void;
     availablePrivileges: string[];
     handleSubmit: (e: React.FormEvent) => void;
 }
@@ -193,19 +195,31 @@ const RoleFormModal = ({
     setFormStatus,
     formPrivileges = [],
     setFormPrivileges,
+    formLateLoginPrivileges = [],
+    setFormLateLoginPrivileges,
     availablePrivileges = [],
     handleSubmit
 }: PropType) => {
     const [searchQuery, setSearchQuery] = React.useState('');
 
     const safeFormPrivileges = formPrivileges || [];
+    const safeFormLateLoginPrivileges = formLateLoginPrivileges || [];
     const safeAvailablePrivileges = availablePrivileges || [];
 
     const handleTogglePrivilege = (privilege: string) => {
         if (safeFormPrivileges.includes(privilege)) {
             setFormPrivileges(safeFormPrivileges.filter(p => p !== privilege));
+            setFormLateLoginPrivileges(safeFormLateLoginPrivileges.filter(p => p !== privilege));
         } else {
             setFormPrivileges([...safeFormPrivileges, privilege]);
+        }
+    };
+
+    const handleToggleLateLoginPrivilege = (privilege: string) => {
+        if (safeFormLateLoginPrivileges.includes(privilege)) {
+            setFormLateLoginPrivileges(safeFormLateLoginPrivileges.filter(p => p !== privilege));
+        } else {
+            setFormLateLoginPrivileges([...safeFormLateLoginPrivileges, privilege]);
         }
     };
 
@@ -215,6 +229,7 @@ const RoleFormModal = ({
             setFormPrivileges([...safeFormPrivileges, ...toAdd]);
         } else {
             setFormPrivileges(safeFormPrivileges.filter(p => !groupPrivileges.includes(p)));
+            setFormLateLoginPrivileges(safeFormLateLoginPrivileges.filter(p => !groupPrivileges.includes(p)));
         }
     };
 
@@ -326,23 +341,44 @@ const RoleFormModal = ({
                                     <Grid container spacing={1.5}>
                                         {filteredGroupPrivs.map((priv) => (
                                             <Grid size={{ xs: 12, sm: 6 }} key={priv}>
-                                                <FormControlLabel
-                                                    control={
-                                                        <Checkbox
-                                                            size="small"
-                                                            checked={safeFormPrivileges.includes(priv)}
-                                                            onChange={() => handleTogglePrivilege(priv)}
+                                                <Box sx={{ 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    justifyContent: 'space-between', 
+                                                    width: '100%',
+                                                    borderRadius: '4px',
+                                                    '&:hover': { background: '#f1f5f9' }
+                                                }}>
+                                                    <FormControlLabel
+                                                        control={
+                                                            <Checkbox
+                                                                size="small"
+                                                                checked={safeFormPrivileges.includes(priv)}
+                                                                onChange={() => handleTogglePrivilege(priv)}
+                                                            />
+                                                        }
+                                                        label={<span style={{ fontSize: '0.825rem', color: '#334155' }}>{priv}</span>}
+                                                        sx={{
+                                                            margin: 0,
+                                                            p: '2px 4px',
+                                                            flexGrow: 1
+                                                        }}
+                                                    />
+                                                    {safeFormPrivileges.includes(priv) && (
+                                                        <FormControlLabel
+                                                            control={
+                                                                <Checkbox
+                                                                    size="small"
+                                                                    checked={safeFormLateLoginPrivileges.includes(priv)}
+                                                                    onChange={() => handleToggleLateLoginPrivilege(priv)}
+                                                                    sx={{ color: '#ec4899', '&.Mui-checked': { color: '#db2777' } }}
+                                                                />
+                                                            }
+                                                            label={<span style={{ fontSize: '0.725rem', fontWeight: 600, color: '#db2777' }}>Late Login</span>}
+                                                            sx={{ margin: 0, mr: 1 }}
                                                         />
-                                                    }
-                                                    label={<span style={{ fontSize: '0.825rem', color: '#334155' }}>{priv}</span>}
-                                                    sx={{
-                                                        width: '100%',
-                                                        margin: 0,
-                                                        p: '2px 4px',
-                                                        borderRadius: '4px',
-                                                        '&:hover': { background: '#f1f5f9' }
-                                                    }}
-                                                />
+                                                    )}
+                                                </Box>
                                             </Grid>
                                         ))}
                                     </Grid>

@@ -197,15 +197,16 @@ async def login(credentials: LoginRequest):
                 # If there's already a pending/rejected late attempt, keep blocking only if restriction is enabled
                 late_status = existing_attendance.get("lateApprovalStatus")
                 if existing_attendance.get("isLateAttempt") and late_login_restriction:
-                    all_checklist_privileges = [
-                        "View BMS Checklist", "View All Department BMS Checklist", "Create BMS Checklist", "Update BMS Checklist", "Delete BMS Checklist", "Edit BMS Checklist Field",
-                        "View Cluster Checklist", "View All Department Cluster Checklist", "Create Cluster Checklist", "Update Cluster Checklist", "Delete Cluster Checklist", "Edit Cluster Checklist Field",
-                        "View Morning Checklist", "Create Morning Checklist", "Update Morning Checklist", "Delete Morning Checklist", "Edit Morning Checklist Field",
-                        "View Work Log", "View All Work Logs", "Create Work Log", "Update Work Log", "Delete Work Log",
-                        "View All Work", "View All Department Works", "View Assigned Work", "View Emergency Work",
-                        "Create Work", "Create Emergency Work", "Update Work", "Delete Work"
-                    ]
-                    restricted_privileges = [p for p in all_checklist_privileges if p in privileges]
+                    late_login_privs = set()
+                    for r_id in user_roles:
+                        r_obj = None
+                        if ObjectId.is_valid(r_id):
+                            r_obj = await roles_collection.find_one({"_id": ObjectId(r_id)})
+                        if not r_obj:
+                            r_obj = await roles_collection.find_one({"name": r_id})
+                        if r_obj:
+                            late_login_privs.update(r_obj.get("lateLoginPrivileges", []))
+                    restricted_privileges = [p for p in privileges if p in late_login_privs]
                     restricted_token = create_access_token(
                         data={
                             "sub": user["username"],
@@ -271,15 +272,16 @@ async def login(credentials: LoginRequest):
 
                 if is_late and not is_superuser:
                     if late_login_restriction:
-                        all_checklist_privileges = [
-                            "View BMS Checklist", "View All Department BMS Checklist", "Create BMS Checklist", "Update BMS Checklist", "Delete BMS Checklist", "Edit BMS Checklist Field",
-                            "View Cluster Checklist", "View All Department Cluster Checklist", "Create Cluster Checklist", "Update Cluster Checklist", "Delete Cluster Checklist", "Edit Cluster Checklist Field",
-                            "View Morning Checklist", "Create Morning Checklist", "Update Morning Checklist", "Delete Morning Checklist", "Edit Morning Checklist Field",
-                            "View Work Log", "View All Work Logs", "Create Work Log", "Update Work Log", "Delete Work Log",
-                            "View All Work", "View All Department Works", "View Assigned Work", "View Emergency Work",
-                            "Create Work", "Create Emergency Work", "Update Work", "Delete Work"
-                        ]
-                        restricted_privileges = [p for p in all_checklist_privileges if p in privileges]
+                        late_login_privs = set()
+                        for r_id in user_roles:
+                            r_obj = None
+                            if ObjectId.is_valid(r_id):
+                                r_obj = await roles_collection.find_one({"_id": ObjectId(r_id)})
+                            if not r_obj:
+                                r_obj = await roles_collection.find_one({"name": r_id})
+                            if r_obj:
+                                late_login_privs.update(r_obj.get("lateLoginPrivileges", []))
+                        restricted_privileges = [p for p in privileges if p in late_login_privs]
                         restricted_token = create_access_token(
                             data={
                                 "sub": user["username"],
