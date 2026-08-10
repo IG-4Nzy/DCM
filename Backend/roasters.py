@@ -1195,6 +1195,15 @@ async def send_roster_email(
     payload: dict = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
+    # Check if roster email is enabled in mail config
+    config_col = db.get_collection("mail_config")
+    config = await config_col.find_one({"_id": "mail_config"})
+    if config and not config.get("rosterMailEnabled", True):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Sending roster emails is currently disabled in Mail Configuration."
+        )
+
     emails_str = payload.get("emails", "")
     department = payload.get("department", "General")
     week_start_date = payload.get("weekStartDate")

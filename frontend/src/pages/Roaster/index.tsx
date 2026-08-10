@@ -66,6 +66,7 @@ const RoasterPage: React.FC = () => {
   const [officerEmails, setOfficerEmails] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
   const [hasMappedEmails, setHasMappedEmails] = useState(false);
+  const [rosterMailEnabled, setRosterMailEnabled] = useState(true);
 
   useEffect(() => {
     const checkMappedEmails = async () => {
@@ -80,6 +81,16 @@ const RoasterPage: React.FC = () => {
       }
     };
     checkMappedEmails();
+
+    const checkMailEnabled = async () => {
+      try {
+        const res = await request.get('/api/mail-config/roster-mail-enabled');
+        setRosterMailEnabled(res.data.enabled !== false);
+      } catch (e) {
+        console.error("Error checking mail enabled:", e);
+      }
+    };
+    checkMailEnabled();
   }, []);
 
   const currentWeekKey = selectedWeek.startOf("isoWeek").format("YYYY-MM-DD");
@@ -918,39 +929,41 @@ const RoasterPage: React.FC = () => {
             </IconButton>
           </Tooltip>
 
-          <Box className="hide-on-print" sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1 }}>
-            {!hasMappedEmails && (
-              <EmailSelectInput
-                placeholder="Officer email(s)"
-                value={officerEmails}
-                onChange={(val) => setOfficerEmails(val)}
-                department={activeDepartment || 'General'}
-                module="roster"
-                size="small"
-                height="32px"
-                width="210px"
-              />
-            )}
-            <Tooltip title={
-              !isRosterApproved 
-                ? "Roster must be approved before sending email" 
-                : hasEmailBeenSent 
-                  ? "Roster email has already been sent for this approval" 
-                  : "Send roster email with PDF"
-            }>
-              <span>
-                <Button
-                  variant="contained"
+          {rosterMailEnabled && (
+            <Box className="hide-on-print" sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1 }}>
+              {!hasMappedEmails && (
+                <EmailSelectInput
+                  placeholder="Officer email(s)"
+                  value={officerEmails}
+                  onChange={(val) => setOfficerEmails(val)}
+                  department={activeDepartment || 'General'}
+                  module="roster"
                   size="small"
-                  onClick={handleSendRosterEmail}
-                  disabled={emailLoading || !officerEmails || !isRosterApproved || hasEmailBeenSent}
-                  sx={{ height: '32px', fontSize: '11px', whiteSpace: 'nowrap' }}
-                >
-                  {emailLoading ? "Sending..." : "Send Mail"}
-                </Button>
-              </span>
-            </Tooltip>
-          </Box>
+                  height="32px"
+                  width="210px"
+                />
+              )}
+              <Tooltip title={
+                !isRosterApproved 
+                  ? "Roster must be approved before sending email" 
+                  : hasEmailBeenSent 
+                    ? "Roster email has already been sent for this approval" 
+                    : "Send roster email with PDF"
+              }>
+                <span>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={handleSendRosterEmail}
+                    disabled={emailLoading || !officerEmails || !isRosterApproved || hasEmailBeenSent}
+                    sx={{ height: '32px', fontSize: '11px', whiteSpace: 'nowrap' }}
+                  >
+                    {emailLoading ? "Sending..." : "Send Mail"}
+                  </Button>
+                </span>
+              </Tooltip>
+            </Box>
+          )}
         </Box>
       </header>
 

@@ -44,6 +44,10 @@ class NotificationChannelUpdate(BaseModel):
     isEnabled: bool
     config: Dict[str, Any]
 
+class UploadAlarmSoundSchema(BaseModel):
+    dataUrl: str = Field(..., description="Base64 Data URL of the audio file")
+    filename: str = Field(..., description="Original filename of the audio file")
+
 # Helper to convert MongoDB object IDs to strings
 def serialize_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
     if not doc:
@@ -1008,3 +1012,50 @@ async def export_ping_drop_logs(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=server_ping_drops.csv"}
     )
+
+# 6. Custom Alarm Sound Management
+@router.get("/alarm-sound", response_description="Get current custom alarm sound")
+async def get_alarm_sound(current_user: dict = Depends(get_current_user)):
+    config_col = db.get_collection("alarm_config")
+    config = await config_col.find_one({"_id": "custom_alarm"})
+    if not config:
+        return {"dataUrl": None, "filename": None}
+    return {
+        "dataUrl": config.get("dataUrl"),
+        "filename": config.get("filename")
+    }
+
+@router.post("/alarm-sound", response_description="Upload custom alarm sound")
+async def upload_alarm_sound(
+    payload: UploadAlarmSoundSchema,
+    current_user: dict = Depends(get_current_user)
+):
+    if not current_user.get("isSuperuser", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only superusers are authorized to upload alarm sounds."
+        )
+    
+    config_col = db.get_collection("alarm_config")
+    await config_col.update_one(
+        {"_id": "custom_alarm"},
+        {"$set": {
+            "dataUrl": payload.dataUrl,
+            "filename": payload.filename,
+            "updatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        }},
+        upsert=True
+    )
+    return {"message": "Custom alarm sound uploaded successfully"}
+
+@router.delete("/alarm-sound", response_description="Clear custom alarm sound")
+async def clear_alarm_sound(current_user: dict = Depends(get_current_user)):
+    if not current_user.get("isSuperuser", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only superusers are authorized to clear alarm sounds."
+        )
+    
+    config_col = db.get_collection("alarm_config")
+    await config_col.delete_one({"_id": "custom_alarm"})
+    return {"message": "Custom alarm sound cleared successfully"}

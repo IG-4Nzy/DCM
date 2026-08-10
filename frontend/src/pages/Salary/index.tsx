@@ -140,6 +140,7 @@ const Salary = () => {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [startDay, setStartDay] = useState<number>(1);
   const [endDay, setEndDay] = useState<number>(31);
+  const [maxAllowedDays, setMaxAllowedDays] = useState<number>(26);
   const [activeTab, setActiveTab] = useState(0);
 
   const [globalCompanyName, setGlobalCompanyName] = useState('');
@@ -173,6 +174,7 @@ const Salary = () => {
         if (configRes.data) {
           setStartDay(configRes.data.startDay || 1);
           setEndDay(configRes.data.endDay || 31);
+          setMaxAllowedDays(configRes.data.maxAllowedDays || 26);
         }
         if (salaryConfigRes.data) {
           setGlobalCompanyName(salaryConfigRes.data.companyName || '');
@@ -493,6 +495,84 @@ const Salary = () => {
       consumedUnits,
       remainingUnits
     };
+  };
+
+  const getAutoPerDaySalary = (group: Group, templateId: string) => {
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return 0;
+
+    const totalAmount = template.activities.reduce((sum, act) => sum + (Number(act.rate) || 0) * (Number(act.maxUnits) || 0), 0);
+
+    let reservedAmount = 0;
+    if (template.reserveEnabled) {
+      const rType = template.reserveType || 'percentage';
+      const rVal = template.reserveValue !== undefined ? Number(template.reserveValue) : 5;
+      if (rType === 'percentage') {
+        reservedAmount = totalAmount * (rVal / 100);
+      } else {
+        reservedAmount = rVal;
+      }
+    }
+
+    const templateInitialConsumedAmountVal = Number(template.initialConsumedAmount) || 0;
+
+    const sortedMonths = Object.keys(salaryData)
+      .filter(m => {
+        if (globalPoStartDate && m < dayjs(globalPoStartDate).format('YYYY-MM')) return false;
+        return true;
+      })
+      .sort();
+    const startMonth = sortedMonths.length > 0 ? sortedMonths[0] : currentMonth;
+    const remainingMonthsFromStart = globalPoEndDate 
+      ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${startMonth}-01`).startOf('month'), 'month') + 1) 
+      : 1;
+
+    const distribution = distributeInitialConsumedAmount(
+      templateInitialConsumedAmountVal,
+      template.activities,
+      Number(template.maxStaffs) || 0,
+      remainingMonthsFromStart
+    );
+
+    const actualInitialConsumedAmount = Object.values(distribution.distributedAmount).reduce((sum, val) => sum + val, 0);
+
+    let consumedAmountPrior = actualInitialConsumedAmount;
+    Object.entries(salaryData).forEach(([month, gList]) => {
+      if (month === currentMonth) return;
+      gList.forEach(g => {
+        if (g.templateId === templateId) {
+          g.members.forEach(m => {
+            const days = Number(m.days) || 0;
+            const otHours = Number(m.otHours) || 0;
+            const perDay = Number(g.perDaySalary) || 0;
+            consumedAmountPrior += (days * perDay) + ((perDay / 8) * otHours);
+          });
+        }
+      });
+    });
+
+    const availableAmount = totalAmount - consumedAmountPrior - reservedAmount;
+
+    let currentMonthUnits = 0;
+    const currentMonthGroups = salaryData[currentMonth] || [];
+    currentMonthGroups.forEach(g => {
+      if (g.templateId === templateId) {
+        g.members.forEach(m => {
+          currentMonthUnits += (Number(m.days) || 0) + ((Number(m.otHours) || 0) / 8);
+        });
+      }
+    });
+
+    const remainingMonths = globalPoEndDate 
+      ? Math.max(0, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${currentMonth}-01`).startOf('month'), 'month')) 
+      : 0;
+
+    const futureUnits = (Number(template.maxStaffs) || 0) * remainingMonths * maxAllowedDays;
+
+    const divisor = currentMonthUnits + futureUnits;
+    if (divisor <= 0) return 0;
+
+    return Math.floor(availableAmount / divisor);
   };
 
   const getTemplateActivitiesStats = (template: Template) => {
@@ -900,14 +980,63 @@ const Salary = () => {
                                   ))}
                                 </Select>
                               </FormControl>
-                              <TextField
-                                size="small"
-                                type="number"
-                                label="Per Day Salary (₹)"
-                                value={group.perDaySalary} 
-                                onChange={(e) => updateGroup(group.id, 'perDaySalary', e.target.value)}
-                                sx={{ backgroundColor: 'white' }}
-                              />
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <TextField
+                                    size="small"
+                                    type="number"
+                                    label="Per Day Salary (₹)"
+                                    value={group.perDaySalary} 
+                                    onChange={(e) => updateGroup(group.id, 'perDaySalary', e.target.value)}
+                                    sx={{ backgroundColor: 'white', flex: 1 }}
+                                  />
+                                  {group.templateId && (
+                                    <Button 
+                                      variant="outlined" 
+                                      size="small" 
+                                      onClick={() => {
+                                        const autoVal = getAutoPerDaySalary(group, group.templateId!);
+                                        updateGroup(group.id, 'perDaySalary', autoVal);
+                                      }}
+                                      sx={{ height: 40, textTransform: 'none' }}
+                                    >
+                                      Auto
+                                    </Button>
+                                  )}
+                                </Box>
+                                {(() => {
+                                  if (!group.templateId) return null;
+                                  const stats = getTemplateStats(group.templateId);
+                                  if (!stats) return null;
+                                  const template = templates.find(t => t.id === group.templateId);
+                                  if (!template) return null;
+
+                                  const remainingMonths = globalPoEndDate 
+                                    ? Math.max(0, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${currentMonth}-01`).startOf('month'), 'month')) 
+                                    : 0;
+                                  
+                                  if (!globalPoEndDate) {
+                                    return (
+                                      <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                        Please configure PO End Date in Configurations tab to verify future capacity.
+                                      </Typography>
+                                    );
+                                  }
+
+                                  const perDay = Number(group.perDaySalary) || 0;
+                                  const futureCost = (Number(template.maxStaffs) || 0) * remainingMonths * maxAllowedDays * perDay;
+                                  const isEnough = stats.remainingAmount >= futureCost;
+
+                                  return (
+                                    <Typography variant="caption" color={isEnough ? "success.main" : "error.main"} sx={{ fontWeight: 600, mt: 0.5, display: 'block' }}>
+                                      {isEnough 
+                                        ? `✓ Remaining amount (₹${stats.remainingAmount.toLocaleString('en-IN')}) is sufficient to cover ${template.maxStaffs} staffs for ${remainingMonths} months (Requires ₹${futureCost.toLocaleString('en-IN')}).`
+                                        : `✗ Insufficient funds: Remaining amount (₹${stats.remainingAmount.toLocaleString('en-IN')}) cannot cover ${template.maxStaffs} staffs for ${remainingMonths} months (Requires ₹${futureCost.toLocaleString('en-IN')}, Deficit: ₹${(futureCost - stats.remainingAmount).toLocaleString('en-IN')}).`
+                                      }
+                                    </Typography>
+                                  );
+                                })()}
+                              </Box>
                             </Box>
                           ) : (
                             <Box>
@@ -1545,7 +1674,7 @@ const Salary = () => {
           <style>
             {`
               @page {
-                size: landscape;
+                size: portrait;
                 margin: 0;
               }
               .print-area-salary table thead tr {
@@ -1569,7 +1698,7 @@ const Salary = () => {
                   left: 0;
                   top: 0;
                   width: 100%;
-                  padding: 1.6cm !important;
+                  padding: 1.2cm !important;
                   box-sizing: border-box;
                 }
                 .no-print {
@@ -1579,23 +1708,39 @@ const Salary = () => {
             `}
           </style>
           
-          <Box sx={{ p: 4, bgcolor: 'white', color: 'black' }}>
-            <Box sx={{ textAlign: 'center', mb: 4, '& .MuiTypography-root': { whiteSpace: 'nowrap' } }}>
-              <Typography variant="h5" fontWeight="bold">{globalCompanyName || 'Company Name Not Set'}</Typography>
-              <Typography variant="subtitle1" sx={{ mt: 1 }}>PO Number: {globalPoNumber || 'N/A'}</Typography>
-              <Typography variant="subtitle2" sx={{ mt: 1 }}>Salary Report: Individual Members</Typography>
-              <Typography variant="body2">Period: {displayPeriod}</Typography>
+          <Box sx={{ p: 2, bgcolor: 'white', color: 'black' }}>
+            {/* Redesigned professional header */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #1e293b', pb: 1.5, mb: 3 }}>
+              <Box>
+                <Typography variant="h5" fontWeight="bold" sx={{ color: '#1e293b', whiteSpace: 'nowrap' }}>
+                  {globalCompanyName || 'Company Name Not Set'}
+                </Typography>
+                <Typography variant="subtitle1" fontWeight="600" sx={{ color: '#475569', mt: 0.5, whiteSpace: 'nowrap' }}>
+                  Salary Report: Individual Members
+                </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right' }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#334155', whiteSpace: 'nowrap' }}>
+                  PO Number: <span style={{ fontWeight: 400 }}>{globalPoNumber || 'N/A'}</span>
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#334155', mt: 0.5, whiteSpace: 'nowrap' }}>
+                  Period: <span style={{ fontWeight: 400 }}>{displayPeriod}</span>
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#64748b', mt: 0.5, display: 'block', whiteSpace: 'nowrap' }}>
+                  Generated: {dayjs().format('DD MMM YYYY, HH:mm')}
+                </Typography>
+              </Box>
             </Box>
 
             <TableContainer>
-              <Table sx={{ border: '1px solid black', '& .MuiTableCell-root': { border: '1px solid black', color: 'black' } }}>
+              <Table sx={{ border: '1px solid black', '& .MuiTableCell-root': { border: '1px solid black', color: 'black', py: 0.5, px: 1, fontSize: '0.8rem' } }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                     <TableCell sx={{ fontWeight: 'bold', width: '50px' }}>Sl No.</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Name of the contract person</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Days</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>OT Hours</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Total Amount (Rs)</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', width: '80px' }}>Days</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', width: '100px' }}>OT Hours</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', width: '150px' }}>Total Amount (Rs)</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>

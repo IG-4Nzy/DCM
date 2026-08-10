@@ -201,7 +201,9 @@ async def login(credentials: LoginRequest):
                         "View BMS Checklist", "View All Department BMS Checklist", "Create BMS Checklist", "Update BMS Checklist", "Delete BMS Checklist", "Edit BMS Checklist Field",
                         "View Cluster Checklist", "View All Department Cluster Checklist", "Create Cluster Checklist", "Update Cluster Checklist", "Delete Cluster Checklist", "Edit Cluster Checklist Field",
                         "View Morning Checklist", "Create Morning Checklist", "Update Morning Checklist", "Delete Morning Checklist", "Edit Morning Checklist Field",
-                        "View Work Log", "View All Work Logs", "Create Work Log", "Update Work Log", "Delete Work Log"
+                        "View Work Log", "View All Work Logs", "Create Work Log", "Update Work Log", "Delete Work Log",
+                        "View All Work", "View All Department Works", "View Assigned Work", "View Emergency Work",
+                        "Create Work", "Create Emergency Work", "Update Work", "Delete Work"
                     ]
                     restricted_privileges = [p for p in all_checklist_privileges if p in privileges]
                     restricted_token = create_access_token(
@@ -273,7 +275,9 @@ async def login(credentials: LoginRequest):
                             "View BMS Checklist", "View All Department BMS Checklist", "Create BMS Checklist", "Update BMS Checklist", "Delete BMS Checklist", "Edit BMS Checklist Field",
                             "View Cluster Checklist", "View All Department Cluster Checklist", "Create Cluster Checklist", "Update Cluster Checklist", "Delete Cluster Checklist", "Edit Cluster Checklist Field",
                             "View Morning Checklist", "Create Morning Checklist", "Update Morning Checklist", "Delete Morning Checklist", "Edit Morning Checklist Field",
-                            "View Work Log", "View All Work Logs", "Create Work Log", "Update Work Log", "Delete Work Log"
+                            "View Work Log", "View All Work Logs", "Create Work Log", "Update Work Log", "Delete Work Log",
+                            "View All Work", "View All Department Works", "View Assigned Work", "View Emergency Work",
+                            "Create Work", "Create Emergency Work", "Update Work", "Delete Work"
                         ]
                         restricted_privileges = [p for p in all_checklist_privileges if p in privileges]
                         restricted_token = create_access_token(

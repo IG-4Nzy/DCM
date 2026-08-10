@@ -20,6 +20,7 @@ class MailConfigSchema(BaseModel):
     savedEmailsRoster: Optional[List[str]] = Field(default=[], description="List of default emails for roster")
     savedEmailsDailyChecklist: Optional[List[str]] = Field(default=[], description="List of default emails for daily/cluster checklist")
     savedEmailsBmsChecklist: Optional[List[str]] = Field(default=[], description="List of default emails for BMS checklist")
+    rosterMailEnabled: Optional[bool] = Field(default=True, description="Enable roster mail send feature")
 
 class TestMailSchema(BaseModel):
     toEmail: str = Field(..., description="Recipient email address")
@@ -44,7 +45,8 @@ async def get_mail_config():
             "savedEmails": [],
             "savedEmailsRoster": [],
             "savedEmailsDailyChecklist": [],
-            "savedEmailsBmsChecklist": []
+            "savedEmailsBmsChecklist": [],
+            "rosterMailEnabled": True
         }
         await config_col.insert_one(config)
     
@@ -57,6 +59,8 @@ async def get_mail_config():
         config["savedEmailsDailyChecklist"] = []
     if "savedEmailsBmsChecklist" not in config:
         config["savedEmailsBmsChecklist"] = []
+    if "rosterMailEnabled" not in config:
+        config["rosterMailEnabled"] = True
     return config
 
 @router.put("/", response_description="Update Mail Configuration", dependencies=[Depends(require_privilege("Mail Config Update"))])
@@ -74,7 +78,8 @@ async def update_mail_config(payload: MailConfigSchema):
         "savedEmails": payload.savedEmails or [],
         "savedEmailsRoster": payload.savedEmailsRoster or [],
         "savedEmailsDailyChecklist": payload.savedEmailsDailyChecklist or [],
-        "savedEmailsBmsChecklist": payload.savedEmailsBmsChecklist or []
+        "savedEmailsBmsChecklist": payload.savedEmailsBmsChecklist or [],
+        "rosterMailEnabled": payload.rosterMailEnabled if payload.rosterMailEnabled is not None else True
     }
     
     await config_col.update_one(
@@ -83,6 +88,14 @@ async def update_mail_config(payload: MailConfigSchema):
         upsert=True
     )
     return {"message": "Mail configuration updated successfully", "config": update_data}
+
+@router.get("/roster-mail-enabled", response_description="Check if roster email is enabled")
+async def is_roster_mail_enabled(current_user: dict = Depends(get_current_user)):
+    config_col = db.get_collection("mail_config")
+    config = await config_col.find_one({"_id": "mail_config"})
+    if not config:
+        return {"enabled": True}
+    return {"enabled": config.get("rosterMailEnabled", True)}
 
 @router.get("/saved-emails", response_description="Get list of saved emails")
 async def get_saved_emails(

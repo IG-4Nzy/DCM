@@ -22,6 +22,7 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import Modal from '../../components/Modal';
 import TextField from '../../components/TextField';
+import request from '../../services/request';
 import { 
   fetchMonitoredServers, createMonitoredServer, updateMonitoredServer, deleteMonitoredServer,
   fetchDashboardData, fetchPingDropLogs, exportPingDropLogs
@@ -59,8 +60,25 @@ const ServerPingMonitoring: React.FC = () => {
 
   // Sound States (Persistent)
   const [isMuted, setIsMuted] = useState(() => localStorage.getItem('dcm_alert_muted') === 'true');
-  const [audioFileName, setAudioFileName] = useState(() => localStorage.getItem('dcm_alert_audio_name') || '');
+  const [audioFileName, setAudioFileName] = useState('');
+  const [customAlarmUrl, setCustomAlarmUrl] = useState<string | null>(null);
   const audioIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const audioInstanceRef = useRef<HTMLAudioElement | null>(null);
+
+  const fetchCustomAlarm = async () => {
+    try {
+      const res = await request.get('/api/server-ping-monitoring/alarm-sound');
+      if (res.data && res.data.dataUrl) {
+        setCustomAlarmUrl(res.data.dataUrl);
+        setAudioFileName(res.data.filename || 'custom_alarm.mp3');
+      } else {
+        setCustomAlarmUrl(null);
+        setAudioFileName('');
+      }
+    } catch (err) {
+      console.error("Error fetching custom alarm:", err);
+    }
+  };
 
   // Individual Muted Servers State
   const [mutedServerIds, setMutedServerIds] = useState<string[]>(() => {
@@ -141,20 +159,6 @@ const ServerPingMonitoring: React.FC = () => {
     }
   };
 
-  // Play alert trigger
-  const triggerAlarmSound = () => {
-    const customAudioData = localStorage.getItem('dcm_alert_audio');
-    if (customAudioData) {
-      const audio = new Audio(customAudioData);
-      audio.play().catch(e => {
-        console.warn("Custom audio playback blocked, playing synthesizer beep instead:", e);
-        playAlertBeep();
-      });
-    } else {
-      playAlertBeep();
-    }
-  };
-
   // Sound Loop management
   useEffect(() => {
     const hasUnmutedOfflineServers = servers.some(s => {
@@ -165,27 +169,84 @@ const ServerPingMonitoring: React.FC = () => {
          Object.values(s.portsStatus).includes('DOWN'));
     });
 
-    if (hasUnmutedOfflineServers && !isMuted) {
-      if (!audioIntervalRef.current) {
-        triggerAlarmSound();
-        audioIntervalRef.current = setInterval(() => {
-          triggerAlarmSound();
-        }, 3000); // Play alarm sound every 3 seconds
+    const shouldPlay = hasUnmutedOfflineServers && !isMuted;
+
+    if (shouldPlay) {
+      if (customAlarmUrl) {
+        // Clear synth beep interval if running
+        if (audioIntervalRef.current) {
+          clearInterval(audioIntervalRef.current);
+          audioIntervalRef.current = null;
+        }
+
+        // Handle custom audio playback
+        if (!audioInstanceRef.current || audioInstanceRef.current.src !== customAlarmUrl) {
+          if (audioInstanceRef.current) {
+            audioInstanceRef.current.pause();
+          }
+          const audio = new Audio(customAlarmUrl);
+          audio.loop = true;
+          audioInstanceRef.current = audio;
+        }
+
+        // Play if paused
+        if (audioInstanceRef.current.paused) {
+          audioInstanceRef.current.play().catch(e => {
+            console.warn("Custom audio playback blocked, playing synthesizer beep instead:", e);
+            // Fallback to synth beep loop
+            if (!audioIntervalRef.current) {
+              playAlertBeep();
+              audioIntervalRef.current = setInterval(() => {
+                playAlertBeep();
+              }, 3000);
+            }
+          });
+        }
+      } else {
+        // Fallback beep loop (no custom alarm)
+        if (audioInstanceRef.current) {
+          audioInstanceRef.current.pause();
+          audioInstanceRef.current = null;
+        }
+
+        if (!audioIntervalRef.current) {
+          playAlertBeep();
+          audioIntervalRef.current = setInterval(() => {
+            playAlertBeep();
+          }, 3000);
+        }
       }
     } else {
+      // Stop everything
       if (audioIntervalRef.current) {
         clearInterval(audioIntervalRef.current);
         audioIntervalRef.current = null;
       }
+      if (audioInstanceRef.current) {
+        audioInstanceRef.current.pause();
+        audioInstanceRef.current.currentTime = 0; // Rewind
+      }
     }
 
+    return () => {
+      // Don't fully tear down on every dependency change to prevent audio restarts,
+      // but clean up when components are completely unmounted or parameters change if necessary.
+    };
+  }, [servers, isMuted, mutedServerIds, customAlarmUrl]);
+
+  // Clean up audio assets on unmount
+  useEffect(() => {
     return () => {
       if (audioIntervalRef.current) {
         clearInterval(audioIntervalRef.current);
         audioIntervalRef.current = null;
       }
+      if (audioInstanceRef.current) {
+        audioInstanceRef.current.pause();
+        audioInstanceRef.current = null;
+      }
     };
-  }, [servers, isMuted, mutedServerIds]);
+  }, []);
 
   // Automatically unmute servers that have come back online
   useEffect(() => {
@@ -284,6 +345,7 @@ const ServerPingMonitoring: React.FC = () => {
     if (canView) {
       loadDashboardMetrics();
       loadServers();
+      fetchCustomAlarm();
     }
   }, [canView, search, sortBy, order]);
 
@@ -302,6 +364,7 @@ const ServerPingMonitoring: React.FC = () => {
         if (document.hidden) return;
         loadDashboardMetrics();
         loadServers();
+        fetchCustomAlarm();
       }, 30000);
     }
     return () => clearInterval(interval);
@@ -323,7 +386,7 @@ const ServerPingMonitoring: React.FC = () => {
     localStorage.setItem('dcm_alert_muted', String(newMuteState));
   };
 
-  // Handle Audio File upload (converts to base64 Data URL and saves to localStorage)
+  // Handle Audio File upload (converts to base64 Data URL and saves to backend)
   const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -334,26 +397,33 @@ const ServerPingMonitoring: React.FC = () => {
     }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const dataUrl = event.target?.result as string;
       try {
-        localStorage.setItem('dcm_alert_audio', dataUrl);
-        localStorage.setItem('dcm_alert_audio_name', file.name);
+        await request.post('/api/server-ping-monitoring/alarm-sound', {
+          dataUrl,
+          filename: file.name
+        });
         setAudioFileName(file.name);
+        setCustomAlarmUrl(dataUrl);
         alert(`Successfully uploaded custom alarm sound: ${file.name}`);
-      } catch (err) {
-        alert("The audio file is too large to store in local storage. Please choose a smaller file (< 4MB).");
+      } catch (err: any) {
+        alert(err.response?.data?.detail || "Failed to upload custom alarm sound. File may be too large.");
       }
     };
     reader.readAsDataURL(file);
   };
 
   // Clear uploaded audio
-  const handleClearAudio = () => {
-    localStorage.removeItem('dcm_alert_audio');
-    localStorage.removeItem('dcm_alert_audio_name');
-    setAudioFileName('');
-    alert("Alert sound reset to default synthesizer beep.");
+  const handleClearAudio = async () => {
+    try {
+      await request.delete('/api/server-ping-monitoring/alarm-sound');
+      setCustomAlarmUrl(null);
+      setAudioFileName('');
+      alert("Alert sound reset to default synthesizer beep.");
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to clear alarm sound.");
+    }
   };
 
   // Handle CSV Export download
@@ -494,31 +564,33 @@ const ServerPingMonitoring: React.FC = () => {
           </Tooltip>
 
           {/* Audio Upload Controls */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <input 
-              type="file" 
-              accept="audio/*" 
-              onChange={handleAudioUpload} 
-              style={{ display: 'none' }} 
-              id="audio-upload-input" 
-            />
-            <label htmlFor="audio-upload-input">
-              <Button 
-                component="span" 
-                variant="outlined" 
-                startIcon={<UploadIcon />}
-                size="small"
-                sx={{ borderRadius: '6px', textTransform: 'none', height: '30px', fontSize: '0.8rem' }}
-              >
-                {audioFileName ? `${audioFileName.substring(0, 10)}...` : 'Upload Alarm'}
-              </Button>
-            </label>
-            {audioFileName && (
-              <IconButton onClick={handleClearAudio} size="small" sx={{ color: '#ef4444' }}>
-                <ClearIcon size={14} />
-              </IconButton>
-            )}
-          </Box>
+          {isSuperuser && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <input 
+                type="file" 
+                accept="audio/*" 
+                onChange={handleAudioUpload} 
+                style={{ display: 'none' }} 
+                id="audio-upload-input" 
+              />
+              <label htmlFor="audio-upload-input">
+                <Button 
+                  component="span" 
+                  variant="outlined" 
+                  startIcon={<UploadIcon />}
+                  size="small"
+                  sx={{ borderRadius: '6px', textTransform: 'none', height: '30px', fontSize: '0.8rem' }}
+                >
+                  {audioFileName ? `${audioFileName.substring(0, 10)}...` : 'Upload Alarm'}
+                </Button>
+              </label>
+              {audioFileName && (
+                <IconButton onClick={handleClearAudio} size="small" sx={{ color: '#ef4444' }}>
+                  <ClearIcon size={14} />
+                </IconButton>
+              )}
+            </Box>
+          )}
 
           <Button 
             variant="outlined" 

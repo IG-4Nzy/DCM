@@ -27,6 +27,7 @@ const MailConfigSettings: React.FC = () => {
     const [fromEmail, setFromEmail] = useState('noreply@dcm.local');
     const [useTls, setUseTls] = useState(false);
     const [useSsl, setUseSsl] = useState(false);
+    const [rosterMailEnabled, setRosterMailEnabled] = useState(true);
     const [savedEmailsText, setSavedEmailsText] = useState('');
     const [savedEmailsRosterText, setSavedEmailsRosterText] = useState('');
     const [savedEmailsDailyChecklistText, setSavedEmailsDailyChecklistText] = useState('');
@@ -50,6 +51,7 @@ const MailConfigSettings: React.FC = () => {
                  setFromEmail(res.data.fromEmail || 'noreply@dcm.local');
                  setUseTls(res.data.useTls || false);
                  setUseSsl(res.data.useSsl || false);
+                 setRosterMailEnabled(res.data.rosterMailEnabled !== false);
                  const saved = res.data.savedEmails || [];
                  setSavedEmailsText(saved.join(', '));
                  const savedRoster = res.data.savedEmailsRoster || [];
@@ -97,7 +99,8 @@ const MailConfigSettings: React.FC = () => {
                  savedEmails,
                  savedEmailsRoster,
                  savedEmailsDailyChecklist,
-                 savedEmailsBmsChecklist
+                 savedEmailsBmsChecklist,
+                 rosterMailEnabled
              });
              showToast('Mail configuration saved successfully!', 'success');
              setIsEditing(false);
@@ -292,7 +295,7 @@ const MailConfigSettings: React.FC = () => {
                         />
                     </Grid>
 
-                    <Grid item xs={12} sx={{ display: 'flex', gap: 4 }}>
+                    <Grid item xs={12} sx={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                         <FormControlLabel
                             control={
                                 <Checkbox
@@ -312,6 +315,17 @@ const MailConfigSettings: React.FC = () => {
                                 />
                             }
                             label="Use SSL/TLS"
+                        />
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={rosterMailEnabled}
+                                    onChange={(e) => setRosterMailEnabled(e.target.checked)}
+                                    disabled={!canUpdate || !isEditing}
+                                    color="primary"
+                                />
+                            }
+                            label="Enable Roster Email Delivery"
                         />
                     </Grid>
                 </Grid>
