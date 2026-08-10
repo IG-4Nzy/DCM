@@ -34,3 +34,58 @@ python3 create_superuser.py <new_username> <new_password>
 
 
 -e VITE_API_BASE_URL = ""
+
+
+
+Docker-----
+
+create superuser:
+docker exec -it dcm_backend python create_superuser.py
+
+
+Backend--
+
+cd /home/vssc/Desktop/DCM/Backend
+
+docker build -t dcm-backend .
+
+docker run -d \
+  --name dcm_backend \
+  -p 8080:8000 \
+  -v /home/vssc/Desktop/DCM/Backend/uploads:/app/uploads \
+  -e MONGO_URI="mongodb://admin:password@192.168.1.100:27017/" \
+  -e FRONTEND_URL="http://192.168.1.50:3000" \
+  dcm-backend
+
+
+
+Frontend--
+
+cd /home/vssc/Desktop/DCM/frontend
+
+docker build -t dcm-frontend .
+
+docker run -d \
+  --name dcm_frontend \
+  -p 3000:80 \
+  -e VITE_API_BASE_URL="http://192.168.1.50:8080" \
+  dcm-frontend
+
+
+docker save -o dcm-locust.tar dcm-locust
+
+docker build -t dcm-locust -f locust/Dockerfile.locust locust/
+
+ulimit -n 65535
+
+
+# Start the container and map port 8089:
+docker run -d --name dcm_locust -p 8089:8089 dcm-locust --host http://<TARGET_BACKEND_IP>:8000
+
+# Alternative (If backend is running locally on host loopback 127.0.0.1:8000):
+docker run -d --name dcm_locust --net=host dcm-locust --host http://127.0.0.1:8000
+
+
+
+/home/vssc/Desktop/DCM/Backend/env/bin/python3 -c "import bcrypt; from pymongo import MongoClient; client = MongoClient('mongodb://admin:password@localhost:27017/'); db = client['dcm_database']; col = db['users']; hashed = bcrypt.hashpw('admin'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'); res = col.update_one({'username': 'admin'}, {'\$set': {'password': hashed}}); print('Password updated successfully') if res.modified_count or res.matched_count else print('Superuser not found')"
+

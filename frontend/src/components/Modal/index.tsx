@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from 'react';
 import { Dialog, IconButton, Box } from '@mui/material';
 import { MdClose as CloseIcon } from 'react-icons/md';

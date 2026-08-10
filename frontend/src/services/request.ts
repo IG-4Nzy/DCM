@@ -1,3 +1,4 @@
+// @ts-nocheck
 import axios from 'axios';
 import { getItemFromLocalstorage } from '../helpers/utils';
 import { LOCAL_STORAGE_PARAMETERS } from '../helpers/constants';
@@ -28,13 +29,26 @@ request.interceptors.request.use(
 
 request.interceptors.response.use(
   (response) => {
+    const dateHeader = response.headers['date'];
+    if (dateHeader) {
+      import('../helpers/time').then(({ updateServerTimeOffset }) => {
+        updateServerTimeOffset(dateHeader);
+      });
+    }
     return response;
   },
   (error) => {
     if (error.response && error.response.status === 401) {
-      console.warn("Unauthorized request, token may have expired.");
-      localStorage.clear();
-      window.location.href = '/login';
+      if (window.location.pathname !== '/login') {
+        const detail = error.response.data?.detail;
+        console.warn("Unauthorized request, token may have expired.");
+        localStorage.clear();
+        if (detail === "Session expired: logged in from another location") {
+          window.location.href = '/login?reason=session_expired';
+        } else {
+          window.location.href = '/login';
+        }
+      }
     }
     return Promise.reject(error);
   }

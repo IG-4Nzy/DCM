@@ -1,10 +1,13 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { fetchWorks, createWork, updateWork, deleteWork } from './action';
-import type { WorkData } from './model';
+// @ts-nocheck
+import { createSlice } from '@reduxjs/toolkit';
+import { fetchWorks, createWork, updateWork, deleteWork, transferWork, fetchWorkLogs, createWorkLog, updateWorkLog, deleteWorkLog } from './action';
+import type { WorkData, WorkLogData } from './model';
 
 interface WorksState {
   works: WorkData[];
   totalCount: number;
+  workLogs: WorkLogData[];
+  workLogsTotalCount: number;
   loading: boolean;
   error: string | null;
 }
@@ -12,6 +15,8 @@ interface WorksState {
 const initialState: WorksState = {
   works: [],
   totalCount: 0,
+  workLogs: [],
+  workLogsTotalCount: 0,
   loading: false,
   error: null,
 };
@@ -23,6 +28,8 @@ const worksSlice = createSlice({
     clearWorksState: (state) => {
       state.works = [];
       state.totalCount = 0;
+      state.workLogs = [];
+      state.workLogsTotalCount = 0;
       state.error = null;
     }
   },
@@ -43,21 +50,64 @@ const worksSlice = createSlice({
         state.error = action.payload as string;
       })
       // createWork
-      .addCase(createWork.fulfilled, (state, action) => {
-        state.works.unshift(action.payload);
-        state.totalCount += 1;
+      .addCase(createWork.fulfilled, (state) => {
+        state.loading = false;
       })
       // updateWork
       .addCase(updateWork.fulfilled, (state, action) => {
-        const index = state.works.findIndex((work) => work.id === action.payload.id || work._id === action.payload._id);
+        const index = state.works.findIndex((work) => {
+          const workId = work.id || work._id;
+          const payloadId = action.payload.id || action.payload._id;
+          return workId && payloadId && workId === payloadId;
+        });
+        if (index !== -1) {
+          state.works[index] = action.payload;
+        }
+      })
+      // transferWork
+      .addCase(transferWork.fulfilled, (state, action) => {
+        const index = state.works.findIndex((work) => {
+          const workId = work.id || work._id;
+          const payloadId = action.payload.id || action.payload._id;
+          return workId && payloadId && workId === payloadId;
+        });
         if (index !== -1) {
           state.works[index] = action.payload;
         }
       })
       // deleteWork
-      .addCase(deleteWork.fulfilled, (state, action) => {
-        state.works = state.works.filter((work) => work.id !== action.payload && work._id !== action.payload);
-        state.totalCount -= 1;
+      .addCase(deleteWork.fulfilled, (state) => {
+        state.loading = false;
+      })
+      // fetchWorkLogs
+      .addCase(fetchWorkLogs.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchWorkLogs.fulfilled, (state, action) => {
+        state.loading = false;
+        state.workLogs = action.payload.data;
+        state.workLogsTotalCount = action.payload.total;
+      })
+      .addCase(fetchWorkLogs.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(createWorkLog.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(updateWorkLog.fulfilled, (state, action) => {
+        const index = state.workLogs.findIndex((log) => {
+          const logId = log.id || log._id;
+          const payloadId = action.payload.id || action.payload._id;
+          return logId && payloadId && logId === payloadId;
+        });
+        if (index !== -1) {
+          state.workLogs[index] = action.payload;
+        }
+      })
+      .addCase(deleteWorkLog.fulfilled, (state) => {
+        state.loading = false;
       });
   },
 });

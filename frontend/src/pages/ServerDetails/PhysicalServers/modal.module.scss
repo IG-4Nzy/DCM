@@ -1,0 +1,33 @@
+.formGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 8px;
+
+    @media (min-width: 600px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    &__fullWidth {
+        grid-column: 1 / -1;
+    }
+
+    &__title {
+        grid-column: 1 / -1;
+        margin-top: 16px;
+        font-weight: bold;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 8px;
+    }
+
+    &__field {
+        width: 100%;
+    }
+}
+
+.buttonContainer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+    margin-top: 32px;
+}

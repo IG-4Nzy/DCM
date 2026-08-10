@@ -1,0 +1,48 @@
+.container {
+    width: 100%;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+
+    &__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+
+        &__label {
+            font-weight: bold;
+        }
+
+        &__search {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+    }
+
+    &__tableContainer {
+        flex-grow: 1;
+        width: 100%;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+.actionCell {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+
+    &__editBtn {
+        background-color: rgba(25, 118, 210, 0.04) !important;
+    }
+
+    &__deleteBtn {
+        background-color: rgba(211, 47, 47, 0.04) !important;
+    }
+}

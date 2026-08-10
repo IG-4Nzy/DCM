@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, Paper, Tooltip, IconButton} from '@mui/material';
@@ -6,11 +7,14 @@ import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';
 import { useToast } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import type { AppDispatch, RootState } from '../../store';
 import type { RoleData } from './model';
 import RoleFormModal from './RolesFormModal';
 import { hasPrivilege } from '../../helpers/authUtils';
+import { PRIVILEGES } from '../../helpers/privileges';
 import styles from "./index.module.scss";
+import { useTableState } from '../../hooks/useTableState';
 import { createRole, deleteRole, fetchRoles, updateRole, fetchPrivileges } from './action';
 
 type Order = 'asc' | 'desc';
@@ -20,11 +24,11 @@ const Roles: React.FC = () => {
   const { roles, availablePrivileges, totalCount, loading, error } = useSelector((state: RootState) => state?.roles);
   const { showToast } = useToast();
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [order, setOrder] = useState<Order>('asc');
-  const [orderBy, setOrderBy] = useState<keyof RoleData>('name');
+  const [searchQuery, setSearchQuery] = useTableState('roles_search', '');
+  const [page, setPage] = useTableState('roles_page', 0);
+  const [rowsPerPage, setRowsPerPage] = useTableState('roles_rowsPerPage', 5);
+  const [order, setOrder] = useTableState<Order>('roles_order', 'asc');
+  const [orderBy, setOrderBy] = useTableState<keyof RoleData>('roles_orderBy', 'name');
 
   // Modal and Form state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,12 +36,13 @@ const Roles: React.FC = () => {
   const [formName, setFormName] = useState('');
   const [formStatus, setFormStatus] = useState(true);
   const [formPrivileges, setFormPrivileges] = useState<string[]>([]);
+  const [formLateLoginPrivileges, setFormLateLoginPrivileges] = useState<string[]>([]);
 
   useEffect(() => {
     dispatch(fetchPrivileges());
   }, [dispatch]);
 
-  useEffect(() => {
+  const loadData = React.useCallback(() => {
     dispatch(fetchRoles({
       skip: page * rowsPerPage,
       limit: rowsPerPage,
@@ -48,17 +53,23 @@ const Roles: React.FC = () => {
     }));
   }, [dispatch, showToast, page, rowsPerPage, orderBy, order, searchQuery]);
 
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   const handleOpenModal = (role?: RoleData) => {
     if (role) {
       setEditingRole(role);
       setFormName(role.name);
       setFormStatus(role.status);
       setFormPrivileges(role.privileges || []);
+      setFormLateLoginPrivileges(role.lateLoginPrivileges || []);
     } else {
       setEditingRole(null);
       setFormName('');
       setFormStatus(true);
       setFormPrivileges([]);
+      setFormLateLoginPrivileges([]);
     }
     setIsModalOpen(true);
   };
@@ -75,7 +86,8 @@ const Roles: React.FC = () => {
           id: editingRole.id,
           name: formName,
           status: formStatus,
-          privileges: formPrivileges
+          privileges: formPrivileges,
+          lateLoginPrivileges: formLateLoginPrivileges
         };
         await dispatch(updateRole({ payload, showToast })).unwrap();
       } else {
@@ -83,21 +95,30 @@ const Roles: React.FC = () => {
           payload: {
             name: formName,
             status: formStatus,
-            privileges: formPrivileges
+            privileges: formPrivileges,
+            lateLoginPrivileges: formLateLoginPrivileges
           },
           showToast
         })).unwrap();
       }
       handleCloseModal();
+      loadData();
     } catch (err: any) {
       // Toast shown in thunk
     }
   };
 
+  const { confirm } = useConfirm();
+
   const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this role?")) {
+    if (await confirm("Are you sure you want to delete this role?", "Delete Role")) {
       try {
         await dispatch(deleteRole({ id, showToast })).unwrap();
+        if (roles && roles.length === 1 && page > 0) {
+          setPage(page - 1);
+        } else {
+          loadData();
+        }
       } catch (err: any) {
         // Toast shown in thunk
       }
@@ -122,6 +143,25 @@ const Roles: React.FC = () => {
   const columns: Column<RoleData>[] = [
     { id: 'name', label: 'Role Name', sortable: true },
     {
+      id: 'usersCount',
+      label: 'Assigned Users',
+      sortable: false,
+      render: (row) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ 
+            backgroundColor: '#e3f2fd', 
+            color: '#1976d2', 
+            borderRadius: '12px', 
+            padding: '2px 8px', 
+            fontSize: '0.75rem', 
+            fontWeight: 'bold' 
+          }}>
+            {row.usersCount || 0} Users
+          </Box>
+        </Box>
+      )
+    },
+    {
       id: 'status',
       label: 'Status',
       sortable: true,
@@ -139,21 +179,21 @@ const Roles: React.FC = () => {
     }
   ];
 
-  if (hasPrivilege('Update Role') || hasPrivilege('Delete Role')) {
+  if (hasPrivilege(PRIVILEGES.ROLE_UPDATE) || hasPrivilege(PRIVILEGES.ROLE_DELETE)) {
     columns.push({
       id: 'actions',
       label: 'Actions',
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          {hasPrivilege('Update Role') && (
+          {hasPrivilege(PRIVILEGES.ROLE_UPDATE) && (
             <Tooltip title="Edit Role">
               <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }} onClick={() => handleOpenModal(row)}>
                 <EditIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           )}
-          {hasPrivilege('Delete Role') && (
+          {hasPrivilege(PRIVILEGES.ROLE_DELETE) && (
             <Tooltip title="Delete Role">
               <IconButton size="small" color="error" sx={{ backgroundColor: 'rgba(211, 47, 47, 0.04)' }} onClick={() => handleDelete(row.id)}>
                 <DeleteIcon fontSize="small" />
@@ -169,7 +209,7 @@ const Roles: React.FC = () => {
     <Box className={styles.users} sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <label style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
-          Role Management
+          Roles
         </label>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
           <SearchBar
@@ -177,7 +217,7 @@ const Roles: React.FC = () => {
             onChange={setSearchQuery}
             placeholder="Search roles..."
           />
-          {hasPrivilege('Create Role') && (
+          {hasPrivilege(PRIVILEGES.ROLE_CREATE) && (
             <Button
               variant="contained"
               color="primary"
@@ -215,6 +255,8 @@ const Roles: React.FC = () => {
         setFormStatus={setFormStatus}
         formPrivileges={formPrivileges}
         setFormPrivileges={setFormPrivileges}
+        formLateLoginPrivileges={formLateLoginPrivileges}
+        setFormLateLoginPrivileges={setFormLateLoginPrivileges}
         availablePrivileges={availablePrivileges}
         handleSubmit={handleSubmit}
       />

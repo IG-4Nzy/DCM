@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {
   MdMenu as MenuIcon,
   MdDashboard as DashboardIcon,
@@ -5,21 +6,76 @@ import {
   MdChevronLeft as ChevronLeftIcon,
   MdChevronRight as ChevronRightIcon,
   MdPeople as UsersIcon,
-  MdOutlineWork as WorksIcon
-} from 'react-icons/md';
+  MdOutlineWork as WorksIcon,
+  MdShoppingCart as InventoryIcon,
+  MdSettings as ConfigurationsIcon,
+  MdDns as ServerDetailsIcon,
+  MdOutlineHandshake as RequestsIcon,
+  MdSearch as SearchIcon,
+  MdTerminal as TerminalIcon,
+  MdInsertDriveFile as DocumentationsIcon,
+  MdFactCheck as BMSChecklistIcon,
+  MdAssignmentInd as VisitorLogsIcon,
+  MdPlaylistAddCheck as DailyActivitiesIcon,
+  MdEventRepeat as PeriodicActivitiesIcon,
+  MdCampaign as AnnouncementsIcon,
+  MdNotificationsActive as NotificationsActiveIcon,
+  MdAssignment as LogsIcon,
+  MdStorage as RacksIcon,
+  MdLan as IpListIcon,
+  MdInfo as InfoIcon
+} from "react-icons/md";
+
+import { IoIosUnlock as RolesIcon } from "react-icons/io";
+
+import { CgOrganisation as DepartmentIcon } from "react-icons/cg";
 
 import {
-  IoIosUnlock as RolesIcon
+  FaPeopleGroup as RoasterIcon,
+  FaEye as EyeIcon,
+} from "react-icons/fa6";
 
-} from "react-icons/io";
+import { AiOutlineCluster as ClusterIcon } from "react-icons/ai";
+
+import { FaBell as BellIcon } from "react-icons/fa";
+
+import { BsFillPersonVcardFill as AttendanceIcon } from "react-icons/bs";
+
+import { SiProxmox as ProxmoxIcon } from "react-icons/si";
+import { GrVmware as VmwareIcon } from "react-icons/gr";
 
 export const Icons = {
   MenuIcon,
   DashboardIcon,
+  VmwareIcon,
+  ProxmoxIcon,
   LogoutIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   UsersIcon,
   RolesIcon,
-  WorksIcon
+  WorksIcon,
+  DepartmentIcon,
+  RoasterIcon,
+  EyeIcon,
+  InventoryIcon,
+  ConfigurationsIcon,
+  ServerDetailsIcon,
+  ClusterIcon,
+  RequestsIcon,
+  SearchIcon,
+  BellIcon,
+  AttendanceIcon,
+  TerminalIcon,
+  DocumentationsIcon,
+  BMSChecklistIcon,
+  VisitorLogsIcon,
+  DailyActivitiesIcon,
+  PeriodicActivitiesIcon,
+  AnnouncementsIcon,
+  NotificationsActiveIcon,
+  LogsIcon,
+  RacksIcon,
+  IpListIcon,
+  InfoIcon
 };

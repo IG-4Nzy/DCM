@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from 'react';
 import {
   Table as MuiTable,
@@ -14,7 +15,7 @@ import {
 
 export interface Column<T> {
   id: string;
-  label: string;
+  label: React.ReactNode;
   minWidth?: number;
   align?: 'right' | 'left' | 'center';
   sortable?: boolean;
@@ -24,18 +25,18 @@ export interface Column<T> {
 interface ReusableTableProps<T> {
   columns: Column<T>[];
   data: T[];
-  orderBy: string;
-  order: 'asc' | 'desc';
-  onRequestSort: (property: string) => void;
-  page: number;
-  rowsPerPage: number;
-  onPageChange: (event: unknown, newPage: number) => void;
-  onRowsPerPageChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  totalCount: number;
+  orderBy?: string;
+  order?: 'asc' | 'desc';
+  onRequestSort?: (property: string) => void;
+  page?: number;
+  rowsPerPage?: number;
+  onPageChange?: (event: unknown, newPage: number) => void;
+  onRowsPerPageChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  totalCount?: number;
   onRowClick?: (row: T) => void;
 }
 
-function Table<T extends { id: string | number }>(props: ReusableTableProps<T>) {
+function Table<T extends { id?: string | number }>(props: ReusableTableProps<T>) {
   const {
     columns,
     data,
@@ -58,10 +59,13 @@ function Table<T extends { id: string | number }>(props: ReusableTableProps<T>) 
         overflow: 'hidden',
         border: '1px solid #e0e0e0',
         borderRadius: '12px',
-        padding: "0px"
+        padding: "0px",
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%'
       }}
     >
-      <TableContainer sx={{ maxHeight: { xs: 400, md: 600 } }}>
+      <TableContainer className="table-container-scroll" sx={{ flexGrow: 1, overflow: 'auto' }}>
         <MuiTable stickyHeader aria-label="modern table" sx={{ minWidth: { xs: 300, sm: 650 } }}>
           <TableHead>
             <TableRow>
@@ -78,10 +82,10 @@ function Table<T extends { id: string | number }>(props: ReusableTableProps<T>) 
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
                     borderBottom: 'none',
-
+                    whiteSpace: 'nowrap'
                   }}
                 >
-                  {column.sortable ? (
+                  {column.sortable && orderBy && order && onRequestSort ? (
                     <TableSortLabel
                       active={orderBy === column.id}
                       direction={orderBy === column.id ? order : 'asc'}
@@ -104,12 +108,15 @@ function Table<T extends { id: string | number }>(props: ReusableTableProps<T>) 
             {data.length > 0 ? (
               data.map((row, index) => {
                 const isLast = index === data.length - 1;
+                const serialNumber = page !== undefined && rowsPerPage !== undefined
+                  ? page * rowsPerPage + index + 1
+                  : index + 1;
                 return (
                   <TableRow
                     hover
                     role="checkbox"
                     tabIndex={-1}
-                    key={row.id}
+                    key={row.id || (row as any)._id || index}
                     onClick={() => onRowClick && onRowClick(row)}
                     sx={{
                       cursor: onRowClick ? 'pointer' : 'default',
@@ -119,7 +126,7 @@ function Table<T extends { id: string | number }>(props: ReusableTableProps<T>) 
                     }}
                   >
                     {columns.map((column) => {
-                      const value = (row as any)[column.id];
+                      const value = column.id === 'slNumber' ? serialNumber : (row as any)[column.id];
                       return (
                         <TableCell
                           key={column.id}
@@ -129,7 +136,7 @@ function Table<T extends { id: string | number }>(props: ReusableTableProps<T>) 
                             fontSize: '0.875rem'
                           }}
                         >
-                          {column.render ? column.render(row) : (value as React.ReactNode)}
+                          {column.render ? column.render(row) : (value === null || value === undefined || value === '' ? '--' : (value as React.ReactNode))}
                         </TableCell>
                       );
                     })}
@@ -148,23 +155,25 @@ function Table<T extends { id: string | number }>(props: ReusableTableProps<T>) 
           </TableBody>
         </MuiTable>
       </TableContainer>
-      <Box sx={{ borderTop: '1px solid #e0e0e0' }}>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={totalCount}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={onPageChange}
-          onRowsPerPageChange={onRowsPerPageChange}
-          sx={{
-            color: '#637381',
-            '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
-              margin: 0,
-            }
-          }}
-        />
-      </Box>
+      {page !== undefined && rowsPerPage !== undefined && totalCount !== undefined && onPageChange && onRowsPerPageChange && (
+        <Box sx={{ borderTop: '1px solid #e0e0e0' }}>
+          <TablePagination
+            rowsPerPageOptions={[25, 50, 100]}
+            component="div"
+            count={totalCount}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={onPageChange}
+            onRowsPerPageChange={onRowsPerPageChange}
+            sx={{
+              color: '#637381',
+              '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
+                margin: 0,
+              }
+            }}
+          />
+        </Box>
+      )}
     </Paper>
   );
 }

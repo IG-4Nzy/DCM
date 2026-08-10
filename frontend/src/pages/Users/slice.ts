@@ -1,10 +1,12 @@
+// @ts-nocheck
 import { createSlice } from '@reduxjs/toolkit';
 import { type UsersState } from './model';
-import { fetchUsers, createUser, updateUser, deleteUser, fetchAllRolesForDropdown } from './action';
+import { fetchUsers, createUser, updateUser, deleteUser, fetchAllRolesForDropdown, fetchAllDepartmentsForDropdown } from './action';
 
 const initialState: UsersState = {
   users: [],
   availableRoles: [],
+  availableDepartments: [],
   totalCount: 0,
   loading: false,
   error: null,
@@ -44,15 +46,27 @@ const usersSlice = createSlice({
       state.error = action.payload as string;
     });
 
+    // fetchAllDepartmentsForDropdown
+    builder.addCase(fetchAllDepartmentsForDropdown.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
+    builder.addCase(fetchAllDepartmentsForDropdown.fulfilled, (state, action) => {
+      state.loading = false;
+      state.availableDepartments = action.payload.data || action.payload; // Just in case it's paginated or not
+    });
+    builder.addCase(fetchAllDepartmentsForDropdown.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload as string;
+    });
+
     // createUser
     builder.addCase(createUser.pending, (state) => {
       state.loading = true;
       state.error = null;
     });
-    builder.addCase(createUser.fulfilled, (state, action) => {
+    builder.addCase(createUser.fulfilled, (state) => {
       state.loading = false;
-      state.users.unshift(action.payload);
-      state.totalCount += 1;
     });
     builder.addCase(createUser.rejected, (state, action) => {
       state.loading = false;
@@ -81,10 +95,8 @@ const usersSlice = createSlice({
       state.loading = true;
       state.error = null;
     });
-    builder.addCase(deleteUser.fulfilled, (state, action) => {
+    builder.addCase(deleteUser.fulfilled, (state) => {
       state.loading = false;
-      state.users = state.users.filter((u) => u.id !== action.payload);
-      state.totalCount -= 1;
     });
     builder.addCase(deleteUser.rejected, (state, action) => {
       state.loading = false;

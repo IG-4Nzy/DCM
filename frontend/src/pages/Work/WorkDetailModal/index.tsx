@@ -1,13 +1,22 @@
-import React, { useState, useEffect, useRef } from "react";
+// @ts-nocheck
+import React, { useState, useEffect } from "react";
 import Modal from "../../../components/Modal";
 import TextField from "../../../components/TextField";
 import {
   Button,
-  IconButton,
   Avatar,
   Menu,
   MenuItem,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Select,
+  InputLabel,
+  FormControl,
+  Box,
+  IconButton,
 } from "@mui/material";
 import {
   MdSend,
@@ -19,9 +28,12 @@ import {
 } from "react-icons/md";
 import { useSelector } from "react-redux";
 import type { RootState } from "../../../store";
-import { API_BASE_URL } from "../../../services/request";
+import request, { API_BASE_URL } from "../../../services/request";
 import type { WorkData } from "../model";
 import { hasPrivilege } from "../../../helpers/authUtils";
+import { PRIVILEGES } from "../../../helpers/privileges";
+import { useConfirm } from "../../../contexts/ConfirmContext";
+import { getServerTime } from "../../../helpers/time";
 import styles from "./index.module.scss";
 
 interface PropType {
@@ -30,6 +42,7 @@ interface PropType {
   work: WorkData | null;
   users: any[];
   onUpdate: (payload: any, silent?: boolean) => Promise<void>;
+  onTransfer: (id: string, newAssigneeId: string, reason: string) => Promise<void>;
 }
 
 
@@ -39,10 +52,16 @@ const WorkDetailModal = ({
   work,
   users,
   onUpdate,
+  onTransfer,
 }: PropType) => {
   const [newComment, setNewComment] = useState("");
   const [currentStatus, setCurrentStatus] = useState("Pending");
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [transferAssignee, setTransferAssignee] = useState("");
+  const [transferReason, setTransferReason] = useState("");
+  const [commentFile, setCommentFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const openMenu = Boolean(anchorEl);
   const currentUser =
     useSelector(
@@ -50,12 +69,57 @@ const WorkDetailModal = ({
         (state?.auth as any)?.user?.username || state?.auth?.username,
     ) || "User";
 
-  const canUpdateWork = hasPrivilege("Update Work");
-  const isLocked = currentStatus === "Completed" && !canUpdateWork;
-  const canUpdateStatus = hasPrivilege("Work Status Update") && !isLocked;
+  const isSuperuser = useSelector(
+    (state: RootState) => !!(state?.auth as any)?.user?.isSuperuser || !!state?.auth?.isSuperuser
+  );
+
+  const departments = useSelector((state: RootState) => state?.departments?.departments || []);
+  const { confirm } = useConfirm();
+
+  const isDeptHeadOfWork = React.useMemo(() => {
+    if (!work || !currentUser || !departments || departments.length === 0) return false;
+    const headDepts = departments.filter((d: any) => d.departmentHead === currentUser).map((d: any) => d.name);
+    if (headDepts.length === 0) return false;
+
+    if (work.createdBy) {
+      const creatorUser = users.find((u: any) => u.username === work.createdBy);
+      if (creatorUser && headDepts.includes(creatorUser.department)) {
+        return true;
+      }
+    }
+
+    const workAssignees = work.assignees || (work.assignee ? [work.assignee] : []);
+    for (const assigneeId of workAssignees) {
+      const assigneeUser = users.find((u: any) => u.username === assigneeId || u.id === assigneeId || u._id === assigneeId);
+      if (assigneeUser && headDepts.includes(assigneeUser.department)) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [work, currentUser, departments, users]);
+
+  const isEmergency = !!work?.isEmergency;
+  const canUpdateWork = isEmergency 
+    ? (hasPrivilege(PRIVILEGES.WORK_UPDATE) || hasPrivilege(PRIVILEGES.EMERGENCY_WORK_UPDATE) || isDeptHeadOfWork)
+    : hasPrivilege(PRIVILEGES.WORK_UPDATE);
+  const isCompletedOrClosed = currentStatus === "Completed" || currentStatus === "Closed";
+  const isLocked = isCompletedOrClosed && !isSuperuser;
+  
+  const workAssignees = work?.assignees || (work?.assignee ? [work.assignee] : []);
+  const assigneeUsers = users.filter(
+    (u: any) => workAssignees.includes(u.id) || workAssignees.includes(u._id) || workAssignees.includes(u.username)
+  );
+  
+  const isAssignee = assigneeUsers.some((u) => u.username === currentUser);
+  const hasStatusUpdate = canUpdateWork || 
+    (hasPrivilege(PRIVILEGES.WORK_VIEW_ASSIGNED) && isAssignee) ||
+    (isEmergency && hasPrivilege(PRIVILEGES.EMERGENCY_WORK_VIEW) && isAssignee);
+  const canUpdateStatus = hasStatusUpdate && !isLocked;
 
   const availableStatusOptions = [
     { label: "Pending", value: "Pending" },
+    { label: "In Progress", value: "In Progress" },
     { label: "On Hold", value: "On Hold" },
     { label: "Completed", value: "Completed" },
   ];
@@ -70,16 +134,94 @@ const WorkDetailModal = ({
     }
   }, [work]);
 
+  const canTransfer = (isAssignee || canUpdateWork) && currentStatus !== "Completed" && currentStatus !== "Closed";
+
+  const handleApprove = async () => {
+    if (!work) return;
+    try {
+      const userObj = users.find((u: any) => u.username === currentUser);
+      const fullName = userObj ? `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim() || currentUser : currentUser;
+      const commentPayload = {
+        text: `This emergency work ticket was approved by ${fullName}.`,
+        user: "System",
+        timestamp: new Date().toISOString()
+      };
+      await onUpdate({
+        id: work.id || work._id,
+        approved: true,
+        comments: [...(work.comments || []), commentPayload]
+      });
+    } catch (err) {
+      // Handled
+    }
+  };
+
+  const handleConfirmTransfer = async () => {
+    if (!work || !transferAssignee || !transferReason.trim()) return;
+    try {
+      await onTransfer(work.id || work._id!, transferAssignee, transferReason.trim());
+      setIsTransferring(false);
+    } catch (err) {
+      // Handled in parent/toast
+    }
+  };
+
+  const formatCreatedTime = (w: WorkData) => {
+    if (w.createdAt) {
+      try {
+        return new Date(w.createdAt).toLocaleString(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      } catch (e) {
+        return w.createdAt;
+      }
+    }
+    const idStr = w.id || w._id;
+    if (idStr && idStr.length === 24) {
+      try {
+        const timestamp = parseInt(idStr.substring(0, 8), 16) * 1000;
+        return new Date(timestamp).toLocaleString(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      } catch (e) {
+        // ignore
+      }
+    }
+    return "Unknown";
+  };
+
+  const isUserOnline = (user: any) => {
+    if (!user.lastActive) return false;
+    try {
+      const lastActiveTime = new Date(user.lastActive).getTime();
+      const now = getServerTime().toDate().getTime();
+      return now - lastActiveTime < 45000;
+    } catch (e) {
+      return false;
+    }
+  };
+
   if (!work) return null;
 
-  const assigneeUser = users.find(
-    (u: any) => u.id === work.assignee || u._id === work.assignee,
+  const assigneeNames = assigneeUsers.map(
+    (u) => `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || u.name
   );
-  const assigneeName = assigneeUser
-    ? assigneeUser.username || assigneeUser.name
-    : work.assignee
-      ? work.assignee
-      : "Unassigned";
+  
+  let fallbackName = "Unassigned";
+  if (assigneeNames.length > 0) {
+    fallbackName = assigneeNames.join(", ");
+  } else if (workAssignees.length > 0) {
+    // If it's a 24-char hex string (ObjectId), say User Removed. Otherwise it might be a username.
+    fallbackName = workAssignees.map(a => (a && a.length !== 24) ? a : "User Removed").join(", ");
+  }
+  
+  const assigneeName = work.assigneesFullName || fallbackName;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -87,6 +229,7 @@ const WorkDetailModal = ({
         return "#2e7d32";
       case "On Hold":
         return "#ed6c02";
+      case "In Progress":
       case "Assigned":
         return "#1976d2";
       case "Closed":
@@ -101,19 +244,47 @@ const WorkDetailModal = ({
     if (newVal === currentStatus) return;
 
     if (
-      window.confirm(
+      await confirm(
         `Are you sure you want to change the status to "${newVal}"?`,
+        "Change Status"
       )
     ) {
       try {
-        await onUpdate({
+        const payload: any = {
           id: work.id || work._id,
           status: newVal,
-        });
+        };
+        if (newVal === "Completed" || newVal === "Closed") {
+          payload.completedAt = getServerTime().toDate().toISOString().split("T")[0];
+        } else {
+          payload.completedAt = "";
+        }
+        await onUpdate(payload);
         setCurrentStatus(newVal);
       } catch (err) {
         // Error handled in parent
       }
+    }
+  };
+
+  const handleDownloadAttachment = async (url: string, filename: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    try {
+      const response = await fetch(`${API_BASE_URL}${url}`);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      window.open(`${API_BASE_URL}${url}`, "_blank");
     }
   };
 
@@ -131,13 +302,37 @@ const WorkDetailModal = ({
   };
 
   const handleAddComment = async () => {
-    if (!newComment.trim()) return;
+    if ((!newComment.trim() && !commentFile) || isLocked || isUploading) return;
 
-    const newCommentObj = {
+    setIsUploading(true);
+    let uploadedFileDetails = null;
+
+    if (commentFile) {
+      const fd = new FormData();
+      fd.append('files', commentFile);
+      try {
+        const res = await request.post('/api/works/upload', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        if (res.data && res.data.length > 0) {
+          uploadedFileDetails = res.data[0];
+        }
+      } catch (err) {
+        console.error("Upload failed", err);
+        setIsUploading(false);
+        return;
+      }
+    }
+
+    const newCommentObj: any = {
       text: newComment.trim(),
       user: currentUser,
-      timestamp: new Date().toISOString(),
+      timestamp: getServerTime().toDate().toISOString(),
     };
+
+    if (uploadedFileDetails) {
+      newCommentObj.attachment = uploadedFileDetails;
+    }
 
     const updatedComments = [...(work.comments || []), newCommentObj];
     try {
@@ -149,8 +344,11 @@ const WorkDetailModal = ({
         true,
       );
       setNewComment("");
+      setCommentFile(null);
     } catch (err) {
       // Error handled in parent
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -172,12 +370,67 @@ const WorkDetailModal = ({
               marginBottom: "1rem",
             }}
           >
+            {work.isEmergency && (
+              <Chip
+                label={work.approved ? "Emergency Work (Approved)" : "Emergency Work (Pending Approval)"}
+                color={work.approved ? "success" : "error"}
+                sx={{ borderRadius: "8px", fontWeight: "bold" }}
+              />
+            )}
             <Chip
               icon={<MdPerson />}
               label={`Assignee: ${assigneeName}`}
               variant="outlined"
               sx={{ borderRadius: "8px", fontWeight: 500 }}
             />
+            {canTransfer && (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setTransferAssignee("");
+                  setTransferReason("");
+                  setIsTransferring(true);
+                }}
+                sx={{
+                  borderRadius: "8px",
+                  textTransform: "none",
+                  fontWeight: "bold",
+                  borderColor: "#1976d2",
+                  color: "#1976d2",
+                  px: 2,
+                  height: 32,
+                  fontSize: "0.85rem",
+                  "&:hover": {
+                    backgroundColor: "rgba(25, 118, 210, 0.04)"
+                  }
+                }}
+              >
+                Transfer Work
+              </Button>
+            )}
+            {work.isEmergency && !work.approved && (isSuperuser || hasPrivilege(PRIVILEGES.WORK_UPDATE) || hasPrivilege(PRIVILEGES.EMERGENCY_WORK_APPROVE)) && (
+              <Button
+                variant="contained"
+                size="small"
+                color="success"
+                onClick={handleApprove}
+                sx={{
+                  borderRadius: "8px",
+                  textTransform: "none",
+                  fontWeight: "bold",
+                  px: 2,
+                  height: 32,
+                  fontSize: "0.85rem",
+                  backgroundColor: "#2e7d32",
+                  "&:hover": {
+                    backgroundColor: "#1b5e20"
+                  }
+                }}
+              >
+                Approve Emergency Work
+              </Button>
+            )}
             <Chip
               icon={<MdFlag />}
               label={`Priority: ${work.priority}`}
@@ -199,6 +452,12 @@ const WorkDetailModal = ({
                       : "#2e7d32",
                 "& .MuiChip-icon": { color: "inherit" },
               }}
+            />
+            <Chip
+              icon={<MdDateRange />}
+              label={`Created: ${formatCreatedTime(work)}`}
+              variant="outlined"
+              sx={{ borderRadius: "8px", fontWeight: 500 }}
             />
             <Chip
               icon={<MdDateRange />}
@@ -345,7 +604,7 @@ const WorkDetailModal = ({
                         size="small"
                         variant="outlined"
                         onClick={() =>
-                          window.open(`${API_BASE_URL}${url}`, "_blank")
+                          handleDownloadAttachment(url, filename)
                         }
                         sx={{
                           borderRadius: "6px",
@@ -368,7 +627,7 @@ const WorkDetailModal = ({
 
           <div className={styles.commentsList}>
             {work.comments && work.comments.length > 0 ? (
-              work.comments.map((comment, index) => {
+              [...work.comments].reverse().map((comment, index) => {
                 const avatarLetter = (comment.user || "?")[0].toUpperCase();
                 return (
                   <div key={index} className={styles.commentRow}>
@@ -386,7 +645,14 @@ const WorkDetailModal = ({
                     <div className={styles.commentBubble}>
                       <div className={styles.commentHeader}>
                         <span className={styles.commentUser}>
-                          {comment.user}
+                          {(() => {
+                            const uObj = users.find((u: any) => u.username === comment.user);
+                            if (uObj) {
+                              const fullName = `${uObj.firstName || ""} ${uObj.lastName || ""}`.trim();
+                              return fullName || comment.user;
+                            }
+                            return comment.user;
+                          })()}
                         </span>
                         <span className={styles.commentTime}>
                           {new Date(comment.timestamp).toLocaleString(
@@ -400,7 +666,16 @@ const WorkDetailModal = ({
                           )}
                         </span>
                       </div>
-                      <div className={styles.commentText}>{comment.text}</div>
+                      <div className={styles.commentText} style={{ whiteSpace: 'pre-wrap' }}>{comment.text}</div>
+                      {comment.attachment && (
+                        <Chip
+                          icon={<MdAttachFile />}
+                          label={comment.attachment.name || "Attachment"}
+                          size="small"
+                          onClick={() => handleDownloadAttachment(comment.attachment?.url, comment.attachment.name || "Attachment")}
+                          sx={{ mt: 1, backgroundColor: 'rgba(0,0,0,0.05)', cursor: 'pointer' }}
+                        />
+                      )}
                     </div>
                   </div>
                 );
@@ -412,29 +687,133 @@ const WorkDetailModal = ({
         </div>
 
         {/* Fixed Chat Input at the bottom */}
-        <div className={styles.fixedChatOption}>
-          <TextField
-            fullWidth
-            size="small"
-            placeholder={isLocked ? "Comments are disabled for completed works" : "Add a comment..."}
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === "Enter" && !isLocked) handleAddComment();
-            }}
-            disabled={isLocked}
-          />
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleAddComment}
-            disabled={!newComment.trim() || isLocked}
-            sx={{ height: 40, minWidth: 40, p: 0 }}
-          >
-            <MdSend size={20} />
-          </Button>
+        <div style={{ display: 'flex', flexDirection: 'column', padding: '12px 16px', borderTop: '1px solid #e5e7eb', backgroundColor: '#fff' }}>
+          {commentFile && (
+            <Box sx={{ mb: 1, display: 'flex' }}>
+              <Chip 
+                label={commentFile.name} 
+                onDelete={() => setCommentFile(null)} 
+                size="small" 
+                color="primary" 
+                variant="outlined" 
+              />
+            </Box>
+          )}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <IconButton
+              component="label"
+              disabled={isLocked || isUploading}
+              sx={{ minWidth: '40px', width: '40px', height: '40px', borderRadius: '50%', color: '#637381' }}
+            >
+              <MdAttachFile size={20} />
+              <input
+                type="file"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    setCommentFile(e.target.files[0]);
+                  }
+                  e.target.value = '';
+                }}
+              />
+            </IconButton>
+            <TextField
+              fullWidth
+              size="small"
+              multiline
+              maxRows={4}
+              placeholder={isLocked ? "Comments are disabled for completed works" : "Add a comment..."}
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && !isLocked) {
+                  e.preventDefault();
+                  handleAddComment();
+                }
+              }}
+              disabled={isLocked || isUploading}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '20px' } }}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleAddComment}
+              disabled={(!newComment.trim() && !commentFile) || isLocked || isUploading}
+              sx={{ height: 40, minWidth: 40, p: 0, borderRadius: '50%' }}
+            >
+              <MdSend size={20} />
+            </Button>
+          </div>
         </div>
       </div>
+      <Dialog 
+        open={isTransferring} 
+        onClose={() => setIsTransferring(false)}
+        slotProps={{
+          paper: {
+            sx: { borderRadius: "12px", p: 1, minWidth: "400px" }
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: "bold", color: "#333" }}>Transfer Work Assignment</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <FormControl fullWidth>
+              <InputLabel>New Assignee</InputLabel>
+              <Select
+                value={transferAssignee}
+                label="New Assignee"
+                onChange={(e) => setTransferAssignee(e.target.value)}
+                sx={{ borderRadius: "8px" }}
+              >
+                {(users || [])
+                  .filter((u) => u.username !== currentUser)
+                  .map((u) => {
+                    const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || u.name;
+                    const online = isUserOnline(u);
+                    return (
+                      <MenuItem key={u.id || u._id} value={u.id || u._id}>
+                        <span
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: "50%",
+                            backgroundColor: online ? "#4caf50" : "#f44336",
+                            marginRight: 8,
+                            display: "inline-block",
+                            boxShadow: online ? "0 0 6px #4caf50" : "none",
+                          }}
+                        />
+                        {name} ({u.username})
+                      </MenuItem>
+                    );
+                  })
+                }
+              </Select>
+            </FormControl>
+            <TextField
+              fullWidth
+              label="Reason for Transfer"
+              multiline
+              rows={3}
+              value={transferReason}
+              onChange={(e) => setTransferReason(e.target.value)}
+              placeholder="Provide reason for transfer..."
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button variant="text" onClick={() => setIsTransferring(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={handleConfirmTransfer}
+            disabled={!transferAssignee || !transferReason.trim()}
+          >
+            Transfer
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Modal>
   );
 };

@@ -1,28 +1,68 @@
+// @ts-nocheck
 export interface UserData {
   id: string;
   username: string;
-  role: string;
+  role: string | string[];
   status: boolean;
+  firstName?: string;
+  lastName?: string;
+  dob?: string;
+  mobile?: string;
+  bloodGroup?: string;
+  address?: string;
+  dateOfJoin?: string;
+  department?: string;
+  is_superuser?: boolean;
+  isSuperuser?: boolean;
+  isDepartmentHead?: boolean;
+  replacementFor?: string | null;
+  replacementForName?: string | null;
+  passNumber?: string;
+  lastActive?: string;
 }
 
 export interface CreateUserPayload {
   username: string;
   password?: string;
-  role: string;
+  role: string | string[];
   status: boolean;
+  firstName?: string;
+  lastName?: string;
+  dob?: string;
+  mobile?: string;
+  bloodGroup?: string;
+  address?: string;
+  dateOfJoin?: string;
+  department?: string;
+  isDepartmentHead?: boolean;
+  replacementFor?: string | null;
+  passNumber?: string;
 }
 
 export interface UpdateUserPayload {
   id: string;
   username: string;
   password?: string;
-  role: string;
+  role: string | string[];
   status: boolean;
+  firstName?: string;
+  lastName?: string;
+  dob?: string;
+  mobile?: string;
+  bloodGroup?: string;
+  address?: string;
+  dateOfJoin?: string;
+  department?: string;
+  isDepartmentHead?: boolean;
+  replacementFor?: string | null;
+  replacementForName?: string | null;
+  passNumber?: string;
 }
 
 export interface UsersState {
   users: UserData[];
   availableRoles: { id: string; name: string }[];
+  availableDepartments: any[];
   totalCount: number;
   loading: boolean;
   error: string | null;

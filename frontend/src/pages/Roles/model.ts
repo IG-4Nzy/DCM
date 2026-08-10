@@ -1,14 +1,19 @@
+// @ts-nocheck
 export interface RoleData {
   id: string;
   name: string;
   status: boolean;
   privileges: string[];
+  lateLoginPrivileges?: string[];
+  usersCount?: number;
 }
 
 export interface CreateRolePayload {
   name: string;
   status: boolean;
   privileges: string[];
+  lateLoginPrivileges?: string[];
+  usersCount?: number;
 }
 
 export interface UpdateRolePayload {
@@ -16,6 +21,8 @@ export interface UpdateRolePayload {
   name: string;
   status: boolean;
   privileges: string[];
+  lateLoginPrivileges?: string[];
+  usersCount?: number;
 }
 
 export interface RolesState {

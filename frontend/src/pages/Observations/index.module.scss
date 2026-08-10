@@ -1,0 +1,31 @@
+.observationsContainer {
+  width: 100%;
+}
+
+.formContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-top: 16px;
+}
+
+.row {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  
+  @media (max-width: 600px) {
+    flex-direction: column;
+  }
+}
+
+.field {
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+}

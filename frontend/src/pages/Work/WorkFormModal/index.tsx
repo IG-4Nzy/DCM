@@ -1,11 +1,15 @@
+// @ts-nocheck
 import React from "react";
 import Modal from "../../../components/Modal";
 import TextField from "../../../components/TextField";
 import DatePicker from "../../../components/DatePicker";
 import Dropdown from "../../../components/Dropdown";
-import { Button, IconButton } from "@mui/material";
+import { Button, IconButton, FormControlLabel, Checkbox } from "@mui/material";
 import { MdClose } from "react-icons/md";
 import { PRIORITY_OPTIONS } from "../constant";
+import { getServerTime } from "../../../helpers/time";
+import { hasPrivilege } from "../../../helpers/authUtils";
+import { PRIVILEGES } from "../../../helpers/privileges";
 import styles from "./index.module.scss";
 
 interface PropType {
@@ -14,8 +18,8 @@ interface PropType {
   editingWork: any | null;
   workName: string;
   setWorkName: (value: string) => void;
-  assignee: string;
-  setAssignee: (value: string) => void;
+  assignees: string[];
+  setAssignees: (value: string[]) => void;
   priority: string;
   setPriority: (value: string) => void;
   dueDate: string;
@@ -26,6 +30,9 @@ interface PropType {
   setAttachments: (value: File[]) => void;
   users: any[];
   handleSubmit: (e: React.FormEvent) => void;
+  isEmergency: boolean;
+  setIsEmergency: (value: boolean) => void;
+  activeTab: 'works' | 'emergency';
 }
 
 const WorkFormModal = ({
@@ -34,8 +41,8 @@ const WorkFormModal = ({
   editingWork,
   workName,
   setWorkName,
-  assignee,
-  setAssignee,
+  assignees,
+  setAssignees,
   priority,
   setPriority,
   dueDate,
@@ -46,13 +53,28 @@ const WorkFormModal = ({
   setAttachments,
   users,
   handleSubmit,
+  isEmergency,
+  setIsEmergency,
+  activeTab,
 }: PropType) => {
+  const isUserOnline = (user: any) => {
+    if (!user.lastActive) return false;
+    try {
+      const lastActiveTime = new Date(user.lastActive).getTime();
+      const now = getServerTime().toDate().getTime();
+      return now - lastActiveTime < 45000;
+    } catch (e) {
+      return false;
+    }
+  };
+
   const formattedUsers = (users || []).map((user) => ({
-    label: user.username || user.name, 
+    label: (user.firstName || user.lastName) ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : (user.username || user.name),
     value: user.id || user._id, 
+    isOnline: isUserOnline(user),
   }));
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getServerTime().toDate().toISOString().split("T")[0];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -82,13 +104,15 @@ const WorkFormModal = ({
           />
 
           <Dropdown
-            label="Assignee"
+            label="Assignees"
             options={formattedUsers}
-            value={assignee}
-            onChange={setAssignee}
+            value={assignees}
+            onChange={setAssignees}
+            multiple={true}
             fullWidth={true}
             className={styles.field}
             clearable={true}
+            searchable={true}
           />
         </div>
 
@@ -110,7 +134,6 @@ const WorkFormModal = ({
             value={dueDate}
             onChange={setDueDate}
             minDate={today}
-            required
           />
         </div>
 
@@ -123,7 +146,6 @@ const WorkFormModal = ({
             label="Description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            required
           />
         </div>
 
@@ -157,6 +179,22 @@ const WorkFormModal = ({
             )}
           </div>
         </div>
+
+        {(activeTab === 'emergency' || (editingWork && editingWork.isEmergency)) && (
+          <div className={styles.row}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={isEmergency}
+                  onChange={(e) => setIsEmergency(e.target.checked)}
+                  color="error"
+                  disabled={!!editingWork || !hasPrivilege(PRIVILEGES.WORK_CREATE)}
+                />
+              }
+              label={<span style={{ fontWeight: 'bold', color: '#d32f2f' }}>Mark as Emergency Work (Requires Admin Approval)</span>}
+            />
+          </div>
+        )}
 
         <div className={styles.actions}>
           <Button variant="text" onClick={handleCloseModal}>

@@ -1,0 +1,191 @@
+Build a fully configurable “Daily BMS Checklist” web application page.
+
+## Core Requirement
+Create a dynamic checklist system for monitoring BMS (Building Management System) data such as:
+- Server Room PAC
+- Chillers
+- Electrical Panels
+- PDU Units
+- Water Leak Detection (WLD)
+- Vesda System
+
+The structure must NOT be hardcoded. It must support dynamic expansion of new categories, devices, and parameters from JSON configuration.
+
+---
+
+## Data Model (Dynamic Config Driven)
+
+The checklist must accept a nested JSON structure like:
+
+- Category (e.g., Server room PAC)
+  - Device (e.g., PAC-1)
+    - Parameters (Humidity, Temperature, Status, etc.)
+      - value
+      - BMS_Reading
+      - unit (optional)
+
+The system should automatically render UI based on this structure.
+
+---
+
+## UI Requirements (Checklist Page)
+
+Create a “Daily Checklist” page with:
+
+### 1. Header Section
+- Date (auto + editable)
+- Time (auto)
+- Prepared By (username input)
+- Signature field (only visible/required in PDF export)
+
+---
+
+### 2. Checklist Table
+
+Display data in a clean table format:
+
+Columns:
+- SL No
+- Category (e.g., PAC / Chiller / Electrical Panel)
+- Device Name
+- Parameter
+- Value (+/-10 tolerance indicator)
+- BMS Reading
+- Remarks (editable input field)
+
+---
+
+### 3. UI Behavior
+
+- Data should be rendered from JSON dynamically
+- Expand/collapse:
+  - Category → Device → Parameters
+- Editable fields:
+  - Value
+  - Remarks
+- Read-only fields:
+  - BMS Reading (if configured)
+
+- Highlight:
+  - Red if value deviates more than ±10% from BMS reading (if numeric)
+
+---
+
+## 4. Past Checklist Feature
+
+Create a second page/tab:
+- “History / Past Checklists”
+- List of saved checklists:
+  - Date
+  - Prepared By
+  - Status (Completed / Draft)
+- Clicking opens full checklist view
+
+Data persistence:
+- Use localStorage OR IndexedDB (frontend MVP)
+- Structure should allow backend API integration later
+
+---
+
+## 5. PDF Export Feature
+
+Add “Download PDF” button with:
+
+### PDF Layout Requirements:
+- Title: Daily BMS Checklist Report
+- Date
+- Time
+- Prepared By
+- Signature field (blank line for manual signing)
+
+### Table in PDF must include:
+- SL No
+- Category
+- Device
+- Parameter
+- Value
+- BMS Reading
+- Remarks
+
+Ensure:
+- Proper pagination
+- Table borders
+- Clean professional layout suitable for industrial reports
+
+Use:
+- jsPDF OR pdf-lib OR html2pdf (preferred: html2pdf for simplicity)
+
+---
+
+## 6. Architecture Requirements
+
+- Fully component-based design (React preferred)
+- Config-driven rendering engine
+- No hardcoded devices or parameters
+- Easily extendable JSON schema
+
+Example config input:
+
+{
+  "Server room PAC": {
+    "PAC-1": {
+      "Humidity": { "value": "", "BMS_Reading": "", "unit": "%" },
+      "Temperature": { "value": "", "BMS_Reading": "", "unit": "C" }
+    }
+  }
+}
+
+---
+
+## 7. UX Requirements
+
+- Clean industrial dashboard UI
+- Card or table toggle view option
+- Mobile responsive
+- Minimal clicks for data entry
+- Fast rendering for large datasets
+
+---
+
+## 8. Bonus Features (Optional but recommended)
+
+- Auto timestamp per row edit
+- Export to Excel
+- Dark mode
+- Search/filter by device or category
+- Validation rules per parameter type
+
+---
+
+## Goal
+
+A professional-grade BMS checklist system used for:
+- Daily facility inspection
+- Data logging
+- Maintenance reporting
+- Audit compliance
+
+System must be scalable to thousands of parameters without UI rewrite.
+
+
+
+In checklist add field, for category,there can be multiple parameters, and device can be shown dropdown as like the category field.
+for fields edit ,need checklist field edit privilege as like for the checklist add fields.
+For bulk uploads in every modules,sl number or id is not given currctly or sequentionly.,
+in their birthdays,on their first log in -> show birthday wish and a popup.
+
+should not alllow crete checklist for past and future dates, superuser can create for past dates.
+in create page,give date filter as like in the roaster page and create checklists per day, when past day is selected on the filter, the checklist willbe in view only mode, every days the filter will by default on curent day
+
+only value,bms readings and remarks should be edited from checklist page,
+remaning field names should be only edited from configurations page only those with privileges
+in checklist history search field,need to search by date.
+prepared by name cannot be edited,show full name of the user
+export pdf is not working,pdf is not generated
+in active checklist page,show only current date,no need for going to previous or past dates,show only current date.,no need for date picker there,just show the current date and server time.
+redesign roles page,currently its complicated,make it simple,arrange roles grouped by and make easy and understanding.,and ensure every features in the app has privileges ,because it is a highly restricted application.
+
+
+
+
+

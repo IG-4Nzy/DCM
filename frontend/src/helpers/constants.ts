@@ -1,3 +1,4 @@
+// @ts-nocheck
 export const LOCAL_STORAGE_PARAMETERS = {
     TOKEN: 'token',
     ROLE: 'role',

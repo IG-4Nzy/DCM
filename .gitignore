@@ -29,3 +29,5 @@ frontend/build/
 
 # Misc
 *.sqlite3
+*.tar
+

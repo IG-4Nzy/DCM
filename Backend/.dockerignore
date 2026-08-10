@@ -1,0 +1,36 @@
+# Build and release
+dcm-backend.tar
+*.tar
+*.tar.gz
+
+# Virtual environments
+env/
+venv/
+.env/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs
+logs/
+*.log
+
+# Uploads and temporary files
+uploads/
+tmp/
+
+# Git
+.git/
+.gitignore
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+.dockerignore
+Dockerfile

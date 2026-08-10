@@ -1,0 +1,7 @@
+FROM locustio/locust:latest
+
+# Copy the locustfile.py script directly into the container's working directory
+COPY locustfile.py /mnt/locust/locustfile.py
+
+# Set default arguments for running the test script
+ENTRYPOINT ["locust", "-f", "/mnt/locust/locustfile.py"]
