@@ -212,6 +212,7 @@ const WorkLogFormModal: React.FC<WorkLogFormModalProps> = ({
               type="date"
               value={date}
               InputLabelProps={{ shrink: true }}
+              slotProps={{ inputLabel: { shrink: true } }}
               disabled
               sx={{ minWidth: 200, bgcolor: '#f1f5f9' }}
               helperText="Locked to current day"
@@ -249,6 +250,7 @@ const WorkLogFormModal: React.FC<WorkLogFormModalProps> = ({
                   value={entry.startTime}
                   onChange={(e) => handleEntryChange(index, 'startTime', e.target.value)}
                   InputLabelProps={{ shrink: true }}
+                  slotProps={{ inputLabel: { shrink: true } }}
                   inputProps={{ step: 300 }} // 5 min intervals
                   required
                   sx={{ width: 140 }}
@@ -261,6 +263,7 @@ const WorkLogFormModal: React.FC<WorkLogFormModalProps> = ({
                   value={entry.endTime}
                   onChange={(e) => handleEntryChange(index, 'endTime', e.target.value)}
                   InputLabelProps={{ shrink: true }}
+                  slotProps={{ inputLabel: { shrink: true } }}
                   inputProps={{ step: 300 }}
                   required
                   sx={{ width: 140 }}

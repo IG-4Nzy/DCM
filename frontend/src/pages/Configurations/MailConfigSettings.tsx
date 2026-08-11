@@ -28,6 +28,8 @@ const MailConfigSettings: React.FC = () => {
     const [useTls, setUseTls] = useState(false);
     const [useSsl, setUseSsl] = useState(false);
     const [rosterMailEnabled, setRosterMailEnabled] = useState(true);
+    const [dailyChecklistMailEnabled, setDailyChecklistMailEnabled] = useState(true);
+    const [bmsChecklistMailEnabled, setBmsChecklistMailEnabled] = useState(true);
     const [savedEmailsText, setSavedEmailsText] = useState('');
     const [savedEmailsRosterText, setSavedEmailsRosterText] = useState('');
     const [savedEmailsDailyChecklistText, setSavedEmailsDailyChecklistText] = useState('');
@@ -52,6 +54,8 @@ const MailConfigSettings: React.FC = () => {
                  setUseTls(res.data.useTls || false);
                  setUseSsl(res.data.useSsl || false);
                  setRosterMailEnabled(res.data.rosterMailEnabled !== false);
+                 setDailyChecklistMailEnabled(res.data.dailyChecklistMailEnabled !== false);
+                 setBmsChecklistMailEnabled(res.data.bmsChecklistMailEnabled !== false);
                  const saved = res.data.savedEmails || [];
                  setSavedEmailsText(saved.join(', '));
                  const savedRoster = res.data.savedEmailsRoster || [];
@@ -100,7 +104,9 @@ const MailConfigSettings: React.FC = () => {
                  savedEmailsRoster,
                  savedEmailsDailyChecklist,
                  savedEmailsBmsChecklist,
-                 rosterMailEnabled
+                 rosterMailEnabled,
+                 dailyChecklistMailEnabled,
+                 bmsChecklistMailEnabled
              });
              showToast('Mail configuration saved successfully!', 'success');
              setIsEditing(false);
@@ -326,6 +332,28 @@ const MailConfigSettings: React.FC = () => {
                                 />
                             }
                             label="Enable Roster Email Delivery"
+                        />
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={dailyChecklistMailEnabled}
+                                    onChange={(e) => setDailyChecklistMailEnabled(e.target.checked)}
+                                    disabled={!canUpdate || !isEditing}
+                                    color="primary"
+                                />
+                            }
+                            label="Enable Cluster Checklist Email Delivery"
+                        />
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={bmsChecklistMailEnabled}
+                                    onChange={(e) => setBmsChecklistMailEnabled(e.target.checked)}
+                                    disabled={!canUpdate || !isEditing}
+                                    color="primary"
+                                />
+                            }
+                            label="Enable BMS Checklist Email Delivery"
                         />
                     </Grid>
                 </Grid>

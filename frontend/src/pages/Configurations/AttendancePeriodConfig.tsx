@@ -221,6 +221,7 @@ const AttendancePeriodConfig = () => {
                                 value={shiftStart}
                                 onChange={(e) => setShiftStart(e.target.value)}
                                 disabled={!hasUpdate || saving}
+                                InputLabelProps={{ shrink: true }}
                                 slotProps={{ inputLabel: { shrink: true } }}
                                 helperText="Default work start time"
                             />
@@ -362,6 +363,7 @@ const AttendancePeriodConfig = () => {
                                                         setShifts(newShifts);
                                                     }}
                                                     disabled={!hasUpdate || saving}
+                                                    InputLabelProps={{ shrink: true }}
                                                     slotProps={{ inputLabel: { shrink: true } }}
                                                 />
                                             </Grid>
@@ -377,6 +379,7 @@ const AttendancePeriodConfig = () => {
                                                         setShifts(newShifts);
                                                     }}
                                                     disabled={!hasUpdate || saving}
+                                                    InputLabelProps={{ shrink: true }}
                                                     slotProps={{ inputLabel: { shrink: true } }}
                                                 />
                                             </Grid>

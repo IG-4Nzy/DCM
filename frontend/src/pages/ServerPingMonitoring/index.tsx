@@ -821,6 +821,7 @@ const ServerPingMonitoring: React.FC = () => {
             label="Start Date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
             slotProps={{ inputLabel: { shrink: true } }}
             size="small"
             sx={{ '& .MuiOutlinedInput-root': { height: '30px', fontSize: '0.8rem' } }}
@@ -830,6 +831,7 @@ const ServerPingMonitoring: React.FC = () => {
             label="End Date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
             slotProps={{ inputLabel: { shrink: true } }}
             size="small"
             sx={{ '& .MuiOutlinedInput-root': { height: '30px', fontSize: '0.8rem' } }}

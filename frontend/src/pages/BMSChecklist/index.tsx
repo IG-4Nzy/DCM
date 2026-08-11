@@ -379,6 +379,7 @@ const BMSChecklist: React.FC = () => {
   const [emailList, setEmailList] = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
   const [hasMappedEmails, setHasMappedEmails] = useState(false);
+  const [bmsChecklistMailEnabled, setBmsChecklistMailEnabled] = useState(true);
 
   useEffect(() => {
     const checkMappedEmails = async () => {
@@ -393,6 +394,16 @@ const BMSChecklist: React.FC = () => {
       }
     };
     checkMappedEmails();
+
+    const checkMailEnabled = async () => {
+      try {
+        const res = await request.get('/api/mail-config/checklist-mail-enabled');
+        setBmsChecklistMailEnabled(res.data.bmsEnabled !== false);
+      } catch (e) {
+        console.error("Error checking checklist mail enabled:", e);
+      }
+    };
+    checkMailEnabled();
   }, []);
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
   const [collapsedDevs, setCollapsedDevs] = useState<Set<string>>(new Set());
@@ -1551,7 +1562,7 @@ const BMSChecklist: React.FC = () => {
                     Export CSV
                   </Button>
                   
-                  {checklist && (
+                  {checklist && bmsChecklistMailEnabled && (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, borderLeft: '1px solid #cbd5e1', pl: 2, ml: 1 }}>
                       {!hasMappedEmails && (
                         <EmailSelectInput

@@ -1179,6 +1179,7 @@ const Attendance: React.FC = () => {
                         fullWidth
                         value={editDate}
                         onChange={(e) => setEditDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
                         slotProps={{ inputLabel: { shrink: true } }}
                     />
                     <Grid container spacing={2}>
@@ -1189,6 +1190,7 @@ const Attendance: React.FC = () => {
                                 fullWidth
                                 value={editLogin}
                                 onChange={(e) => setEditLogin(e.target.value)}
+                                InputLabelProps={{ shrink: true }}
                                 slotProps={{ inputLabel: { shrink: true } }}
                             />
                         </Grid>
@@ -1199,6 +1201,7 @@ const Attendance: React.FC = () => {
                                 fullWidth
                                 value={editLogout}
                                 onChange={(e) => setEditLogout(e.target.value)}
+                                InputLabelProps={{ shrink: true }}
                                 slotProps={{ inputLabel: { shrink: true } }}
                             />
                         </Grid>

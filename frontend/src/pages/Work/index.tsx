@@ -835,6 +835,7 @@ const Works: React.FC = () => {
                 value={selectedLogDate}
                 onChange={(e) => { setSelectedLogDate(e.target.value); setWorkLogPage(0); }}
                 InputLabelProps={{ shrink: true }}
+                slotProps={{ inputLabel: { shrink: true } }}
                 sx={{ bgcolor: '#fff', minWidth: 160 }}
               />
               {selectedLogDate && (

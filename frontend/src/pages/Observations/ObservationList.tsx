@@ -401,6 +401,7 @@ const ObservationList: React.FC = () => {
             size="small"
             value={dateFilter} 
             onChange={(e: any) => { setDateFilter(e.target.value); setPage(0); }} 
+            InputLabelProps={{ shrink: true }}
             slotProps={{ inputLabel: { shrink: true } }}
           />
           {dateFilter ? (
