@@ -63,9 +63,9 @@ config_collection = db.get_collection("vcenter_config")
 async def get_vcenter_config():
     doc = await config_collection.find_one({"_id": "vcenter_global_config"})
     if not doc:
-        return {"autoRefresh": True, "refreshIntervalSeconds": 30}
+        return {"autoRefresh": False, "refreshIntervalSeconds": 30}
     return {
-        "autoRefresh": doc.get("autoRefresh", True),
+        "autoRefresh": False,
         "refreshIntervalSeconds": doc.get("refreshIntervalSeconds", 30),
         "updatedAt": doc.get("updatedAt"),
         "updatedBy": doc.get("updatedBy")
@@ -76,14 +76,10 @@ async def update_vcenter_config(
     payload: dict = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
-    auto_refresh = payload.get("autoRefresh")
     refresh_interval = payload.get("refreshIntervalSeconds", 30)
 
-    if auto_refresh is None:
-        raise HTTPException(status_code=400, detail="Field 'autoRefresh' boolean is required.")
-
     update_data = {
-        "autoRefresh": bool(auto_refresh),
+        "autoRefresh": False,
         "refreshIntervalSeconds": int(refresh_interval),
         "updatedAt": datetime.now(timezone.utc).isoformat(),
         "updatedBy": current_user.get("sub", "")

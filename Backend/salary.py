@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, model_validator
 from typing import List, Optional, Union
 from database import db
-from auth_utils import get_current_user
+from auth_utils import get_current_user, require_privilege, require_any_privilege
 
 router = APIRouter()
 
@@ -56,15 +56,15 @@ class GlobalSalaryConfig(BaseModel):
     poStartDate: Optional[str] = ""
     poEndDate: Optional[str] = ""
 
-@router.get("/config", response_model=GlobalSalaryConfig)
+@router.get("/config", response_model=GlobalSalaryConfig, dependencies=[Depends(require_any_privilege(["View Salary Calculation", "Calculate Salary", "Update Salary Calculation"]))])
 async def get_config():
     doc = await db["salary_config"].find_one({"_id": "global"})
     if doc:
         return GlobalSalaryConfig(**doc)
     return GlobalSalaryConfig()
 
-@router.post("/config")
-async def save_config(config: GlobalSalaryConfig, user=Depends(get_current_user)):
+@router.post("/config", dependencies=[Depends(require_privilege("Update Salary Calculation"))])
+async def save_config(config: GlobalSalaryConfig):
     await db["salary_config"].update_one(
         {"_id": "global"},
         {"$set": config.model_dump()},
@@ -72,7 +72,7 @@ async def save_config(config: GlobalSalaryConfig, user=Depends(get_current_user)
     )
     return {"message": "Config saved"}
 
-@router.get("/templates", response_model=List[TemplateModel])
+@router.get("/templates", response_model=List[TemplateModel], dependencies=[Depends(require_any_privilege(["View Salary Calculation", "Calculate Salary", "Update Salary Calculation"]))])
 async def get_templates():
     cursor = db["salary_templates"].find({})
     templates = []
@@ -80,15 +80,15 @@ async def get_templates():
         templates.append(TemplateModel(**doc))
     return templates
 
-@router.post("/templates")
-async def save_templates(templates: List[TemplateModel], user=Depends(get_current_user)):
+@router.post("/templates", dependencies=[Depends(require_privilege("Update Salary Calculation"))])
+async def save_templates(templates: List[TemplateModel]):
     await db["salary_templates"].delete_many({})
     if templates:
         docs = [t.model_dump() for t in templates]
         await db["salary_templates"].insert_many(docs)
     return {"message": "Templates saved"}
 
-@router.get("", response_model=List[SalaryMonthModel])
+@router.get("", response_model=List[SalaryMonthModel], dependencies=[Depends(require_any_privilege(["View Salary Calculation", "Calculate Salary", "Update Salary Calculation"]))])
 async def get_all_salary():
     cursor = db["salary_data"].find({})
     res = []
@@ -96,7 +96,7 @@ async def get_all_salary():
         res.append(SalaryMonthModel(month=doc["_id"], groups=doc.get("groups", [])))
     return res
 
-@router.get("/{month}", response_model=List[GroupModel])
+@router.get("/{month}", response_model=List[GroupModel], dependencies=[Depends(require_any_privilege(["View Salary Calculation", "Calculate Salary", "Update Salary Calculation"]))])
 async def get_salary(month: str):
     doc = await db["salary_data"].find_one({"_id": month})
     if doc and "groups" in doc:
@@ -105,6 +105,76 @@ async def get_salary(month: str):
 
 @router.post("/{month}")
 async def save_salary(month: str, groups: List[GroupModel], user=Depends(get_current_user)):
+    is_superuser = user.get("isSuperuser", False)
+    privileges = user.get("privileges", [])
+    
+    has_update = is_superuser or "Update Salary Calculation" in privileges
+    has_calc = is_superuser or "Calculate Salary" in privileges
+    
+    if not has_update and not has_calc:
+        raise HTTPException(
+            status_code=403,
+            detail="Not enough permissions. Requires: Update Salary Calculation or Calculate Salary"
+        )
+    
+    if not has_update:
+        existing_doc = await db["salary_data"].find_one({"_id": month})
+        baseline_groups = []
+        if existing_doc and "groups" in existing_doc:
+            baseline_groups = existing_doc["groups"]
+        else:
+            cursor = db["salary_data"].find({}).sort("_id", -1)
+            async for doc in cursor:
+                if doc.get("groups"):
+                    baseline_groups = doc["groups"]
+                    break
+        
+        if len(groups) != len(baseline_groups):
+            raise HTTPException(
+                status_code=403,
+                detail="Calculate Salary privilege is not allowed to add or remove groups."
+            )
+        
+        baseline_map = {bg["id"]: bg for bg in baseline_groups}
+        for g in groups:
+            if g.id not in baseline_map:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Calculate Salary privilege is not allowed to add new groups."
+                )
+            bg = baseline_map[g.id]
+            
+            bg_template_id = bg.get("templateId")
+            g_template_id = g.templateId
+            
+            if g.name != bg.get("name"):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Calculate Salary privilege is not allowed to update group name."
+                )
+            
+            if g_template_id != bg_template_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Calculate Salary privilege is not allowed to update group template."
+                )
+            
+            try:
+                g_val = float(g.perDaySalary)
+            except ValueError:
+                g_val = str(g.perDaySalary)
+                
+            try:
+                bg_val = float(bg.get("perDaySalary", 0))
+            except ValueError:
+                bg_val = str(bg.get("perDaySalary", ""))
+                
+            if g_val != bg_val:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Calculate Salary privilege is not allowed to update group per day salary."
+                )
+
     await db["salary_data"].update_one(
         {"_id": month},
         {"$set": {"groups": [g.model_dump() for g in groups]}},

@@ -38,9 +38,8 @@ class VCenterTelemetryScheduler:
         if self._running:
             return
         self._running = True
-        logger.info("Initializing background vCenter telemetry collection loops...")
+        logger.info("Initializing background vCenter session keepalive loops...")
         self._tasks.append(asyncio.create_task(self._run_session_keepalive()))
-        self._tasks.append(asyncio.create_task(self._run_telemetry_loop()))
 
     async def stop(self):
         self._running = False

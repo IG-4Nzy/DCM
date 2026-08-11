@@ -150,6 +150,7 @@ export const PRIVILEGES = {
     SALARY_CALCULATION_VIEW: "View Salary Calculation",
     SALARY_CALCULATION_CREATE: "Create Salary Calculation",
     SALARY_CALCULATION_UPDATE: "Update Salary Calculation",
+    SALARY_CALCULATION_CALCULATE: "Calculate Salary",
     SALARY_CALCULATION_DELETE: "Delete Salary Calculation",
     EDIT_ABOUT_APP: "Edit About App",
     ABOUT_VIEW: "View About App",

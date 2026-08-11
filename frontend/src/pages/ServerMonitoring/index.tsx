@@ -197,21 +197,11 @@ const ServerMonitoring: React.FC = () => {
   
   const [loadingList, setLoadingList] = useState(false);
   const [loadingMonitor, setLoadingMonitor] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshingVcId, setRefreshingVcId] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [vmSearch, setVmSearch] = useState('');
   const [vcenterSearch, setVcenterSearch] = useState('');
-
-  const handleToggleAutoRefresh = async (enabled: boolean) => {
-    setAutoRefresh(enabled);
-    try {
-      await request.put('/api/vcenter-details/config', { autoRefresh: enabled });
-      showToast(`vCenter Auto Refresh is now ${enabled ? 'ENABLED' : 'DISABLED'}`, 'info');
-    } catch (err) {
-      console.error('Failed to sync autoRefresh config:', err);
-    }
-  };
+  const autoRefresh = false;
 
   const handleManualRefreshSingle = async (vcId: string) => {
     setRefreshingVcId(vcId);
@@ -305,9 +295,6 @@ const ServerMonitoring: React.FC = () => {
       setVcenters(vcList);
       setClusters(clusterList);
       setNodesList(nodesRes);
-      if (configRes && typeof configRes.autoRefresh === 'boolean') {
-        setAutoRefresh(configRes.autoRefresh);
-      }
 
       if (clusterList && clusterList.length > 0) {
         setNewVcenter(prev => ({ 
@@ -613,16 +600,6 @@ const ServerMonitoring: React.FC = () => {
               </Typography>
             </Box>
             <Box display="flex" gap={2} alignItems="center">
-              <FormControlLabel
-                control={
-                  <Switch 
-                    checked={autoRefresh} 
-                    onChange={(e) => handleToggleAutoRefresh(e.target.checked)} 
-                    color="primary"
-                  />
-                }
-                label={<Typography variant="body2" sx={{ fontWeight: 600 }}>Auto-Refresh</Typography>}
-              />
               <Button
                 variant="outlined"
                 color="primary"
@@ -1131,16 +1108,6 @@ const ServerMonitoring: React.FC = () => {
             </Box>
 
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <FormControlLabel
-                control={
-                  <Switch 
-                    checked={autoRefresh} 
-                    onChange={(e) => handleToggleAutoRefresh(e.target.checked)} 
-                    color="primary"
-                  />
-                }
-                label={<Typography variant="body2" sx={{ fontWeight: 600 }}>Auto-Refresh</Typography>}
-              />
               
               <Button
                 variant="contained"

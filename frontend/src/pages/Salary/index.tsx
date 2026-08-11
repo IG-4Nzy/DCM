@@ -132,8 +132,24 @@ const Salary = () => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
 
-  const canView = isSuperuser || hasPrivilege(PRIVILEGES.SALARY_CALCULATION_VIEW);
-  const canManage = isSuperuser || hasPrivilege(PRIVILEGES.SALARY_CALCULATION_CREATE) || hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE);
+  const canView = isSuperuser || 
+                  hasPrivilege(PRIVILEGES.SALARY_CALCULATION_VIEW) || 
+                  hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE) || 
+                  hasPrivilege(PRIVILEGES.SALARY_CALCULATION_CALCULATE);
+
+  const canUpdateConfig = isSuperuser || hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE);
+  
+  const canCalculate = isSuperuser || 
+                       hasPrivilege(PRIVILEGES.SALARY_CALCULATION_CALCULATE) || 
+                       hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE);
+
+  const canAddGroup = isSuperuser || 
+                      hasPrivilege(PRIVILEGES.SALARY_CALCULATION_CREATE) || 
+                      hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE);
+
+  const canDeleteGroup = isSuperuser || 
+                         hasPrivilege(PRIVILEGES.SALARY_CALCULATION_DELETE) || 
+                         hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE);
 
   const [currentMonth, setCurrentMonth] = useState(dayjs().format('YYYY-MM'));
   const [salaryData, setSalaryData] = useState<Record<string, Group[]>>({});
@@ -820,12 +836,14 @@ const Salary = () => {
   return (
     <Box sx={{ maxWidth: 1100, margin: '0 auto', p: { xs: 2, md: 3 }, fontFamily: '"Inter", sans-serif' }}>
       
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} aria-label="salary tabs">
-          <Tab icon={<WalletIcon />} iconPosition="start" label="Salary Calculation" />
-          <Tab icon={<SettingsIcon />} iconPosition="start" label="Configuration" />
-        </Tabs>
-      </Box>
+      {canUpdateConfig && (
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+          <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} aria-label="salary tabs">
+            <Tab icon={<WalletIcon />} iconPosition="start" label="Salary Calculation" />
+            <Tab icon={<SettingsIcon />} iconPosition="start" label="Configuration" />
+          </Tabs>
+        </Box>
+      )}
 
       {activeTab === 0 && (
         <Box>
@@ -881,18 +899,20 @@ const Salary = () => {
               >
                 Print PDF
               </Button>
-              <Button 
-                variant="contained" 
-                size="small" 
-                startIcon={<AddIcon />} 
-                onClick={addGroup}
-                sx={{ borderRadius: 1.5, textTransform: 'none', px: 2, boxShadow: 'none' }}
-              >
-                Add Group
-              </Button>
+              {canAddGroup && (
+                <Button 
+                  variant="contained" 
+                  size="small" 
+                  startIcon={<AddIcon />} 
+                  onClick={addGroup}
+                  sx={{ borderRadius: 1.5, textTransform: 'none', px: 2, boxShadow: 'none' }}
+                >
+                  Add Group
+                </Button>
+              )}
             </Box>
           </Paper>
-
+ 
           {/* Groups List */}
           {groups.length === 0 ? (
             <Paper variant="outlined" sx={{ p: 6, textAlign: 'center', borderRadius: 2, backgroundColor: 'grey.50' }}>
@@ -903,9 +923,11 @@ const Salary = () => {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                 Add a group to start calculating daily wages for this cycle.
               </Typography>
-              <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={addGroup}>
-                Add Group
-              </Button>
+              {canAddGroup && (
+                <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={addGroup}>
+                  Add Group
+                </Button>
+              )}
             </Paper>
           ) : (
             <Grid container spacing={3}>
@@ -961,8 +983,9 @@ const Salary = () => {
                                 value={group.name} 
                                 onChange={(e) => updateGroup(group.id, 'name', e.target.value)}
                                 sx={{ backgroundColor: 'white' }}
+                                disabled={!canUpdateConfig}
                               />
-                              <FormControl size="small" sx={{ backgroundColor: 'white' }}>
+                              <FormControl size="small" sx={{ backgroundColor: 'white' }} disabled={!canUpdateConfig}>
                                 <InputLabel>Splitup Template</InputLabel>
                                 <Select
                                   value={group.templateId || 'none'}
@@ -989,8 +1012,9 @@ const Salary = () => {
                                     value={group.perDaySalary} 
                                     onChange={(e) => updateGroup(group.id, 'perDaySalary', e.target.value)}
                                     sx={{ backgroundColor: 'white', flex: 1 }}
+                                    disabled={!canUpdateConfig}
                                   />
-                                  {group.templateId && (
+                                  {group.templateId && canUpdateConfig && (
                                     <Button 
                                       variant="outlined" 
                                       size="small" 
@@ -1093,21 +1117,25 @@ const Salary = () => {
                                 </IconButton>
                               </Tooltip>
                             )}
-                            <Tooltip title={isEditing ? "Save" : "Edit"}>
-                              <IconButton 
-                                color={isEditing ? "success" : "primary"} 
-                                onClick={(e) => toggleEditGroup(group.id, e)} 
-                                size="small"
-                                sx={{ backgroundColor: isEditing ? 'success.50' : 'primary.50' }}
-                              >
-                                {isEditing ? <CheckIcon /> : <EditIcon fontSize="small" />}
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Delete">
-                              <IconButton color="error" onClick={(e) => deleteGroup(group.id, e)} size="small">
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
+                            {(canCalculate || canUpdateConfig) && (
+                              <Tooltip title={isEditing ? "Save" : "Edit"}>
+                                <IconButton 
+                                  color={isEditing ? "success" : "primary"} 
+                                  onClick={(e) => toggleEditGroup(group.id, e)} 
+                                  size="small"
+                                  sx={{ backgroundColor: isEditing ? 'success.50' : 'primary.50' }}
+                                >
+                                  {isEditing ? <CheckIcon /> : <EditIcon fontSize="small" />}
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            {canDeleteGroup && (
+                              <Tooltip title="Delete">
+                                <IconButton color="error" onClick={(e) => deleteGroup(group.id, e)} size="small">
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
                           </Box>
                         </Box>
                       </Box>

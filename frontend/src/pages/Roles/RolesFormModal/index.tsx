@@ -181,6 +181,7 @@ const PRIVILEGE_GROUPS: { [category: string]: string[] } = {
         "View Salary Calculation",
         "Create Salary Calculation",
         "Update Salary Calculation",
+        "Calculate Salary",
         "Delete Salary Calculation"
     ]
 };
