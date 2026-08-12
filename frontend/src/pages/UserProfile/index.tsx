@@ -12,8 +12,7 @@ import {
     MdSave as SaveIcon,
     MdClose as CancelIcon,
 } from "react-icons/md";
-import Switch from "@mui/material/Switch";
-import FormControlLabel from "@mui/material/FormControlLabel";
+
 import TextField from "../../components/TextField";
 import Dropdown from "../../components/Dropdown";
 import { useToast } from "../../contexts/ToastContext";
@@ -37,7 +36,6 @@ interface UserProfileData {
     passNumber?: string;
     dateOfJoin: string;
     department: string;
-    stickyNoteEnabled?: boolean;
 }
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
@@ -67,7 +65,6 @@ const UserProfile: React.FC = () => {
         bloodGroup: "",
         address: "",
         passNumber: "",
-        stickyNoteEnabled: false,
     });
 
     const fetchProfile = async () => {
@@ -83,7 +80,6 @@ const UserProfile: React.FC = () => {
                 bloodGroup: res.data.bloodGroup || "",
                 address: res.data.address || "",
                 passNumber: res.data.passNumber || "",
-                stickyNoteEnabled: res.data.stickyNoteEnabled || false,
             });
         } catch (err: any) {
             showToast(
@@ -109,7 +105,6 @@ const UserProfile: React.FC = () => {
                 bloodGroup: profile.bloodGroup || "",
                 address: profile.address || "",
                 passNumber: profile.passNumber || "",
-                stickyNoteEnabled: profile.stickyNoteEnabled || false,
             });
         }
         setEditing(false);
@@ -122,8 +117,6 @@ const UserProfile: React.FC = () => {
             Object.entries(form).forEach(([k, v]) => {
                 if (v !== undefined && v !== null && v !== "") {
                     payload[k] = v;
-                } else if (k === 'stickyNoteEnabled') {
-                    payload[k] = v; // Allow boolean false
                 }
             });
             const res = await request.put("/api/auth/me", payload);
@@ -347,29 +340,6 @@ const UserProfile: React.FC = () => {
                     </Box>
                 </Paper>
 
-                {/* Preferences */}
-                <Paper className={styles.card} elevation={0}>
-                    <label className={styles.sectionTitle}>Preferences</label>
-                    <Box className={styles.infoGrid}>
-                        {editing ? (
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={form.stickyNoteEnabled}
-                                        onChange={(e) => setForm({ ...form, stickyNoteEnabled: e.target.checked })}
-                                        color="primary"
-                                    />
-                                }
-                                label="Enable Floating Sticky Note"
-                            />
-                        ) : (
-                            <InfoRow 
-                                label="Floating Sticky Note" 
-                                value={profile.stickyNoteEnabled ? "Enabled" : "Disabled"} 
-                            />
-                        )}
-                    </Box>
-                </Paper>
 
                 {/* Security - Change Password */}
                 <Paper className={styles.card} elevation={0}>

@@ -493,31 +493,29 @@ const Layout: React.FC = () => {
           <Divider />
 
           <List>
-            {stickyNoteEnabled && (
-              <ListItem disablePadding sx={{ display: 'block' }}>
-                <ListItemButton
-                  onClick={() => window.dispatchEvent(new Event('openStickyNote'))}
+            <ListItem disablePadding sx={{ display: 'block' }}>
+              <ListItemButton
+                onClick={() => window.dispatchEvent(new Event('openStickyNote'))}
+                sx={{
+                  minHeight: 48,
+                  justifyContent: open ? 'initial' : 'center',
+                  px: 2.5,
+                  color: '#5c5315'
+                }}
+              >
+                <ListItemIcon
                   sx={{
-                    minHeight: 48,
-                    justifyContent: open ? 'initial' : 'center',
-                    px: 2.5,
-                    color: '#5c5315'
+                    minWidth: 0,
+                    mr: open ? 3 : 0,
+                    justifyContent: 'center',
+                    color: '#f5b041'
                   }}
                 >
-                  <ListItemIcon
-                    sx={{
-                      minWidth: 0,
-                      mr: open ? 3 : 0,
-                      justifyContent: 'center',
-                      color: '#f5b041'
-                    }}
-                  >
-                    <StickyNoteIcon size={24} />
-                  </ListItemIcon>
-                  <ListItemText primary="Sticky Note" sx={{ opacity: open ? 1 : 0, display: open ? 'block' : 'none' }} />
-                </ListItemButton>
-              </ListItem>
-            )}
+                  <StickyNoteIcon size={24} />
+                </ListItemIcon>
+                <ListItemText primary="Sticky Note" sx={{ opacity: open ? 1 : 0, display: open ? 'block' : 'none' }} />
+              </ListItemButton>
+            </ListItem>
             <ListItem disablePadding sx={{ display: 'block' }}>
               <ListItemButton
                 onClick={handleLogout}

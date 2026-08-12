@@ -1076,6 +1076,30 @@ const Salary = () => {
                                   Last updated {dayjs(group.updatedAt).format('DD MMM YYYY, HH:mm')} by {group.updatedBy}
                                 </Typography>
                               )}
+                              {group.templateId && (() => {
+                                const stats = getTemplateStats(group.templateId);
+                                if (!stats) return null;
+                                const template = templates.find(t => t.id === group.templateId);
+                                if (!template) return null;
+
+                                const remainingMonths = globalPoEndDate 
+                                  ? Math.max(0, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${currentMonth}-01`).startOf('month'), 'month')) 
+                                  : 0;
+                                
+                                if (!globalPoEndDate) return null;
+
+                                const perDay = Number(group.perDaySalary) || 0;
+                                const futureCost = (Number(template.maxStaffs) || 0) * remainingMonths * maxAllowedDays * perDay;
+                                const isEnough = stats.remainingAmount >= futureCost;
+
+                                if (isEnough) return null;
+
+                                return (
+                                  <Typography variant="caption" color="error.main" sx={{ fontWeight: 600, mt: 0.5, display: 'block' }}>
+                                    ✗ Insufficient funds: Remaining amount (₹{stats.remainingAmount.toLocaleString('en-IN')}) cannot cover {template.maxStaffs} staffs for {remainingMonths} months (Requires ₹{futureCost.toLocaleString('en-IN')}, Deficit: ₹{(futureCost - stats.remainingAmount).toLocaleString('en-IN')}).
+                                  </Typography>
+                                );
+                              })()}
                             </Box>
                           )}
                         </Box>
@@ -1148,6 +1172,9 @@ const Salary = () => {
                             if (!stats) return null;
                             const template = templates.find(t => t.id === group.templateId);
                             const remainingMonths = globalPoEndDate ? Math.max(0, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${currentMonth}-01`).startOf('month'), 'month')) : 0;
+                            const perDay = Number(group.perDaySalary) || 0;
+                            const futureCost = (Number(template?.maxStaffs) || 0) * remainingMonths * maxAllowedDays * perDay;
+                            const isEnough = !globalPoEndDate || stats.remainingAmount >= futureCost;
                             return (
                               <Box sx={{ mb: 2, p: 1.5, bgcolor: 'grey.50', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
                                 <Grid container spacing={2}>
@@ -1167,7 +1194,7 @@ const Salary = () => {
                                   </Grid>
                                   <Grid item xs={6} sm={3}>
                                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Remaining Amount</Typography>
-                                    <Typography variant="body2" fontWeight="700" color={stats.remainingAmount >= 0 ? "success.main" : "error.main"}>
+                                    <Typography variant="body2" fontWeight="700" color={(stats.remainingAmount >= 0 && isEnough) ? "success.main" : "error.main"}>
                                       ₹ {stats.remainingAmount.toLocaleString('en-IN')}
                                     </Typography>
                                   </Grid>

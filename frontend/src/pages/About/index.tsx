@@ -1,14 +1,14 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Button, 
-  TextField, 
-  Dialog, 
-  DialogTitle, 
-  DialogContent, 
-  DialogActions, 
+import {
+  Box,
+  Typography,
+  Button,
+  TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   CircularProgress,
   IconButton,
   Table,
@@ -20,21 +20,35 @@ import {
   Fade,
   Grow
 } from '@mui/material';
-import { MdCheckCircle, MdCloudUpload, MdBugReport, MdEdit, MdDelete, MdStars, MdClose, MdRefresh } from 'react-icons/md';
+import {
+  MdCheckCircle,
+  MdCloudUpload,
+  MdBugReport,
+  MdEdit,
+  MdDelete,
+  MdStars,
+  MdClose,
+  MdRefresh,
+  MdSettings,
+  MdDns,
+  MdStorage,
+  MdSpeed,
+  MdVerifiedUser
+} from 'react-icons/md';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import styles from './index.module.scss';
-import { 
-  reportBug, 
-  fetchAboutDetails, 
-  updateAboutDetails, 
-  fetchBugReports, 
-  deleteBugReport 
+import {
+  reportBug,
+  fetchAboutDetails,
+  updateAboutDetails,
+  fetchBugReports,
+  deleteBugReport
 } from './action';
 
 const About: React.FC = () => {
   const { privileges = [], isSuperuser } = useSelector((state: RootState) => state.auth);
-  
+
   const canEdit = isSuperuser || privileges.includes("Edit About App");
   const canViewBugs = isSuperuser || privileges.includes("View Bug Reports");
   const canViewAbout = isSuperuser || privileges.includes("View About App");
@@ -179,161 +193,231 @@ const About: React.FC = () => {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f8fafc' }}>
-        <CircularProgress size={60} thickness={4} sx={{ color: '#3b82f6' }} />
+        <CircularProgress size={60} thickness={4} sx={{ color: '#4f46e5' }} />
       </Box>
     );
   }
 
   return (
     <Box className={styles.aboutContainer}>
+
       <Box className={styles.contentWrapper}>
-        
+
         {/* Header Hero Section */}
-        <Box className={styles.headerCard}>
-          <Box className={styles.versionBadge}>v{appVersion || "1.0.0"}</Box>
-          <h1>{appName || "Datacentre Management"}</h1>
+        <Box className={styles.heroSection}>
+          <Box className={styles.heroLeft}>
+            <Box className={styles.logoGlowWrapper}>
+              D
+            </Box>
+            <Box className={styles.heroText}>
+              <h1>{appName || "Datacentre Management System"}</h1>
+              <Box className={styles.statusContainer}>
+                <Box className={styles.statusPill}>
+                  <div className={styles.pulseDot} />
+                  Operational
+                </Box>
+                <Box className={styles.versionBadge}>
+                  v{appVersion || "1.0.0"}
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+
           <Box className={styles.actionButtons}>
             {canViewBugs && (
-              <Button 
-                className={`${styles.customButton} ${styles.outline}`}
-                startIcon={<MdBugReport />}
+              <Button
+                className={`${styles.btn} ${styles.btnSecondary}`}
+                startIcon={<MdBugReport size={18} />}
                 onClick={handleOpenBugsList}
               >
-                View Bugs
+                Bug Inbox
               </Button>
             )}
             {canEdit && (
-              <Button 
-                className={`${styles.customButton} ${styles.primary}`}
-                startIcon={<MdEdit />}
+              <Button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                startIcon={<MdEdit size={18} />}
                 onClick={handleOpenEditModal}
               >
-                Edit App Info
+                Modify Settings
               </Button>
             )}
           </Box>
         </Box>
 
-        {/* Features Showcase */}
-        <Box className={styles.featuresCard}>
-          <Typography className={styles.featuresHeader}>
-            <MdStars size={28} /> What's New
+        {/* Quick Stats Grid */}
+        <Box className={styles.statsGrid}>
+          <Box className={styles.statCard}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <MdVerifiedUser size={18} color="#475569" />
+              <span className={styles.statLabel}>System License</span>
+            </Box>
+            <span className={styles.statValue}>Enterprise Edition</span>
+          </Box>
+          <Box className={styles.statCard}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <MdStorage size={18} color="#475569" />
+              <span className={styles.statLabel}>Database Link</span>
+            </Box>
+            <span className={styles.statValue}>MongoDB Active</span>
+          </Box>
+          <Box className={styles.statCard}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <MdDns size={18} color="#475569" />
+              <span className={styles.statLabel}>Server Platform</span>
+            </Box>
+            <span className={styles.statValue}>FastAPI Engine</span>
+          </Box>
+          <Box className={styles.statCard}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <MdSpeed size={18} color="#475569" />
+              <span className={styles.statLabel}>Service Status</span>
+            </Box>
+            <span className={styles.statValue}>Live (Healthy)</span>
+          </Box>
+        </Box>
+
+        {/* Changelog Timeline Section */}
+        <Box className={styles.changelogSection}>
+          <Typography className={styles.sectionHeader}>
+            <MdStars size={24} /> What's New & System Updates
           </Typography>
-          <Box className={styles.featuresList}>
+
+          <Box className={styles.timeline}>
             {newFeatures.length > 0 ? (
               newFeatures.map((feature, idx) => (
-                <Grow in={true} timeout={(idx + 1) * 300} key={idx}>
-                  <Box className={styles.featureItem}>
-                    <Box className={styles.iconWrapper}>
-                      <MdCheckCircle />
+                <Grow in={true} timeout={(idx + 1) * 150} key={idx}>
+                  <Box className={styles.timelineItem}>
+                    <Box className={styles.badge}>
+                      <MdCheckCircle size={18} />
                     </Box>
-                    <Box className={styles.featureText}>
+                    <Box className={styles.text}>
                       {feature}
                     </Box>
                   </Box>
                 </Grow>
               ))
             ) : (
-              <Typography color="text.secondary">No features have been listed yet.</Typography>
+              <Typography color="text.secondary" sx={{ py: 2 }}>No features listed for this build.</Typography>
             )}
           </Box>
         </Box>
 
-        {/* Call to Action Footer */}
-        <Box className={styles.footerCard}>
-          <h2>Help Us Improve</h2>
-          <p>
-            Encountered an issue or have a suggestion? Let our team know by submitting a detailed bug report. We appreciate your help in making this system better!
-          </p>
-          <Button 
-            className={`${styles.customButton} ${styles.error}`}
-            startIcon={<MdBugReport size={20} />}
+        {/* Feedback Section */}
+        <Box className={styles.feedbackSection}>
+          <Box className={styles.feedbackContent}>
+            <h2>Encountered an Issue?</h2>
+            <p>
+              Help us streamline operations. If you discover bugs, performance hiccups, or inconsistencies, report them to the development team directly.
+            </p>
+          </Box>
+          <Button
+            className={`${styles.btn} ${styles.btnDanger}`}
+            startIcon={<MdBugReport size={18} />}
             onClick={handleOpenBugModal}
-            sx={{ px: 4, py: 1.5, fontSize: '1.05rem', mt: 2 }}
           >
-            Report an Issue
+            File Bug Report
           </Button>
         </Box>
 
       </Box>
 
-      {/* Edit Modal (MUI Default styled) */}
-      <Dialog 
-        open={isEditModalOpen} 
-        onClose={() => setIsEditModalOpen(false)} 
-        maxWidth="sm" 
+      {/* Edit Modal */}
+      <Dialog
+        open={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { borderRadius: '16px', p: 1 } }}
+        PaperProps={{ sx: { borderRadius: '12px', p: 1, boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)', border: '1px solid #e2e8f0' } }}
       >
-        <DialogTitle sx={{ fontWeight: 800, fontSize: '1.5rem', color: '#0f172a' }}>
-          Configure App Details
+        <DialogTitle sx={{ fontWeight: 700, fontSize: '1.25rem', color: '#0f172a' }}>
+          Configure Portal Info
         </DialogTitle>
         <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 3 }}>
-          <TextField 
-            label="Application Name" 
-            value={editForm.appName} 
+          <TextField
+            label="Application Name"
+            value={editForm.appName}
             onChange={(e) => setEditForm({ ...editForm, appName: e.target.value })}
-            fullWidth 
+            fullWidth
             variant="outlined"
+            slotProps={{ inputLabel: { shrink: true } }}
           />
-          <TextField 
-            label="Version Number" 
-            value={editForm.appVersion} 
+          <TextField
+            label="Version Number"
+            value={editForm.appVersion}
             onChange={(e) => setEditForm({ ...editForm, appVersion: e.target.value })}
-            fullWidth 
+            fullWidth
             variant="outlined"
+            slotProps={{ inputLabel: { shrink: true } }}
           />
-          <TextField 
-            label="Feature Log (One per line)" 
-            value={editForm.newFeatures} 
+          <TextField
+            label="Feature Log (One per line)"
+            value={editForm.newFeatures}
             onChange={(e) => setEditForm({ ...editForm, newFeatures: e.target.value })}
-            fullWidth 
+            fullWidth
             multiline
-            rows={8}
+            rows={6}
             variant="outlined"
-            helperText="Enter each new feature on a new line."
+            helperText="Enter each new feature or release note on a separate line."
+            slotProps={{ inputLabel: { shrink: true } }}
           />
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
           <Button onClick={() => setIsEditModalOpen(false)} sx={{ color: '#64748b', textTransform: 'none', fontWeight: 600 }}>Cancel</Button>
-          <Button onClick={handleSaveEdit} variant="contained" disabled={savingEdit} sx={{ bgcolor: '#3b82f6', textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}>
+          <Button
+            onClick={handleSaveEdit}
+            variant="contained"
+            disabled={savingEdit}
+            sx={{
+              bgcolor: '#0f172a',
+              color: 'white',
+              textTransform: 'none',
+              fontWeight: 600,
+              borderRadius: '8px',
+              px: 3,
+              '&:hover': {
+                bgcolor: '#1e293b'
+              }
+            }}
+          >
             {savingEdit ? <CircularProgress size={20} color="inherit" /> : 'Save Changes'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Bug Report Modal */}
-      <Dialog 
-        open={isBugModalOpen} 
-        onClose={handleCloseBugModal} 
-        maxWidth="sm" 
+      <Dialog
+        open={isBugModalOpen}
+        onClose={handleCloseBugModal}
+        maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { borderRadius: '16px', p: 1 } }}
+        PaperProps={{ sx: { borderRadius: '12px', p: 1, boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)', border: '1px solid #e2e8f0' } }}
       >
-        <DialogTitle sx={{ fontWeight: 800, fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: 1, color: '#0f172a' }}>
-          <MdBugReport color="#ef4444" size={32} /> Report Issue
+        <DialogTitle sx={{ fontWeight: 700, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: 1, color: '#0f172a' }}>
+          <MdBugReport color="#dc2626" size={24} /> File Bug Report
           <IconButton onClick={handleCloseBugModal} sx={{ ml: 'auto' }}>
             <MdClose />
           </IconButton>
         </DialogTitle>
         <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
-          <Typography variant="body1" sx={{ color: '#475569' }}>
-            Describe what happened. The more details you provide, the easier it is for us to fix it.
+          <Typography variant="body2" sx={{ color: '#64748b' }}>
+            Please outline the problem clearly. Attach a screenshot if applicable to help us troubleshoot faster.
           </Typography>
-          
+
           <TextField
             label="Issue Description"
             multiline
-            rows={5}
+            rows={4}
             value={bugDescription}
             onChange={(e) => setBugDescription(e.target.value)}
             fullWidth
             required
             variant="outlined"
-            placeholder="I clicked on..."
+            placeholder="Step-by-step description of what happened..."
+            slotProps={{ inputLabel: { shrink: true } }}
           />
 
-          <Box sx={{ border: '2px dashed #cbd5e1', borderRadius: '12px', p: 4, textAlign: 'center', bgcolor: '#f8fafc', transition: 'all 0.2s', '&:hover': { borderColor: '#94a3b8', bgcolor: '#f1f5f9' } }}>
+          <Box sx={{ border: '2px dashed #cbd5e1', borderRadius: '8px', p: 4, textAlign: 'center', bgcolor: '#f8fafc', transition: 'all 0.2s', '&:hover': { borderColor: '#0f172a', bgcolor: '#f1f5f9' } }}>
             <input
               type="file"
               accept="image/*"
@@ -342,13 +426,13 @@ const About: React.FC = () => {
               onChange={handleFileChange}
             />
             <label htmlFor="bug-image-upload">
-              <Button 
-                component="span" 
-                variant="outlined" 
+              <Button
+                component="span"
+                variant="outlined"
                 startIcon={<MdCloudUpload />}
-                sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600, color: '#3b82f6', borderColor: '#3b82f6' }}
+                sx={{ textTransform: 'none', borderRadius: '6px', fontWeight: 600, color: '#0f172a', borderColor: '#d1d5db', '&:hover': { borderColor: '#9ca3af', bgcolor: '#f9fafb' } }}
               >
-                Upload Screenshot
+                Upload Attachment
               </Button>
             </label>
             {bugFile && (
@@ -358,36 +442,45 @@ const About: React.FC = () => {
             )}
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 2, px: 3 }}>
+        <DialogActions sx={{ p: 2, px: 3, gap: 1 }}>
           <Button onClick={handleCloseBugModal} sx={{ color: '#64748b', textTransform: 'none', fontWeight: 600 }}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleSubmitBug} 
-            variant="contained" 
-            color="error"
+          <Button
+            onClick={handleSubmitBug}
+            variant="contained"
             disabled={submitting}
-            sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px', minWidth: 120 }}
+            sx={{
+              bgcolor: '#dc2626',
+              color: 'white',
+              textTransform: 'none',
+              fontWeight: 600,
+              borderRadius: '8px',
+              px: 3,
+              '&:hover': {
+                bgcolor: '#b91c1c'
+              }
+            }}
           >
-            {submitting ? <CircularProgress size={24} color="inherit" /> : 'Submit Report'}
+            {submitting ? <CircularProgress size={20} color="inherit" /> : 'Submit Report'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Bugs List Modal */}
-      <Dialog 
-        open={isBugsListModalOpen} 
-        onClose={() => setIsBugsListModalOpen(false)} 
-        maxWidth="md" 
+      <Dialog
+        open={isBugsListModalOpen}
+        onClose={() => setIsBugsListModalOpen(false)}
+        maxWidth="md"
         fullWidth
-        PaperProps={{ sx: { borderRadius: '16px' } }}
+        PaperProps={{ sx: { borderRadius: '12px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)', border: '1px solid #e2e8f0' } }}
       >
-        <DialogTitle sx={{ fontWeight: 800, fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <MdBugReport color="#ef4444" /> Bug Reports Inbox
+        <DialogTitle sx={{ fontWeight: 700, fontSize: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#f8fafc', borderBottom: '1px solid #e2e8f0', p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: "#333" }}>
+            <MdBugReport color="#dc2626" size={24} /> Bug Submissions Inbox
           </Box>
           <IconButton onClick={loadBugReports} size="small" disabled={loadingBugs}>
-            <MdRefresh />
+            <MdRefresh size={20} />
           </IconButton>
         </DialogTitle>
         <DialogContent sx={{ p: 0, bgcolor: '#f8fafc' }}>
@@ -397,8 +490,8 @@ const About: React.FC = () => {
             <TableContainer>
               <Table>
                 <TableHead>
-                  <TableRow sx={{ '& th': { fontWeight: 700, color: '#475569', borderBottom: '2px solid #e2e8f0' } }}>
-                    <TableCell>Date reported</TableCell>
+                  <TableRow sx={{ '& th': { fontWeight: 700, color: '#475569', borderBottom: '2px solid #e2e8f0', bgcolor: '#f1f5f9' } }}>
+                    <TableCell>Date Reported</TableCell>
                     <TableCell>Reported By</TableCell>
                     <TableCell>Issue Details</TableCell>
                     <TableCell>Attachment</TableCell>
@@ -408,21 +501,21 @@ const About: React.FC = () => {
                 <TableBody>
                   {bugReports.map((bug) => (
                     <TableRow key={bug._id} sx={{ '&:hover': { bgcolor: 'white' }, transition: 'background 0.2s' }}>
-                      <TableCell sx={{ color: '#64748b', fontSize: '0.9rem' }}>{new Date(bug.reportedAt).toLocaleString()}</TableCell>
+                      <TableCell sx={{ color: '#64748b', fontSize: '0.85rem' }}>{new Date(bug.reportedAt).toLocaleString()}</TableCell>
                       <TableCell sx={{ fontWeight: 600, color: '#0f172a' }}>{bug.reportedBy}</TableCell>
                       <TableCell sx={{ maxWidth: 300, whiteSpace: 'normal', wordBreak: 'break-word', color: '#334155' }}>
                         {bug.description}
                       </TableCell>
                       <TableCell>
                         {bug.imagePath ? (
-                          <Button 
-                            href={`/${bug.imagePath}`} 
-                            target="_blank" 
+                          <Button
+                            href={`/${bug.imagePath}`}
+                            target="_blank"
                             size="small"
                             variant="outlined"
-                            sx={{ textTransform: 'none', borderRadius: '6px', fontSize: '0.8rem' }}
+                            sx={{ textTransform: 'none', borderRadius: '6px', fontSize: '0.8rem', borderColor: '#d1d5db', color: '#0f172a', '&:hover': { borderColor: '#9ca3af', bgcolor: '#f9fafb' } }}
                           >
-                            View Image
+                            View Screen
                           </Button>
                         ) : <Typography variant="caption" color="text.secondary">None</Typography>}
                       </TableCell>
@@ -435,9 +528,10 @@ const About: React.FC = () => {
                   ))}
                   {bugReports.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 6, color: '#94a3b8' }}>
-                        <MdBugReport size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} /><br />
-                        No bug reports currently in the system. Great job!
+                      <TableCell colSpan={5} align="center" sx={{ py: 8, color: '#94a3b8' }}>
+                        <MdBugReport size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} /><br />
+                        <Typography sx={{ fontWeight: 600, color: '#64748b' }}>No bug reports found.</Typography>
+                        <Typography variant="body2">System health is clear. Keep up the good work!</Typography>
                       </TableCell>
                     </TableRow>
                   )}
@@ -446,7 +540,7 @@ const About: React.FC = () => {
             </TableContainer>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 2, borderTop: '1px solid #e2e8f0' }}>
+        <DialogActions sx={{ p: 2.5, borderTop: '1px solid #e2e8f0', bgcolor: '#f8fafc', gap: 1 }}>
           <Button onClick={() => setIsBugsListModalOpen(false)} sx={{ textTransform: 'none', fontWeight: 600, color: '#475569' }}>Close</Button>
         </DialogActions>
       </Dialog>
