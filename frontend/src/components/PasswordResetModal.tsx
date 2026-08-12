@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Paper, TextField, Button, Typography, InputAdornment, IconButton } from '@mui/material';
+import { Box, Paper, TextField, Button, Typography, InputAdornment, IconButton, Alert } from '@mui/material';
 import { MdVisibility, MdVisibilityOff, MdLockOutline } from 'react-icons/md';
 import { motion } from 'framer-motion';
 import { useToast } from '../contexts/ToastContext';
@@ -21,23 +21,25 @@ const PasswordResetModal: React.FC = () => {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     if (!currentPassword || !newPassword || !confirmPassword) {
-      showToast('All fields are required', 'error');
+      setError('All fields are required');
       return;
     }
     if (newPassword !== confirmPassword) {
-      showToast('New passwords do not match', 'error');
+      setError('New passwords do not match');
       return;
     }
     if (newPassword.length < 6) {
-      showToast('New password must be at least 6 characters long', 'error');
+      setError('New password must be at least 6 characters long');
       return;
     }
     if (currentPassword === newPassword) {
-      showToast('New password cannot be the same as your current password', 'error');
+      setError('New password cannot be the same as your current password');
       return;
     }
 
@@ -50,10 +52,9 @@ const PasswordResetModal: React.FC = () => {
       showToast('Account activated successfully!', 'success');
       dispatch(activateAccount());
     } catch (err: any) {
-      showToast(
-        err.response?.data?.detail || 'Failed to change password and activate account',
-        'error'
-      );
+      const errMsg = err.response?.data?.detail || 'Failed to change password and activate account';
+      setError(errMsg);
+      showToast(errMsg, 'error');
     } finally {
       setLoading(false);
     }
@@ -118,6 +119,11 @@ const PasswordResetModal: React.FC = () => {
           </Typography>
 
           <form onSubmit={handleSubmit}>
+            {error && (
+              <Alert severity="error" sx={{ mb: 2, textAlign: 'left', borderRadius: 2 }}>
+                {error}
+              </Alert>
+            )}
             <TextField
               fullWidth
               label="Current Password"

@@ -532,12 +532,14 @@ async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        "script-src 'self'; "
         "style-src 'self' 'unsafe-inline'; "
         "font-src 'self' data:; "
         "img-src 'self' data: blob:; "
-        "connect-src 'self' *; "
-        "frame-ancestors 'self';"
+        "connect-src 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'self'; "
+        "base-uri 'self';"
     )
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-Content-Type-Options"] = "nosniff"
