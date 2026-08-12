@@ -63,6 +63,7 @@ class UserModel(BaseModel):
     passNumber: Optional[str] = None
     lastActive: Optional[str] = None
     isMonitorUser: Optional[bool] = None
+    activated: Optional[bool] = Field(default=True)
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -87,6 +88,7 @@ class CreateUserModel(BaseModel):
     passNumber: Optional[str] = None
     lastActive: Optional[str] = None
     isMonitorUser: Optional[bool] = None
+    activated: bool = Field(default=False)
 
 class UpdateUserModel(BaseModel):
     username: Optional[str] = None
@@ -106,6 +108,7 @@ class UpdateUserModel(BaseModel):
     passNumber: Optional[str] = None
     lastActive: Optional[str] = None
     isMonitorUser: Optional[bool] = None
+    activated: Optional[bool] = None
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

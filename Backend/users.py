@@ -183,6 +183,8 @@ async def list_users(
     for user in users:
         if "status" not in user:
             user["status"] = True
+        if "activated" not in user:
+            user["activated"] = True
         user["isDepartmentHead"] = user.get("username") in dept_heads
         
         # Override lastActive for the current user to prevent page refresh race conditions
@@ -252,6 +254,8 @@ async def show_user(id: str, current_user: dict = Depends(get_current_user)):
 
         if "status" not in user:
             user["status"] = True
+        if "activated" not in user:
+            user["activated"] = True
         departments_collection = db.get_collection("departments")
         is_head = await departments_collection.find_one({"departmentHead": user.get("username")}) is not None
         user["isDepartmentHead"] = is_head
@@ -317,6 +321,8 @@ async def update_user(
     if updated_user:
         if "status" not in updated_user:
             updated_user["status"] = True
+        if "activated" not in updated_user:
+            updated_user["activated"] = True
         departments_collection = db.get_collection("departments")
         is_head = await departments_collection.find_one({"departmentHead": updated_user.get("username")}) is not None
         updated_user["isDepartmentHead"] = is_head

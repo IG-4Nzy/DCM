@@ -62,6 +62,7 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
     const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
     const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE) || hasPrivilege(PRIVILEGES.UPDATE_VMS_RESTRICTED);
     const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const isRestrictedAdmin = !isSuperuser && !hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE) && hasPrivilege(PRIVILEGES.UPDATE_VMS_RESTRICTED);
 
     const [clusters, setClusters] = useState<any[]>([]);
     const [selectedClusterFilter, setSelectedClusterFilter] = useState<string>('All');
@@ -266,6 +267,10 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
     };
 
     const handleAddToMonitoring = async (row: VMDetailsData) => {
+        if (isRestrictedAdmin) {
+            showToast("You do not have permission to add VMs to monitoring", "error");
+            return;
+        }
         if (!row.ipAddress) {
             showToast("This VM does not have an IP address configured. Edit the VM to set an IP first.", "warning");
             return;
@@ -749,20 +754,22 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                                         {(hasUpdate || hasDelete) && (
                                             <TableCell align="right" onClick={(e) => e.stopPropagation()}>
                                                 <Box className={styles.tableWrapper__actions}>
-                                                    {row.ipAddress && monitoredIps.has(row.ipAddress) ? (
-                                                        <Tooltip title="Already Monitored">
-                                                            <span>
-                                                                <IconButton size="small" disabled className={styles.tableWrapper__actions__editBtn} sx={{ mr: 0.5, color: '#2e7d32', backgroundColor: 'rgba(46, 125, 50, 0.08)', '&.Mui-disabled': { color: '#2e7d32' } }}>
+                                                    {!isRestrictedAdmin && (
+                                                        row.ipAddress && monitoredIps.has(row.ipAddress) ? (
+                                                            <Tooltip title="Already Monitored">
+                                                                <span>
+                                                                    <IconButton size="small" disabled className={styles.tableWrapper__actions__editBtn} sx={{ mr: 0.5, color: '#2e7d32', backgroundColor: 'rgba(46, 125, 50, 0.08)', '&.Mui-disabled': { color: '#2e7d32' } }}>
+                                                                        <MonitorIcon fontSize="small" />
+                                                                    </IconButton>
+                                                                </span>
+                                                            </Tooltip>
+                                                        ) : (
+                                                            <Tooltip title="Add to Monitoring">
+                                                                <IconButton size="small" color="info" className={styles.tableWrapper__actions__editBtn} onClick={() => handleAddToMonitoring(row)} sx={{ mr: 0.5 }}>
                                                                     <MonitorIcon fontSize="small" />
                                                                 </IconButton>
-                                                            </span>
-                                                        </Tooltip>
-                                                    ) : (
-                                                        <Tooltip title="Add to Monitoring">
-                                                            <IconButton size="small" color="info" className={styles.tableWrapper__actions__editBtn} onClick={() => handleAddToMonitoring(row)} sx={{ mr: 0.5 }}>
-                                                                <MonitorIcon fontSize="small" />
-                                                            </IconButton>
-                                                        </Tooltip>
+                                                            </Tooltip>
+                                                        )
                                                     )}
                                                     {hasUpdate && (
                                                         <Tooltip title="Edit">

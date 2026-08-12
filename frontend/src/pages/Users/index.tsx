@@ -6,6 +6,8 @@ import {
   MdAdd as AddIcon,
   MdEdit as EditIcon,
   MdDelete as DeleteIcon,
+  MdCheckCircle,
+  MdWarning,
 } from "react-icons/md";
 import Button from "../../components/Button";
 import SearchBar from "../../components/SearchBar";
@@ -304,7 +306,24 @@ const Users: React.FC = () => {
       id: "fullName", 
       label: "Full Name", 
       sortable: false,
-      render: (row) => `${row.firstName || ''} ${row.lastName || ''}`.trim() || '-'
+      render: (row) => {
+        const name = `${row.firstName || ''} ${row.lastName || ''}`.trim() || '-';
+        const isActivated = row.activated !== false;
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <span>{name}</span>
+            <Tooltip title={isActivated ? "Activated" : "Not Activated"} arrow>
+              <span>
+                {isActivated ? (
+                  <MdCheckCircle style={{ color: '#4caf50', fontSize: '18px', verticalAlign: 'middle', flexShrink: 0 }} />
+                ) : (
+                  <MdWarning style={{ color: '#f44336', fontSize: '18px', verticalAlign: 'middle', flexShrink: 0 }} />
+                )}
+              </span>
+            </Tooltip>
+          </Box>
+        );
+      }
     },
     { id: "passNumber", label: "Pass Number", sortable: true, render: (row) => row.passNumber || '-' },
     { 

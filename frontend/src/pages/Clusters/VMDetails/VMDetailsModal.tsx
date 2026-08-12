@@ -385,6 +385,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         className={styles.formGrid__field}
                         value={formData.vmName} 
                         onChange={(e) => handleChange('vmName', e.target.value)} 
+                        disabled={isRestrictedAdmin}
                     />
                     {(!clusterId || clusterId === '') && (
                         <Dropdown 
@@ -405,6 +406,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         className={styles.formGrid__field}
                         value={formData.ipAddress} 
                         onChange={(e) => handleChange('ipAddress', e.target.value)} 
+                        disabled={isRestrictedAdmin}
                     />
                     <Dropdown 
                         label="Datastore" 
@@ -421,6 +423,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         label="Network Type" 
                         size="small"
                         fullWidth
+                        disabled={isRestrictedAdmin}
                         value={formData.networkType || (formData.ipAddress?.startsWith('192.168') ? 'Internet' : formData.ipAddress?.startsWith('10.') ? 'Intranet' : 'Internet')} 
                         onChange={(val) => handleChange('networkType', val)} 
                         options={[
@@ -452,6 +455,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         className={styles.formGrid__field}
                         value={formData.osAndExpiry} 
                         onChange={(e) => handleChange('osAndExpiry', e.target.value)} 
+                        disabled={isRestrictedAdmin}
                     />
                     <TextField 
                         label="Backup Name" 
@@ -502,6 +506,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         size="small"
                         fullWidth
                         clearable
+                        disabled={isRestrictedAdmin}
                         value={formData.powerStatus || 'on'} 
                         onChange={(val) => handleChange('powerStatus', val)} 
                         options={[
@@ -578,6 +583,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         className={styles.formGrid__field}
                         value={formData.hdd} 
                         onChange={(e) => handleChange('hdd', e.target.value)} 
+                        disabled={isRestrictedAdmin}
                     />
                     <TextField 
                         label="RAM" 
@@ -585,6 +591,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         className={styles.formGrid__field}
                         value={formData.ram} 
                         onChange={(e) => handleChange('ram', e.target.value)} 
+                        disabled={isRestrictedAdmin}
                     />
                     <TextField 
                         label="CPU" 
@@ -592,6 +599,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         className={styles.formGrid__field}
                         value={formData.cpu} 
                         onChange={(e) => handleChange('cpu', e.target.value)} 
+                        disabled={isRestrictedAdmin}
                     />
 
                     {/* Clones Section */}

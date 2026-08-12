@@ -25,6 +25,7 @@ class LoginResponse(BaseModel):
     isSuperuser: bool = False
     showBirthdayWish: bool = False
     displayName: Optional[str] = None
+    activated: bool = True
 
 class UpdateProfileModel(BaseModel):
     firstName: Optional[str] = None
@@ -374,7 +375,8 @@ async def login(credentials: LoginRequest):
         showBirthdayWish=is_first_login_today and is_birthday_today(user.get("dob"), get_local_now()),
         displayName=" ".join(
             part for part in [user.get("firstName", ""), user.get("lastName", "")] if part
-        ) or user["username"]
+        ) or user["username"],
+        activated=user.get("activated", True)
     )
 
 @router.post("/logout")
@@ -595,7 +597,7 @@ async def change_password(payload: ChangePasswordRequest = Body(...), current_us
     
     await users_collection.update_one(
         {"username": username},
-        {"$set": {"password": hashed_password}}
+        {"$set": {"password": hashed_password, "activated": True}}
     )
     
     return {"message": "Password changed successfully"}
