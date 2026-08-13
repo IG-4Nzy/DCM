@@ -43,7 +43,8 @@ import {
   MdAccountBalanceWallet as WalletIcon,
   MdSettings as SettingsIcon,
   MdPrint as PrintIcon,
-  MdClose as CloseIcon
+  MdClose as CloseIcon,
+  MdCalendarToday as CalendarTodayIcon
 } from 'react-icons/md';
 import dayjs from 'dayjs';
 import request from '../../services/request';
@@ -158,6 +159,8 @@ const Salary = () => {
   const [endDay, setEndDay] = useState<number>(31);
   const [maxAllowedDays, setMaxAllowedDays] = useState<number>(26);
   const [activeTab, setActiveTab] = useState(0);
+  const [customDates, setCustomDates] = useState<Record<string, { startDate?: string; endDate?: string }>>({});
+  const [editingDates, setEditingDates] = useState(false);
 
   const [globalCompanyName, setGlobalCompanyName] = useState('');
   const [globalPoNumber, setGlobalPoNumber] = useState('');
@@ -203,10 +206,13 @@ const Salary = () => {
         }
         if (allSalaryRes.data) {
           const loadedData: Record<string, Group[]> = {};
+          const loadedDates: Record<string, { startDate?: string; endDate?: string }> = {};
           allSalaryRes.data.forEach((s: any) => {
             loadedData[s.month] = s.groups;
+            loadedDates[s.month] = { startDate: s.startDate, endDate: s.endDate };
           });
           setSalaryData(loadedData);
+          setCustomDates(loadedDates);
         }
       } catch (e) {
         console.error('Failed to load salary configuration', e);
@@ -266,12 +272,28 @@ const Salary = () => {
     setCurrentMonth(dayjs(currentMonth).add(1, 'month').format('YYYY-MM'));
   };
 
-  const saveGroupsToDB = async (month: string, newGroups: Group[]) => {
+  const saveGroupsToDB = async (month: string, newGroups: Group[], start?: string, end?: string) => {
     try {
-      await request.post(`/api/salary/${month}`, newGroups);
+      const monthData = customDates[month] || {};
+      const payload = {
+        groups: newGroups,
+        startDate: start !== undefined ? start : monthData.startDate,
+        endDate: end !== undefined ? end : monthData.endDate
+      };
+      await request.post(`/api/salary/${month}`, payload);
     } catch (e) {
       showToast('Failed to save groups to database', 'error');
     }
+  };
+
+  const handleUpdateCustomDates = (start: string | undefined, end: string | undefined) => {
+    const updated = {
+      ...customDates,
+      [currentMonth]: { startDate: start, endDate: end }
+    };
+    setCustomDates(updated);
+    const currentGroups = salaryData[currentMonth] || [];
+    saveGroupsToDB(currentMonth, currentGroups, start, end);
   };
 
   const addGroup = () => {
@@ -583,7 +605,8 @@ const Salary = () => {
       ? Math.max(0, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${currentMonth}-01`).startOf('month'), 'month')) 
       : 0;
 
-    const futureUnits = (Number(template.maxStaffs) || 0) * remainingMonths * maxAllowedDays;
+    const templateMaxDays = template.maxDays !== undefined && template.maxDays !== '' && template.maxDays !== null ? Number(template.maxDays) : maxAllowedDays;
+    const futureUnits = (Number(template.maxStaffs) || 0) * remainingMonths * templateMaxDays;
 
     const divisor = currentMonthUnits + futureUnits;
     if (divisor <= 0) return 0;
@@ -656,7 +679,8 @@ const Salary = () => {
     const remainingMonthsNow = globalPoEndDate 
       ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs().startOf('month'), 'month') + 1) 
       : 1;
-    const requiredUnitsPerActivity = Number(template.maxStaffs || 0) * remainingMonthsNow * 30;
+    const templateMaxDays = template.maxDays !== undefined && template.maxDays !== '' && template.maxDays !== null ? Number(template.maxDays) : 30;
+    const requiredUnitsPerActivity = Number(template.maxStaffs || 0) * remainingMonthsNow * templateMaxDays;
 
     const stats: Record<string, { remainingUnits: number; consumedUnits: number; isNotEnough: boolean }> = {};
     template.activities.forEach(act => {
@@ -800,7 +824,10 @@ const Salary = () => {
 
   const cycleStartStr = cycleStartObj.format('DD MMM YYYY');
   const cycleEndStr = cycleEndObj.format('DD MMM YYYY');
-  const displayPeriod = `${cycleStartStr} - ${cycleEndStr}`;
+  const monthData = customDates[currentMonth] || {};
+  const displayPeriod = (monthData.startDate && monthData.endDate)
+    ? `${dayjs(monthData.startDate).format('DD MMM YYYY')} - ${dayjs(monthData.endDate).format('DD MMM YYYY')}`
+    : `${cycleStartStr} - ${cycleEndStr}`;
 
   const handleEditGeneral = () => {
     setTempCompanyName(globalCompanyName);
@@ -862,23 +889,85 @@ const Salary = () => {
               boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', backgroundColor: 'grey.50', border: '1px solid', borderColor: 'divider', borderRadius: 1.5, px: 1, py: 0.5 }}>
-                <IconButton onClick={handlePreviousMonth} size="small" color="primary">
-                  <ChevronLeftIcon />
-                </IconButton>
-                <Box sx={{ textAlign: 'center', minWidth: 140, px: 1 }}>
-                  <Typography variant="subtitle2" fontWeight="600">
-                    {dayjs(currentMonth).format('MMMM YYYY')}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    {displayPeriod}
-                  </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: { xs: '100%', md: 'auto' } }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', backgroundColor: 'grey.50', border: '1px solid', borderColor: 'divider', borderRadius: 1.5, px: 1, py: 0.5 }}>
+                  <IconButton onClick={handlePreviousMonth} size="small" color="primary">
+                    <ChevronLeftIcon />
+                  </IconButton>
+                  <Box sx={{ textAlign: 'center', minWidth: 140, px: 1 }}>
+                    <Typography variant="subtitle2" fontWeight="600">
+                      {dayjs(currentMonth).format('MMMM YYYY')}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                      {displayPeriod}
+                    </Typography>
+                  </Box>
+                  <IconButton onClick={handleNextMonth} size="small" color="primary">
+                    <ChevronRightIcon />
+                  </IconButton>
                 </Box>
-                <IconButton onClick={handleNextMonth} size="small" color="primary">
-                  <ChevronRightIcon />
-                </IconButton>
+
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<CalendarTodayIcon />}
+                  onClick={() => setEditingDates(!editingDates)}
+                  sx={{ textTransform: 'none' }}
+                >
+                  {editingDates ? "Hide Date Range" : "Custom Date Range"}
+                </Button>
               </Box>
+
+              {editingDates && (
+                <Box sx={{ mt: 1.5, p: 2, bgcolor: 'grey.50', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
+                  <Grid container spacing={2} alignItems="center" sx={{display:"flex",placeItems:"center"}}>
+                    <Grid item xs={12} sm="auto">
+                      <Typography variant="body2" fontWeight="600" color="text.secondary">
+                        Custom Range:
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm="auto">
+                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="caption" fontWeight="600" color="text.secondary">
+                            Start:
+                          </Typography>
+                          <TextField
+                            size="small"
+                            type="date"
+                            value={customDates[currentMonth]?.startDate || ''}
+                            onChange={(e) => handleUpdateCustomDates(e.target.value || undefined, customDates[currentMonth]?.endDate)}
+                            sx={{ backgroundColor: 'white', width: 150 }}
+                          />
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="caption" fontWeight="600" color="text.secondary">
+                            End:
+                          </Typography>
+                          <TextField
+                            size="small"
+                            type="date"
+                            value={customDates[currentMonth]?.endDate || ''}
+                            onChange={(e) => handleUpdateCustomDates(customDates[currentMonth]?.startDate, e.target.value || undefined)}
+                            sx={{ backgroundColor: 'white', width: 150 }}
+                          />
+                        </Box>
+                        {(customDates[currentMonth]?.startDate || customDates[currentMonth]?.endDate) && (
+                          <Button
+                            size="small"
+                            color="error"
+                            onClick={() => handleUpdateCustomDates(undefined, undefined)}
+                            sx={{ textTransform: 'none' }}
+                          >
+                            Clear Custom Range
+                          </Button>
+                        )}
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </Box>
+              )}
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -1048,7 +1137,8 @@ const Salary = () => {
                                   }
 
                                   const perDay = Number(group.perDaySalary) || 0;
-                                  const futureCost = (Number(template.maxStaffs) || 0) * remainingMonths * maxAllowedDays * perDay;
+                                  const templateMaxDays = template.maxDays !== undefined && template.maxDays !== '' && template.maxDays !== null ? Number(template.maxDays) : maxAllowedDays;
+                                  const futureCost = (Number(template.maxStaffs) || 0) * remainingMonths * templateMaxDays * perDay;
                                   const isEnough = stats.remainingAmount >= futureCost;
 
                                   return (
@@ -1089,7 +1179,8 @@ const Salary = () => {
                                 if (!globalPoEndDate) return null;
 
                                 const perDay = Number(group.perDaySalary) || 0;
-                                const futureCost = (Number(template.maxStaffs) || 0) * remainingMonths * maxAllowedDays * perDay;
+                                const templateMaxDays = template.maxDays !== undefined && template.maxDays !== '' && template.maxDays !== null ? Number(template.maxDays) : maxAllowedDays;
+                                const futureCost = (Number(template.maxStaffs) || 0) * remainingMonths * templateMaxDays * perDay;
                                 const isEnough = stats.remainingAmount >= futureCost;
 
                                 if (isEnough) return null;
@@ -1173,7 +1264,8 @@ const Salary = () => {
                             const template = templates.find(t => t.id === group.templateId);
                             const remainingMonths = globalPoEndDate ? Math.max(0, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${currentMonth}-01`).startOf('month'), 'month')) : 0;
                             const perDay = Number(group.perDaySalary) || 0;
-                            const futureCost = (Number(template?.maxStaffs) || 0) * remainingMonths * maxAllowedDays * perDay;
+                            const templateMaxDays = template?.maxDays !== undefined && template?.maxDays !== '' && template?.maxDays !== null ? Number(template.maxDays) : maxAllowedDays;
+                            const futureCost = (Number(template?.maxStaffs) || 0) * remainingMonths * templateMaxDays * perDay;
                             const isEnough = !globalPoEndDate || stats.remainingAmount >= futureCost;
                             return (
                               <Box sx={{ mb: 2, p: 1.5, bgcolor: 'grey.50', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
@@ -1463,6 +1555,16 @@ const Salary = () => {
                             <TextField 
                               size="small" 
                               type="number"
+                              label="Max Day" 
+                              value={template.maxDays ?? ''}
+                              placeholder={String(maxAllowedDays)}
+                              onChange={(e) => updateTemplate(template.id, 'maxDays', e.target.value)} 
+                              sx={{ backgroundColor: 'white', width: 120 }}
+                              inputProps={{ min: 0 }}
+                            />
+                            <TextField 
+                              size="small" 
+                              type="number"
                               label="Initial Consumed Amount (₹)" 
                               value={template.initialConsumedAmount ?? 0} 
                               onChange={(e) => updateTemplate(template.id, 'initialConsumedAmount', e.target.value)} 
@@ -1532,7 +1634,7 @@ const Salary = () => {
                             <Box>
                               <Typography variant="subtitle1" fontWeight="600">{template.title}</Typography>
                               <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                                Allotted Amount: ₹{allotted.toLocaleString('en-IN')} &nbsp;&bull;&nbsp; Reserved Amount ({template.reserveType === 'amount' ? 'Custom' : `${template.reserveValue || 5}%`}): {template.reserveEnabled ? `₹${reserved.toLocaleString('en-IN')}` : 'Disabled'} &nbsp;&bull;&nbsp; Remaining Amount: ₹{remaining.toLocaleString('en-IN')} &nbsp;&bull;&nbsp; Max Staffs: {template.maxStaffs || 0}
+                                Allotted Amount: ₹{allotted.toLocaleString('en-IN')} &nbsp;&bull;&nbsp; Reserved Amount ({template.reserveType === 'amount' ? 'Custom' : `${template.reserveValue || 5}%`}): {template.reserveEnabled ? `₹${reserved.toLocaleString('en-IN')}` : 'Disabled'} &nbsp;&bull;&nbsp; Remaining Amount: ₹{remaining.toLocaleString('en-IN')} &nbsp;&bull;&nbsp; Max Staffs: {template.maxStaffs || 0} &nbsp;&bull;&nbsp; Max Day: {template.maxDays !== undefined && template.maxDays !== '' && template.maxDays !== null ? template.maxDays : `${maxAllowedDays} (Global)`}
                                 {template.initialConsumedAmount !== undefined && template.initialConsumedAmount !== 0 && ` \u00a0\u2022\u00a0 Initial Consumed: ₹${Number(template.initialConsumedAmount).toLocaleString('en-IN')}`}
                               </Typography>
                             </Box>

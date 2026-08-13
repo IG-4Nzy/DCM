@@ -11,6 +11,7 @@ export type Template = {
   activities: Activity[];
   allottedAmount?: number | string;
   maxStaffs?: number | string;
+  maxDays?: number | string;
   initialConsumedAmount?: number | string;
   reserveEnabled?: boolean;
   reserveType?: 'percentage' | 'amount';

@@ -6,7 +6,6 @@ import {
   MdAdd as AddIcon,
   MdEdit as EditIcon,
   MdDelete as DeleteIcon,
-  MdCheckCircle,
   MdWarning,
 } from "react-icons/md";
 import Button from "../../components/Button";
@@ -312,15 +311,13 @@ const Users: React.FC = () => {
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <span>{name}</span>
-            <Tooltip title={isActivated ? "Activated" : "Not Activated"} arrow>
-              <span>
-                {isActivated ? (
-                  <MdCheckCircle style={{ color: '#4caf50', fontSize: '18px', verticalAlign: 'middle', flexShrink: 0 }} />
-                ) : (
+            {!isActivated && (
+              <Tooltip title="Not Activated" arrow>
+                <span>
                   <MdWarning style={{ color: '#f44336', fontSize: '18px', verticalAlign: 'middle', flexShrink: 0 }} />
-                )}
-              </span>
-            </Tooltip>
+                </span>
+              </Tooltip>
+            )}
           </Box>
         );
       }

@@ -18,6 +18,7 @@ class TemplateModel(BaseModel):
     activities: List[ActivityModel] = []
     allottedAmount: Optional[Union[float, str]] = 0
     maxStaffs: Optional[Union[int, str]] = 0
+    maxDays: Optional[Union[int, str]] = None
     initialConsumedAmount: Optional[Union[float, str]] = 0
     reserveEnabled: Optional[bool] = False
     reserveType: Optional[str] = 'percentage'
@@ -49,6 +50,13 @@ class GroupModel(BaseModel):
 class SalaryMonthModel(BaseModel):
     month: str
     groups: List[GroupModel]
+    startDate: Optional[str] = None
+    endDate: Optional[str] = None
+
+class SaveSalaryPayload(BaseModel):
+    groups: List[GroupModel]
+    startDate: Optional[str] = None
+    endDate: Optional[str] = None
 
 class GlobalSalaryConfig(BaseModel):
     companyName: str = ""
@@ -93,7 +101,12 @@ async def get_all_salary():
     cursor = db["salary_data"].find({})
     res = []
     async for doc in cursor:
-        res.append(SalaryMonthModel(month=doc["_id"], groups=doc.get("groups", [])))
+        res.append(SalaryMonthModel(
+            month=doc["_id"],
+            groups=doc.get("groups", []),
+            startDate=doc.get("startDate"),
+            endDate=doc.get("endDate")
+        ))
     return res
 
 @router.get("/{month}", response_model=List[GroupModel], dependencies=[Depends(require_any_privilege(["View Salary Calculation", "Calculate Salary", "Update Salary Calculation"]))])
@@ -104,7 +117,8 @@ async def get_salary(month: str):
     return []
 
 @router.post("/{month}")
-async def save_salary(month: str, groups: List[GroupModel], user=Depends(get_current_user)):
+async def save_salary(month: str, payload: SaveSalaryPayload, user=Depends(get_current_user)):
+    groups = payload.groups
     is_superuser = user.get("isSuperuser", False)
     privileges = user.get("privileges", [])
     
@@ -175,9 +189,15 @@ async def save_salary(month: str, groups: List[GroupModel], user=Depends(get_cur
                     detail="Calculate Salary privilege is not allowed to update group per day salary."
                 )
 
+    update_doc = {
+        "groups": [g.model_dump() for g in groups],
+        "startDate": payload.startDate,
+        "endDate": payload.endDate
+    }
+
     await db["salary_data"].update_one(
         {"_id": month},
-        {"$set": {"groups": [g.model_dump() for g in groups]}},
+        {"$set": update_doc},
         upsert=True
     )
     return {"message": "Salary saved"}
