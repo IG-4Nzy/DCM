@@ -52,6 +52,29 @@ interface MonitoredServer {
   lastFailedTime?: string;
 }
 
+// Shared AudioContext to prevent memory leaks from multiple AudioContext instances
+let sharedAudioContext: AudioContext | null = null;
+
+const getSharedAudioContext = (): AudioContext | null => {
+  if (!sharedAudioContext) {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (AudioContextClass) {
+      sharedAudioContext = new AudioContextClass();
+    }
+  }
+  return sharedAudioContext;
+};
+
+if (typeof window !== 'undefined') {
+  const resumeAudio = () => {
+    if (sharedAudioContext && sharedAudioContext.state === 'suspended') {
+      sharedAudioContext.resume().catch(err => console.warn("Failed to resume AudioContext:", err));
+    }
+  };
+  window.addEventListener('click', resumeAudio, { capture: true, passive: true });
+  window.addEventListener('keydown', resumeAudio, { capture: true, passive: true });
+}
+
 const ServerPingMonitoring: React.FC = () => {
   const { privileges = [], isSuperuser } = useSelector((state: RootState) => state.auth);
   
@@ -67,6 +90,7 @@ const ServerPingMonitoring: React.FC = () => {
   const [customAlarmUrl, setCustomAlarmUrl] = useState<string | null>(null);
   const audioIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioInstanceRef = useRef<HTMLAudioElement | null>(null);
+  const lastAlarmUrlRef = useRef<string | null>(null);
 
   const fetchCustomAlarm = async () => {
     try {
@@ -143,7 +167,13 @@ const ServerPingMonitoring: React.FC = () => {
   // Web Audio fallback synthesizer
   const playAlertBeep = () => {
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioCtx = getSharedAudioContext();
+      if (!audioCtx) return;
+
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
       
@@ -185,13 +215,14 @@ const ServerPingMonitoring: React.FC = () => {
         }
 
         // Handle custom audio playback
-        if (!audioInstanceRef.current || audioInstanceRef.current.src !== customAlarmUrl) {
+        if (!audioInstanceRef.current || lastAlarmUrlRef.current !== customAlarmUrl) {
           if (audioInstanceRef.current) {
             audioInstanceRef.current.pause();
           }
           const audio = new Audio(customAlarmUrl);
           audio.loop = true;
           audioInstanceRef.current = audio;
+          lastAlarmUrlRef.current = customAlarmUrl;
         }
 
         // Play if paused
@@ -345,12 +376,18 @@ const ServerPingMonitoring: React.FC = () => {
     }
   };
 
+  // Fetch custom alarm sound only once on mount
+  useEffect(() => {
+    if (canView) {
+      fetchCustomAlarm();
+    }
+  }, [canView]);
+
   // Initial load
   useEffect(() => {
     if (canView) {
       loadDashboardMetrics();
       loadServers();
-      fetchCustomAlarm();
     }
   }, [canView, search, sortBy, order]);
 
@@ -369,7 +406,6 @@ const ServerPingMonitoring: React.FC = () => {
         if (document.hidden) return;
         loadDashboardMetrics();
         loadServers();
-        fetchCustomAlarm();
       }, 30000);
     }
     return () => clearInterval(interval);

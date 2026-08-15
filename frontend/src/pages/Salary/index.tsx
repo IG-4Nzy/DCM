@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Box, 
   Button, 
@@ -29,7 +29,13 @@ import {
   DialogContent,
   DialogActions,
   FormControlLabel,
-  Switch
+  Switch,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Chip,
+  Drawer,
+  Divider
 } from '@mui/material';
 import { 
   MdAdd as AddIcon, 
@@ -44,7 +50,11 @@ import {
   MdSettings as SettingsIcon,
   MdPrint as PrintIcon,
   MdClose as CloseIcon,
-  MdCalendarToday as CalendarTodayIcon
+  MdCalendarToday as CalendarTodayIcon,
+  MdCardGiftcard as GiftIcon,
+  MdRefresh as RefreshIcon,
+  MdSync as SyncIcon,
+  MdHistory as HistoryIcon
 } from 'react-icons/md';
 import dayjs from 'dayjs';
 import request from '../../services/request';
@@ -179,15 +189,243 @@ const Salary = () => {
   const [reserveValueState, setReserveValueState] = useState<string>('5');
   const [showSalaryPrint, setShowSalaryPrint] = useState(false);
 
+  // Bonus tracker state variables
+  const [bonusEntries, setBonusEntries] = useState<any[]>([]);
+  const [isBonusModalOpen, setIsBonusModalOpen] = useState(false);
+  const [editingBonusEntry, setEditingBonusEntry] = useState<any | null>(null);
+  const [bonusFormName, setBonusFormName] = useState('');
+  const [bonusFormAmount, setBonusFormAmount] = useState<string>('0');
+  const [bonusFormNotes, setBonusFormNotes] = useState('');
+  const [bonusConfigAmount, setBonusConfigAmount] = useState<string>('1000');
+  const [bonusHistory, setBonusHistory] = useState<any[]>([]);
+  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+  const [expandedBonusRowIds, setExpandedBonusRowIds] = useState<string[]>([]);
+
+  const toggleExpandBonusRow = (id: string) => {
+    setExpandedBonusRowIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const isAllActiveAddedThisMonth = useMemo(() => {
+    const activeEntries = bonusEntries.filter(e => !e.resigned);
+    if (activeEntries.length === 0) return true;
+    const currentMonthStr = dayjs().format('YYYY-MM');
+    return activeEntries.every(e => e.lastAddedMonth === currentMonthStr);
+  }, [bonusEntries]);
+
+  const fetchBonusEntries = async () => {
+    try {
+      const [res, historyRes] = await Promise.all([
+        request.get('/api/salary/bonus'),
+        request.get('/api/salary/bonus/history')
+      ]);
+      if (res.data) {
+        setBonusEntries(res.data);
+      }
+      if (historyRes.data) {
+        setBonusHistory(historyRes.data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch bonus entries and history", e);
+    }
+  };
+
+  const handleOpenAddBonus = () => {
+    setEditingBonusEntry(null);
+    setBonusFormName('');
+    setBonusFormAmount('0');
+    setBonusFormNotes('');
+    setIsBonusModalOpen(true);
+  };
+
+  const handleOpenEditBonus = (entry: any) => {
+    setEditingBonusEntry(entry);
+    setBonusFormName(entry.name);
+    setBonusFormAmount(String(entry.accumulatedAmount));
+    setBonusFormNotes(entry.notes || '');
+    setIsBonusModalOpen(true);
+  };
+
+  const handleSaveBonusEntry = async () => {
+    if (!bonusFormName.trim()) {
+      showToast('Employee name is required', 'error');
+      return;
+    }
+    try {
+      const id = editingBonusEntry ? editingBonusEntry.id : Date.now().toString();
+      const payload = {
+        id,
+        name: bonusFormName,
+        accumulatedAmount: Number(bonusFormAmount) || 0,
+        notes: bonusFormNotes,
+        resigned: editingBonusEntry ? editingBonusEntry.resigned : false,
+        month: currentMonth,
+        period: displayPeriod
+      };
+      await request.post('/api/salary/bonus', payload);
+      showToast(editingBonusEntry ? 'Bonus entry updated' : 'Bonus entry created', 'success');
+      setIsBonusModalOpen(false);
+      fetchBonusEntries();
+    } catch (e) {
+      showToast('Failed to save bonus entry', 'error');
+    }
+  };
+
+  const handleDeleteBonusEntry = async (id: string, name: string) => {
+    if (await confirm(`Are you sure you want to delete ${name} from the bonus tracker?`, 'Delete Entry')) {
+      try {
+        await request.delete(`/api/salary/bonus/${id}`);
+        showToast('Bonus entry deleted', 'success');
+        fetchBonusEntries();
+      } catch (e) {
+        showToast('Failed to delete bonus entry', 'error');
+      }
+    }
+  };
+
+  const handleToggleResign = async (entry: any) => {
+    const actionText = entry.resigned ? 'activate' : 'resign';
+    const confirmTitle = entry.resigned ? 'Activate Employee' : 'Resign Employee';
+    if (await confirm(`Are you sure you want to ${actionText} ${entry.name}?`, confirmTitle)) {
+      try {
+        await request.post(`/api/salary/bonus/resign/${entry.id}`);
+        showToast(`${entry.name} is now marked as ${entry.resigned ? 'active' : 'resigned'}`, 'success');
+        fetchBonusEntries();
+      } catch (e) {
+        showToast('Failed to toggle resigned status', 'error');
+      }
+    }
+  };
+
+  const handleQuickAdd = async (entry: any) => {
+    if (entry.resigned) {
+      showToast(`Cannot add bonus to resigned employee`, 'error');
+      return;
+    }
+    const currentMonthStr = dayjs().format('YYYY-MM');
+    if (entry.lastAddedMonth === currentMonthStr) {
+      showToast(`Already added ₹${bonusConfigAmount} for ${entry.name} this month`, 'warning');
+      return;
+    }
+    try {
+      const addAmount = Number(bonusConfigAmount) || 1000;
+      const payload = {
+        ...entry,
+        accumulatedAmount: (entry.accumulatedAmount || 0) + addAmount,
+        lastAddedMonth: currentMonthStr,
+        month: currentMonth,
+        period: displayPeriod
+      };
+      await request.post('/api/salary/bonus', payload);
+      showToast(`Added ₹${addAmount.toLocaleString('en-IN')} to ${entry.name}`, 'success');
+      fetchBonusEntries();
+    } catch (e) {
+      showToast('Failed to add amount', 'error');
+    }
+  };
+
+  const handleQuickAddAll = async () => {
+    const addAmount = Number(bonusConfigAmount) || 1000;
+    if (await confirm(`Are you sure you want to add ₹${addAmount.toLocaleString('en-IN')} to everyone who is active?`, 'Quick Add to All Active')) {
+      try {
+        const res = await request.post('/api/salary/bonus/quick-add-all', {
+          amount: addAmount,
+          month: currentMonth,
+          period: displayPeriod
+        });
+        showToast(res.data.message || `Successfully added to all active employees`, 'success');
+        fetchBonusEntries();
+      } catch (e) {
+        showToast('Failed to quick add to all', 'error');
+      }
+    }
+  };
+
+  const handleQuickReset = async (entry: any) => {
+    if (await confirm(`Reset ${entry.name}'s accumulated bonus to ₹0?`, 'Reset Amount')) {
+      try {
+        const payload = {
+          ...entry,
+          accumulatedAmount: 0,
+          month: currentMonth,
+          period: displayPeriod
+        };
+        await request.post('/api/salary/bonus', payload);
+        showToast(`Reset ${entry.name}'s bonus to ₹0`, 'success');
+        fetchBonusEntries();
+      } catch (e) {
+        showToast('Failed to reset amount', 'error');
+      }
+    }
+  };
+
+  const handleResetAllBonus = async () => {
+    if (await confirm('Are you sure you want to reset ALL employee accumulated bonus amounts back to ₹0? (Resigned employees will be removed from the list)', 'Reset All to ₹0')) {
+      try {
+        await request.post('/api/salary/bonus/reset-all');
+        showToast('All bonus amounts reset to ₹0', 'success');
+        fetchBonusEntries();
+      } catch (e) {
+        showToast('Failed to reset bonus amounts', 'error');
+      }
+    }
+  };
+
+  const handleSyncFromSalary = async () => {
+    const currentGroups = salaryData[currentMonth] || [];
+    const memberNames = new Set<string>();
+    currentGroups.forEach(g => {
+      g.members.forEach(m => {
+        if (m.name && m.name.trim()) {
+          memberNames.add(m.name.trim());
+        }
+      });
+    });
+
+    if (memberNames.size === 0) {
+      showToast('No employees found in the current month\'s salary sheet to sync.', 'warning');
+      return;
+    }
+
+    const existingNames = new Set(bonusEntries.map(e => e.name.toLowerCase().trim()));
+    const namesToSync = Array.from(memberNames).filter(name => !existingNames.has(name.toLowerCase().trim()));
+
+    if (namesToSync.length === 0) {
+      showToast('All employees from the current month\'s salary sheet are already synced.', 'info');
+      return;
+    }
+
+    try {
+      let addedCount = 0;
+      for (const name of namesToSync) {
+        const payload = {
+          id: `sync_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          name,
+          accumulatedAmount: 0,
+          notes: `Synced from salary group of ${dayjs(currentMonth).format('MMMM YYYY')}`
+        };
+        await request.post('/api/salary/bonus', payload);
+        addedCount++;
+      }
+      showToast(`Successfully synced ${addedCount} new employee(s)`, 'success');
+      fetchBonusEntries();
+    } catch (e) {
+      showToast('Failed to sync employees', 'error');
+    }
+  };
+
   useEffect(() => {
     if (!canView) return;
     const fetchAll = async () => {
       try {
-        const [configRes, salaryConfigRes, templatesRes, allSalaryRes] = await Promise.all([
+        const [configRes, salaryConfigRes, templatesRes, allSalaryRes, bonusRes, bonusHistoryRes] = await Promise.all([
           request.get('/api/attendance/config'),
           request.get('/api/salary/config'),
           request.get('/api/salary/templates'),
-          request.get('/api/salary')
+          request.get('/api/salary'),
+          request.get('/api/salary/bonus'),
+          request.get('/api/salary/bonus/history')
         ]);
 
         if (configRes.data) {
@@ -203,6 +441,12 @@ const Salary = () => {
         }
         if (templatesRes.data) {
           setTemplates(templatesRes.data);
+        }
+        if (bonusRes.data) {
+          setBonusEntries(bonusRes.data);
+        }
+        if (bonusHistoryRes.data) {
+          setBonusHistory(bonusHistoryRes.data);
         }
         if (allSalaryRes.data) {
           const loadedData: Record<string, Group[]> = {};
@@ -863,14 +1107,13 @@ const Salary = () => {
   return (
     <Box sx={{ maxWidth: 1100, margin: '0 auto', p: { xs: 2, md: 3 }, fontFamily: '"Inter", sans-serif' }}>
       
-      {canUpdateConfig && (
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-          <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} aria-label="salary tabs">
-            <Tab icon={<WalletIcon />} iconPosition="start" label="Salary Calculation" />
-            <Tab icon={<SettingsIcon />} iconPosition="start" label="Configuration" />
-          </Tabs>
-        </Box>
-      )}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} aria-label="salary tabs">
+          <Tab icon={<WalletIcon />} iconPosition="start" label="Salary Calculation" />
+          <Tab icon={<GiftIcon />} iconPosition="start" label="Bonus" />
+          {canUpdateConfig && <Tab icon={<SettingsIcon />} iconPosition="start" label="Configuration" />}
+        </Tabs>
+      </Box>
 
       {activeTab === 0 && (
         <Box>
@@ -1423,6 +1666,333 @@ const Salary = () => {
       )}
 
       {activeTab === 1 && (
+        <Box>
+          {/* Bonus Control Panel */}
+          <Paper 
+            variant="outlined" 
+            sx={{ 
+              p: 2.5, 
+              mb: 3, 
+              borderRadius: 2,
+              display: 'flex', 
+              flexDirection: { xs: 'column', md: 'row' }, 
+              justifyContent: 'space-between', 
+              alignItems: { xs: 'flex-start', md: 'center' },
+              gap: 2,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+              backgroundColor: 'background.paper'
+            }}
+          >
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              <Typography variant="h6" fontWeight="700" color="text.primary">
+                Onam Bonus Tracker
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Track and manage employee bonuses. Deduct configured amount monthly leading up to Onam, and reset back to ₹0 after Onam.
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center', width: { xs: '100%', md: 'auto' } }}>
+              <TextField
+                size="small"
+                label="Bonus Amount (₹)"
+                type="number"
+                value={bonusConfigAmount}
+                onChange={(e) => setBonusConfigAmount(e.target.value)}
+                sx={{ width: 140, backgroundColor: 'white' }}
+                InputProps={{
+                  inputProps: { min: 0 }
+                }}
+              />
+              <Button 
+                variant="outlined" 
+                size="small" 
+                startIcon={<SyncIcon />} 
+                onClick={handleSyncFromSalary}
+                sx={{ borderRadius: 1.5, textTransform: 'none', px: 2, height: 40 }}
+              >
+                Sync Employees
+              </Button>
+              <Tooltip title={isAllActiveAddedThisMonth ? "All active employees have already received a bonus this month" : `Quick add ₹${Number(bonusConfigAmount) || 1000} to all active employees`}>
+                <span>
+                  <Button 
+                    variant="contained" 
+                    size="small" 
+                    color="success"
+                    startIcon={<AddIcon />} 
+                    onClick={handleQuickAddAll}
+                    disabled={isAllActiveAddedThisMonth}
+                    sx={{ borderRadius: 1.5, textTransform: 'none', px: 2, height: 40, boxShadow: 'none' }}
+                  >
+                    Quick Add All
+                  </Button>
+                </span>
+              </Tooltip>
+              <Button 
+                variant="outlined" 
+                size="small" 
+                color="error"
+                startIcon={<RefreshIcon />} 
+                onClick={handleResetAllBonus}
+                sx={{ borderRadius: 1.5, textTransform: 'none', px: 2, height: 40 }}
+              >
+                Reset All to ₹0
+              </Button>
+              <Button 
+                variant="outlined" 
+                size="small" 
+                color="secondary"
+                startIcon={<HistoryIcon />} 
+                onClick={() => setIsHistoryDrawerOpen(true)}
+                sx={{ borderRadius: 1.5, textTransform: 'none', px: 2, height: 40 }}
+              >
+                View History
+              </Button>
+              <Button 
+                variant="contained" 
+                size="small" 
+                startIcon={<AddIcon />} 
+                onClick={handleOpenAddBonus}
+                sx={{ borderRadius: 1.5, textTransform: 'none', px: 2, height: 40, boxShadow: 'none' }}
+              >
+                Add Employee
+              </Button>
+            </Box>
+          </Paper>
+
+          {/* Stats Section */}
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={6} md={4}>
+              <Card variant="outlined" sx={{ borderRadius: 2, p: 2 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', fontWeight: 600 }}>
+                  Total Tracked Employees
+                </Typography>
+                <Typography variant="h4" fontWeight="700" sx={{ mt: 1 }}>
+                  {bonusEntries.length}
+                </Typography>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <Card variant="outlined" sx={{ borderRadius: 2, p: 2 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', fontWeight: 600 }}>
+                  Total Accumulated Bonus Pool
+                </Typography>
+                <Typography variant="h4" fontWeight="700" color="primary.main" sx={{ mt: 1 }}>
+                  ₹ {bonusEntries.reduce((sum, e) => sum + (e.accumulatedAmount || 0), 0).toLocaleString('en-IN')}
+                </Typography>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Bonus Entries Table */}
+          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
+            <Table>
+              <TableHead sx={{ backgroundColor: 'grey.50' }}>
+                <TableRow>
+                  <TableCell sx={{ width: 50 }} />
+                  <TableCell sx={{ fontWeight: 600 }}>Employee Name</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Accumulated Bonus</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Notes / Remarks</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Last Updated By</TableCell>
+                  <TableCell sx={{ fontWeight: 600, width: 320, textAlign: 'center' }}>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {bonusEntries.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                      <GiftIcon style={{ fontSize: 40, color: '#bdbdbd', marginBottom: 12 }} />
+                      <Typography variant="subtitle1" fontWeight="500" color="text.primary" gutterBottom>
+                        No employee bonuses tracked yet
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Click "Sync Employees" to pull names from the salary sheet, or "Add Employee" to create manually.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  [...bonusEntries]
+                    .sort((a, b) => {
+                      if (a.resigned && !b.resigned) return 1;
+                      if (!a.resigned && b.resigned) return -1;
+                      return a.name.localeCompare(b.name);
+                    })
+                    .map((entry) => {
+                      const amt = entry.accumulatedAmount || 0;
+                      const isQuickAddDisabled = entry.lastAddedMonth === dayjs().format('YYYY-MM') || entry.resigned;
+                      const isExpanded = expandedBonusRowIds.includes(entry.id);
+                      return (
+                        <React.Fragment key={entry.id}>
+                          <TableRow 
+                            hover 
+                            sx={{ 
+                              backgroundColor: entry.resigned ? 'rgba(0, 0, 0, 0.03)' : 'inherit',
+                              opacity: entry.resigned ? 0.75 : 1
+                            }}
+                          >
+                            <TableCell sx={{ width: 50 }}>
+                              <IconButton size="small" onClick={() => toggleExpandBonusRow(entry.id)}>
+                                {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                              </IconButton>
+                            </TableCell>
+                            <TableCell sx={{ fontWeight: 500 }}>
+                              {entry.name}
+                              {entry.resigned && (
+                                <Chip 
+                                  size="small" 
+                                  label="Resigned" 
+                                  color="error" 
+                                  sx={{ ml: 1, height: 20, fontSize: '0.75rem', fontWeight: 600 }} 
+                                />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'inline-flex', px: 1.5, py: 0.5, borderRadius: 5, fontSize: '0.875rem', fontWeight: 600, 
+                                backgroundColor: amt > 0 ? 'success.50' : amt < 0 ? 'error.50' : 'grey.100',
+                                color: amt > 0 ? 'success.700' : amt < 0 ? 'error.700' : 'text.secondary'
+                              }}>
+                                ₹ {amt.toLocaleString('en-IN')}
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Chip 
+                                size="small" 
+                                label={entry.resigned ? "Inactive (Resigned)" : "Active"} 
+                                color={entry.resigned ? "default" : "success"}
+                                variant="outlined"
+                              />
+                            </TableCell>
+                            <TableCell color="text.secondary" sx={{ fontStyle: entry.notes ? 'normal' : 'italic' }}>
+                              {entry.notes || 'No notes added'}
+                            </TableCell>
+                            <TableCell>
+                              {entry.updatedBy ? (
+                                <Box>
+                                  <Typography variant="body2">{entry.updatedBy}</Typography>
+                                  {entry.updatedAt && (
+                                    <Typography variant="caption" color="text.disabled">
+                                      {dayjs(entry.updatedAt).format('DD MMM YYYY, HH:mm')}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>-</Typography>
+                              )}
+                            </TableCell>
+                            <TableCell align="center">
+                              <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <Tooltip title={entry.resigned ? "Resigned employees cannot receive bonuses" : (entry.lastAddedMonth === dayjs().format('YYYY-MM') ? `Already added for ${dayjs().format('MMMM YYYY')}` : `Quick Add +₹${bonusConfigAmount}`)}>
+                                  <span>
+                                    <Button 
+                                      size="small" 
+                                      variant="outlined" 
+                                      color="success" 
+                                      onClick={() => handleQuickAdd(entry)}
+                                      disabled={isQuickAddDisabled}
+                                      sx={{ textTransform: 'none', px: 1 }}
+                                    >
+                                      {entry.resigned ? 'Blocked' : (entry.lastAddedMonth === dayjs().format('YYYY-MM') ? '✓ Added' : `+₹${Number(bonusConfigAmount) || 1000}`)}
+                                    </Button>
+                                  </span>
+                                </Tooltip>
+                                <Tooltip title={entry.resigned ? "Re-activate Employee" : "Mark as Resigned"}>
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    color={entry.resigned ? "success" : "error"}
+                                    onClick={() => handleToggleResign(entry)}
+                                    sx={{ textTransform: 'none', px: 1, minWidth: 80 }}
+                                  >
+                                    {entry.resigned ? "Activate" : "Resign"}
+                                  </Button>
+                                </Tooltip>
+                                <Tooltip title="Reset to ₹0">
+                                  <IconButton 
+                                    size="small" 
+                                    color="warning" 
+                                    onClick={() => handleQuickReset(entry)}
+                                  >
+                                    <RefreshIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Edit Details">
+                                  <IconButton 
+                                    size="small" 
+                                    color="primary" 
+                                    onClick={() => handleOpenEditBonus(entry)}
+                                  >
+                                    <EditIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Delete">
+                                  <IconButton 
+                                    size="small" 
+                                    color="error" 
+                                    onClick={() => handleDeleteBonusEntry(entry.id, entry.name)}
+                                  >
+                                    <DeleteIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                          {isExpanded && (
+                            <TableRow>
+                              <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
+                                <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                                  <Box sx={{ margin: 2 }}>
+                                    <Typography variant="subtitle2" gutterBottom component="div" fontWeight="600">
+                                      Monthly Credit Breakdown
+                                    </Typography>
+                                    <Table size="small" aria-label="additions">
+                                      <TableHead sx={{ backgroundColor: 'grey.50' }}>
+                                        <TableRow>
+                                          <TableCell sx={{ fontWeight: 600 }}>Period / Cycle</TableCell>
+                                          <TableCell sx={{ fontWeight: 600 }}>Credited Amount</TableCell>
+                                          <TableCell sx={{ fontWeight: 600 }}>Date/Time</TableCell>
+                                          <TableCell sx={{ fontWeight: 600 }}>Performed By</TableCell>
+                                        </TableRow>
+                                      </TableHead>
+                                      <TableBody>
+                                        {(!entry.additions || entry.additions.length === 0) ? (
+                                          <TableRow>
+                                            <TableCell colSpan={4} align="center" sx={{ color: 'text.secondary', fontStyle: 'italic', py: 2 }}>
+                                              No monthly records found.
+                                            </TableCell>
+                                          </TableRow>
+                                        ) : (
+                                          entry.additions.map((add: any, idx: number) => (
+                                            <TableRow key={idx}>
+                                              <TableCell sx={{ fontWeight: 500 }}>{add.period || add.month}</TableCell>
+                                              <TableCell sx={{ color: add.amount >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>
+                                                {add.amount >= 0 ? '+' : ''}₹{add.amount.toLocaleString('en-IN')}
+                                              </TableCell>
+                                              <TableCell>{dayjs(add.timestamp).format('DD MMM YYYY, HH:mm')}</TableCell>
+                                              <TableCell>{add.updatedBy}</TableCell>
+                                            </TableRow>
+                                          ))
+                                        )}
+                                      </TableBody>
+                                    </Table>
+                                  </Box>
+                                </Collapse>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
+                      );
+                    })
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+
+        </Box>
+      )}
+
+      {activeTab === 2 && (
         <Box>
           <Paper variant="outlined" sx={{ p: 3, mb: 4, borderRadius: 2, backgroundColor: 'grey.50' }}>
             <Typography variant="subtitle1" fontWeight="600" sx={{ mb: 2 }}>
@@ -2020,6 +2590,145 @@ const Salary = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Dialog for Adding/Editing Bonus Entry */}
+      <Dialog 
+        open={isBonusModalOpen} 
+        onClose={() => setIsBonusModalOpen(false)}
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 3,
+              p: 1.5,
+              minWidth: 400,
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 'bold' }}>
+          {editingBonusEntry ? 'Edit Employee Bonus Details' : 'Add Employee to Bonus Tracker'}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1.5 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Employee Name"
+              value={bonusFormName}
+              onChange={(e) => setBonusFormName(e.target.value)}
+              disabled={!!editingBonusEntry}
+            />
+            <TextField
+              fullWidth
+              size="small"
+              type="number"
+              label="Accumulated Bonus Amount (₹)"
+              value={bonusFormAmount}
+              onChange={(e) => setBonusFormAmount(e.target.value)}
+              disabled={!!editingBonusEntry?.resigned}
+              helperText={editingBonusEntry?.resigned ? "This employee is resigned. Bonus amount cannot be updated." : ""}
+              error={!!editingBonusEntry?.resigned}
+            />
+            <TextField
+              fullWidth
+              size="small"
+              label="Notes / Remarks"
+              multiline
+              rows={3}
+              value={bonusFormNotes}
+              onChange={(e) => setBonusFormNotes(e.target.value)}
+              placeholder="e.g. Onam bonus savings, manual adjustments"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 1 }}>
+          <Button onClick={() => setIsBonusModalOpen(false)} color="inherit" sx={{ borderRadius: 2 }}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSaveBonusEntry} 
+            color="primary" 
+            variant="contained" 
+            sx={{ borderRadius: 2 }}
+          >
+            Save Entry
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Drawer for History Log */}
+      <Drawer
+        anchor="right"
+        open={isHistoryDrawerOpen}
+        onClose={() => setIsHistoryDrawerOpen(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: '100%', sm: 550 },
+            p: 3,
+            display: 'flex',
+            flexDirection: 'column',
+          }
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <HistoryIcon style={{ fontSize: 24, color: '#4f46e5' }} />
+            <Typography variant="h6" fontWeight="700" color="text.primary">
+              Bonus Action History
+            </Typography>
+          </Box>
+          <IconButton onClick={() => setIsHistoryDrawerOpen(false)}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <Divider sx={{ mb: 3 }} />
+        <TableContainer sx={{ flexGrow: 1, overflowY: 'auto' }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 600 }}>Timestamp</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Action</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Employee</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Details</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>By</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {bonusHistory.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary', fontStyle: 'italic' }}>
+                    No action log records found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                bonusHistory.map((hist: any) => (
+                  <TableRow key={hist.id}>
+                    <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.8rem' }}>
+                      {dayjs(hist.timestamp).format('DD MMM YYYY, HH:mm')}
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        size="small" 
+                        label={hist.action}
+                        color={
+                          hist.action === 'Created' || hist.action === 'Added' || hist.action === 'Bulk Add' ? 'success' :
+                          hist.action === 'Resigned' || hist.action === 'Deleted' ? 'error' :
+                          hist.action === 'Reset All' ? 'warning' : 'primary'
+                        }
+                        variant="outlined"
+                        sx={{ fontSize: '0.7rem', height: 20 }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 500, fontSize: '0.8rem' }}>{hist.employee}</TableCell>
+                    <TableCell sx={{ fontSize: '0.8rem' }}>{hist.details}</TableCell>
+                    <TableCell sx={{ fontSize: '0.8rem' }}>{hist.performedBy}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Drawer>
     </Box>
   );
 };
