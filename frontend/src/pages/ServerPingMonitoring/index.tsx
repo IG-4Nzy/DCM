@@ -24,7 +24,7 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import Modal from '../../components/Modal';
 import TextField from '../../components/TextField';
-import request from '../../services/request';
+import request, { API_BASE_URL } from '../../services/request';
 import { 
   fetchMonitoredServers, createMonitoredServer, updateMonitoredServer, deleteMonitoredServer,
   fetchDashboardData, fetchPingDropLogs, exportPingDropLogs, acknowledgeServer
@@ -88,18 +88,36 @@ const ServerPingMonitoring: React.FC = () => {
   const [isMuted, setIsMuted] = useState(() => localStorage.getItem('dcm_alert_muted') === 'true');
   const [audioFileName, setAudioFileName] = useState('');
   const [customAlarmUrl, setCustomAlarmUrl] = useState<string | null>(null);
+  const activeAlarmUrlRef = useRef<string | null>(null);
   const audioIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioInstanceRef = useRef<HTMLAudioElement | null>(null);
   const lastAlarmUrlRef = useRef<string | null>(null);
 
+  const updateAlarmUrl = (url: string | null) => {
+    activeAlarmUrlRef.current = url;
+    setCustomAlarmUrl(url);
+  };
+
   const fetchCustomAlarm = async () => {
     try {
       const res = await request.get('/api/server-ping-monitoring/alarm-sound');
-      if (res.data && res.data.dataUrl) {
-        setCustomAlarmUrl(res.data.dataUrl);
+      if (res.data && res.data.filename) {
+        const fileRes = await request.get('/api/server-ping-monitoring/alarm-sound/file', {
+          responseType: 'blob'
+        });
+        const blobUrl = URL.createObjectURL(fileRes.data);
+        
+        if (activeAlarmUrlRef.current && activeAlarmUrlRef.current.startsWith('blob:')) {
+          URL.revokeObjectURL(activeAlarmUrlRef.current);
+        }
+        
+        updateAlarmUrl(blobUrl);
         setAudioFileName(res.data.filename || 'custom_alarm.mp3');
       } else {
-        setCustomAlarmUrl(null);
+        if (activeAlarmUrlRef.current && activeAlarmUrlRef.current.startsWith('blob:')) {
+          URL.revokeObjectURL(activeAlarmUrlRef.current);
+        }
+        updateAlarmUrl(null);
         setAudioFileName('');
       }
     } catch (err) {
@@ -123,6 +141,27 @@ const ServerPingMonitoring: React.FC = () => {
       : [...mutedServerIds, serverId];
     setMutedServerIds(nextMuted);
     localStorage.setItem('dcm_muted_server_ids', JSON.stringify(nextMuted));
+
+    // Optimistically check if we should mute the alarm sound immediately
+    const hasUnmutedOffline = servers.some(s => {
+      if (nextMuted.includes(s.id)) return false;
+      if (s.isAcknowledged) return false;
+      return s.status === 'DOWN' || 
+        ((s.monitoringType === 'both' || s.monitoringType === 'port') && 
+         s.portsStatus && 
+         Object.values(s.portsStatus).includes('DOWN'));
+    });
+
+    if (!hasUnmutedOffline || isMuted) {
+      if (audioIntervalRef.current) {
+        clearInterval(audioIntervalRef.current);
+        audioIntervalRef.current = null;
+      }
+      if (audioInstanceRef.current) {
+        audioInstanceRef.current.pause();
+        audioInstanceRef.current.currentTime = 0;
+      }
+    }
   };
 
   // Refs for tracking transitions of offline servers
@@ -168,11 +207,7 @@ const ServerPingMonitoring: React.FC = () => {
   const playAlertBeep = () => {
     try {
       const audioCtx = getSharedAudioContext();
-      if (!audioCtx) return;
-
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume().catch(() => {});
-      }
+      if (!audioCtx || audioCtx.state !== 'running') return;
 
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
@@ -206,6 +241,8 @@ const ServerPingMonitoring: React.FC = () => {
 
     const shouldPlay = hasUnmutedOfflineServers && !isMuted;
 
+    let interactionCleanup: (() => void) | null = null;
+
     if (shouldPlay) {
       if (customAlarmUrl) {
         // Clear synth beep interval if running
@@ -236,6 +273,28 @@ const ServerPingMonitoring: React.FC = () => {
                 playAlertBeep();
               }, 3000);
             }
+
+            // Register one-time user interaction listener to play custom sound once allowed
+            const startOnInteraction = () => {
+              if (audioInstanceRef.current && audioInstanceRef.current.paused) {
+                audioInstanceRef.current.play().then(() => {
+                  if (audioIntervalRef.current) {
+                    clearInterval(audioIntervalRef.current);
+                    audioIntervalRef.current = null;
+                  }
+                }).catch(err => console.warn("Failed to play custom alarm on interaction:", err));
+              }
+              cleanupListeners();
+            };
+
+            const cleanupListeners = () => {
+              window.removeEventListener('click', startOnInteraction);
+              window.removeEventListener('keydown', startOnInteraction);
+            };
+
+            window.addEventListener('click', startOnInteraction);
+            window.addEventListener('keydown', startOnInteraction);
+            interactionCleanup = cleanupListeners;
           });
         }
       } else {
@@ -265,8 +324,9 @@ const ServerPingMonitoring: React.FC = () => {
     }
 
     return () => {
-      // Don't fully tear down on every dependency change to prevent audio restarts,
-      // but clean up when components are completely unmounted or parameters change if necessary.
+      if (interactionCleanup) {
+        interactionCleanup();
+      }
     };
   }, [servers, isMuted, mutedServerIds, customAlarmUrl]);
 
@@ -280,6 +340,9 @@ const ServerPingMonitoring: React.FC = () => {
       if (audioInstanceRef.current) {
         audioInstanceRef.current.pause();
         audioInstanceRef.current = null;
+      }
+      if (activeAlarmUrlRef.current && activeAlarmUrlRef.current.startsWith('blob:')) {
+        URL.revokeObjectURL(activeAlarmUrlRef.current);
       }
     };
   }, []);
@@ -425,6 +488,17 @@ const ServerPingMonitoring: React.FC = () => {
     const newMuteState = !isMuted;
     setIsMuted(newMuteState);
     localStorage.setItem('dcm_alert_muted', String(newMuteState));
+
+    if (newMuteState) {
+      if (audioIntervalRef.current) {
+        clearInterval(audioIntervalRef.current);
+        audioIntervalRef.current = null;
+      }
+      if (audioInstanceRef.current) {
+        audioInstanceRef.current.pause();
+        audioInstanceRef.current.currentTime = 0;
+      }
+    }
   };
 
   // Handle Audio File upload (converts to base64 Data URL and saves to backend)
@@ -445,8 +519,7 @@ const ServerPingMonitoring: React.FC = () => {
           dataUrl,
           filename: file.name
         });
-        setAudioFileName(file.name);
-        setCustomAlarmUrl(dataUrl);
+        await fetchCustomAlarm();
         alert(`Successfully uploaded custom alarm sound: ${file.name}`);
       } catch (err: any) {
         alert(err.response?.data?.detail || "Failed to upload custom alarm sound. File may be too large.");
@@ -459,7 +532,10 @@ const ServerPingMonitoring: React.FC = () => {
   const handleClearAudio = async () => {
     try {
       await request.delete('/api/server-ping-monitoring/alarm-sound');
-      setCustomAlarmUrl(null);
+      if (activeAlarmUrlRef.current && activeAlarmUrlRef.current.startsWith('blob:')) {
+        URL.revokeObjectURL(activeAlarmUrlRef.current);
+      }
+      updateAlarmUrl(null);
       setAudioFileName('');
       alert("Alert sound reset to default synthesizer beep.");
     } catch (err: any) {
@@ -576,6 +652,31 @@ const ServerPingMonitoring: React.FC = () => {
     if (!ackTargetServer) return;
     try {
       const nextState = !ackTargetServer.isAcknowledged;
+      
+      // Optimistically stop the alarm if this server is being acknowledged and no other offline servers remain
+      if (nextState) {
+        const hasOtherUnacknowledgedOffline = servers.some(s => {
+          if (s.id === ackTargetServer.id) return false;
+          if (mutedServerIds.includes(s.id)) return false;
+          if (s.isAcknowledged) return false;
+          return s.status === 'DOWN' || 
+            ((s.monitoringType === 'both' || s.monitoringType === 'port') && 
+             s.portsStatus && 
+             Object.values(s.portsStatus).includes('DOWN'));
+        });
+
+        if (!hasOtherUnacknowledgedOffline) {
+          if (audioIntervalRef.current) {
+            clearInterval(audioIntervalRef.current);
+            audioIntervalRef.current = null;
+          }
+          if (audioInstanceRef.current) {
+            audioInstanceRef.current.pause();
+            audioInstanceRef.current.currentTime = 0;
+          }
+        }
+      }
+
       await acknowledgeServer(ackTargetServer.id, nextState);
       setAckTargetServer(null);
       await loadServers();
