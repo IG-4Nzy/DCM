@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Box, Paper, Tooltip, IconButton, Chip, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Tabs, Tab } from '@mui/material';
+import { Box, Paper, Tooltip, IconButton, Chip, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Tabs, Tab } from '@mui/material';
+import TextField from '../../components/TextField';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';

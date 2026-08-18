@@ -1,24 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Paper, 
-  TextField, 
-  InputAdornment, 
-  Typography, 
-  List, 
-  ListItem, 
-  ListItemButton, 
-  ListItemIcon, 
-  ListItemText, 
-  Chip, 
-  Grid, 
-  Divider, 
-  CircularProgress,
-  ToggleButton,
-  ToggleButtonGroup,
-  Button
-} from '@mui/material';
+import { Box, Paper, InputAdornment, Typography, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Chip, Grid, Divider, CircularProgress, ToggleButton, ToggleButtonGroup, Button } from '@mui/material';
+import TextField from '../../components/TextField';
 import { 
   MdSearch as SearchIcon, 
   MdDns as NodeIcon, 

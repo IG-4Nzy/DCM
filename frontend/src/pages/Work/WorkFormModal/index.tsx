@@ -10,6 +10,7 @@ import { PRIORITY_OPTIONS } from "../constant";
 import { getServerTime } from "../../../helpers/time";
 import { hasPrivilege } from "../../../helpers/authUtils";
 import { PRIVILEGES } from "../../../helpers/privileges";
+import { validators } from "../../../helpers/validation";
 import styles from "./index.module.scss";
 
 interface PropType {
@@ -57,6 +58,31 @@ const WorkFormModal = ({
   setIsEmergency,
   activeTab,
 }: PropType) => {
+  const [errors, setErrors] = React.useState<Record<string, string>>({});
+
+  React.useEffect(() => {
+    if (isModalOpen) {
+      setErrors({});
+    }
+  }, [isModalOpen]);
+
+  const handleLocalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const titleErr = validators.alphanumericSpaces(workName, 100, "Title");
+    const descErr = validators.maxLength(description, 220, "Description");
+
+    const newErrors = {
+      workName: titleErr,
+      description: descErr
+    };
+
+    setErrors(newErrors);
+
+    if (titleErr || descErr) {
+      return;
+    }
+    handleSubmit(e);
+  };
   const isUserOnline = (user: any) => {
     if (!user.lastActive) return false;
     try {
@@ -92,15 +118,20 @@ const WorkFormModal = ({
       handleClose={handleCloseModal}
       title={editingWork ? "Edit Work" : "Create Work"}
     >
-      <form onSubmit={handleSubmit} className={styles.formContainer}>
+      <form onSubmit={handleLocalSubmit} className={styles.formContainer}>
         <div className={styles.row}>
           <TextField
             className={styles.field}
             fullWidth
             label="Title"
             value={workName}
-            onChange={(e) => setWorkName(e.target.value)}
+            onChange={(e) => {
+              setWorkName(e.target.value);
+              setErrors(prev => ({ ...prev, workName: '' }));
+            }}
             required
+            error={!!errors.workName}
+            helperText={errors.workName}
           />
 
           <Dropdown
@@ -137,7 +168,7 @@ const WorkFormModal = ({
           />
         </div>
 
-        <div className={styles.row}>
+        <div className={styles.row} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}>
           <TextField
             className={styles.field}
             fullWidth
@@ -145,8 +176,18 @@ const WorkFormModal = ({
             rows={3}
             label="Description"
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              setErrors(prev => ({ ...prev, description: '' }));
+            }}
+            error={!!errors.description}
+            helperText={errors.description}
           />
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              {description ? description.length : 0} / 220
+            </span>
+          </div>
         </div>
 
         <div className={styles.row}>

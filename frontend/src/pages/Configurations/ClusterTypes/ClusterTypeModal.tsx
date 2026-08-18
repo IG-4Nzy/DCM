@@ -4,6 +4,7 @@ import { Box } from '@mui/material';
 import Modal from '../../../components/Modal';
 import TextField from '../../../components/TextField';
 import Button from '../../../components/Button';
+import { validators } from '../../../helpers/validation';
 import { type ClusterTypeData, type CreateClusterTypePayload, type UpdateClusterTypePayload } from './model';
 
 interface ClusterTypeModalProps {
@@ -16,9 +17,11 @@ interface ClusterTypeModalProps {
 const ClusterTypeModal: React.FC<ClusterTypeModalProps> = ({ open, onClose, onSubmit, editingItem }) => {
     const [clusterType, setClusterType] = useState('');
     const [remarks, setRemarks] = useState('');
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         if (open) {
+            setErrors({});
             if (editingItem) {
                 setClusterType(editingItem.clusterType);
                 setRemarks(editingItem.remarks || '');
@@ -31,12 +34,25 @@ const ClusterTypeModal: React.FC<ClusterTypeModalProps> = ({ open, onClose, onSu
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!clusterType.trim()) return;
+        
+        const typeErr = validators.alphanumericSpaces(clusterType, 50, "Cluster Type");
+        const remarksErr = validators.alphanumericGeneral(remarks, 125, "Remarks");
+
+        const newErrors = {
+            clusterType: typeErr,
+            remarks: remarksErr
+        };
+
+        setErrors(newErrors);
+
+        if (typeErr || remarksErr) {
+            return;
+        }
         
         if (editingItem) {
-            onSubmit({ id: editingItem.id, clusterType, remarks });
+            onSubmit({ id: editingItem.id, clusterType: clusterType.trim(), remarks: remarks.trim() });
         } else {
-            onSubmit({ clusterType, remarks });
+            onSubmit({ clusterType: clusterType.trim(), remarks: remarks.trim() });
         }
     };
 
@@ -54,18 +70,35 @@ const ClusterTypeModal: React.FC<ClusterTypeModalProps> = ({ open, onClose, onSu
                         label="Cluster Type"
                         placeholder="VM Ware"
                         value={clusterType}
-                        onChange={(e) => setClusterType(e.target.value)}
+                        onChange={(e) => {
+                            setClusterType(e.target.value);
+                            setErrors(prev => ({ ...prev, clusterType: '' }));
+                        }}
                         required
+                        error={!!errors.clusterType}
+                        helperText={errors.clusterType}
                     />
-                    <TextField
-                        fullWidth
-                        multiline
-                        rows={3}
-                        label="Remarks"
-                        placeholder="Enter remarks..."
-                        value={remarks}
-                        onChange={(e) => setRemarks(e.target.value)}
-                    />
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <TextField
+                            fullWidth
+                            multiline
+                            rows={3}
+                            label="Remarks"
+                            placeholder="Enter remarks..."
+                            value={remarks}
+                            onChange={(e) => {
+                                setRemarks(e.target.value);
+                                setErrors(prev => ({ ...prev, remarks: '' }));
+                            }}
+                            error={!!errors.remarks}
+                            helperText={errors.remarks}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                {remarks ? remarks.length : 0} / 125
+                            </span>
+                        </div>
+                    </Box>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
                     <Button variant="text" onClick={onClose} style={{ color: '#637381' }}>

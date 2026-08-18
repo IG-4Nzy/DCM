@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query, status, Request
 from fastapi.responses import StreamingResponse
 import io
 import csv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from bson import ObjectId
 from database import db
 from auth_utils import get_current_user, require_privilege
@@ -23,22 +23,128 @@ class MonitoredServerCreate(BaseModel):
     ipAddress: str = Field(..., min_length=1)
     adminName: Optional[str] = Field(None)
     monitoringType: str = Field("heartbeat", pattern="^(ping|port|both|heartbeat)$")
-    interval: int = Field(60, ge=10) # default 60s, min 10s
-    timeout: int = Field(5, ge=1, le=10) # default 5s
-    retryCount: int = Field(3, ge=1, le=10) # default 3 retries
+    interval: int = Field(60) # default 60s
+    timeout: int = Field(5) # default 5s
+    retryCount: int = Field(3) # default 3 retries
     ports: List[int] = Field(default_factory=list)
     isEnabled: bool = Field(True)
+
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        import re
+        if not re.match(r'^[a-zA-Z0-9\s._-]+$', v):
+            raise ValueError("Friendly name must be alphanumeric with spaces, dashes, dots or underscores only")
+        if not (2 <= len(v) <= 50):
+            raise ValueError("Friendly name must be between 2 to 50 characters")
+        return v
+
+    @field_validator('ipAddress')
+    @classmethod
+    def validate_ip(cls, v: str) -> str:
+        import re
+        if not re.match(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$', v):
+            raise ValueError("Must be a valid IPv4 address")
+        for part in v.split('.'):
+            if not (0 <= int(part) <= 255):
+                raise ValueError("Must be a valid IPv4 address (octets 0-255)")
+        return v
+
+    @field_validator('interval')
+    @classmethod
+    def validate_interval(cls, v: int) -> int:
+        if not (5 <= v <= 3600):
+            raise ValueError("Interval must be between 5 and 3600 seconds")
+        return v
+
+    @field_validator('timeout')
+    @classmethod
+    def validate_timeout(cls, v: int) -> int:
+        if not (1 <= v <= 30):
+            raise ValueError("Timeout must be between 1 and 30 seconds")
+        return v
+
+    @field_validator('retryCount')
+    @classmethod
+    def validate_retry(cls, v: int) -> int:
+        if not (1 <= v <= 10):
+            raise ValueError("Retry count must be between 1 and 10")
+        return v
+
+    @field_validator('ports')
+    @classmethod
+    def validate_ports(cls, v: List[int]) -> List[int]:
+        for port in v:
+            if not (1 <= port <= 65535):
+                raise ValueError("Each port must be between 1 and 65535")
+        return v
 
 class MonitoredServerUpdate(BaseModel):
     name: Optional[str] = None
     ipAddress: Optional[str] = None
     adminName: Optional[str] = None
     monitoringType: Optional[str] = Field(None, pattern="^(ping|port|both|heartbeat)$")
-    interval: Optional[int] = Field(None, ge=10)
-    timeout: Optional[int] = Field(None, ge=1, le=10)
-    retryCount: Optional[int] = Field(None, ge=1, le=10)
+    interval: Optional[int] = None
+    timeout: Optional[int] = None
+    retryCount: Optional[int] = None
     ports: Optional[List[int]] = None
     isEnabled: Optional[bool] = None
+
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            import re
+            if not re.match(r'^[a-zA-Z0-9\s._-]+$', v):
+                raise ValueError("Friendly name must be alphanumeric with spaces, dashes, dots or underscores only")
+            if not (2 <= len(v) <= 50):
+                raise ValueError("Friendly name must be between 2 to 50 characters")
+        return v
+
+    @field_validator('ipAddress')
+    @classmethod
+    def validate_ip(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            import re
+            if not re.match(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$', v):
+                raise ValueError("Must be a valid IPv4 address")
+            for part in v.split('.'):
+                if not (0 <= int(part) <= 255):
+                    raise ValueError("Must be a valid IPv4 address (octets 0-255)")
+        return v
+
+    @field_validator('interval')
+    @classmethod
+    def validate_interval(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None:
+            if not (5 <= v <= 3600):
+                raise ValueError("Interval must be between 5 and 3600 seconds")
+        return v
+
+    @field_validator('timeout')
+    @classmethod
+    def validate_timeout(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None:
+            if not (1 <= v <= 30):
+                raise ValueError("Timeout must be between 1 and 30 seconds")
+        return v
+
+    @field_validator('retryCount')
+    @classmethod
+    def validate_retry(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None:
+            if not (1 <= v <= 10):
+                raise ValueError("Retry count must be between 1 and 10")
+        return v
+
+    @field_validator('ports')
+    @classmethod
+    def validate_ports(cls, v: Optional[List[int]]) -> Optional[List[int]]:
+        if v is not None:
+            for port in v:
+                if not (1 <= port <= 65535):
+                    raise ValueError("Each port must be between 1 and 65535")
+        return v
 
 class NotificationChannelUpdate(BaseModel):
     isEnabled: bool

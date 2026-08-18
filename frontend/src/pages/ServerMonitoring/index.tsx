@@ -1,34 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Box, 
-  Paper, 
-  Typography, 
-  Grid, 
-  CircularProgress, 
-  Button, 
-  Dialog, 
-  DialogTitle, 
-  DialogContent, 
-  DialogActions, 
-  TextField, 
-  Chip,
-  IconButton,
-  Switch,
-  FormControlLabel,
-  InputAdornment,
-  Table as MuiTable,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Tooltip,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem
-} from '@mui/material';
+import { Box, Paper, Typography, Grid, CircularProgress, Button, Dialog, DialogTitle, DialogContent, DialogActions, Chip, IconButton, Switch, FormControlLabel, InputAdornment, Table as MuiTable, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import TextField from '../../components/TextField';
 import { 
   MdDns as ServerIcon, 
   MdSpeed as CpuIcon, 

@@ -1,0 +1,85 @@
+i want to add validations to every fields,
+write and use utility functions for validations
+
+i will give field names/placeholder and rules
+apply those validations on every fields.
+
+observed date - dont allow future date selection
+description -> maximum character limit should be 220, show character count below the field in right side
+actions taken -> maximum character limit should be 220, show character count below the field in right side.
+category name -> allow only alphanumeric , max char limit is 20
+remarks - max char limit is 125
+visitor name -> allow only alphanumeric and coma,max char count is 40
+division/dept - max char limit is 60,allow only alphanumeric
+purpose of visit - allow only alphanumeric , max char limit is 125
+tools/items to bring - allow only alphanumeric
+item name -> alphanumeric,max char limit is 20
+almirah number - alpha numeric,max character limit is 5
+rack number - alpha numeric,max count is 5
+quantity - number
+date and time - block past date selection
+username - should only allow aphabets,underscore, and numbers, maximum number of character is 20
+password - maximum number of character is 20
+passnumber - maximum number of character is 20, should allow only alphanumeric
+first name - alphanumeric only , max count is 20
+lastname - alphanumeric only,max count is 20
+mobile number - numbers and coma
+datefield - dont allow future dates
+role name - allow only alpha numeric and underscore, max char count is 20
+department name - allow only alphanumeric ,max character count is 20
+title - should only allow alphanumeric , max count is 60
+upload attachments - max size is 5mb/File
+activity description - should only allow aphanumeric ,coma,max num of character is 220
+os and expiry - alphanumeric ,max count is 50
+backup name - max count is 120
+hdd - max count is 5, alphanumeric
+cpu - max count is 5, alphanumeric
+ram - max count is 5, alphanumeric
+clone name - max count 50,alphanumeric
+snapshot name - max count 50,alphanumeric
+template name - max count 50,alphanumeric
+purpose - max count 220
+IP(assign or update) - max count 16,numberic,dots
+general description (optional) - max count 220
+request type - alphanumeric,max count 50
+server friendly name - alphanumeric,max count 50
+ip address or fqdn - max count 50,alphanumeric,dots
+admin name - alphabets,max count 25
+vcenter name/host name - alphanumeric,max count 200
+document title - alphanumeric,max count 50
+file attachment - file size should be maximum 5 mb
+activity name - alphanumeric,max count 25
+contact number - numeric
+cluster type - alphabets only,max count 20
+remarks - max count 220,show count
+hypervisor - alphabets only,max count 20
+server model - alphanumeric only,max count 20
+gpu name - alphanumeric,max count 20
+datastore name - alphanumeric,max count 20
+storage capacity - max count 10,alphanumeric only
+status name - only allow alphanumeric ,max count 20
+cycle start day - 1 to 31
+cycle end day - 1 to 31
+max allowed days - 1 to 31
+shift name - alphanumeric only,max count 20
+row/slot name - alphanumeric,max count 20
+rule description/error reason - max count 225
+server rack name - alphanumeric ,max count 20
+rack capacity - numeric,max xount 3 digits
+temperature - numeric,max count 2 digit
+spare power - numeric,max count 3 digits
+node name - alpha numeric,max count 20
+ip address - numeric and dot,max count - 16
+operating system - alphanumeric,max count 25
+server model name - alpha numeric ,max count 25
+serial number - alphanumeric,max count 20
+asset number - alphanumeric,max count 50
+custodian - alphabets,max count 20
+total ram - alphanumeric,max count 6
+total hdd - alphanumeric,max count 6
+total cpu - alphanumeric,max count 6
+rack units - cannot be edited manually
+cluster name - alphanumeric,max count 25
+vm name - alphanumeric,max count 30
+applications - alphanumeric,coma - max count 60
+

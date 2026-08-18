@@ -1,19 +1,7 @@
 // @ts-nocheck
 import React from 'react';
-import {
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Checkbox,
-  type SelectChangeEvent,
-  FormHelperText,
-  IconButton,
-  ListItemText,
-  ListSubheader,
-  TextField,
-  InputAdornment,
-} from '@mui/material';
+import { FormControl, InputLabel, Select, MenuItem, Checkbox, type SelectChangeEvent, FormHelperText, IconButton, ListItemText, ListSubheader, InputAdornment } from '@mui/material';
+import TextField from '../../components/TextField';
 import { MdClear, MdSearch } from 'react-icons/md';
 
 export interface DropdownOption {

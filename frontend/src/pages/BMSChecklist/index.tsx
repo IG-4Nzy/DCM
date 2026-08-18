@@ -3,11 +3,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import { jwtDecode } from 'jwt-decode';
-import {
-  Box, Typography, Tabs, Tab, Button, IconButton, Chip,
-  Tooltip, Dialog, DialogTitle, DialogContent, DialogActions,
-  FormControl, InputLabel, Select, MenuItem, TextField
-} from '@mui/material';
+import { Box, Typography, Tabs, Tab, Button, IconButton, Chip, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import TextField from '../../components/TextField';
 import {
   MdAdd, MdDelete, MdDownload, MdCheckCircle, MdHistory, MdExpandMore,
   MdChevronRight, MdSearch, MdSave, MdFilterList, MdViewList, MdViewModule,
@@ -245,6 +242,7 @@ const AutoGrowingTextarea: React.FC<AutoGrowingTextareaProps> = ({ value, onChan
         overflowY: 'hidden',
         ...style,
       }}
+      maxLength={200}
       {...props}
     />
   );

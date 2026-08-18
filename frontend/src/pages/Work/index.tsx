@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Paper, Tooltip, IconButton, FormControl, InputLabel, Select, MenuItem, Checkbox, ListItemText, OutlinedInput, Tabs, Tab, TextField } from '@mui/material';
+import { Box, Paper, Tooltip, IconButton, FormControl, InputLabel, Select, MenuItem, Checkbox, ListItemText, OutlinedInput, Tabs, Tab } from '@mui/material';
+import TextField from '../../components/TextField';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdCheckCircle as ApproveIcon } from 'react-icons/md';
 import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';

@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Box, TextField, MenuItem, FormControl, InputLabel, Select, Checkbox, FormControlLabel, Autocomplete } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, MenuItem, FormControl, InputLabel, Select, Checkbox, FormControlLabel, Autocomplete } from '@mui/material';
+import TextField from '../../components/TextField';
 import Button from '../../components/Button';
 import type { RequestData } from './model';
 import type { RootState, AppDispatch } from '../../store';

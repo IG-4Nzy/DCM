@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import apiClient from '../../services/request';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, Divider, Grid, Chip, TextField, FormControl, InputLabel, Select, MenuItem, Checkbox, FormControlLabel } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, Divider, Grid, Chip, FormControl, InputLabel, Select, MenuItem, Checkbox, FormControlLabel } from '@mui/material';
+import TextField from '../../components/TextField';
 import Button from '../../components/Button';
 import type { RequestData, RequestLogData } from './model';
 import { fetchUsers } from '../Users/action';
@@ -13,6 +14,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../../store';
 import dayjs from 'dayjs';
 import { getServerTime } from '../../helpers/time';
+import { validators } from '../../helpers/validation';
 
 interface RequestViewModalProps {
   isOpen: boolean;
@@ -49,6 +51,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [isSendBackOpen, setIsSendBackOpen] = useState(false);
   const [sendBackReason, setSendBackReason] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Cluster Selection States
   const [clusters, setClusters] = useState<any[]>([]);
@@ -121,6 +124,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
 
     if (isOpen && !hasInitializedRef.current && request && (request.id === requestId || request._id === requestId)) {
       setRemarks('');
+      setErrors({});
       setIpAddress(request.details?.ip || '');
       setIpError(false);
       setBackupName(request.details?.backupName || '');
@@ -210,6 +214,11 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
 
   const handleConfirmSendBack = async () => {
     if (!sendBackReason.trim()) return;
+    const reasonErr = validators.alphanumericGeneral(sendBackReason, 200, 'Reason for Send Back');
+    if (reasonErr) {
+      setErrors(prev => ({ ...prev, sendBackReason: reasonErr }));
+      return;
+    }
     setSubmitting(true);
     try {
       await onSendBack(request.id || request._id || '', sendBackReason.trim());
@@ -277,28 +286,60 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   };
 
   const handleAdvance = async () => {
-    if (isIpIssuance && !ipAddress.trim()) {
-      setIpError(true);
-      return;
+    let hasErr = false;
+    const newErrors: Record<string, string> = {};
+
+    if (isIpIssuance) {
+      if (!ipAddress.trim()) {
+        setIpError(true);
+        hasErr = true;
+      } else {
+        const ipErr = validators.ipv4(ipAddress, 'IP Address');
+        if (ipErr) {
+          newErrors.ipAddress = ipErr;
+          hasErr = true;
+        }
+      }
     }
     if (isClusterDeciding && !selectedCluster) {
       setClusterError(true);
-      return;
+      hasErr = true;
     }
     if (isClusterDeciding && !selectedNode) {
       setNodeError(true);
-      return;
+      hasErr = true;
     }
     if (isMarkEntryTime && !entryTime) {
       setEntryTimeError(true);
-      return;
+      hasErr = true;
     }
     if (isMarkExitTime && !exitTime) {
       setExitTimeError(true);
-      return;
+      hasErr = true;
     }
-    if (isVMBackupStage && !backupName.trim()) {
-      setBackupError(true);
+    if (isVMBackupStage) {
+      if (!backupName.trim()) {
+        setBackupError(true);
+        hasErr = true;
+      } else {
+        const backupErr = validators.alphanumericGeneral(backupName, 100, 'Backup Name');
+        if (backupErr) {
+          newErrors.backupName = backupErr;
+          hasErr = true;
+        }
+      }
+    }
+
+    if (remarks) {
+      const remarksErr = validators.maxLength(remarks, 125, 'Remarks');
+      if (remarksErr) {
+        newErrors.remarks = remarksErr;
+        hasErr = true;
+      }
+    }
+
+    setErrors(newErrors);
+    if (hasErr) {
       return;
     }
 
@@ -794,12 +835,13 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                         variant="outlined"
                         fullWidth
                         required
-                        error={ipError}
-                        helperText={ipError ? "You must provide an IP address to advance from this stage." : "Enter the IP address allocated for this request"}
+                        error={ipError || !!errors.ipAddress}
+                        helperText={errors.ipAddress || (ipError ? "You must provide an IP address to advance from this stage." : "Enter the IP address allocated for this request")}
                         value={ipAddress}
                         onChange={(e) => {
                           setIpAddress(e.target.value);
                           if (e.target.value.trim()) setIpError(false);
+                          setErrors(prev => ({ ...prev, ipAddress: '' }));
                         }}
                         placeholder="e.g. 10.41.12.34"
                         sx={{ bgcolor: '#fff' }}
@@ -830,12 +872,13 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                         variant="outlined"
                         fullWidth
                         required
-                        error={backupError}
-                        helperText={backupError ? "You must provide a Backup Name to advance." : "Enter VM backup name"}
+                        error={backupError || !!errors.backupName}
+                        helperText={errors.backupName || (backupError ? "You must provide a Backup Name to advance." : "Enter VM backup name")}
                         value={backupName}
                         onChange={(e) => {
                           setBackupName(e.target.value);
                           if (e.target.value.trim()) setBackupError(false);
+                          setErrors(prev => ({ ...prev, backupName: '' }));
                         }}
                         placeholder="e.g. Daily Backup"
                         sx={{ bgcolor: '#fff' }}
@@ -995,7 +1038,12 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                       multiline
                       rows={2}
                       value={remarks}
-                      onChange={(e) => setRemarks(e.target.value)}
+                      onChange={(e) => {
+                        setRemarks(e.target.value);
+                        setErrors(prev => ({ ...prev, remarks: '' }));
+                      }}
+                      error={!!errors.remarks}
+                      helperText={errors.remarks || "Add any comments for the history log"}
                       placeholder="Add any comments for the history log"
                       sx={{ bgcolor: '#fff' }}
                     />
@@ -1068,7 +1116,12 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
               rows={3}
               required
               value={sendBackReason}
-              onChange={(e) => setSendBackReason(e.target.value)}
+              onChange={(e) => {
+                setSendBackReason(e.target.value);
+                setErrors(prev => ({ ...prev, sendBackReason: '' }));
+              }}
+              error={!!errors.sendBackReason}
+              helperText={errors.sendBackReason}
               placeholder="Provide reason for sending back..."
             />
           </Box>

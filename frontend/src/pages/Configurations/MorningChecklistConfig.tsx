@@ -1,10 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Box, Paper, Typography, Button as MuiButton, IconButton, Tooltip,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Select,
-  FormControl, InputLabel, FormControlLabel, Switch, Chip
-} from '@mui/material';
+import { Box, Paper, Typography, Button as MuiButton, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, MenuItem, Select, FormControl, InputLabel, FormControlLabel, Switch, Chip } from '@mui/material';
+import TextField from '../../components/TextField';
 import { MdAdd as AddIcon, MdDelete as DeleteIcon, MdEdit as EditIcon, MdRemove as RemoveIcon } from 'react-icons/md';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';

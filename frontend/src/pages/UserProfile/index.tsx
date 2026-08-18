@@ -110,7 +110,68 @@ const UserProfile: React.FC = () => {
         setEditing(false);
     };
 
+    const validateName = (v: string, label: string) => {
+        if (!v) return "";
+        if (!/^[a-zA-Z0-9]+$/.test(v)) return `${label} must be alphanumeric only`;
+        if (v.length > 20) return `${label} must be maximum 20 characters`;
+        return "";
+    };
+
+    const validateMobile = (v: string) => {
+        if (!v) return "";
+        if (!/^[0-9,]+$/.test(v)) return "Mobile number must contain numbers and commas only";
+        return "";
+    };
+
+    const validatePassNumber = (v: string) => {
+        if (!v) return "";
+        if (!/^[a-zA-Z0-9]+$/.test(v)) return "Pass number must contain alphanumeric characters only";
+        if (v.length > 20) return "Pass number must be maximum 20 characters";
+        return "";
+    };
+
+    const firstNameErr = validateName(form.firstName, "First name");
+    const lastNameErr = validateName(form.lastName, "Last name");
+    const mobileErr = validateMobile(form.mobile);
+    const passNumberErr = validatePassNumber(form.passNumber);
+
+    const hasFormErrors = !!firstNameErr || !!lastNameErr || !!mobileErr || !!passNumberErr;
+
     const handleSave = async () => {
+        // Validation checks
+        if (hasFormErrors) {
+            showToast("Please fix the validation errors before saving.", "error");
+            return;
+        }
+        if (form.firstName && !/^[a-zA-Z0-9]+$/.test(form.firstName)) {
+            showToast("First name must be alphanumeric only", "error");
+            return;
+        }
+        if (form.firstName && form.firstName.length > 20) {
+            showToast("First name must be maximum 20 characters", "error");
+            return;
+        }
+        if (form.lastName && !/^[a-zA-Z0-9]+$/.test(form.lastName)) {
+            showToast("Last name must be alphanumeric only", "error");
+            return;
+        }
+        if (form.lastName && form.lastName.length > 20) {
+            showToast("Last name must be maximum 20 characters", "error");
+            return;
+        }
+        if (form.mobile && !/^[0-9,]+$/.test(form.mobile)) {
+            showToast("Mobile number must contain numbers and commas only", "error");
+            return;
+        }
+        if (form.passNumber && !/^[a-zA-Z0-9]+$/.test(form.passNumber)) {
+            showToast("Pass number must contain alphanumeric characters only", "error");
+            return;
+        }
+        if (form.passNumber && form.passNumber.length > 20) {
+            showToast("Pass number must be maximum 20 characters", "error");
+            return;
+        }
+
         try {
             setSaving(true);
             const payload: any = {};
@@ -146,6 +207,10 @@ const UserProfile: React.FC = () => {
         }
         if (passwordForm.newPassword.length < 6) {
             showToast("Password must be at least 6 characters long", "error");
+            return;
+        }
+        if (passwordForm.newPassword.length > 16) {
+            showToast("Password must be maximum 16 characters long", "error");
             return;
         }
         try {
@@ -248,7 +313,7 @@ const UserProfile: React.FC = () => {
                                         size="small"
                                         startIcon={<SaveIcon />}
                                         onClick={handleSave}
-                                        disabled={saving}
+                                        disabled={saving || hasFormErrors}
                                         sx={{
                                             borderRadius: "8px",
                                             textTransform: "none",
@@ -283,12 +348,16 @@ const UserProfile: React.FC = () => {
                                 onChange={(e) =>
                                     setForm({ ...form, firstName: e.target.value })
                                 }
+                                error={!!firstNameErr}
+                                helperText={firstNameErr}
                                 className={styles.field}
                             />
                             <TextField
                                 label="Last Name"
                                 value={form.lastName}
                                 onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                                error={!!lastNameErr}
+                                helperText={lastNameErr}
                                 className={styles.field}
                             />
                             <TextField
@@ -296,6 +365,9 @@ const UserProfile: React.FC = () => {
                                 value={form.passNumber}
                                 onChange={(e) => setForm({ ...form, passNumber: e.target.value })}
                                 className={styles.field}
+                                error={!!passNumberErr}
+                                helperText={passNumberErr}
+                                inputProps={{ maxLength: 20 }}
                             />
                         </Box>
                     ) : (
@@ -316,6 +388,8 @@ const UserProfile: React.FC = () => {
                                 label="Mobile"
                                 value={form.mobile}
                                 onChange={(e) => setForm({ ...form, mobile: e.target.value })}
+                                error={!!mobileErr}
+                                helperText={mobileErr}
                                 className={styles.field}
                             />
                         </Box>

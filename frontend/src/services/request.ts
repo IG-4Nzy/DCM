@@ -13,12 +13,35 @@ const request = axios.create({
   },
 });
 
+const trimStrings = (obj: any): any => {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === 'string') return obj.trim();
+  if (Array.isArray(obj)) return obj.map(trimStrings);
+  if (typeof obj === 'object') {
+    if (obj instanceof FormData || obj instanceof Blob || obj instanceof File) {
+      return obj;
+    }
+    const trimmed: any = {};
+    for (const key of Object.keys(obj)) {
+      trimmed[key] = trimStrings(obj[key]);
+    }
+    return trimmed;
+  }
+  return obj;
+};
+
 request.interceptors.request.use(
   (config) => {
     const token = getItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.TOKEN);
     if (token) {
       const cleanToken = typeof token === 'string' ? token.replace(/"/g, '') : token;
       config.headers.Authorization = `Bearer ${cleanToken}`;
+    }
+    if (config.data) {
+      config.data = trimStrings(config.data);
+    }
+    if (config.params) {
+      config.params = trimStrings(config.params);
     }
     return config;
   },

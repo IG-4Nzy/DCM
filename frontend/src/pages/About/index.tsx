@@ -1,25 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Button,
-  TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  CircularProgress,
-  IconButton,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Fade,
-  Grow
-} from '@mui/material';
+import { Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Fade, Grow } from '@mui/material';
+import TextField from '../../components/TextField';
 import {
   MdCheckCircle,
   MdCloudUpload,

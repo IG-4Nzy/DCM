@@ -125,6 +125,7 @@ const StickyNote: React.FC = () => {
                             value={content}
                             onChange={handleContentChange}
                             placeholder="Type your notes here..."
+                            maxLength={200}
                         />
                     </Paper>
                 </Draggable>

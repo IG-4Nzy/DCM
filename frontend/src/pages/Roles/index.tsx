@@ -80,6 +80,18 @@ const Roles: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formName) {
+      showToast("Role name is required", "error");
+      return;
+    }
+    if (!/^[a-zA-Z0-9\s]+$/.test(formName)) {
+      showToast("Role name must be alphanumeric and spaces only", "error");
+      return;
+    }
+    if (formName.length < 2 || formName.length > 30) {
+      showToast("Role name must be between 2 to 30 characters", "error");
+      return;
+    }
     try {
       if (editingRole) {
         const payload: any = {

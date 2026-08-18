@@ -11,6 +11,7 @@ import { MdEdit as EditIcon, MdSend, MdAttachFile } from 'react-icons/md';
 import styles from './index.module.scss';
 import request, { API_BASE_URL } from '../../services/request';
 import { getServerTime } from '../../helpers/time';
+import { getTodayString, validators } from '../../helpers/validation';
 
 interface ObservationFormModalProps {
   isModalOpen: boolean;
@@ -263,6 +264,7 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                 value={formData.observedDate}
                 onChange={(e: any) => setFormData({ ...formData, observedDate: e })}
                 required
+                maxDate={getTodayString()}
               />
               <TextField
                 className={styles.field}
@@ -320,6 +322,8 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                 required
                 multiline
                 rows={3}
+                showCount={true}
+                inputProps={{ maxLength: 220 }}
               />
             </div>
             
@@ -333,6 +337,8 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                 placeholder="Enter actions taken"
                 multiline
                 rows={3}
+                showCount={true}
+                inputProps={{ maxLength: 220 }}
               />
             </div>
             

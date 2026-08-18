@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Body, HTTPException, status, Depends
 from typing import List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from bson import ObjectId
 from datetime import datetime, timezone
+import re
 
 from database import db
 from auth_utils import get_current_user, require_privilege
@@ -25,6 +26,46 @@ class PhoneDirectoryModel(BaseModel):
         arbitrary_types_allowed=True,
     )
 
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v):
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
+                raise ValueError("Name must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+            if len(v_trimmed) > 100:
+                raise ValueError("Name must be maximum 100 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('contact_number')
+    @classmethod
+    def validate_contact_number(cls, v):
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Contact number cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s+-]+$", v_trimmed):
+                raise ValueError("Contact number must contain letters, numbers, spaces, hyphens, and plus signs only")
+            if len(v_trimmed) > 15:
+                raise ValueError("Contact number must be maximum 15 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed and not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
+                raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+            if len(v_trimmed) > 125:
+                raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
+
 class UpdatePhoneDirectoryModel(BaseModel):
     name: Optional[str] = None
     contact_number: Optional[str] = None
@@ -34,6 +75,46 @@ class UpdatePhoneDirectoryModel(BaseModel):
         arbitrary_types_allowed=True,
         populate_by_name=True,
     )
+
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v):
+        if v is not None:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
+                raise ValueError("Name must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+            if len(v_trimmed) > 100:
+                raise ValueError("Name must be maximum 100 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('contact_number')
+    @classmethod
+    def validate_contact_number(cls, v):
+        if v is not None:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Contact number cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s+-]+$", v_trimmed):
+                raise ValueError("Contact number must contain letters, numbers, spaces, hyphens, and plus signs only")
+            if len(v_trimmed) > 15:
+                raise ValueError("Contact number must be maximum 15 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed and not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
+                raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+            if len(v_trimmed) > 125:
+                raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
 
 class PaginatedPhoneDirectoryModel(BaseModel):
     data: List[PhoneDirectoryModel]

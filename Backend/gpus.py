@@ -5,7 +5,7 @@ from typing import Optional, List
 from database import db
 from bson import ObjectId
 from datetime import datetime, timezone
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 router = APIRouter()
 collection = db.get_collection("gpus")
@@ -30,10 +30,68 @@ class CreateGPUModel(BaseModel):
     gpuName: str
     remarks: Optional[str] = None
 
+    @field_validator('gpuName')
+    @classmethod
+    def validate_gpu_name(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("GPU Name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s/+-]+$", v_trimmed):
+                raise ValueError("GPU Name must contain alphanumeric characters, spaces, slashes, pluses or dashes only")
+            if len(v_trimmed) > 50:
+                raise ValueError("GPU Name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if len(v_trimmed) > 125:
+                    raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
+
 
 class UpdateGPUModel(BaseModel):
     gpuName: Optional[str] = None
     remarks: Optional[str] = None
+
+    @field_validator('gpuName')
+    @classmethod
+    def validate_gpu_name(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("GPU Name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s/+-]+$", v_trimmed):
+                raise ValueError("GPU Name must contain alphanumeric characters, spaces, slashes, pluses or dashes only")
+            if len(v_trimmed) > 50:
+                raise ValueError("GPU Name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if len(v_trimmed) > 125:
+                    raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

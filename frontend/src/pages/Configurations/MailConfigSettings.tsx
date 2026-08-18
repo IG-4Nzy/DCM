@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Typography, TextField, FormControlLabel, Checkbox, Divider, Grid } from '@mui/material';
+import { Box, Paper, Typography, FormControlLabel, Checkbox, Divider, Grid } from '@mui/material';
+import TextField from '../../components/TextField';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store';
 import { hasPrivilege } from '../../helpers/authUtils';

@@ -1,16 +1,31 @@
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, model_validator
-from typing import List, Optional, Union
+from pydantic import BaseModel, model_validator, field_validator
+from typing import List, Optional, Union, Any
 from database import db
 from auth_utils import get_current_user, require_privilege, require_any_privilege
 
 router = APIRouter()
+
+def validate_non_negative(v: Any) -> Any:
+    if v is not None and v != "":
+        try:
+            val = float(v)
+            if val < 0:
+                raise ValueError("Must be a non-negative number")
+        except (ValueError, TypeError):
+            raise ValueError("Must be a valid number")
+    return v
 
 class ActivityModel(BaseModel):
     id: str
     name: str
     rate: Union[float, str]
     maxUnits: Optional[Union[float, str]] = 0
+
+    @field_validator('rate', 'maxUnits')
+    @classmethod
+    def validate_fields(cls, v):
+        return validate_non_negative(v)
 
 class TemplateModel(BaseModel):
     id: str
@@ -23,6 +38,11 @@ class TemplateModel(BaseModel):
     reserveEnabled: Optional[bool] = False
     reserveType: Optional[str] = 'percentage'
     reserveValue: Optional[Union[float, str]] = 5
+
+    @field_validator('allottedAmount', 'maxStaffs', 'maxDays', 'reserveValue')
+    @classmethod
+    def validate_fields(cls, v):
+        return validate_non_negative(v)
 
     @model_validator(mode='before')
     @classmethod
@@ -38,6 +58,11 @@ class MemberModel(BaseModel):
     days: Union[float, str]
     otHours: Optional[Union[float, str]] = 0
 
+    @field_validator('days', 'otHours')
+    @classmethod
+    def validate_fields(cls, v):
+        return validate_non_negative(v)
+
 class GroupModel(BaseModel):
     id: str
     name: str
@@ -46,6 +71,11 @@ class GroupModel(BaseModel):
     members: List[MemberModel] = []
     updatedBy: Optional[str] = None
     updatedAt: Optional[str] = None
+
+    @field_validator('perDaySalary')
+    @classmethod
+    def validate_fields(cls, v):
+        return validate_non_negative(v)
 
 class SalaryMonthModel(BaseModel):
     month: str

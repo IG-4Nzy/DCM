@@ -243,6 +243,13 @@ const RoleFormModal = ({
         ...(otherPrivs.length > 0 ? { "Other Privileges": otherPrivs } : {})
     };
 
+    const validateRoleName = (v: string) => {
+        if (!v) return "";
+        if (!/^[a-zA-Z0-9\s]+$/.test(v)) return "Role name must be alphanumeric and spaces only";
+        if (v.length < 2 || v.length > 30) return "Role name must be between 2 to 30 characters";
+        return "";
+    };
+    const nameErr = validateRoleName(formName);
     const searchLower = searchQuery.trim().toLowerCase();
 
     return (
@@ -260,6 +267,8 @@ const RoleFormModal = ({
                         value={formName}
                         onChange={(e) => setFormName(e.target.value)}
                         required
+                        error={!!nameErr}
+                        helperText={nameErr}
                     />
                     <FormControl fullWidth className={styles.field}>
                         <InputLabel>Status</InputLabel>

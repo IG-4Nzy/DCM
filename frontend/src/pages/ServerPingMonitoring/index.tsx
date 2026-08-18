@@ -1,11 +1,6 @@
 // @ts-nocheck
 import React, { useEffect, useState, useRef } from 'react';
-import { 
-  Box, Button, Card, Grid, Typography, IconButton, 
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Chip, Checkbox, FormControlLabel, Select, MenuItem, InputLabel, FormControl,
-  TextField as MuiTextField, Tooltip
-} from '@mui/material';
+import { Box, Button, Card, Grid, Typography, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Checkbox, FormControlLabel, Select, MenuItem, InputLabel, FormControl, TextField as MuiTextField, Tooltip } from '@mui/material';
 import { 
   MdAdd as AddIcon, 
   MdDelete as DeleteIcon, 
@@ -200,6 +195,62 @@ const ServerPingMonitoring: React.FC = () => {
     portsInput: '',
     isEnabled: true
   });
+
+  const validateServerName = (v: string) => {
+    if (!v) return "";
+    if (!/^[a-zA-Z0-9\s._-]+$/.test(v)) return "Friendly name must be alphanumeric with spaces, dashes, dots or underscores only";
+    if (v.length < 2 || v.length > 50) return "Friendly name must be between 2 to 50 characters";
+    return "";
+  };
+  const validateIpAddress = (v: string) => {
+    if (!v) return "";
+    const ipv4Regex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+    if (!ipv4Regex.test(v)) return "Must be a valid IPv4 address";
+    const parts = v.split('.');
+    for (const part of parts) {
+      const num = parseInt(part, 10);
+      if (isNaN(num) || num < 0 || num > 255) {
+        return "Must be a valid IPv4 address (octets 0-255)";
+      }
+    }
+    return "";
+  };
+  const validatePortsInput = (v: string) => {
+    if (!v) return "";
+    const ports = v.split(',').map(p => p.trim());
+    for (const p of ports) {
+      if (!p) continue;
+      const num = parseInt(p, 10);
+      if (isNaN(num) || num < 1 || num > 65535) {
+        return "Each port must be an integer between 1 and 65535";
+      }
+    }
+    return "";
+  };
+  const validateInterval = (v: number) => {
+    if (v === undefined || v === null || isNaN(v)) return "Interval is required";
+    if (v < 5 || v > 3600) return "Interval must be between 5 and 3600 seconds";
+    return "";
+  };
+  const validateTimeout = (v: number) => {
+    if (v === undefined || v === null || isNaN(v)) return "Timeout is required";
+    if (v < 1 || v > 30) return "Timeout must be between 1 and 30 seconds";
+    return "";
+  };
+  const validateRetryCount = (v: number) => {
+    if (v === undefined || v === null || isNaN(v)) return "Retry count is required";
+    if (v < 1 || v > 10) return "Retry count must be between 1 and 10";
+    return "";
+  };
+
+  const nameErr = validateServerName(serverForm.name);
+  const ipAddressErr = validateIpAddress(serverForm.ipAddress);
+  const portsInputErr = (serverForm.monitoringType === 'port' || serverForm.monitoringType === 'both') ? validatePortsInput(serverForm.portsInput) : "";
+  const intervalErr = validateInterval(serverForm.interval);
+  const timeoutErr = validateTimeout(serverForm.timeout);
+  const retryCountErr = validateRetryCount(serverForm.retryCount);
+
+  const isFormInvalid = !!nameErr || !!ipAddressErr || !!portsInputErr || !!intervalErr || !!timeoutErr || !!retryCountErr || !serverForm.name || !serverForm.ipAddress;
 
   const [loading, setLoading] = useState(false);
 
@@ -597,6 +648,7 @@ const ServerPingMonitoring: React.FC = () => {
   // Handle server form submit
   const handleServerFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isFormInvalid) return;
     const ports = serverForm.portsInput
       .split(',')
       .map(p => parseInt(p.trim()))
@@ -1036,6 +1088,8 @@ const ServerPingMonitoring: React.FC = () => {
             onChange={(e) => setServerForm({ ...serverForm, name: e.target.value })}
             required
             fullWidth
+            error={!!nameErr}
+            helperText={nameErr}
           />
           <TextField
             label="IP Address or FQDN"
@@ -1043,6 +1097,8 @@ const ServerPingMonitoring: React.FC = () => {
             onChange={(e) => setServerForm({ ...serverForm, ipAddress: e.target.value })}
             required
             fullWidth
+            error={!!ipAddressErr}
+            helperText={ipAddressErr}
           />
           <TextField
             label="Admin Name"
@@ -1073,6 +1129,8 @@ const ServerPingMonitoring: React.FC = () => {
               onChange={(e) => setServerForm({ ...serverForm, portsInput: e.target.value })}
               placeholder="e.g. 22, 80, 443"
               fullWidth
+              error={!!portsInputErr}
+              helperText={portsInputErr}
             />
           )}
 
@@ -1085,6 +1143,8 @@ const ServerPingMonitoring: React.FC = () => {
                 onChange={(e) => setServerForm({ ...serverForm, interval: Number(e.target.value) })}
                 required
                 fullWidth
+                error={!!intervalErr}
+                helperText={intervalErr}
               />
             </Grid>
             <Grid size={{xs: 4}}  >
@@ -1095,6 +1155,8 @@ const ServerPingMonitoring: React.FC = () => {
                 onChange={(e) => setServerForm({ ...serverForm, timeout: Number(e.target.value) })}
                 required
                 fullWidth
+                error={!!timeoutErr}
+                helperText={timeoutErr}
               />
             </Grid>
             <Grid size={{xs: 4}}  >
@@ -1105,6 +1167,8 @@ const ServerPingMonitoring: React.FC = () => {
                 onChange={(e) => setServerForm({ ...serverForm, retryCount: Number(e.target.value) })}
                 required
                 fullWidth
+                error={!!retryCountErr}
+                helperText={retryCountErr}
               />
             </Grid>
           </Grid>
@@ -1122,7 +1186,7 @@ const ServerPingMonitoring: React.FC = () => {
 
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 1.5 }}>
             <Button size="small" onClick={() => setIsServerModalOpen(false)}>Cancel</Button>
-            <Button size="small" type="submit" variant="contained" sx={{ background: '#3b82f6', '&:hover': { background: '#2563eb' } }}>
+            <Button size="small" type="submit" variant="contained" disabled={isFormInvalid} sx={{ background: '#3b82f6', '&:hover': { background: '#2563eb' } }}>
               Save Configuration
             </Button>
           </Box>

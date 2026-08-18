@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Body
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, Union, List
 import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
 from database import db, get_local_now
 from auth_utils import get_current_user
+from models import check_first_name, check_last_name, check_mobile
 
 router = APIRouter()
 
@@ -39,6 +40,21 @@ class UpdateProfileModel(BaseModel):
     stickyNoteContent: Optional[str] = None
     stickyNotePositionX: Optional[int] = None
     stickyNotePositionY: Optional[int] = None
+
+    @field_validator('firstName')
+    @classmethod
+    def validate_first_name(cls, v):
+        return check_first_name(v)
+
+    @field_validator('lastName')
+    @classmethod
+    def validate_last_name(cls, v):
+        return check_last_name(v)
+
+    @field_validator('mobile')
+    @classmethod
+    def validate_mobile(cls, v):
+        return check_mobile(v)
 
 class ChangePasswordRequest(BaseModel):
     currentPassword: str

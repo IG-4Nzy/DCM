@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Paper, Tooltip, IconButton, MenuItem, Select, FormControl, TextField, Chip } from '@mui/material';
+import { Box, Paper, Tooltip, IconButton, MenuItem, Select, FormControl, Chip } from '@mui/material';
+import TextField from '../../components/TextField';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdDownload as DownloadIcon } from 'react-icons/md';
 import type { AppDispatch, RootState } from '../../store';
 import { fetchObservations, createObservation, updateObservation, deleteObservation, downloadObservations } from './action';
@@ -139,6 +140,22 @@ const ObservationList: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.observedDate) {
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      if (new Date(formData.observedDate) > today) {
+         alert("Observed date cannot be a future date");
+         return;
+      }
+    }
+    if (formData.description && formData.description.length > 220) {
+       alert("Description must be maximum 220 characters");
+       return;
+    }
+    if (formData.actionsTaken && formData.actionsTaken.length > 220) {
+       alert("Actions taken must be maximum 220 characters");
+       return;
+    }
     if (formData.status === 'Resolved' && !formData.remarks?.trim()) {
        alert("Remarks are mandatory when resolving an observation.");
        return;

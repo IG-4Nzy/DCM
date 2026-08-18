@@ -6,11 +6,11 @@ import { Button, FormControl, InputLabel, MenuItem, Select, Box, Typography, Too
 import type { UpdateUserPayload } from '../model';
 import DatePicker from '../../../components/DatePicker';
 import Dropdown from '../../../components/Dropdown';
-import { 
-  MdEdit as EditIcon, 
-  MdOutlineSecurity as SecurityIcon, 
-  MdOutlinePerson as PersonIcon, 
-  MdOutlineBadge as BadgeIcon 
+import {
+    MdEdit as EditIcon,
+    MdOutlineSecurity as SecurityIcon,
+    MdOutlinePerson as PersonIcon,
+    MdOutlineBadge as BadgeIcon
 } from 'react-icons/md';
 import styles from './index.module.scss';
 
@@ -77,13 +77,13 @@ const ViewField = ({ label, value, className = '' }: { label: string, value: any
     </div>
 );
 
-const UserFormModal = ({ 
-    isModalOpen, handleCloseModal, editingUser, 
+const UserFormModal = ({
+    isModalOpen, handleCloseModal, editingUser,
     isEditMode, setIsEditMode, hasUpdatePrivilege,
-    setFormUsername, formUsername, 
-    formPassword, setFormPassword, 
-    setFormRole, formRole, 
-    formStatus, setFormStatus, 
+    setFormUsername, formUsername,
+    formPassword, setFormPassword,
+    setFormRole, formRole,
+    formStatus, setFormStatus,
     availableRoles, handleSubmit,
     formFirstName, setFormFirstName,
     formLastName, setFormLastName,
@@ -100,9 +100,69 @@ const UserFormModal = ({
     formPassNumber, setFormPassNumber,
     formIsMonitorUser, setFormIsMonitorUser
 }: PropType) => {
-    
+
     const canEdit = isEditMode;
     const showEditButton = editingUser && !isEditMode && hasUpdatePrivilege;
+
+    // Validation helpers
+    const validateUsername = (v: string) => {
+        if (!v) return "";
+        if (!/^[a-zA-Z0-9_]+$/.test(v)) return "Username must contain alphabets, underscore, and numbers only";
+        if (v.length > 20) return "Username must be maximum 20 characters";
+        return "";
+    };
+
+    const validatePassword = (v: string) => {
+        if (!v) return "";
+        if (v.length > 20) return "Password must be maximum 20 characters";
+        return "";
+    };
+
+    const validateName = (v: string, label: string) => {
+        if (!v) return "";
+        if (!/^[a-zA-Z0-9]+$/.test(v)) return `${label} must be alphanumeric only`;
+        if (v.length > 20) return `${label} must be maximum 20 characters`;
+        return "";
+    };
+
+    const validateMobile = (v: string) => {
+        if (!v) return "";
+        if (!/^[0-9,]+$/.test(v)) return "Mobile number must contain numbers and commas only";
+        return "";
+    };
+
+    const validatePassNumber = (v: string) => {
+        if (!v) return "";
+        if (!/^[a-zA-Z0-9]+$/.test(v)) return "Pass number must contain alphanumeric characters only";
+        if (v.length > 20) return "Pass number must be maximum 20 characters";
+        return "";
+    };
+
+    const validateDateOfJoin = (v: string) => {
+        if (!v) return "";
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        if (new Date(v) > today) return "Date of join cannot be a future date";
+        return "";
+    };
+
+    const usernameErr = validateUsername(formUsername);
+    const passwordErr = validatePassword(formPassword);
+    const firstNameErr = validateName(formFirstName, "First name");
+    const lastNameErr = validateName(formLastName, "Last name");
+    const mobileErr = validateMobile(formMobile);
+    const passNumberErr = validatePassNumber(formPassNumber);
+    const dateOfJoinErr = validateDateOfJoin(formDateOfJoin);
+
+    const hasFormErrors = !!usernameErr || !!passwordErr || !!firstNameErr || !!lastNameErr || !!mobileErr || !!passNumberErr || !!dateOfJoinErr;
+
+    const getLocalDateString = () => {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
 
     // Get initials for profile avatar
     const getInitials = () => {
@@ -118,12 +178,12 @@ const UserFormModal = ({
             </Typography>
             {showEditButton && (
                 <Tooltip title="Edit User">
-                    <IconButton 
-                        size="small" 
-                        color="primary" 
+                    <IconButton
+                        size="small"
+                        color="primary"
                         onClick={() => setIsEditMode(true)}
-                        sx={{ 
-                            border: '1.5px solid rgba(25, 118, 210, 0.2)', 
+                        sx={{
+                            border: '1.5px solid rgba(25, 118, 210, 0.2)',
                             borderRadius: '8px',
                             '&:hover': {
                                 backgroundColor: 'rgba(25, 118, 210, 0.08)'
@@ -190,7 +250,7 @@ const UserFormModal = ({
                                 {editingUser?.replacementFor && (
                                     <div className={`${styles.viewFieldCard} ${styles.fullWidthRow}`}>
                                         <span className={styles.label}>Replacement For (Relieved User)</span>
-                                        <span 
+                                        <span
                                             className={styles.replacementLink}
                                             onClick={() => onViewReplacedUser && onViewReplacedUser(editingUser.replacementFor!)}
                                         >
@@ -249,6 +309,8 @@ const UserFormModal = ({
                                     onChange={(e) => setFormUsername(e.target.value)}
                                     required
                                     disabled={!!editingUser && !hasUpdatePrivilege}
+                                    error={!!usernameErr}
+                                    helperText={usernameErr}
                                 />
                                 <TextField
                                     fullWidth
@@ -257,10 +319,11 @@ const UserFormModal = ({
                                     value={formPassword}
                                     onChange={(e) => setFormPassword(e.target.value)}
                                     required={!editingUser}
-                                    helperText={editingUser ? "Leave blank to keep existing password" : ""}
+                                    error={!!passwordErr}
+                                    helperText={passwordErr || (editingUser ? "Leave blank to keep existing password" : "")}
                                     sx={{
                                         '& .MuiFormHelperText-root': {
-                                            color: '#637381'
+                                            color: passwordErr ? '#f44336' : '#637381'
                                         }
                                     }}
                                 />
@@ -290,13 +353,16 @@ const UserFormModal = ({
                                     label="Pass Number"
                                     value={formPassNumber}
                                     onChange={(e) => setFormPassNumber(e.target.value)}
+                                    error={!!passNumberErr}
+                                    helperText={passNumberErr}
+                                    inputProps={{ maxLength: 20 }}
                                 />
                                 <Dropdown
                                     fullWidth
                                     label="Replacement For (Relieved User)"
-                                    options={(inactiveUsers || []).map(u => ({ 
-                                        label: `${u.username} ${u.firstName || u.lastName ? `(${u.firstName || ''} ${u.lastName || ''})`.trim() : ''}`, 
-                                        value: u.id 
+                                    options={(inactiveUsers || []).map(u => ({
+                                        label: `${u.username} ${u.firstName || u.lastName ? `(${u.firstName || ''} ${u.lastName || ''})`.trim() : ''}`,
+                                        value: u.id
                                     }))}
                                     value={formReplacementFor || ""}
                                     onChange={(val) => setFormReplacementFor(val)}
@@ -311,7 +377,7 @@ const UserFormModal = ({
                                         />
                                     }
                                     label="Monitor User (bypass token expiry & session logout)"
-                                    sx={{ 
+                                    sx={{
                                         gridColumn: '1 / -1',
                                         '& .MuiFormControlLabel-label': { fontSize: '0.875rem', color: '#475569' }
                                     }}
@@ -330,12 +396,16 @@ const UserFormModal = ({
                                     label="First Name"
                                     value={formFirstName}
                                     onChange={(e) => setFormFirstName(e.target.value)}
+                                    error={!!firstNameErr}
+                                    helperText={firstNameErr}
                                 />
                                 <TextField
                                     fullWidth
                                     label="Last Name"
                                     value={formLastName}
                                     onChange={(e) => setFormLastName(e.target.value)}
+                                    error={!!lastNameErr}
+                                    helperText={lastNameErr}
                                 />
 
                                 <TextField
@@ -343,6 +413,8 @@ const UserFormModal = ({
                                     label="Mobile Number"
                                     value={formMobile}
                                     onChange={(e) => setFormMobile(e.target.value)}
+                                    error={!!mobileErr}
+                                    helperText={mobileErr}
                                 />
                             </div>
                         </div>
@@ -368,6 +440,9 @@ const UserFormModal = ({
                                     label="Date of Join"
                                     value={formDateOfJoin}
                                     onChange={setFormDateOfJoin}
+                                    error={!!dateOfJoinErr}
+                                    helperText={dateOfJoinErr}
+                                    maxDate={getLocalDateString()}
                                 />
 
                             </div>
@@ -379,7 +454,7 @@ const UserFormModal = ({
                     {canEdit ? (
                         <>
                             <Button variant="text" onClick={handleCloseModal}>Cancel</Button>
-                            <Button type="submit" variant="contained" color="primary">Save</Button>
+                            <Button type="submit" variant="contained" color="primary" disabled={hasFormErrors}>Save</Button>
                         </>
                     ) : (
                         <Button variant="text" onClick={handleCloseModal}>Close</Button>

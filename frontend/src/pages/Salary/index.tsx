@@ -1,42 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Box, 
-  Button, 
-  TextField, 
-  Typography, 
-  IconButton, 
-  Grid,
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
-  Collapse,
-  Card,
-  CardContent,
-  Tooltip,
-  Paper,
-  Tabs,
-  Tab,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControlLabel,
-  Switch,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Chip,
-  Drawer,
-  Divider
-} from '@mui/material';
+import { Box, Button, Typography, IconButton, Grid, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Collapse, Card, CardContent, Tooltip, Paper, Tabs, Tab, MenuItem, Select, FormControl, InputLabel, Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Switch, Accordion, AccordionSummary, AccordionDetails, Chip, Drawer, Divider } from '@mui/material';
+import TextField from '../../components/TextField';
 import { 
   MdAdd as AddIcon, 
   MdDeleteOutline as DeleteIcon,

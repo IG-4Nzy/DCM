@@ -1,11 +1,8 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Box, TextField, MenuItem, FormControl, InputLabel, Select,
-  IconButton, Typography, Divider, ListSubheader, Checkbox, ListItemText
-} from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, MenuItem, FormControl, InputLabel, Select, IconButton, Typography, Divider, ListSubheader, Checkbox, ListItemText } from '@mui/material';
+import TextField from '../../../components/TextField';
 import { MdAdd as AddIcon, MdDelete as DeleteIcon, MdArrowUpward, MdArrowDownward } from 'react-icons/md';
 import Button from '../../../components/Button';
 import type { RequestRoutingData, RequestRoutingStage } from './model';
@@ -55,6 +52,7 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
   ]);
   const [requestType, setRequestType] = useState('');
   const [stages, setStages] = useState<RequestRoutingStage[]>([]);
+  const [stageErrors, setStageErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const fetchRequestTypes = useCallback(async () => {
@@ -81,19 +79,23 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
     if (editingItem) {
       setRequestType(editingItem.requestType);
       setStages(editingItem.stages || []);
+      setStageErrors((editingItem.stages || []).map(() => ''));
     } else {
       setRequestType(requestTypes[0] || 'VM Creation');
       setStages([]);
+      setStageErrors([]);
     }
   }, [editingItem, open]);
 
   const addStage = () => {
     setStages([...stages, { stageName: '', order: stages.length + 1, assignmentType: 'Role', assignedTo: '' }]);
+    setStageErrors([...stageErrors, '']);
   };
 
   const removeStage = (index: number) => {
     const updated = stages.filter((_, i) => i !== index);
     setStages(updated.map((s, i) => ({ ...s, order: i + 1 })));
+    setStageErrors(stageErrors.filter((_, i) => i !== index));
   };
 
   const moveStageUp = (index: number) => {
@@ -103,6 +105,12 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
     updated[index] = updated[index - 1];
     updated[index - 1] = temp;
     setStages(updated.map((s, i) => ({ ...s, order: i + 1 })));
+
+    const updatedErrs = [...stageErrors];
+    const tempErr = updatedErrs[index];
+    updatedErrs[index] = updatedErrs[index - 1];
+    updatedErrs[index - 1] = tempErr;
+    setStageErrors(updatedErrs);
   };
 
   const moveStageDown = (index: number) => {
@@ -112,12 +120,23 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
     updated[index] = updated[index + 1];
     updated[index + 1] = temp;
     setStages(updated.map((s, i) => ({ ...s, order: i + 1 })));
+
+    const updatedErrs = [...stageErrors];
+    const tempErr = updatedErrs[index];
+    updatedErrs[index] = updatedErrs[index + 1];
+    updatedErrs[index + 1] = tempErr;
+    setStageErrors(updatedErrs);
   };
 
   const updateStage = (index: number, field: keyof RequestRoutingStage, value: any) => {
     setStages((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+    setStageErrors((prev) => {
+      const updated = [...prev];
+      updated[index] = '';
       return updated;
     });
   };
@@ -306,6 +325,20 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    let hasError = false;
+    const newErrors = stages.map((stage) => {
+      if (!stage.stageName) return "Status Name is required";
+      if (!/^[a-zA-Z\s]+$/.test(stage.stageName)) return "Status Name must contain alphabets and spaces only";
+      if (stage.stageName.length > 20) return "Status Name must be maximum 20 characters";
+      return "";
+    });
+
+    setStageErrors(newErrors);
+    if (newErrors.some(err => err !== "")) {
+      return;
+    }
+
     setSubmitting(true);
     try {
       const payload: any = {
@@ -405,6 +438,8 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                     value={stage.stageName}
                     onChange={(e) => updateStage(index, 'stageName', e.target.value)}
                     sx={{ flex: 1 }}
+                    error={!!stageErrors[index]}
+                    helperText={stageErrors[index]}
                   />
 
                   <FormControl size="small" sx={{ minWidth: 240 }}>

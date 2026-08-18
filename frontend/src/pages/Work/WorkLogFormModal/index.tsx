@@ -1,22 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Box,
-  IconButton,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Typography,
-  Paper,
-  Alert,
-  Tooltip
-} from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, IconButton, FormControl, InputLabel, Select, MenuItem, Typography, Paper, Alert, Tooltip } from '@mui/material';
+import TextField from '../../../components/TextField';
 import { MdAdd as AddIcon, MdDelete as DeleteIcon, MdClose as CloseIcon } from 'react-icons/md';
 import Button from '../../../components/Button';
 import type { WorkLogData, WorkLogEntry } from '../model';

@@ -209,6 +209,65 @@ const Users: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validation checks
+    if (!formUsername) {
+      showToast("Username is required", "error");
+      return;
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(formUsername)) {
+      showToast("Username must contain alphabets, underscore, and numbers only", "error");
+      return;
+    }
+    if (formUsername.length > 20) {
+      showToast("Username must be maximum 20 characters", "error");
+      return;
+    }
+    if (!editingUser && !formPassword) {
+      showToast("Password is required", "error");
+      return;
+    }
+    if (formPassword && formPassword.length > 20) {
+      showToast("Password must be maximum 20 characters", "error");
+      return;
+    }
+    if (formFirstName && !/^[a-zA-Z0-9]+$/.test(formFirstName)) {
+      showToast("First name must be alphanumeric", "error");
+      return;
+    }
+    if (formFirstName && formFirstName.length > 20) {
+      showToast("First name must be maximum 20 characters", "error");
+      return;
+    }
+    if (formLastName && !/^[a-zA-Z0-9]+$/.test(formLastName)) {
+      showToast("Last name must be alphanumeric", "error");
+      return;
+    }
+    if (formLastName && formLastName.length > 20) {
+      showToast("Last name must be maximum 20 characters", "error");
+      return;
+    }
+    if (formMobile && !/^[0-9,]+$/.test(formMobile)) {
+      showToast("Mobile number must contain numbers and commas only", "error");
+      return;
+    }
+    if (formPassNumber && !/^[a-zA-Z0-9]+$/.test(formPassNumber)) {
+      showToast("Pass number must be alphanumeric only", "error");
+      return;
+    }
+    if (formPassNumber && formPassNumber.length > 20) {
+      showToast("Pass number must be maximum 20 characters", "error");
+      return;
+    }
+    if (formDateOfJoin) {
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      if (new Date(formDateOfJoin) > today) {
+        showToast("Date of join cannot be a future date", "error");
+        return;
+      }
+    }
+
     try {
       if (editingUser) {
         const payload: any = {
@@ -301,9 +360,9 @@ const Users: React.FC = () => {
 
   const columns: Column<UserData>[] = [
     { id: "username", label: "Username", sortable: true },
-    { 
-      id: "fullName", 
-      label: "Full Name", 
+    {
+      id: "fullName",
+      label: "Full Name",
       sortable: false,
       render: (row) => {
         const name = `${row.firstName || ''} ${row.lastName || ''}`.trim() || '-';
@@ -323,20 +382,20 @@ const Users: React.FC = () => {
       }
     },
     { id: "passNumber", label: "Pass Number", sortable: true, render: (row) => row.passNumber || '-' },
-    { 
-      id: "department", 
-      label: "Department", 
-      sortable: true, 
+    {
+      id: "department",
+      label: "Department",
+      sortable: true,
       render: (row) => {
         if (!row.department) return '-';
         const dept = availableDepartments.find((d: any) => d.id === row.department || d._id === row.department || d.name === row.department);
         return dept ? dept.name : row.department;
       }
     },
-    { 
-      id: "role", 
-      label: "Role", 
-      sortable: true, 
+    {
+      id: "role",
+      label: "Role",
+      sortable: true,
       render: (row) => {
         if (!row.role) return '-';
         const roleIds = Array.isArray(row.role) ? row.role : [row.role];

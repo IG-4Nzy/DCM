@@ -53,6 +53,27 @@ const VisitorLogs: React.FC = () => {
         exitTime: ''
     });
 
+    const visitorNameErr = formFields.visitorName ? (
+        !/^[a-zA-Z0-9\s,]+$/.test(formFields.visitorName) ? "Visitor name must contain only letters, numbers, spaces, or commas" :
+        formFields.visitorName.length > 40 ? "Visitor name must be maximum 40 characters" : ""
+    ) : "";
+
+    const divisionErr = formFields.division ? (
+        !/^[a-zA-Z0-9\s]+$/.test(formFields.division) ? "Division must be alphanumeric only" :
+        formFields.division.length > 60 ? "Division must be maximum 60 characters" : ""
+    ) : "";
+
+    const purposeErr = formFields.purpose ? (
+        !/^[a-zA-Z0-9\s]+$/.test(formFields.purpose) ? "Purpose of visit must be alphanumeric only" :
+        formFields.purpose.length > 125 ? "Purpose of visit must be maximum 125 characters" : ""
+    ) : "";
+
+    const itemsToBringErr = formFields.itemsToBring ? (
+        !/^[a-zA-Z0-9\s]+$/.test(formFields.itemsToBring) ? "Tools/items to bring must be alphanumeric only" : ""
+    ) : "";
+
+    const hasFormErrors = !!visitorNameErr || !!divisionErr || !!purposeErr || !!itemsToBringErr;
+
     const [page, setPage] = useTableState('visitor_logs_page', 0);
     const [rowsPerPage, setRowsPerPage] = useTableState('visitor_logs_rowsPerPage', 10);
     const [searchQuery, setSearchQuery] = useTableState('visitor_logs_search', '');
@@ -174,6 +195,11 @@ const VisitorLogs: React.FC = () => {
 
     const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (hasFormErrors) {
+            showToast('Please correct validation errors first', 'error');
+            return;
+        }
         
         if (!formFields.visitorName.trim()) {
             showToast('Visitor Name is required', 'error');
@@ -378,6 +404,9 @@ const VisitorLogs: React.FC = () => {
                                 onChange={(e) => setFormFields({ ...formFields, visitorName: e.target.value })}
                                 required
                                 fullWidth
+                                error={!!visitorNameErr}
+                                helperText={visitorNameErr}
+                                inputProps={{ maxLength: 40 }}
                             />
                         </Grid>
                         <Grid size={{xs: 12, sm: 6}}   >
@@ -387,6 +416,9 @@ const VisitorLogs: React.FC = () => {
                                 onChange={(e) => setFormFields({ ...formFields, division: e.target.value })}
                                 required
                                 fullWidth
+                                error={!!divisionErr}
+                                helperText={divisionErr}
+                                inputProps={{ maxLength: 60 }}
                             />
                         </Grid>
                         <Grid size={{xs: 12}}  >
@@ -396,6 +428,9 @@ const VisitorLogs: React.FC = () => {
                                 onChange={(e) => setFormFields({ ...formFields, purpose: e.target.value })}
                                 required
                                 fullWidth
+                                error={!!purposeErr}
+                                helperText={purposeErr}
+                                inputProps={{ maxLength: 125 }}
                             />
                         </Grid>
                         <Grid size={{xs: 12}}  >
@@ -404,6 +439,8 @@ const VisitorLogs: React.FC = () => {
                                 value={formFields.itemsToBring}
                                 onChange={(e) => setFormFields({ ...formFields, itemsToBring: e.target.value })}
                                 fullWidth
+                                error={!!itemsToBringErr}
+                                helperText={itemsToBringErr}
                             />
                         </Grid>
                         <Grid size={{xs: 12, sm: 6}}   >
@@ -449,7 +486,7 @@ const VisitorLogs: React.FC = () => {
 
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 3 }}>
                         <Button size="small" onClick={() => setIsFormModalOpen(false)}>Cancel</Button>
-                        <Button size="small" type="submit" variant="contained" sx={{ background: '#3b82f6', '&:hover': { background: '#2563eb' } }}>
+                        <Button size="small" type="submit" variant="contained" disabled={hasFormErrors} sx={{ background: '#3b82f6', '&:hover': { background: '#2563eb' } }}>
                             Save
                         </Button>
                     </Box>
