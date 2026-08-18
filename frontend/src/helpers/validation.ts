@@ -20,6 +20,30 @@ export const validators = {
     return "";
   },
 
+  // Alphanumeric, spaces, dots, hyphens, and underscores
+  alphanumericSpacesDotsDashesUnderscores: (val: string, maxLen?: number, label = "Field") => {
+    if (!val) return "";
+    if (!/^[a-zA-Z0-9\s._-]+$/.test(val)) return `${label} must contain alphanumeric characters, spaces, dots, underscores, or dashes only`;
+    if (maxLen && val.length > maxLen) return `${label} must be maximum ${maxLen} characters`;
+    return "";
+  },
+
+  // Alphabets and spaces
+  alphabetsSpaces: (val: string, maxLen?: number, label = "Field") => {
+    if (!val) return "";
+    if (!/^[a-zA-Z\s]+$/.test(val)) return `${label} must contain alphabetic characters and spaces only`;
+    if (maxLen && val.length > maxLen) return `${label} must be maximum ${maxLen} characters`;
+    return "";
+  },
+
+  // Serial/Asset number: alphanumeric, spaces, dots, slashes, underscores, and dashes
+  serialAsset: (val: string, maxLen?: number, label = "Field") => {
+    if (!val) return "";
+    if (!/^[a-zA-Z0-9\s./_-]+$/.test(val)) return `${label} must contain alphanumeric characters, spaces, dots, slashes, underscores, or dashes only`;
+    if (maxLen && val.length > maxLen) return `${label} must be maximum ${maxLen} characters`;
+    return "";
+  },
+
   // Alphanumeric, spaces, commas, hyphens, and dots
   alphanumericGeneral: (val: string, maxLen?: number, label = "Field") => {
     if (!val) return "";
@@ -146,6 +170,38 @@ export const validators = {
     if (!file) return "";
     const maxSize = maxMb * 1024 * 1024;
     if (file.size > maxSize) return `${label} size must be maximum ${maxMb}MB`;
+    return "";
+  },
+
+  // OS and Expiry: alphanumeric, spaces, dots, slashes, parentheses, dashes
+  osExpiry: (val: string, maxLen?: number, label = "Field") => {
+    if (!val) return "";
+    if (!/^[a-zA-Z0-9\s._/()-]+$/.test(val)) return `${label} must contain alphanumeric characters, spaces, dots, slashes, parentheses, or dashes only`;
+    if (maxLen && val.length > maxLen) return `${label} must be maximum ${maxLen} characters`;
+    return "";
+  },
+
+  // Applications: alphanumeric, spaces, commas, dots, slashes, parentheses, dashes
+  applicationsGeneral: (val: string, maxLen?: number, label = "Field") => {
+    if (!val) return "";
+    if (!/^[a-zA-Z0-9\s,._/()-]+$/.test(val)) return `${label} must contain alphanumeric characters, spaces, commas, dots, slashes, parentheses, or dashes only`;
+    if (maxLen && val.length > maxLen) return `${label} must be maximum ${maxLen} characters`;
+    return "";
+  },
+
+  // Phone/digits: digits, spaces, commas, plus, dashes
+  phoneDigits: (val: string, maxLen?: number, label = "Field") => {
+    if (!val) return "";
+    if (!/^[0-9\s,+-]+$/.test(val)) return `${label} must contain digits, spaces, commas, plus signs, or dashes only`;
+    if (maxLen && val.length > maxLen) return `${label} must be maximum ${maxLen} characters`;
+    return "";
+  },
+
+  // Alphanumeric with spaces and dots (for resource values like RAM/CPU/HDD)
+  alphanumericSpacesDots: (val: string, maxLen?: number, label = "Field") => {
+    if (!val) return "";
+    if (!/^[a-zA-Z0-9\s.]+$/.test(val)) return `${label} must contain alphanumeric characters, spaces, or dots only`;
+    if (maxLen && val.length > maxLen) return `${label} must be maximum ${maxLen} characters`;
     return "";
   }
 };

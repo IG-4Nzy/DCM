@@ -9,6 +9,7 @@ import type { RootState, AppDispatch } from '../../store';
 import { fetchInventory } from '../Inventory/action';
 import { fetchStagesForType } from './action';
 import { useToast } from '../../contexts/ToastContext';
+import { validators } from '../../helpers/validation';
 
 import request from '../../services/request';
 import { getServerTime } from '../../helpers/time';
@@ -48,6 +49,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
   const [remarks, setRemarks] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [details, setDetails] = useState<any>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [configuredStages, setConfiguredStages] = useState<string[]>([]);
   const [clustersList, setClustersList] = useState<any[]>([]);
   const [nodesList, setNodesList] = useState<any[]>([]);
@@ -96,6 +98,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
 
   useEffect(() => {
     if (isModalOpen) {
+      setErrors({});
       if (editingRequest) {
         setRequestType(editingRequest.requestType || editingRequest.category || (requestTypes[0] || ''));
         setDescription(editingRequest.description || '');
@@ -121,6 +124,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
   }, [requestTypes, isModalOpen, requestType, editingRequest]);
 
   const handleDetailChange = (field: string, value: any) => {
+    setErrors(prev => ({ ...prev, [field]: '' }));
     setDetails((prev: any) => ({ ...prev, [field]: value }));
   };
 
@@ -136,6 +140,76 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // --- Validate fields ---
+    const newErrors: Record<string, string> = {};
+
+    // Purpose (required for all types)
+    newErrors.purpose = validators.applicationsGeneral(purpose, 200, 'Purpose');
+
+    // Description (optional)
+    if (description) {
+      newErrors.description = validators.applicationsGeneral(description, 500, 'Description');
+    }
+
+    // Remarks (edit mode)
+    if (editingRequest && remarks) {
+      newErrors.remarks = validators.applicationsGeneral(remarks, 500, 'Remarks');
+    }
+
+    // VM Creation specific
+    if (currentRequestType === 'VM Creation') {
+      if (details.osVersion) newErrors.osVersion = validators.osExpiry(details.osVersion, 100, 'OS and Version');
+      if (details.ip) newErrors.ip = validators.ipv4(details.ip, 'IP Address');
+      if (details.vmName) newErrors.vmName = validators.alphanumericSpacesDotsDashesUnderscores(details.vmName, 50, 'VM Name');
+      if (details.ram) newErrors.ram = validators.alphanumericSpacesDots(details.ram, 20, 'RAM');
+      if (details.hdd) newErrors.hdd = validators.alphanumericSpacesDots(details.hdd, 20, 'HDD');
+      if (details.cpu) newErrors.cpu = validators.alphanumericSpacesDots(details.cpu, 20, 'CPU');
+      if (details.backupName) newErrors.backupName = validators.alphanumericSpacesDotsDashesUnderscores(details.backupName, 50, 'Backup Name');
+    }
+
+    // VM Management specific
+    if (currentRequestType === 'VM Management' && details.vmId) {
+      if (details.operationType === 'Resource Upgrade') {
+        if (details.newRam) newErrors.newRam = validators.alphanumericSpacesDots(details.newRam, 20, 'New RAM');
+        if (details.newHdd) newErrors.newHdd = validators.alphanumericSpacesDots(details.newHdd, 20, 'New HDD');
+        if (details.newCpu) newErrors.newCpu = validators.alphanumericSpacesDots(details.newCpu, 20, 'New CPU');
+      }
+      if (details.operationType === 'Clone' && details.cloneName) {
+        newErrors.cloneName = validators.alphanumericSpacesDotsDashesUnderscores(details.cloneName, 50, 'Clone Name');
+      }
+      if (details.operationType === 'Snapshot' && details.snapshotName) {
+        newErrors.snapshotName = validators.alphanumericSpacesDotsDashesUnderscores(details.snapshotName, 50, 'Snapshot Name');
+      }
+      if (details.operationType === 'Template' && details.templateName) {
+        newErrors.templateName = validators.alphanumericSpacesDotsDashesUnderscores(details.templateName, 50, 'Template Name');
+      }
+      if (details.operationType === 'Backup' && details.backupName) {
+        newErrors.backupName = validators.alphanumericSpacesDotsDashesUnderscores(details.backupName, 50, 'Backup Name');
+      }
+      if (details.operationType === 'Delete VM' && details.justification) {
+        newErrors.justification = validators.applicationsGeneral(details.justification, 500, 'Justification');
+      }
+    }
+
+    // DC Entry specific
+    if (currentRequestType === 'DC Entry') {
+      if (details.itemsToBring) newErrors.itemsToBring = validators.applicationsGeneral(details.itemsToBring, 200, 'Tools / Items');
+      if (details.accompanyingPersons) newErrors.accompanyingPersons = validators.applicationsGeneral(details.accompanyingPersons, 200, 'Accompanying Persons');
+    }
+
+    // Hardware Issuance specific
+    if (currentRequestType === 'Hardware Issuance') {
+      if (details.hardwareItem) newErrors.hardwareItem = validators.applicationsGeneral(details.hardwareItem, 100, 'Hardware Item');
+    }
+
+    // Hardware Replacement specific
+    if (currentRequestType === 'Hardware Replacement') {
+      if (details.remarks) newErrors['details.remarks'] = validators.applicationsGeneral(details.remarks, 500, 'Remarks');
+    }
+
+    setErrors(newErrors);
+    if (Object.values(newErrors).some(err => !!err)) return;
 
     if (!editingRequest && currentRequestType === 'DC Entry' && (details.dateTime || details.entryTime)) {
       const selected = new Date(details.entryTime || details.dateTime);
@@ -214,6 +288,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
               onChange={(e) => {
                 const newPurpose = e.target.value;
                 setPurpose(newPurpose);
+                setErrors(prev => ({ ...prev, purpose: '' }));
                 if (currentRequestType === 'VM Creation' && !editingRequest) {
                   const purpStr = newPurpose.trim().replace(/\s+/g, '');
                   const osStr = (details.osVersion || '').trim().replace(/\s+/g, '');
@@ -233,6 +308,8 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                 }
               }}
               placeholder="State the purpose of this request"
+              error={!!errors.purpose}
+              helperText={errors.purpose}
             />
 
             {/* Dynamic Fields based on Request Type */}
@@ -299,6 +376,8 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                       handleDetailChange('vmName', nameParts.join('_'));
                     }
                   }} 
+                  error={!!errors.osVersion}
+                  helperText={errors.osVersion}
                 />
                 <TextField 
                   label="IP (Assign or Update)" 
@@ -325,6 +404,8 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                       handleDetailChange('vmName', nameParts.join('_'));
                     }
                   }} 
+                  error={!!errors.ip}
+                  helperText={errors.ip}
                 />
                 <TextField 
                   label="VM Name (Auto-generated)" 
@@ -333,15 +414,16 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                   disabled={editingRequest && !isSuperuser && !editingRequest.currentAssignedUsers?.includes(username)}
                   value={details.vmName || ''} 
                   onChange={(e) => handleDetailChange('vmName', e.target.value)} 
+                  error={!!errors.vmName}
                   helperText={
-                    editingRequest
+                    errors.vmName || (editingRequest
                       ? "Auto-updates with IP (Purpose_OS_IPLastTwo). Editable by assigned creators/approvers."
-                      : "Auto-generated format: Purpose_OS_IP"
+                      : "Auto-generated format: Purpose_OS_IP")
                   }
                 />
-                <TextField label="RAM" fullWidth required disabled={editingRequest && !isSuperuser && !editingRequest.currentAssignedUsers?.includes(username)} value={details.ram || ''} onChange={(e) => handleDetailChange('ram', e.target.value)} />
-                <TextField label="HDD" fullWidth required disabled={editingRequest && !isSuperuser && !editingRequest.currentAssignedUsers?.includes(username)} value={details.hdd || ''} onChange={(e) => handleDetailChange('hdd', e.target.value)} />
-                <TextField label="CPU" fullWidth required disabled={editingRequest && !isSuperuser && !editingRequest.currentAssignedUsers?.includes(username)} value={details.cpu || ''} onChange={(e) => handleDetailChange('cpu', e.target.value)} />
+                <TextField label="RAM" fullWidth required disabled={editingRequest && !isSuperuser && !editingRequest.currentAssignedUsers?.includes(username)} value={details.ram || ''} onChange={(e) => handleDetailChange('ram', e.target.value)} error={!!errors.ram} helperText={errors.ram} />
+                <TextField label="HDD" fullWidth required disabled={editingRequest && !isSuperuser && !editingRequest.currentAssignedUsers?.includes(username)} value={details.hdd || ''} onChange={(e) => handleDetailChange('hdd', e.target.value)} error={!!errors.hdd} helperText={errors.hdd} />
+                <TextField label="CPU" fullWidth required disabled={editingRequest && !isSuperuser && !editingRequest.currentAssignedUsers?.includes(username)} value={details.cpu || ''} onChange={(e) => handleDetailChange('cpu', e.target.value)} error={!!errors.cpu} helperText={errors.cpu} />
               </>
             )}
 
@@ -448,7 +530,6 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                           </Select>
                         </FormControl>
 
-                        {/* Resource Upgrade: new RAM, HDD, CPU fields */}
                         {details.operationType === 'Resource Upgrade' && (
                           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                             <TextField
@@ -458,6 +539,8 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                               onChange={(e) => handleDetailChange('newRam', e.target.value)}
                               placeholder="e.g. 16 GB"
                               sx={{ flex: 1, minWidth: 100 }}
+                              error={!!errors.newRam}
+                              helperText={errors.newRam}
                             />
                             <TextField
                               label="New HDD"
@@ -466,6 +549,8 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                               onChange={(e) => handleDetailChange('newHdd', e.target.value)}
                               placeholder="e.g. 500 GB"
                               sx={{ flex: 1, minWidth: 100 }}
+                              error={!!errors.newHdd}
+                              helperText={errors.newHdd}
                             />
                             <TextField
                               label="New CPU"
@@ -474,6 +559,8 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                               onChange={(e) => handleDetailChange('newCpu', e.target.value)}
                               placeholder="e.g. 8 Cores"
                               sx={{ flex: 1, minWidth: 100 }}
+                              error={!!errors.newCpu}
+                              helperText={errors.newCpu}
                             />
                           </Box>
                         )}
@@ -528,6 +615,8 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                             value={details.cloneName || ''}
                             onChange={(e) => handleDetailChange('cloneName', e.target.value)}
                             placeholder="Enter clone name"
+                            error={!!errors.cloneName}
+                            helperText={errors.cloneName}
                           />
                         )}
 
@@ -540,6 +629,8 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                             value={details.snapshotName || ''}
                             onChange={(e) => handleDetailChange('snapshotName', e.target.value)}
                             placeholder="Enter snapshot name"
+                            error={!!errors.snapshotName}
+                            helperText={errors.snapshotName}
                           />
                         )}
 
@@ -552,6 +643,8 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                             value={details.templateName || ''}
                             onChange={(e) => handleDetailChange('templateName', e.target.value)}
                             placeholder="Enter template name"
+                            error={!!errors.templateName}
+                            helperText={errors.templateName}
                           />
                         )}
 
@@ -564,6 +657,8 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                             value={details.backupName || ''}
                             onChange={(e) => handleDetailChange('backupName', e.target.value)}
                             placeholder="Enter backup name"
+                            error={!!errors.backupName}
+                            helperText={errors.backupName}
                           />
                         )}
 
@@ -578,6 +673,8 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                             value={details.justification || ''}
                             onChange={(e) => handleDetailChange('justification', e.target.value)}
                             placeholder="Please provide the business justification for deleting this VM"
+                            error={!!errors.justification}
+                            helperText={errors.justification}
                           />
                         )}
                       </>

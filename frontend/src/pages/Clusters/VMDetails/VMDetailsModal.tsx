@@ -12,6 +12,7 @@ import { useSelector } from 'react-redux';
 import { type RootState } from '../../../store';
 import { hasPrivilege } from '../../../helpers/authUtils';
 import { PRIVILEGES } from '../../../helpers/privileges';
+import { validators } from '../../../helpers/validation';
 import styles from './modal.module.scss';
 
 interface VMDetailsModalProps {
@@ -47,6 +48,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
     const [datastores, setDatastores] = useState<any[]>([]);
     const [otherAdminName, setOtherAdminName] = useState<string>('');
     const [resolvedAdmins, setResolvedAdmins] = useState<boolean>(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     const { isSuperuser, username } = useSelector((state: RootState) => state.auth);
 
@@ -109,6 +111,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
 
     useEffect(() => {
         if (open) {
+            setErrors({});
             if (editingItem) {
                 setFormData({
                     vmId: editingItem.vmId || '',
@@ -212,6 +215,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
     }, [open, editingItem, users, resolvedAdmins, isRestrictedAdmin, currentUser, username]);
 
     const handleChange = (field: keyof CreateVMDetailsPayload, value: any) => {
+        // Clear the error for this field on change
+        setErrors(prev => ({ ...prev, [field]: '' }));
         setFormData(prev => {
             const next = { ...prev, [field]: value };
             if (field === 'ipAddress') {
@@ -311,6 +316,31 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // --- Validate all fields ---
+        const vmNameErr = validators.alphanumericSpacesDotsDashesUnderscores(formData.vmName || '', 50, 'VM Name');
+        const ipErr = validators.ipv4(formData.ipAddress || '', 'IP Address');
+        const osErr = validators.osExpiry(formData.osAndExpiry || '', 100, 'OS and Expiry');
+        const appsErr = validators.applicationsGeneral(formData.applications || '', 200, 'Applications');
+        const backupNameErr = validators.alphanumericSpacesDotsDashesUnderscores(formData.backupName || '', 50, 'Backup Name');
+        const hddErr = validators.alphanumericSpacesDots(formData.hdd || '', 20, 'HDD');
+        const ramErr = validators.alphanumericSpacesDots(formData.ram || '', 20, 'RAM');
+        const cpuErr = validators.alphanumericSpacesDots(formData.cpu || '', 20, 'CPU');
+        const contactErr = validators.phoneDigits(formData.adminContact || '', 50, 'Admin Contact');
+
+        const newErrors = {
+            vmName: vmNameErr,
+            ipAddress: ipErr,
+            osAndExpiry: osErr,
+            applications: appsErr,
+            backupName: backupNameErr,
+            hdd: hddErr,
+            ram: ramErr,
+            cpu: cpuErr,
+            adminContact: contactErr
+        };
+        setErrors(newErrors);
+        if (Object.values(newErrors).some(err => !!err)) return;
         
         // Compute final admin array
         let currentAdmin: string[] = Array.isArray(formData.admin) ? formData.admin : [];
@@ -386,6 +416,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         value={formData.vmName} 
                         onChange={(e) => handleChange('vmName', e.target.value)} 
                         disabled={isRestrictedAdmin}
+                        error={!!errors.vmName}
+                        helperText={errors.vmName}
                     />
                     {(!clusterId || clusterId === '') && (
                         <Dropdown 
@@ -407,6 +439,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         value={formData.ipAddress} 
                         onChange={(e) => handleChange('ipAddress', e.target.value)} 
                         disabled={isRestrictedAdmin}
+                        error={!!errors.ipAddress}
+                        helperText={errors.ipAddress}
                     />
                     <Dropdown 
                         label="Datastore" 
@@ -437,6 +471,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         className={styles.formGrid__field}
                         value={formData.applications} 
                         onChange={(e) => handleChange('applications', e.target.value)} 
+                        error={!!errors.applications}
+                        helperText={errors.applications}
                     />
                     <Dropdown 
                         label="Node" 
@@ -456,6 +492,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         value={formData.osAndExpiry} 
                         onChange={(e) => handleChange('osAndExpiry', e.target.value)} 
                         disabled={isRestrictedAdmin}
+                        error={!!errors.osAndExpiry}
+                        helperText={errors.osAndExpiry}
                     />
                     <TextField 
                         label="Backup Name" 
@@ -464,6 +502,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         value={formData.backupName} 
                         onChange={(e) => handleChange('backupName', e.target.value)} 
                         disabled={isRestrictedAdmin}
+                        error={!!errors.backupName}
+                        helperText={errors.backupName}
                     />
                     <Dropdown 
                         label="Backup Node" 
@@ -571,6 +611,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         className={styles.formGrid__field}
                         value={formData.adminContact} 
                         onChange={(e) => handleChange('adminContact', e.target.value)} 
+                        error={!!errors.adminContact}
+                        helperText={errors.adminContact}
                     />
                     
                     <Typography variant="subtitle1" className={styles.formGrid__title}>
@@ -584,6 +626,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         value={formData.hdd} 
                         onChange={(e) => handleChange('hdd', e.target.value)} 
                         disabled={isRestrictedAdmin}
+                        error={!!errors.hdd}
+                        helperText={errors.hdd}
                     />
                     <TextField 
                         label="RAM" 
@@ -592,6 +636,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         value={formData.ram} 
                         onChange={(e) => handleChange('ram', e.target.value)} 
                         disabled={isRestrictedAdmin}
+                        error={!!errors.ram}
+                        helperText={errors.ram}
                     />
                     <TextField 
                         label="CPU" 
@@ -600,6 +646,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         value={formData.cpu} 
                         onChange={(e) => handleChange('cpu', e.target.value)} 
                         disabled={isRestrictedAdmin}
+                        error={!!errors.cpu}
+                        helperText={errors.cpu}
                     />
 
                     {/* Clones Section */}

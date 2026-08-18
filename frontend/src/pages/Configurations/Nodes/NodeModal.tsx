@@ -14,6 +14,7 @@ import { useSelector } from 'react-redux';
 import { type RootState } from '../../../store';
 import { hasPrivilege } from '../../../helpers/authUtils';
 import { PRIVILEGES } from '../../../helpers/privileges';
+import { validators } from '../../../helpers/validation';
 
 const matchesPosition = (nodeRackPosition: string | undefined, posIndex: number) => {
     if (!nodeRackPosition) return false;
@@ -23,9 +24,6 @@ const matchesPosition = (nodeRackPosition: string | undefined, posIndex: number)
         norm === `m ${posIndex}` || 
         norm === `m${posIndex}` || 
         norm === `m-${posIndex}` || 
-        norm === `m ${pad2}` || 
-        norm === `m${pad2}` || 
-        norm === `m-${pad2}` || 
         norm === `${posIndex}` || 
         norm === pad2
     );
@@ -55,6 +53,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
     const [admin, setAdmin] = useState<string[]>([]);
     const [otherAdminName, setOtherAdminName] = useState<string>('');
     const [resolvedAdmins, setResolvedAdmins] = useState<boolean>(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     const [assetNumber, setAssetNumber] = useState('');
     const [raidConfiguration, setRaidConfiguration] = useState<string[]>([]);
@@ -142,6 +141,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
 
     useEffect(() => {
         if (open) {
+            setErrors({});
             if (editingItem) {
                 setField(editingItem.node || '');
                 setIp(editingItem.ip || '');
@@ -263,6 +263,68 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
+        const nodeErr = validators.alphanumericSpacesDotsDashesUnderscores(node, 50, "Node Name");
+        const ipErr = validators.ipv4(ip, "IP Address");
+        const osErr = validators.alphanumericSpacesDotsDashesUnderscores(os, 50, "Operating System");
+        const modelErr = validators.alphanumericSpaces(serverModel, 50, "Server Model");
+        const serialErr = validators.serialAsset(serialNumber, 50, "Serial Number");
+        const assetErr = validators.serialAsset(assetNumber, 50, "Asset Number");
+        const custodianErr = validators.alphabetsSpaces(custodian, 50, "Custodian");
+        const remarksErr = validators.alphanumericGeneral(remarks, 125, "Remarks");
+
+        let totalRamErr = '';
+        if (totalRam && totalRam.trim()) {
+            const val = parseInt(totalRam, 10);
+            if (isNaN(val) || val <= 0) {
+                totalRamErr = "Total RAM must be a positive number";
+            }
+        }
+
+        let totalHardiskErr = '';
+        if (totalHardisk && totalHardisk.trim()) {
+            const val = parseInt(totalHardisk, 10);
+            if (isNaN(val) || val <= 0) {
+                totalHardiskErr = "Total HDD must be a positive number";
+            }
+        }
+
+        let totalCpuErr = '';
+        if (totalCpu && totalCpu.trim()) {
+            const val = parseInt(totalCpu, 10);
+            if (isNaN(val) || val <= 0) {
+                totalCpuErr = "Total CPU must be a positive number";
+            }
+        }
+
+        let rackUnitsErr = '';
+        if (rackUnits && rackUnits.trim()) {
+            const val = parseInt(rackUnits, 10);
+            if (isNaN(val) || val <= 0) {
+                rackUnitsErr = "Rack units must be a positive number";
+            }
+        }
+
+        const newErrors = {
+            node: nodeErr,
+            ip: ipErr,
+            os: osErr,
+            serverModel: modelErr,
+            serialNumber: serialErr,
+            assetNumber: assetErr,
+            custodian: custodianErr,
+            remarks: remarksErr,
+            totalRam: totalRamErr,
+            totalHardisk: totalHardiskErr,
+            totalCpu: totalCpuErr,
+            rackUnits: rackUnitsErr
+        };
+
+        setErrors(newErrors);
+
+        if (Object.values(newErrors).some(err => !!err)) {
+            return;
+        }
+
         const computedRackUnits = rackUnits.trim() !== '' 
             ? Number(rackUnits) 
             : (rackPosition && rackPosition.length > 0 ? rackPosition.length : undefined);
@@ -332,6 +394,15 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
 
     const handleSaveNewModel = async () => {
         if (!newModelName.trim()) return;
+
+        const modelErr = validators.alphanumericSpaces(newModelName, 50, "Server Model Name");
+        const remarksErr = validators.alphanumericGeneral(newModelRemarks, 125, "Remarks");
+
+        if (modelErr || remarksErr) {
+            alert(modelErr || remarksErr);
+            return;
+        }
+
         try {
             const result = await createServerModel({
                 serverModel: newModelName.trim(),
@@ -417,7 +488,13 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 label="Node Name"
                                 placeholder="e.g. Node-01"
                                 value={node}
-                                onChange={(e) => setField(e.target.value)}
+                                required
+                                onChange={(e) => {
+                                    setField(e.target.value);
+                                    setErrors(prev => ({ ...prev, node: '' }));
+                                }}
+                                error={!!errors.node}
+                                helperText={errors.node}
                             />
                         </Grid>
                         <Grid size={{xs: 12, sm: 4}}>
@@ -426,7 +503,13 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 label="IP Address"
                                 placeholder="e.g. 192.168.1.10"
                                 value={ip}
-                                onChange={(e) => setIp(e.target.value)}
+                                required
+                                onChange={(e) => {
+                                    setIp(e.target.value);
+                                    setErrors(prev => ({ ...prev, ip: '' }));
+                                }}
+                                error={!!errors.ip}
+                                helperText={errors.ip}
                             />
                         </Grid>
                         <Grid size={{xs: 12, sm: 6}}>
@@ -435,7 +518,12 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 label="Operating System"
                                 placeholder="e.g. RHEL 8 / Ubuntu 22.04"
                                 value={os}
-                                onChange={(e) => setOs(e.target.value)}
+                                onChange={(e) => {
+                                    setOs(e.target.value);
+                                    setErrors(prev => ({ ...prev, os: '' }));
+                                }}
+                                error={!!errors.os}
+                                helperText={errors.os}
                             />
                         </Grid>
                         <Grid size={{xs: 12, sm: 6}}>
@@ -451,7 +539,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                             />
                         </Grid>
                     </Grid>
-
+ 
                     <Grid container spacing={2}>
                         <Grid size={{xs: 12, sm: 6}}>
                             <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
@@ -482,12 +570,18 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 label="Serial Number"
                                 placeholder="e.g. SN-12345"
                                 value={serialNumber}
+                                required
                                 disabled={isRestrictedAdmin}
-                                onChange={(e) => setSerialNumber(e.target.value)}
+                                onChange={(e) => {
+                                    setSerialNumber(e.target.value);
+                                    setErrors(prev => ({ ...prev, serialNumber: '' }));
+                                }}
+                                error={!!errors.serialNumber}
+                                helperText={errors.serialNumber}
                             />
                         </Grid>
                     </Grid>
-
+ 
                     <Grid container spacing={2}>
                         <Grid size={{xs: 12, sm: 4}}   >
                             <TextField
@@ -495,8 +589,14 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 label="Asset Number"
                                 placeholder="e.g. AST-12345"
                                 value={assetNumber}
+                                required
                                 disabled={isRestrictedAdmin}
-                                onChange={(e) => setAssetNumber(e.target.value)}
+                                onChange={(e) => {
+                                    setAssetNumber(e.target.value);
+                                    setErrors(prev => ({ ...prev, assetNumber: '' }));
+                                }}
+                                error={!!errors.assetNumber}
+                                helperText={errors.assetNumber}
                             />
                         </Grid>
                         <Grid size={{xs: 12, sm: 4}}   >
@@ -505,8 +605,14 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 label="Custodian"
                                 placeholder="e.g. John Doe"
                                 value={custodian}
+                                required
                                 disabled={isRestrictedAdmin}
-                                onChange={(e) => setCustodian(e.target.value)}
+                                onChange={(e) => {
+                                    setCustodian(e.target.value);
+                                    setErrors(prev => ({ ...prev, custodian: '' }));
+                                }}
+                                error={!!errors.custodian}
+                                helperText={errors.custodian}
                             />
                         </Grid>
                         <Grid size={{xs: 12, sm: admin.includes('Other') ? 2 : 4}}>
@@ -549,7 +655,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                             </Grid>
                         )}
                     </Grid>
-
+ 
                     <Box>
                         <FormLabel sx={{ display: 'block', mb: 1, fontWeight: 500, fontSize: '0.875rem' }}>
                             RAID Configuration
@@ -578,7 +684,12 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 label="Total RAM"
                                 placeholder="e.g. 128"
                                 value={totalRam}
-                                onChange={(e) => setTotalRam(e.target.value)}
+                                onChange={(e) => {
+                                    setTotalRam(e.target.value);
+                                    setErrors(prev => ({ ...prev, totalRam: '' }));
+                                }}
+                                error={!!errors.totalRam}
+                                helperText={errors.totalRam}
                             />
                         </Grid>
                         <Grid size={{xs: 12, sm: 3}}>
@@ -587,7 +698,12 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 label="Total HDD"
                                 placeholder="e.g. 1000"
                                 value={totalHardisk}
-                                onChange={(e) => setTotalHardisk(e.target.value)}
+                                onChange={(e) => {
+                                    setTotalHardisk(e.target.value);
+                                    setErrors(prev => ({ ...prev, totalHardisk: '' }));
+                                }}
+                                error={!!errors.totalHardisk}
+                                helperText={errors.totalHardisk}
                             />
                         </Grid>
                         <Grid size={{xs: 12, sm: 3}}>
@@ -596,7 +712,12 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 label="Total CPU"
                                 placeholder="e.g. 32"
                                 value={totalCpu}
-                                onChange={(e) => setTotalCpu(e.target.value)}
+                                onChange={(e) => {
+                                    setTotalCpu(e.target.value);
+                                    setErrors(prev => ({ ...prev, totalCpu: '' }));
+                                }}
+                                error={!!errors.totalCpu}
+                                helperText={errors.totalCpu}
                             />
                         </Grid>
                         <Grid size={{xs: 12, sm: 3}}>
@@ -611,7 +732,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                             />
                         </Grid>
                     </Grid>
-
+ 
                     <Grid container spacing={2}>
                         <Grid size={{xs: 12, sm: 4}}   >
                             <Dropdown
@@ -647,20 +768,37 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 placeholder="e.g. 2"
                                 disabled={isRestrictedAdmin}
                                 value={rackUnits}
-                                onChange={(e) => setRackUnits(e.target.value)}
+                                onChange={(e) => {
+                                    setRackUnits(e.target.value);
+                                    setErrors(prev => ({ ...prev, rackUnits: '' }));
+                                }}
+                                error={!!errors.rackUnits}
+                                helperText={errors.rackUnits}
                             />
                         </Grid>
                     </Grid>
-
-                    <TextField
-                        fullWidth
-                        multiline
-                        rows={3}
-                        label="Remarks"
-                        placeholder="Enter remarks..."
-                        value={remarks}
-                        onChange={(e) => setRemarks(e.target.value)}
-                    />
+ 
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <TextField
+                            fullWidth
+                            multiline
+                            rows={3}
+                            label="Remarks"
+                            placeholder="Enter remarks..."
+                            value={remarks}
+                            onChange={(e) => {
+                                setRemarks(e.target.value);
+                                setErrors(prev => ({ ...prev, remarks: '' }));
+                            }}
+                            error={!!errors.remarks}
+                            helperText={errors.remarks}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-4px' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                {remarks ? remarks.length : 0} / 125
+                            </span>
+                        </div>
+                    </Box>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
                     <Button variant="text" onClick={onClose} style={{ color: '#637381' }}>

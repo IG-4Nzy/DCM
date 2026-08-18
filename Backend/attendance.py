@@ -3,7 +3,7 @@ from auth_utils import get_current_user
 from typing import Optional, List
 from database import db
 from models import (
-    AttendanceModel, CreateAttendanceModel, UpdateAttendanceModel, PaginatedAttendanceModel, AttendanceConfigModel
+    AttendanceModel, CreateAttendanceModel, UpdateAttendanceModel, PaginatedAttendanceModel, AttendanceConfigModel, CreateAttendanceConfigModel
 )
 from bson import ObjectId
 from datetime import datetime, timedelta
@@ -463,7 +463,7 @@ async def get_attendance_config():
 
 @router.post("/config", response_model=AttendanceConfigModel, response_model_by_alias=False)
 async def update_attendance_config(
-    payload: AttendanceConfigModel = Body(...),
+    payload: CreateAttendanceConfigModel = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
     is_superuser = current_user.get("isSuperuser", False)
