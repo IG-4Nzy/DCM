@@ -323,9 +323,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         const osErr = validators.osExpiry(formData.osAndExpiry || '', 100, 'OS and Expiry');
         const appsErr = validators.applicationsGeneral(formData.applications || '', 200, 'Applications');
         const backupNameErr = validators.alphanumericSpacesDotsDashesUnderscores(formData.backupName || '', 50, 'Backup Name');
-        const hddErr = validators.alphanumericSpacesDots(formData.hdd || '', 20, 'HDD');
-        const ramErr = validators.alphanumericSpacesDots(formData.ram || '', 20, 'RAM');
-        const cpuErr = validators.alphanumericSpacesDots(formData.cpu || '', 20, 'CPU');
+        const hddErr = validators.alphanumeric(formData.hdd || '', 6, 'HDD');
+        const ramErr = validators.alphanumeric(formData.ram || '', 6, 'RAM');
+        const cpuErr = validators.alphanumeric(formData.cpu || '', 6, 'CPU');
         const contactErr = validators.phoneDigits(formData.adminContact || '', 50, 'Admin Contact');
 
         const newErrors = {

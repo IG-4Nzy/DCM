@@ -21,6 +21,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
+import { validators } from '../../helpers/validation';
 
 interface ServiceRecord {
   id: string;
@@ -80,6 +81,7 @@ const PeriodicActivities: React.FC = () => {
   const [neverEnds, setNeverEnds] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   // Services State
   const [selectedAmcActivity, setSelectedAmcActivity] = useState<PeriodicActivity | null>(null);
@@ -202,6 +204,7 @@ const PeriodicActivities: React.FC = () => {
     setRepeatUnit('months');
     setRepeatCount(5);
     setNeverEnds(false);
+    setErrors({});
     setIsModalOpen(true);
   };
 
@@ -217,17 +220,32 @@ const PeriodicActivities: React.FC = () => {
     setRepeatUnit(activity.repeatUnit || 'months');
     setNeverEnds(activity.repeatCount === -1);
     setRepeatCount(activity.repeatCount && activity.repeatCount !== -1 ? activity.repeatCount : 5);
+    setErrors({});
     setIsModalOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const newErrors: { [key: string]: string } = {};
+
     if (!name.trim()) {
-      showToast('Activity Name is required', 'warning');
-      return;
+      newErrors.name = 'Activity Name is required';
+    } else {
+      const err = validators.alphanumericSpacesDotsDashesUnderscores(name, 50, 'Activity Name');
+      if (err) newErrors.name = err;
     }
+
     if (!dueDate) {
-      showToast('Due/Expiry Date is required', 'warning');
+      newErrors.dueDate = 'Due or Expiry Date is required';
+    }
+
+    if (remarks) {
+      const err = validators.maxLength(remarks, 220, 'Remarks');
+      if (err) newErrors.remarks = err;
+    }
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
       return;
     }
 
@@ -303,6 +321,22 @@ const PeriodicActivities: React.FC = () => {
     const activityId = selectedAmcActivity.id || selectedAmcActivity._id;
     if (!activityId) return;
 
+    if (serviceRemarks) {
+      const err = validators.maxLength(serviceRemarks, 220, 'Service Remarks');
+      if (err) {
+        showToast(err, 'warning');
+        return;
+      }
+    }
+
+    if (serviceFile) {
+      const err = validators.fileSize(serviceFile, 5, 'Report file');
+      if (err) {
+        showToast(err, 'warning');
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const formData = new FormData();
@@ -340,6 +374,14 @@ const PeriodicActivities: React.FC = () => {
     const activityId = selectedAmcActivity.id || selectedAmcActivity._id;
     if (!activityId) return;
 
+    if (file) {
+      const err = validators.fileSize(file, 5, 'Report file');
+      if (err) {
+        showToast(err, 'warning');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const formData = new FormData();
@@ -369,6 +411,22 @@ const PeriodicActivities: React.FC = () => {
 
     const activityId = selectedAmcActivity.id || selectedAmcActivity._id;
     if (!activityId) return;
+
+    if (completionRemarks) {
+      const err = validators.maxLength(completionRemarks, 220, 'Remarks');
+      if (err) {
+        showToast(err, 'warning');
+        return;
+      }
+    }
+
+    if (completionFile) {
+      const err = validators.fileSize(completionFile, 5, 'Report file');
+      if (err) {
+        showToast(err, 'warning');
+        return;
+      }
+    }
 
     setSubmitting(true);
     try {
@@ -659,9 +717,14 @@ const PeriodicActivities: React.FC = () => {
                 fullWidth: true,
                 required: true,
                 value: name,
-                onChange: (e: any) => setName(e.target.value),
+                onChange: (e: any) => {
+                  setName(e.target.value);
+                  setErrors(prev => ({ ...prev, name: '' }));
+                },
                 placeholder: "e.g. Fire Extinguisher Refill",
                 InputLabelProps: { shrink: true },
+                error: !!errors.name,
+                helperText: errors.name,
                 sx: { '& .MuiOutlinedInput-root': { borderRadius: '8px' } }
               } as any)}
             />
@@ -674,8 +737,13 @@ const PeriodicActivities: React.FC = () => {
                 fullWidth: true,
                 required: true,
                 value: dueDate,
-                onChange: (e: any) => setDueDate(e.target.value),
+                onChange: (e: any) => {
+                  setDueDate(e.target.value);
+                  setErrors(prev => ({ ...prev, dueDate: '' }));
+                },
                 InputLabelProps: { shrink: true },
+                error: !!errors.dueDate,
+                helperText: errors.dueDate,
                 sx: { '& .MuiOutlinedInput-root': { borderRadius: '8px' } }
               } as any)}
             />
@@ -688,9 +756,14 @@ const PeriodicActivities: React.FC = () => {
                 multiline: true,
                 rows: 3,
                 value: remarks,
-                onChange: (e: any) => setRemarks(e.target.value),
+                onChange: (e: any) => {
+                  setRemarks(e.target.value);
+                  setErrors(prev => ({ ...prev, remarks: '' }));
+                },
                 placeholder: "Enter additional remarks or description...",
                 InputLabelProps: { shrink: true },
+                error: !!errors.remarks,
+                helperText: errors.remarks || `${remarks.length}/220`,
                 sx: { '& .MuiOutlinedInput-root': { borderRadius: '8px' } }
               } as any)}
             />

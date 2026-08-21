@@ -99,8 +99,8 @@ def check_status(v: Any) -> bool:
 def check_first_name(v: Optional[str]) -> Optional[str]:
     if v:
         v_trimmed = v.strip()
-        if not v_trimmed.isalnum():
-            raise ValueError("First name must be alphanumeric only")
+        if not all(c.isalnum() or c.isspace() or c == '_' or c == '.' for c in v_trimmed):
+            raise ValueError("First name must contain alphanumeric characters, spaces, dots, or underscores only")
         if len(v_trimmed) > 20:
             raise ValueError("First name must be maximum 20 characters")
         return v_trimmed
@@ -109,8 +109,8 @@ def check_first_name(v: Optional[str]) -> Optional[str]:
 def check_last_name(v: Optional[str]) -> Optional[str]:
     if v:
         v_trimmed = v.strip()
-        if not v_trimmed.isalnum():
-            raise ValueError("Last name must be alphanumeric only")
+        if not all(c.isalnum() or c.isspace() or c == '_' or c == '.' for c in v_trimmed):
+            raise ValueError("Last name must contain alphanumeric characters, spaces, dots, or underscores only")
         if len(v_trimmed) > 20:
             raise ValueError("Last name must be maximum 20 characters")
         return v_trimmed
@@ -127,8 +127,8 @@ def check_mobile(v: Optional[str]) -> Optional[str]:
 def check_pass_number(v: Optional[str]) -> Optional[str]:
     if v:
         v_trimmed = v.strip()
-        if not v_trimmed.isalnum():
-            raise ValueError("Pass number must be alphanumeric only")
+        if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+            raise ValueError("Pass number must contain alphanumeric characters, spaces, or underscores only")
         if len(v_trimmed) > 15:
             raise ValueError("Pass number must be maximum 15 characters")
         return v_trimmed
@@ -149,16 +149,16 @@ def check_date_of_join(v: Optional[str]) -> Optional[str]:
 
 def check_role_name(v: Optional[str]) -> Optional[str]:
     if v is not None:
-        if not all(c.isalnum() or c.isspace() for c in v):
-            raise ValueError("Role name must be alphanumeric and spaces only")
+        if not all(c.isalnum() or c.isspace() or c == '_' for c in v):
+            raise ValueError("Role name must be alphanumeric with spaces or underscores only")
         if not (2 <= len(v) <= 30):
             raise ValueError("Role name must be between 2 to 30 characters")
     return v
 
 def check_department_name(v: Optional[str]) -> Optional[str]:
     if v is not None:
-        if not all(c.isalnum() or c.isspace() or c == '-' for c in v):
-            raise ValueError("Department name must be alphanumeric with spaces or dashes only")
+        if not all(c.isalnum() or c.isspace() or c == '-' or c == '_' for c in v):
+            raise ValueError("Department name must be alphanumeric with spaces, dashes, or underscores only")
         if not (2 <= len(v) <= 50):
             raise ValueError("Department name must be between 2 to 50 characters")
     return v
@@ -166,8 +166,8 @@ def check_department_name(v: Optional[str]) -> Optional[str]:
 def check_inventory_item_name(v: Optional[str]) -> Optional[str]:
     if v is not None:
         v_trimmed = v.strip()
-        if not v_trimmed.isalnum():
-            raise ValueError("Item name must be alphanumeric only")
+        if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+            raise ValueError("Item name must contain alphanumeric characters, spaces, or underscores only")
         if len(v_trimmed) > 20:
             raise ValueError("Item name must be maximum 20 characters")
         return v_trimmed
@@ -176,8 +176,8 @@ def check_inventory_item_name(v: Optional[str]) -> Optional[str]:
 def check_almira_number(v: Optional[str]) -> Optional[str]:
     if v:
         v_trimmed = v.strip()
-        if not v_trimmed.isalnum():
-            raise ValueError("Almira number must be alphanumeric only")
+        if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+            raise ValueError("Almira number must contain alphanumeric characters, spaces, or underscores only")
         if len(v_trimmed) > 5:
             raise ValueError("Almira number must be maximum 5 characters")
         return v_trimmed
@@ -186,8 +186,8 @@ def check_almira_number(v: Optional[str]) -> Optional[str]:
 def check_rack_number(v: Optional[str]) -> Optional[str]:
     if v:
         v_trimmed = v.strip()
-        if not v_trimmed.isalnum():
-            raise ValueError("Rack number must be alphanumeric only")
+        if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+            raise ValueError("Rack number must contain alphanumeric characters, spaces, or underscores only")
         if len(v_trimmed) > 5:
             raise ValueError("Rack number must be maximum 5 characters")
         return v_trimmed
@@ -1496,7 +1496,7 @@ class NodeDetailsModel(BaseModel):
     indentor: str
     poNum: str
     assetNum: str
-    custodian: str
+    custodian: Optional[str] = None
     redundancyPower: str
     totalRam: Optional[Union[int, str]] = None
     totalHardisk: Optional[Union[int, str]] = None
@@ -1533,7 +1533,7 @@ class CreateNodeDetailsModel(BaseModel):
     indentor: str
     poNum: str
     assetNum: str
-    custodian: str
+    custodian: Optional[str] = None
     redundancyPower: str
     totalRam: Optional[Union[int, str]] = None
     totalHardisk: Optional[Union[int, str]] = None
@@ -2316,6 +2316,21 @@ class CreateRequestModel(BaseModel):
     purpose: Optional[str] = None
     details: Optional[dict] = None
 
+    @field_validator('requestType')
+    @classmethod
+    def validate_request_type(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Request type cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
+                raise ValueError("Request type must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Request type must be maximum 50 characters")
+            return v_trimmed
+        return v
+
     @field_validator('purpose')
     @classmethod
     def validate_purpose(cls, v):
@@ -2344,6 +2359,21 @@ class CreateRequestModel(BaseModel):
             return v_trimmed
         return v
 
+    @field_validator('details')
+    @classmethod
+    def validate_details(cls, v):
+        import re
+        if v and isinstance(v, dict):
+            for field in ['ram', 'hdd', 'cpu', 'newRam', 'newHdd', 'newCpu']:
+                val = v.get(field)
+                if val:
+                    val_str = str(val).strip()
+                    if not re.match(r"^[a-zA-Z0-9_\s]+$", val_str):
+                        raise ValueError(f"{field.upper()} must contain alphanumeric characters, spaces, or underscores only")
+                    if len(val_str) > 6:
+                        raise ValueError(f"{field.upper()} must be maximum 6 characters")
+        return v
+
     model_config = ConfigDict(
         populate_by_name=True,
         arbitrary_types_allowed=True,
@@ -2356,6 +2386,21 @@ class UpdateRequestModel(BaseModel):
     details: Optional[dict] = None
     status: Optional[str] = None
     remarks: Optional[str] = None
+
+    @field_validator('requestType')
+    @classmethod
+    def validate_request_type(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Request type cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
+                raise ValueError("Request type must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Request type must be maximum 50 characters")
+            return v_trimmed
+        return v
 
     @field_validator('purpose')
     @classmethod
@@ -2397,6 +2442,21 @@ class UpdateRequestModel(BaseModel):
                 if len(v_trimmed) > 500:
                     raise ValueError("Remarks must be maximum 500 characters")
             return v_trimmed
+        return v
+
+    @field_validator('details')
+    @classmethod
+    def validate_details(cls, v):
+        import re
+        if v and isinstance(v, dict):
+            for field in ['ram', 'hdd', 'cpu', 'newRam', 'newHdd', 'newCpu']:
+                val = v.get(field)
+                if val:
+                    val_str = str(val).strip()
+                    if not re.match(r"^[a-zA-Z0-9_\s]+$", val_str):
+                        raise ValueError(f"{field.upper()} must contain alphanumeric characters, spaces, or underscores only")
+                    if len(val_str) > 6:
+                        raise ValueError(f"{field.upper()} must be maximum 6 characters")
         return v
 
     model_config = ConfigDict(
@@ -2493,6 +2553,21 @@ class CreateRequestRoutingModel(BaseModel):
     requestType: str
     stages: List[CreateRequestRoutingStage] = []
 
+    @field_validator('requestType')
+    @classmethod
+    def validate_request_type(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Request Type cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
+                raise ValueError("Request Type must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Request Type must be maximum 50 characters")
+            return v_trimmed
+        return v
+
     model_config = ConfigDict(
         populate_by_name=True,
         arbitrary_types_allowed=True,
@@ -2502,10 +2577,20 @@ class UpdateRequestRoutingModel(BaseModel):
     requestType: Optional[str] = None
     stages: Optional[List[CreateRequestRoutingStage]] = None
 
-    model_config = ConfigDict(
-        populate_by_name=True,
-        arbitrary_types_allowed=True,
-    )
+    @field_validator('requestType')
+    @classmethod
+    def validate_request_type(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Request Type cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
+                raise ValueError("Request Type must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Request Type must be maximum 50 characters")
+            return v_trimmed
+        return v
 
 class RequestRoutingModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)

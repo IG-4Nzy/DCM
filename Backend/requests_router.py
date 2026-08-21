@@ -41,8 +41,8 @@ class VisitorLogCreate(BaseModel):
     def validate_division(cls, v):
         if v:
             v_trimmed = v.strip()
-            if not all(c.isalnum() or c.isspace() for c in v_trimmed):
-                raise ValueError("Division must contain alphanumeric characters only")
+            if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+                raise ValueError("Division must contain alphanumeric characters, spaces, or underscores only")
             if len(v_trimmed) > 60:
                 raise ValueError("Division must be maximum 60 characters")
             return v_trimmed
@@ -53,8 +53,8 @@ class VisitorLogCreate(BaseModel):
     def validate_purpose(cls, v):
         if v:
             v_trimmed = v.strip()
-            if not all(c.isalnum() or c.isspace() for c in v_trimmed):
-                raise ValueError("Purpose of visit must contain alphanumeric characters only")
+            if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+                raise ValueError("Purpose of visit must contain alphanumeric characters, spaces, or underscores only")
             if len(v_trimmed) > 125:
                 raise ValueError("Purpose of visit must be maximum 125 characters")
             return v_trimmed
@@ -65,8 +65,8 @@ class VisitorLogCreate(BaseModel):
     def validate_items_to_bring(cls, v):
         if v:
             v_trimmed = v.strip()
-            if not all(c.isalnum() or c.isspace() for c in v_trimmed):
-                raise ValueError("Tools/items to bring must contain alphanumeric characters only")
+            if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+                raise ValueError("Tools/items to bring must contain alphanumeric characters, spaces, or underscores only")
             return v_trimmed
         return v
 
@@ -97,8 +97,8 @@ class VisitorLogUpdate(BaseModel):
     def validate_division(cls, v):
         if v is not None:
             v_trimmed = v.strip()
-            if not all(c.isalnum() or c.isspace() for c in v_trimmed):
-                raise ValueError("Division must contain alphanumeric characters only")
+            if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+                raise ValueError("Division must contain alphanumeric characters, spaces, or underscores only")
             if len(v_trimmed) > 60:
                 raise ValueError("Division must be maximum 60 characters")
             return v_trimmed
@@ -109,8 +109,8 @@ class VisitorLogUpdate(BaseModel):
     def validate_purpose(cls, v):
         if v is not None:
             v_trimmed = v.strip()
-            if not all(c.isalnum() or c.isspace() for c in v_trimmed):
-                raise ValueError("Purpose of visit must contain alphanumeric characters only")
+            if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+                raise ValueError("Purpose of visit must contain alphanumeric characters, spaces, or underscores only")
             if len(v_trimmed) > 125:
                 raise ValueError("Purpose of visit must be maximum 125 characters")
             return v_trimmed
@@ -121,8 +121,8 @@ class VisitorLogUpdate(BaseModel):
     def validate_items_to_bring(cls, v):
         if v is not None:
             v_trimmed = v.strip()
-            if not all(c.isalnum() or c.isspace() for c in v_trimmed):
-                raise ValueError("Tools/items to bring must contain alphanumeric characters only")
+            if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+                raise ValueError("Tools/items to bring must contain alphanumeric characters, spaces, or underscores only")
             return v_trimmed
         return v
 

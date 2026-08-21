@@ -264,7 +264,9 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         e.preventDefault();
         
         const nodeErr = validators.alphanumericSpacesDotsDashesUnderscores(node, 50, "Node Name");
-        const ipErr = validators.ipv4(ip, "IP Address");
+        const ipErr = isApplianceItem
+            ? (ip && ip.trim() ? validators.ipv4(ip, "IP Address") : "")
+            : (ip && ip.trim() ? validators.ipv4(ip, "IP Address") : "IP Address is required");
         const osErr = validators.alphanumericSpacesDotsDashesUnderscores(os, 50, "Operating System");
         const modelErr = validators.alphanumericSpaces(serverModel, 50, "Server Model");
         const serialErr = validators.serialAsset(serialNumber, 50, "Serial Number");
@@ -503,7 +505,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 label="IP Address"
                                 placeholder="e.g. 192.168.1.10"
                                 value={ip}
-                                required
+                                required={!isApplianceItem}
                                 onChange={(e) => {
                                     setIp(e.target.value);
                                     setErrors(prev => ({ ...prev, ip: '' }));
@@ -605,7 +607,6 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                 label="Custodian"
                                 placeholder="e.g. John Doe"
                                 value={custodian}
-                                required
                                 disabled={isRestrictedAdmin}
                                 onChange={(e) => {
                                     setCustodian(e.target.value);

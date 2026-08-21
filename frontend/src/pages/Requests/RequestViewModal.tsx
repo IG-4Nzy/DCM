@@ -505,7 +505,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                   <>
                     <Grid size={{xs: 12, sm: 4}}   >
                       <Typography variant="caption" color="textSecondary">VM Name</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.vmName || '-'}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.vmName || request.details?.applications || request.details?.vmId || '-'}</Typography>
                     </Grid>
                     {request.requestType === 'VM Creation' && (
                       <>

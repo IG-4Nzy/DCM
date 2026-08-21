@@ -3,11 +3,12 @@ from fastapi import APIRouter, HTTPException, status, Depends, Query, Body, Form
 from auth_utils import get_current_user, require_privilege
 from database import db
 from bson import ObjectId
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Optional, List, Dict, Any
 import uuid
 import os
 import shutil
+import re
 
 router = APIRouter()
 collection = db.get_collection("periodic_activities")
@@ -54,6 +55,29 @@ class PeriodicActivityModel(BaseModel):
         arbitrary_types_allowed=True,
     )
 
+class CreatePeriodicActivityModel(PeriodicActivityModel):
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v):
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Activity name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s._,-]+$", v_trimmed):
+                raise ValueError("Activity name must contain alphanumeric characters, spaces, dots, commas, underscores, or hyphens only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Activity name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        if v is not None:
+            if len(v) > 220:
+                raise ValueError("Remarks must be maximum 220 characters")
+        return v
+
 class PaginatedPeriodicActivitiesModel(BaseModel):
     data: List[PeriodicActivityModel]
     total: int
@@ -66,7 +90,7 @@ def serialize_doc(doc: dict) -> dict:
 
 @router.post("", response_description="Create periodic activity", response_model=PeriodicActivityModel, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_privilege("Create Periodic Activity"))])
 async def create_periodic_activity(
-    payload: PeriodicActivityModel = Body(...),
+    payload: CreatePeriodicActivityModel = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
     now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")

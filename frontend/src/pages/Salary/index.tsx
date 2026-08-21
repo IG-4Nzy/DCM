@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Box, Button, Typography, IconButton, Grid, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Collapse, Card, CardContent, Tooltip, Paper, Tabs, Tab, MenuItem, Select, FormControl, InputLabel, Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Switch, Accordion, AccordionSummary, AccordionDetails, Chip, Drawer, Divider } from '@mui/material';
 import TextField from '../../components/TextField';
-import { 
-  MdAdd as AddIcon, 
+import {
+  MdAdd as AddIcon,
   MdDeleteOutline as DeleteIcon,
   MdExpandMore as ExpandMoreIcon,
   MdExpandLess as ExpandLessIcon,
@@ -19,7 +19,13 @@ import {
   MdCardGiftcard as GiftIcon,
   MdRefresh as RefreshIcon,
   MdSync as SyncIcon,
-  MdHistory as HistoryIcon
+  MdHistory as HistoryIcon,
+  MdEmail as MailIcon,
+  MdPeople as PeopleIcon,
+  MdAttachMoney as MoneyIcon,
+  MdLock as LockIcon,
+  MdLockOpen as LockOpenIcon,
+  MdReceiptLong as ReceiptIcon
 } from 'react-icons/md';
 import dayjs from 'dayjs';
 import request from '../../services/request';
@@ -31,6 +37,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import type { Activity, Template, Member, Group } from './types';
 import SalarySplitupModal from './components/SalarySplitupModal';
+import { exportHtmlToPdfBase64 } from '../../helpers/exportRosterPdf';
 
 export const distributeInitialConsumedAmount = (
   templateInitialConsumedAmount: number,
@@ -39,7 +46,7 @@ export const distributeInitialConsumedAmount = (
   remainingMonths: number
 ) => {
   const futureCapacity = maxStaffs * remainingMonths * 30;
-  
+
   // Calculate limit amounts for each activity
   const limits = activities.map(act => {
     const rate = Number(act.rate) || 0;
@@ -108,27 +115,28 @@ const Salary = () => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
 
-  const canView = isSuperuser || 
-                  hasPrivilege(PRIVILEGES.SALARY_CALCULATION_VIEW) || 
-                  hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE) || 
-                  hasPrivilege(PRIVILEGES.SALARY_CALCULATION_CALCULATE);
+  const canView = isSuperuser ||
+    hasPrivilege(PRIVILEGES.SALARY_CALCULATION_VIEW) ||
+    hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE) ||
+    hasPrivilege(PRIVILEGES.SALARY_CALCULATION_CALCULATE);
 
   const canUpdateConfig = isSuperuser || hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE);
-  
-  const canCalculate = isSuperuser || 
-                       hasPrivilege(PRIVILEGES.SALARY_CALCULATION_CALCULATE) || 
-                       hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE);
 
-  const canAddGroup = isSuperuser || 
-                      hasPrivilege(PRIVILEGES.SALARY_CALCULATION_CREATE) || 
-                      hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE);
+  const canCalculate = isSuperuser ||
+    hasPrivilege(PRIVILEGES.SALARY_CALCULATION_CALCULATE) ||
+    hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE);
 
-  const canDeleteGroup = isSuperuser || 
-                         hasPrivilege(PRIVILEGES.SALARY_CALCULATION_DELETE) || 
-                         hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE);
+  const canAddGroup = isSuperuser ||
+    hasPrivilege(PRIVILEGES.SALARY_CALCULATION_CREATE) ||
+    hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE);
+
+  const canDeleteGroup = isSuperuser ||
+    hasPrivilege(PRIVILEGES.SALARY_CALCULATION_DELETE) ||
+    hasPrivilege(PRIVILEGES.SALARY_CALCULATION_UPDATE);
 
   const [currentMonth, setCurrentMonth] = useState(dayjs().format('YYYY-MM'));
   const [salaryData, setSalaryData] = useState<Record<string, Group[]>>({});
+  const [monthEditables, setMonthEditables] = useState<Record<string, boolean>>({});
   const [templates, setTemplates] = useState<Template[]>([]);
   const [startDay, setStartDay] = useState<number>(1);
   const [endDay, setEndDay] = useState<number>(31);
@@ -136,6 +144,21 @@ const Salary = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [customDates, setCustomDates] = useState<Record<string, { startDate?: string; endDate?: string }>>({});
   const [editingDates, setEditingDates] = useState(false);
+
+  const isCurrentMonthEditable = !!monthEditables[currentMonth];
+
+  const handleToggleMonthEditable = async (checked: boolean) => {
+    try {
+      await request.post(`/api/salary/${currentMonth}/toggle-editable`, { editable: checked });
+      setMonthEditables(prev => ({
+        ...prev,
+        [currentMonth]: checked
+      }));
+      showToast(`Month ${dayjs(currentMonth).format('MMMM YYYY')} is now ${checked ? 'Editable' : 'Locked'}`, 'success');
+    } catch (e) {
+      showToast('Failed to toggle month editable status', 'error');
+    }
+  };
 
   const [globalCompanyName, setGlobalCompanyName] = useState('');
   const [globalPoNumber, setGlobalPoNumber] = useState('');
@@ -146,13 +169,21 @@ const Salary = () => {
   const [tempPoNumber, setTempPoNumber] = useState('');
   const [tempPoStartDate, setTempPoStartDate] = useState('');
   const [tempPoEndDate, setTempPoEndDate] = useState('');
-  
+
   const [splitupGroup, setSplitupGroup] = useState<Group | null>(null);
   const [reserveModalOpen, setReserveModalOpen] = useState(false);
   const [reserveTargetTemplateId, setReserveTargetTemplateId] = useState<string | null>(null);
   const [reserveTypeState, setReserveTypeState] = useState<'percentage' | 'amount'>('percentage');
   const [reserveValueState, setReserveValueState] = useState<string>('5');
   const [showSalaryPrint, setShowSalaryPrint] = useState(false);
+  const [showAllSplitupsModal, setShowAllSplitupsModal] = useState(false);
+
+  // Email modal state
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailRecipients, setEmailRecipients] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [accountsMailEnabled, setAccountsMailEnabled] = useState(true);
 
   // Bonus tracker state variables
   const [bonusEntries, setBonusEntries] = useState<any[]>([]);
@@ -167,7 +198,7 @@ const Salary = () => {
   const [expandedBonusRowIds, setExpandedBonusRowIds] = useState<string[]>([]);
 
   const toggleExpandBonusRow = (id: string) => {
-    setExpandedBonusRowIds(prev => 
+    setExpandedBonusRowIds(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
   };
@@ -416,12 +447,15 @@ const Salary = () => {
         if (allSalaryRes.data) {
           const loadedData: Record<string, Group[]> = {};
           const loadedDates: Record<string, { startDate?: string; endDate?: string }> = {};
+          const loadedEditables: Record<string, boolean> = {};
           allSalaryRes.data.forEach((s: any) => {
             loadedData[s.month] = s.groups;
             loadedDates[s.month] = { startDate: s.startDate, endDate: s.endDate };
+            loadedEditables[s.month] = s.editable ?? false;
           });
           setSalaryData(loadedData);
           setCustomDates(loadedDates);
+          setMonthEditables(loadedEditables);
         }
       } catch (e) {
         console.error('Failed to load salary configuration', e);
@@ -482,6 +516,10 @@ const Salary = () => {
   };
 
   const saveGroupsToDB = async (month: string, newGroups: Group[], start?: string, end?: string) => {
+    if (!monthEditables[month]) {
+      showToast('Salary calculation for this month is locked', 'error');
+      return;
+    }
     try {
       const monthData = customDates[month] || {};
       const payload = {
@@ -490,12 +528,17 @@ const Salary = () => {
         endDate: end !== undefined ? end : monthData.endDate
       };
       await request.post(`/api/salary/${month}`, payload);
-    } catch (e) {
-      showToast('Failed to save groups to database', 'error');
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || 'Failed to save groups to database';
+      showToast(msg, 'error');
     }
   };
 
   const handleUpdateCustomDates = (start: string | undefined, end: string | undefined) => {
+    if (!isCurrentMonthEditable) {
+      showToast('Salary calculation for this month is locked', 'error');
+      return;
+    }
     const updated = {
       ...customDates,
       [currentMonth]: { startDate: start, endDate: end }
@@ -506,6 +549,10 @@ const Salary = () => {
   };
 
   const addGroup = () => {
+    if (!isCurrentMonthEditable) {
+      showToast('Salary calculation for this month is locked', 'error');
+      return;
+    }
     const newGroup: Group = {
       id: Date.now().toString(),
       name: `Group ${groups.length + 1}`,
@@ -527,6 +574,10 @@ const Salary = () => {
 
   const deleteGroup = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (!isCurrentMonthEditable) {
+      showToast('Salary calculation for this month is locked', 'error');
+      return;
+    }
     const groupToDelete = groups.find(g => g.id === id);
     const groupName = groupToDelete?.name || 'this group';
     if (await confirm(`Are you sure you want to delete ${groupName}?`, 'Delete Group')) {
@@ -540,6 +591,10 @@ const Salary = () => {
 
   const toggleEditGroup = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (!isCurrentMonthEditable) {
+      showToast('Salary calculation for this month is locked', 'error');
+      return;
+    }
 
     if (editingGroupIds.includes(id)) {
       const groupSaving = groups.find(g => g.id === id);
@@ -585,7 +640,7 @@ const Salary = () => {
       }
     }
 
-    setEditingGroupIds(prev => 
+    setEditingGroupIds(prev =>
       prev.includes(id) ? prev.filter(gId => gId !== id) : [...prev, id]
     );
     if (!editingGroupIds.includes(id) && !expandedGroupIds.includes(id)) {
@@ -608,7 +663,7 @@ const Salary = () => {
   };
 
   const toggleExpandGroup = (id: string) => {
-    setExpandedGroupIds(prev => 
+    setExpandedGroupIds(prev =>
       prev.includes(id) ? prev.filter(gId => gId !== id) : [...prev, id]
     );
   };
@@ -698,8 +753,8 @@ const Salary = () => {
       })
       .sort();
     const startMonth = sortedMonths.length > 0 ? sortedMonths[0] : currentMonth;
-    const remainingMonthsFromStart = globalPoEndDate 
-      ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${startMonth}-01`).startOf('month'), 'month') + 1) 
+    const remainingMonthsFromStart = globalPoEndDate
+      ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${startMonth}-01`).startOf('month'), 'month') + 1)
       : 1;
 
     const distribution = distributeInitialConsumedAmount(
@@ -770,8 +825,8 @@ const Salary = () => {
       })
       .sort();
     const startMonth = sortedMonths.length > 0 ? sortedMonths[0] : currentMonth;
-    const remainingMonthsFromStart = globalPoEndDate 
-      ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${startMonth}-01`).startOf('month'), 'month') + 1) 
+    const remainingMonthsFromStart = globalPoEndDate
+      ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${startMonth}-01`).startOf('month'), 'month') + 1)
       : 1;
 
     const distribution = distributeInitialConsumedAmount(
@@ -810,8 +865,8 @@ const Salary = () => {
       }
     });
 
-    const remainingMonths = globalPoEndDate 
-      ? Math.max(0, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${currentMonth}-01`).startOf('month'), 'month')) 
+    const remainingMonths = globalPoEndDate
+      ? Math.max(0, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${currentMonth}-01`).startOf('month'), 'month'))
       : 0;
 
     const templateMaxDays = template.maxDays !== undefined && template.maxDays !== '' && template.maxDays !== null ? Number(template.maxDays) : maxAllowedDays;
@@ -834,8 +889,8 @@ const Salary = () => {
     const templateInitialConsumedAmountVal = Number(template.initialConsumedAmount) || 0;
 
     const startMonth = sortedMonths.length > 0 ? sortedMonths[0] : currentMonth;
-    const remainingMonthsFromStart = globalPoEndDate 
-      ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${startMonth}-01`).startOf('month'), 'month') + 1) 
+    const remainingMonthsFromStart = globalPoEndDate
+      ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${startMonth}-01`).startOf('month'), 'month') + 1)
       : 1;
 
     const distribution = distributeInitialConsumedAmount(
@@ -855,8 +910,8 @@ const Salary = () => {
       const templateGroups = salaryData[m]?.filter(g => g.templateId === template.id) || [];
       templateGroups.forEach(g => {
         const mTotal = calculateGroupTotal(g);
-        const remainingMonths = globalPoEndDate 
-          ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${m}-01`).startOf('month'), 'month') + 1) 
+        const remainingMonths = globalPoEndDate
+          ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${m}-01`).startOf('month'), 'month') + 1)
           : 1;
 
         let sumTargetCost = 0;
@@ -885,8 +940,8 @@ const Salary = () => {
       });
     });
 
-    const remainingMonthsNow = globalPoEndDate 
-      ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs().startOf('month'), 'month') + 1) 
+    const remainingMonthsNow = globalPoEndDate
+      ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs().startOf('month'), 'month') + 1)
       : 1;
     const templateMaxDays = template.maxDays !== undefined && template.maxDays !== '' && template.maxDays !== null ? Number(template.maxDays) : 30;
     const requiredUnitsPerActivity = Number(template.maxStaffs || 0) * remainingMonthsNow * templateMaxDays;
@@ -960,7 +1015,7 @@ const Salary = () => {
         }));
       }
     }
-    setEditingTemplateIds(prev => 
+    setEditingTemplateIds(prev =>
       prev.includes(id) ? prev.filter(tId => tId !== id) : [...prev, id]
     );
   };
@@ -1022,7 +1077,7 @@ const Salary = () => {
   // Format cycle period string
   const actualStartDay = Math.min(startDay, dayjs(`${currentMonth}-01`).daysInMonth());
   const cycleStartObj = dayjs(`${currentMonth}-01`).date(actualStartDay);
-  
+
   let cycleEndObj;
   if (startDay === 1) {
     cycleEndObj = dayjs(`${currentMonth}-01`).endOf('month').date(Math.min(endDay, dayjs(`${currentMonth}-01`).daysInMonth()));
@@ -1069,147 +1124,659 @@ const Salary = () => {
     }
   };
 
+  const handleOpenEmailModal = async () => {
+    try {
+      const checkRes = await request.get('/api/mail-config/accounts-mail-enabled');
+      if (checkRes.data && checkRes.data.enabled === false) {
+        showToast('Sending Accounts/Salary emails is currently disabled in Mail Configuration.', 'warning');
+        return;
+      }
+    } catch (err) {
+      // Continue if check fails
+    }
+
+    try {
+      const savedRes = await request.get('/api/mail-config/saved-emails?module=accounts');
+      if (Array.isArray(savedRes.data) && savedRes.data.length > 0) {
+        setEmailRecipients(savedRes.data.join(', '));
+      } else {
+        const lastSentRes = await request.get('/api/mail-config/last-sent?department=accounts');
+        if (lastSentRes.data && lastSentRes.data.emails) {
+          setEmailRecipients(lastSentRes.data.emails);
+        }
+      }
+    } catch (err) {
+      // ignore error
+    }
+
+    const poNum = globalPoNumber || 'N/A';
+    const monthData = customDates[currentMonth] || {};
+    const startDateStr = monthData.startDate
+      ? dayjs(monthData.startDate).format('DD MMM YYYY')
+      : cycleStartObj.format('DD MMM YYYY');
+    const endDateStr = monthData.endDate
+      ? dayjs(monthData.endDate).format('DD MMM YYYY')
+      : cycleEndObj.format('DD MMM YYYY');
+    const yearStr = monthData.endDate
+      ? dayjs(monthData.endDate).format('YYYY')
+      : cycleEndObj.format('YYYY');
+
+    const defaultSubject = `Datacenter-${poNum} - Bill ${startDateStr} to ${endDateStr} - ${yearStr}`;
+    setEmailSubject(defaultSubject);
+
+    setShowEmailModal(true);
+  };
+
+  const generateSalaryReportHtml = () => {
+    let totalGrandAmount = 0;
+    let slNo = 1;
+
+    let tableRowsHtml = '';
+    groups.forEach((group) => {
+      const groupTotal = calculateGroupTotal(group);
+      totalGrandAmount += groupTotal;
+
+      tableRowsHtml += `
+        <tr style="background-color: #e2e8f0; font-weight: bold;">
+          <td colspan="5" style="border: 1px solid black; padding: 6px 8px; font-size: 13px;">${group.name}</td>
+        </tr>
+      `;
+
+      group.members.forEach((member) => {
+        const days = Number(member.days) || 0;
+        const otHours = Number(member.otHours) || 0;
+        const perDayRate = Number(group.perDaySalary) || 0;
+        const memberTotal = (days * perDayRate) + (otHours * (perDayRate / 8));
+
+        tableRowsHtml += `
+          <tr>
+            <td style="border: 1px solid black; padding: 4px 8px; text-align: center;">${slNo++}</td>
+            <td style="border: 1px solid black; padding: 4px 8px;">${member.name || ''}</td>
+            <td style="border: 1px solid black; padding: 4px 8px; text-align: center;">${days}</td>
+            <td style="border: 1px solid black; padding: 4px 8px; text-align: center;">${otHours}</td>
+            <td style="border: 1px solid black; padding: 4px 8px; text-align: right;">₹ ${memberTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          </tr>
+        `;
+      });
+    });
+
+    tableRowsHtml += `
+      <tr style="background-color: #f1f5f9; font-weight: bold;">
+        <td colspan="4" style="border: 1px solid black; padding: 6px 8px; text-align: right;">Grand Total:</td>
+        <td style="border: 1px solid black; padding: 6px 8px; text-align: right;">₹ ${totalGrandAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+      </tr>
+    `;
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Salary Report: Individual Members</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; color: #1e293b; font-size: 12px; }
+          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #1e293b; padding-bottom: 10px; margin-bottom: 20px; }
+          .header-title { font-size: 20px; font-weight: bold; }
+          .header-sub { font-size: 14px; font-weight: 600; color: #475569; margin-top: 4px; }
+          .header-right { text-align: right; font-size: 12px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th, td { border: 1px solid black; padding: 6px 8px; }
+          th { background-color: #f8fafc; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="header-title">${globalCompanyName || 'Company Name Not Set'}</div>
+            <div class="header-sub">Salary Report: Individual Members</div>
+          </div>
+          <div class="header-right">
+            <div><strong>PO Number:</strong> ${globalPoNumber || 'N/A'}</div>
+            <div><strong>Period:</strong> ${displayPeriod}</div>
+            <div><strong>Generated:</strong> ${dayjs().format('DD MMM YYYY, HH:mm')}</div>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 50px;">Sl No.</th>
+              <th>Name of the contract person</th>
+              <th style="width: 80px; text-align: center;">Days</th>
+              <th style="width: 100px; text-align: center;">OT Hours</th>
+              <th style="width: 150px; text-align: right;">Total Amount (Rs)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRowsHtml}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+  };
+
+  const generateSplitupReportHtml = () => {
+    const targetGroups = groups.filter(g => !!g.templateId);
+    if (targetGroups.length === 0) return null;
+
+    let pagesHtml = '';
+    targetGroups.forEach((group, groupIdx) => {
+      const template = templates.find(t => t.id === group.templateId);
+      if (!template) return;
+
+      const groupTotal = calculateGroupTotal(group);
+      const monthSet = new Set(Object.keys(salaryData));
+      monthSet.add(currentMonth);
+      const sortedMonths = Array.from(monthSet)
+        .filter(m => {
+          if (m > currentMonth) return false;
+          if (globalPoStartDate && m < dayjs(globalPoStartDate).format('YYYY-MM')) return false;
+          return true;
+        })
+        .sort();
+
+      const templateInitialConsumedAmountVal = Number(template.initialConsumedAmount) || 0;
+      const startMonth = sortedMonths.length > 0 ? sortedMonths[0] : currentMonth;
+      const remainingMonthsFromStart = globalPoEndDate
+        ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${startMonth}-01`).startOf('month'), 'month') + 1)
+        : 1;
+
+      const distribution = distributeInitialConsumedAmount(
+        templateInitialConsumedAmountVal,
+        template.activities,
+        Number(template.maxStaffs) || 0,
+        remainingMonthsFromStart
+      );
+      const initialConsumedUnitsMap = distribution.distributedUnits;
+
+      const consumedUnitsMap: Record<string, number> = {};
+      template.activities.forEach(act => {
+        consumedUnitsMap[act.id] = initialConsumedUnitsMap[act.id] || 0;
+      });
+
+      let finalSplitupResults: Record<string, { amount: number; units: number }> = {};
+
+      sortedMonths.forEach(m => {
+        const g = (m === currentMonth)
+          ? group
+          : salaryData[m]?.find(gr => gr.name === group.name);
+
+        if (!g) return;
+
+        const mTotal = calculateGroupTotal(g);
+        const remainingMonths = globalPoEndDate
+          ? Math.max(1, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${m}-01`).startOf('month'), 'month') + 1)
+          : 1;
+
+        let sumTargetCost = 0;
+        const targets = template.activities.map(act => {
+          const maxUnits = Number(act.maxUnits) || 0;
+          const prevConsumed = consumedUnitsMap[act.id] || 0;
+          const remUnits = Math.max(0, maxUnits - prevConsumed);
+          const targetUnits = remUnits / remainingMonths;
+          const rate = Number(act.rate) || 0;
+          const targetCost = targetUnits * rate;
+          sumTargetCost += targetCost;
+          return { id: act.id, rate, targetCost };
+        });
+
+        const monthResults: Record<string, { amount: number; units: number }> = {};
+        template.activities.forEach((act, idx) => {
+          const target = targets[idx];
+          let amount = 0;
+          if (sumTargetCost > 0) {
+            amount = (target.targetCost / sumTargetCost) * mTotal;
+          } else {
+            amount = mTotal / template.activities.length;
+          }
+          const units = target.rate > 0 ? (amount / target.rate) : 0;
+          monthResults[act.id] = { amount, units };
+
+          consumedUnitsMap[act.id] += units;
+        });
+
+        if (m === currentMonth) {
+          finalSplitupResults = monthResults;
+        }
+      });
+
+      let activityRowsHtml = '';
+      template.activities.forEach((act, idx) => {
+        const rate = Number(act.rate) || 0;
+        const result = finalSplitupResults[act.id] || { amount: 0, units: 0 };
+
+        activityRowsHtml += `
+          <tr>
+            <td style="border: 1px solid black; padding: 4px 8px;">${idx + 1}</td>
+            <td style="border: 1px solid black; padding: 4px 8px;">${act.name}</td>
+            <td style="border: 1px solid black; padding: 4px 8px; text-align: right;">${rate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td style="border: 1px solid black; padding: 4px 8px; text-align: right;">${result.units.toFixed(2)}</td>
+            <td style="border: 1px solid black; padding: 4px 8px; text-align: right;">${result.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          </tr>
+        `;
+      });
+
+      const isLast = groupIdx === targetGroups.length - 1;
+      const pageBreakCss = isLast ? '' : 'page-break-after: always; break-after: page;';
+
+      pagesHtml += `
+        <div style="padding: 20px; ${pageBreakCss}">
+          <div style="display: flex; justify-content: space-between; border-bottom: 2px solid black; padding-bottom: 8px; margin-bottom: 15px; font-size: 12px; font-weight: bold;">
+            <div>PO NO: ${globalPoNumber || 'N/A'}</div>
+            <div>Company name: ${globalCompanyName || 'Company Name Not Set'}</div>
+            <div>Period: ${displayPeriod}</div>
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+              <tr style="background-color: #f5f5f5;">
+                <th colSpan="5" style="border: 1px solid black; padding: 6px 8px; text-align: center; font-weight: bold; font-size: 14px;">
+                  ${template.title || group.name || 'Template'}
+                </th>
+              </tr>
+              <tr style="background-color: #f5f5f5;">
+                <th style="border: 1px solid black; padding: 6px 8px; text-align: left; width: 60px;">SL NO</th>
+                <th style="border: 1px solid black; padding: 6px 8px; text-align: left;">Activity Name</th>
+                <th style="border: 1px solid black; padding: 6px 8px; text-align: right;">Rate (₹)</th>
+                <th style="border: 1px solid black; padding: 6px 8px; text-align: right;">Units</th>
+                <th style="border: 1px solid black; padding: 6px 8px; text-align: right;">Amount (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${activityRowsHtml}
+              <tr style="font-weight: bold; background-color: #f8fafc;">
+                <td colSpan="3" style="border: 1px solid black; padding: 6px 8px; text-align: right;">Total Amount</td>
+                <td colSpan="2" style="border: 1px solid black; padding: 6px 8px; text-align: right;">₹ ${groupTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    });
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>All Splitup Reports</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #000; font-size: 12px; }
+          @media print {
+            .page-break { page-break-after: always; break-after: page; }
+          }
+        </style>
+      </head>
+      <body>
+        ${pagesHtml}
+      </body>
+      </html>
+    `;
+  };
+
+  const handleSendSalaryEmail = async () => {
+    if (!emailRecipients || !emailRecipients.trim()) {
+      showToast('Please enter at least one recipient email address', 'warning');
+      return;
+    }
+
+    try {
+      setEmailSending(true);
+      const salaryReportHtml = generateSalaryReportHtml();
+      const splitupReportHtml = generateSplitupReportHtml();
+
+      let salaryReportPdfBase64 = "";
+      let splitupReportPdfBase64 = "";
+
+      try {
+        salaryReportPdfBase64 = await exportHtmlToPdfBase64(
+          salaryReportHtml,
+          `Salary_Report_Individual_Members_${currentMonth}.pdf`
+        );
+        splitupReportPdfBase64 = await exportHtmlToPdfBase64(
+          splitupReportHtml,
+          `Salary_All_Splitups_${currentMonth}.pdf`
+        );
+      } catch (pdfErr) {
+        console.error("Client-side PDF generation failed, falling back to server-side render:", pdfErr);
+      }
+
+      const res = await request.post(`/api/salary/${currentMonth}/send-email`, {
+        emails: emailRecipients,
+        subject: emailSubject,
+        salaryReportHtml,
+        splitupReportHtml,
+        salaryReportPdfBase64,
+        splitupReportPdfBase64
+      });
+
+      showToast(res.data?.message || 'Email successfully sent to Accounts!', 'success');
+      setShowEmailModal(false);
+    } catch (err: any) {
+      showToast(err.response?.data?.detail || err.message || 'Failed to send email', 'error');
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
   return (
-    <Box sx={{ maxWidth: 1100, margin: '0 auto', p: { xs: 2, md: 3 }, fontFamily: '"Inter", sans-serif' }}>
-      
+    <Box sx={{ maxWidth: 1200, margin: '0 auto', p: { xs: 2, md: 3 }, fontFamily: '"Inter", sans-serif' }}>
+
+      {/* Modern Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} aria-label="salary tabs">
-          <Tab icon={<WalletIcon />} iconPosition="start" label="Salary Calculation" />
-          <Tab icon={<GiftIcon />} iconPosition="start" label="Bonus" />
-          {canUpdateConfig && <Tab icon={<SettingsIcon />} iconPosition="start" label="Configuration" />}
+        <Tabs
+          value={activeTab}
+          onChange={(e, val) => setActiveTab(val)}
+          aria-label="salary tabs"
+          sx={{
+            '& .MuiTab-root': {
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '0.95rem',
+              minHeight: 48,
+              borderRadius: '8px 8px 0 0',
+              mr: 1,
+              '&.Mui-selected': {
+                color: 'primary.main',
+                fontWeight: 700
+              }
+            }
+          }}
+        >
+          <Tab icon={<WalletIcon style={{ fontSize: 20 }} />} iconPosition="start" label="Salary Calculation" />
+          <Tab icon={<GiftIcon style={{ fontSize: 20 }} />} iconPosition="start" label="Bonus Tracker" />
+          {canUpdateConfig && <Tab icon={<SettingsIcon style={{ fontSize: 20 }} />} iconPosition="start" label="Configuration" />}
         </Tabs>
       </Box>
 
       {activeTab === 0 && (
         <Box>
-          {/* Control Panel */}
-          <Paper 
-            variant="outlined" 
-            sx={{ 
-              p: 2, 
-              mb: 3, 
-              borderRadius: 2,
-              display: 'flex', 
-              flexDirection: { xs: 'column', md: 'row' }, 
-              justifyContent: 'space-between', 
-              alignItems: { xs: 'flex-start', md: 'center' },
-              gap: 2,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
-            }}
-          >
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: { xs: '100%', md: 'auto' } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', backgroundColor: 'grey.50', border: '1px solid', borderColor: 'divider', borderRadius: 1.5, px: 1, py: 0.5 }}>
-                  <IconButton onClick={handlePreviousMonth} size="small" color="primary">
-                    <ChevronLeftIcon />
-                  </IconButton>
-                  <Box sx={{ textAlign: 'center', minWidth: 140, px: 1 }}>
-                    <Typography variant="subtitle2" fontWeight="600">
-                      {dayjs(currentMonth).format('MMMM YYYY')}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                      {displayPeriod}
-                    </Typography>
-                  </Box>
-                  <IconButton onClick={handleNextMonth} size="small" color="primary">
-                    <ChevronRightIcon />
-                  </IconButton>
+          {/* Top Summary Metric Cards */}
+          <Grid container spacing={2.5} sx={{ mb: 3 }}>
+            {/* Grand Total Payout */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2.5,
+                  borderRadius: 3,
+                  background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                  color: '#ffffff',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.25)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)'
+                }}
+              >
+                <Box sx={{ position: 'absolute', right: -10, top: -10, opacity: 0.15, color: '#38bdf8' }}>
+                  <MoneyIcon style={{ fontSize: 90 }} />
                 </Box>
-
-                <Button
-                  size="small"
-                  variant="text"
-                  startIcon={<CalendarTodayIcon />}
-                  onClick={() => setEditingDates(!editingDates)}
-                  sx={{ textTransform: 'none' }}
-                >
-                  {editingDates ? "Hide Date Range" : "Custom Date Range"}
-                </Button>
-              </Box>
-
-              {editingDates && (
-                <Box sx={{ mt: 1.5, p: 2, bgcolor: 'grey.50', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
-                  <Grid container spacing={2} alignItems="center" sx={{display:"flex",placeItems:"center"}}>
-                    <Grid item xs={12} sm="auto">
-                      <Typography variant="body2" fontWeight="600" color="text.secondary">
-                        Custom Range:
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm="auto">
-                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="caption" fontWeight="600" color="text.secondary">
-                            Start:
-                          </Typography>
-                          <TextField
-                            size="small"
-                            type="date"
-                            value={customDates[currentMonth]?.startDate || ''}
-                            onChange={(e) => handleUpdateCustomDates(e.target.value || undefined, customDates[currentMonth]?.endDate)}
-                            sx={{ backgroundColor: 'white', width: 150 }}
-                          />
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="caption" fontWeight="600" color="text.secondary">
-                            End:
-                          </Typography>
-                          <TextField
-                            size="small"
-                            type="date"
-                            value={customDates[currentMonth]?.endDate || ''}
-                            onChange={(e) => handleUpdateCustomDates(customDates[currentMonth]?.startDate, e.target.value || undefined)}
-                            sx={{ backgroundColor: 'white', width: 150 }}
-                          />
-                        </Box>
-                        {(customDates[currentMonth]?.startDate || customDates[currentMonth]?.endDate) && (
-                          <Button
-                            size="small"
-                            color="error"
-                            onClick={() => handleUpdateCustomDates(undefined, undefined)}
-                            sx={{ textTransform: 'none' }}
-                          >
-                            Clear Custom Range
-                          </Button>
-                        )}
-                      </Box>
-                    </Grid>
-                  </Grid>
-                </Box>
-              )}
-            </Box>
-
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <Box sx={{ textAlign: 'right' }}>
-                <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', fontWeight: 500 }}>
-                  Grand Total
+                <Typography variant="caption" sx={{ textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700, color: '#94a3b8' }}>
+                  Total Payout
                 </Typography>
-                <Typography variant="h6" fontWeight="700" color="primary.main">
+                <Typography variant="h4" fontWeight="800" sx={{ my: 0.5, color: '#38bdf8', letterSpacing: -0.5 }}>
                   ₹ {calculateGrandTotal().toLocaleString('en-IN')}
                 </Typography>
-              </Box>
-              <Button 
-                variant="outlined" 
-                size="small" 
-                startIcon={<PrintIcon />} 
-                onClick={() => setShowSalaryPrint(true)}
-                sx={{ borderRadius: 1.5, textTransform: 'none', px: 2, boxShadow: 'none', display: { xs: 'none', sm: 'inline-flex' } }}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                  <Chip label={`${groups.length} Groups`} size="small" sx={{ bgcolor: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontWeight: 600, height: 22, fontSize: 11 }} />
+                  <Typography variant="caption" sx={{ color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>For {displayPeriod}</Typography>
+                </Box>
+              </Paper>
+            </Grid>
+
+            {/* Active Staff Members */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2.5,
+                  borderRadius: 3,
+                  bgcolor: '#ffffff',
+                  boxShadow: '0 4px 20px -2px rgba(0,0,0,0.05)',
+                  border: '1px solid',
+                  borderColor: 'grey.200',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': { translateY: '-2px', boxShadow: '0 8px 25px -4px rgba(0,0,0,0.08)' }
+                }}
               >
-                Print PDF
-              </Button>
-              {canAddGroup && (
-                <Button 
-                  variant="contained" 
-                  size="small" 
-                  startIcon={<AddIcon />} 
-                  onClick={addGroup}
-                  sx={{ borderRadius: 1.5, textTransform: 'none', px: 2, boxShadow: 'none' }}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700 }}>
+                      Total Staff Members
+                    </Typography>
+                    <Typography variant="h4" fontWeight="800" color="text.primary" sx={{ my: 0.5 }}>
+                      {groups.reduce((acc, g) => acc + (g.members?.length || 0), 0)}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ bgcolor: '#eff6ff', color: '#2563eb', p: 1.2, borderRadius: 2 }}>
+                    <PeopleIcon style={{ fontSize: 24 }} />
+                  </Box>
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  Assigned across {groups.length} active groups
+                </Typography>
+              </Paper>
+            </Grid>
+
+            {/* Purchase Order Info */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2.5,
+                  borderRadius: 3,
+                  bgcolor: '#ffffff',
+                  boxShadow: '0 4px 20px -2px rgba(0,0,0,0.05)',
+                  border: '1px solid',
+                  borderColor: 'grey.200',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': { translateY: '-2px', boxShadow: '0 8px 25px -4px rgba(0,0,0,0.08)' }
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700 }}>
+                      Contract Details
+                    </Typography>
+                    <Typography variant="h6" fontWeight="700" color="text.primary" sx={{ my: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
+                      {globalPoNumber || 'No PO Set'}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ bgcolor: '#f0fdf4', color: '#16a34a', p: 1.2, borderRadius: 2 }}>
+                    <ReceiptIcon style={{ fontSize: 24 }} />
+                  </Box>
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {globalCompanyName || 'Company Name Unset'}
+                </Typography>
+              </Paper>
+            </Grid>
+
+            {/* Status / Lock Control */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2.5,
+                  borderRadius: 3,
+                  bgcolor: isCurrentMonthEditable ? '#f0fdf4' : '#f8fafc',
+                  boxShadow: '0 4px 20px -2px rgba(0,0,0,0.04)',
+                  border: '1px solid',
+                  borderColor: isCurrentMonthEditable ? '#bbf7d0' : 'grey.200',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between'
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700 }}>
+                      Cycle Status
+                    </Typography>
+                    <Typography variant="h6" fontWeight="700" color={isCurrentMonthEditable ? 'success.main' : 'text.secondary'} sx={{ my: 0.2 }}>
+                      {isCurrentMonthEditable ? 'Editable' : 'Locked'}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ bgcolor: isCurrentMonthEditable ? '#dcfce7' : '#f1f5f9', color: isCurrentMonthEditable ? '#16a34a' : '#64748b', p: 1.2, borderRadius: 2 }}>
+                    {isCurrentMonthEditable ? <LockOpenIcon style={{ fontSize: 24 }} /> : <LockIcon style={{ fontSize: 24 }} />}
+                  </Box>
+                </Box>
+                {isSuperuser ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
+                    <Typography variant="caption" fontWeight="600" color="text.secondary">
+                      Superuser Lock Switch:
+                    </Typography>
+                    <Switch
+                      size="small"
+                      checked={isCurrentMonthEditable}
+                      onChange={(e) => handleToggleMonthEditable(e.target.checked)}
+                      color="success"
+                    />
+                  </Box>
+                ) : (
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+                    {isCurrentMonthEditable ? 'Wage calculation is open.' : 'Wage calculation locked for period.'}
+                  </Typography>
+                )}
+              </Paper>
+            </Grid>
+          </Grid>
+
+          {/* Control Panel Bar */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2.5,
+              mb: 3.5,
+              borderRadius: 3,
+              bgcolor: '#ffffff',
+              border: '1px solid',
+              borderColor: 'grey.200',
+              boxShadow: '0 4px 20px -2px rgba(0,0,0,0.03)'
+            }}
+          >
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+              {/* Month Selector */}
+              <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#f8fafc', border: '1px solid', borderColor: '#e2e8f0', borderRadius: 2.5, p: 0.5 }}>
+                <IconButton onClick={handlePreviousMonth} size="small" sx={{ bgcolor: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', '&:hover': { bgcolor: '#f1f5f9' } }}>
+                  <ChevronLeftIcon />
+                </IconButton>
+                <Box sx={{ px: 2.5, textAlign: 'center', minWidth: 150 }}>
+                  <Typography variant="subtitle1" fontWeight="700" color="#0f172a">
+                    {dayjs(currentMonth).format('MMMM YYYY')}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                    {displayPeriod}
+                  </Typography>
+                </Box>
+                <IconButton onClick={handleNextMonth} size="small" sx={{ bgcolor: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', '&:hover': { bgcolor: '#f1f5f9' } }}>
+                  <ChevronRightIcon />
+                </IconButton>
+              </Box>
+
+              {/* Quick Action Buttons */}
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<CalendarTodayIcon />}
+                  onClick={() => setEditingDates(!editingDates)}
+                  sx={{ borderRadius: 2, textTransform: 'none', px: 2, fontWeight: 600, borderColor: '#cbd5e1', color: '#475569', '&:hover': { borderColor: '#94a3b8', bgcolor: '#f8fafc' } }}
                 >
-                  Add Group
+                  {editingDates ? "Hide Custom Range" : "Custom Range"}
                 </Button>
-              )}
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<PrintIcon />}
+                  onClick={() => setShowSalaryPrint(true)}
+                  sx={{ borderRadius: 2, textTransform: 'none', px: 2, fontWeight: 600, color: '#334155', borderColor: '#cbd5e1', '&:hover': { bgcolor: '#f8fafc' } }}
+                >
+                  Print PDF
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  size="small"
+                  startIcon={<PrintIcon />}
+                  onClick={() => setShowAllSplitupsModal(true)}
+                  sx={{ borderRadius: 2, textTransform: 'none', px: 2, fontWeight: 600 }}
+                >
+                  Print All Splitups
+                </Button>
+                <Button
+                  variant="contained"
+                  color="info"
+                  size="small"
+                  startIcon={<MailIcon />}
+                  onClick={handleOpenEmailModal}
+                  sx={{ borderRadius: 2, textTransform: 'none', px: 2.5, fontWeight: 600, boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)' }}
+                >
+                  Mail to Accounts
+                </Button>
+                {canAddGroup && isCurrentMonthEditable && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    size="small"
+                    startIcon={<AddIcon />}
+                    onClick={addGroup}
+                    sx={{ borderRadius: 2, textTransform: 'none', px: 2.5, fontWeight: 600, boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)' }}
+                  >
+                    Add Group
+                  </Button>
+                )}
+              </Box>
             </Box>
+
+            {/* Custom Date Range Picker Dropdown */}
+            {editingDates && (
+              <Box sx={{ mt: 2.5, p: 2.5, bgcolor: '#f8fafc', borderRadius: 2.5, border: '1px solid #e2e8f0' }}>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={12} sm="auto">
+                    <Typography variant="body2" fontWeight="700" color="#334155">
+                      Set Specific Billing Range:
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm="auto">
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="caption" fontWeight="600" color="text.secondary">Start:</Typography>
+                        <TextField
+                          size="small"
+                          type="date"
+                          value={customDates[currentMonth]?.startDate || ''}
+                          onChange={(e) => handleUpdateCustomDates(e.target.value || undefined, customDates[currentMonth]?.endDate)}
+                          sx={{ backgroundColor: 'white', width: 155 }}
+                        />
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="caption" fontWeight="600" color="text.secondary">End:</Typography>
+                        <TextField
+                          size="small"
+                          type="date"
+                          value={customDates[currentMonth]?.endDate || ''}
+                          onChange={(e) => handleUpdateCustomDates(customDates[currentMonth]?.startDate, e.target.value || undefined)}
+                          sx={{ backgroundColor: 'white', width: 155 }}
+                        />
+                      </Box>
+                      {(customDates[currentMonth]?.startDate || customDates[currentMonth]?.endDate) && (
+                        <Button
+                          size="small"
+                          color="error"
+                          onClick={() => handleUpdateCustomDates(undefined, undefined)}
+                          sx={{ textTransform: 'none', fontWeight: 600 }}
+                        >
+                          Clear Custom Range
+                        </Button>
+                      )}
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
           </Paper>
- 
+
           {/* Groups List */}
           {groups.length === 0 ? (
             <Paper variant="outlined" sx={{ p: 6, textAlign: 'center', borderRadius: 2, backgroundColor: 'grey.50' }}>
@@ -1220,7 +1787,7 @@ const Salary = () => {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                 Add a group to start calculating daily wages for this cycle.
               </Typography>
-              {canAddGroup && (
+              {canAddGroup && isCurrentMonthEditable && (
                 <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={addGroup}>
                   Add Group
                 </Button>
@@ -1244,23 +1811,23 @@ const Salary = () => {
 
                 return (
                   <Grid item xs={12} lg={6} key={group.id}>
-                    <Card 
-                      variant="outlined" 
-                      sx={{ 
+                    <Card
+                      variant="outlined"
+                      sx={{
                         height: '100%',
                         display: 'flex',
                         flexDirection: 'column',
-                        borderRadius: 2, 
+                        borderRadius: 2,
                         borderColor: isEditing ? 'primary.main' : 'divider',
                         boxShadow: isEditing ? '0 0 0 1px rgba(25, 118, 210, 0.2)' : '0 2px 4px rgba(0,0,0,0.01)',
                         transition: 'all 0.2s ease-in-out'
                       }}
                     >
-                      <Box 
-                        sx={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center', 
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
                           p: 2,
                           backgroundColor: isEditing ? 'rgba(25, 118, 210, 0.02)' : 'grey.50',
                           borderBottom: isExpanded ? '1px solid' : 'none',
@@ -1271,13 +1838,13 @@ const Salary = () => {
                           <IconButton onClick={() => toggleExpandGroup(group.id)} size="small">
                             {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                           </IconButton>
-                          
+
                           {isEditing ? (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, pr: 2 }}>
                               <TextField
                                 size="small"
                                 label="Group Name"
-                                value={group.name} 
+                                value={group.name}
                                 onChange={(e) => updateGroup(group.id, 'name', e.target.value)}
                                 sx={{ backgroundColor: 'white' }}
                                 disabled={!canUpdateConfig}
@@ -1306,15 +1873,15 @@ const Salary = () => {
                                     size="small"
                                     type="number"
                                     label="Per Day Salary (₹)"
-                                    value={group.perDaySalary} 
+                                    value={group.perDaySalary}
                                     onChange={(e) => updateGroup(group.id, 'perDaySalary', e.target.value)}
                                     sx={{ backgroundColor: 'white', flex: 1 }}
                                     disabled={!canUpdateConfig}
                                   />
                                   {group.templateId && canUpdateConfig && (
-                                    <Button 
-                                      variant="outlined" 
-                                      size="small" 
+                                    <Button
+                                      variant="outlined"
+                                      size="small"
                                       onClick={() => {
                                         const autoVal = getAutoPerDaySalary(group, group.templateId!);
                                         updateGroup(group.id, 'perDaySalary', autoVal);
@@ -1332,10 +1899,10 @@ const Salary = () => {
                                   const template = templates.find(t => t.id === group.templateId);
                                   if (!template) return null;
 
-                                  const remainingMonths = globalPoEndDate 
-                                    ? Math.max(0, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${currentMonth}-01`).startOf('month'), 'month')) 
+                                  const remainingMonths = globalPoEndDate
+                                    ? Math.max(0, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${currentMonth}-01`).startOf('month'), 'month'))
                                     : 0;
-                                  
+
                                   if (!globalPoEndDate) {
                                     return (
                                       <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
@@ -1351,7 +1918,7 @@ const Salary = () => {
 
                                   return (
                                     <Typography variant="caption" color={isEnough ? "success.main" : "error.main"} sx={{ fontWeight: 600, mt: 0.5, display: 'block' }}>
-                                      {isEnough 
+                                      {isEnough
                                         ? `✓ Remaining amount (₹${stats.remainingAmount.toLocaleString('en-IN')}) is sufficient to cover ${template.maxStaffs} staffs for ${remainingMonths} months (Requires ₹${futureCost.toLocaleString('en-IN')}).`
                                         : `✗ Insufficient funds: Remaining amount (₹${stats.remainingAmount.toLocaleString('en-IN')}) cannot cover ${template.maxStaffs} staffs for ${remainingMonths} months (Requires ₹${futureCost.toLocaleString('en-IN')}, Deficit: ₹${(futureCost - stats.remainingAmount).toLocaleString('en-IN')}).`
                                       }
@@ -1380,10 +1947,10 @@ const Salary = () => {
                                 const template = templates.find(t => t.id === group.templateId);
                                 if (!template) return null;
 
-                                const remainingMonths = globalPoEndDate 
-                                  ? Math.max(0, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${currentMonth}-01`).startOf('month'), 'month')) 
+                                const remainingMonths = globalPoEndDate
+                                  ? Math.max(0, dayjs(globalPoEndDate).endOf('month').diff(dayjs(`${currentMonth}-01`).startOf('month'), 'month'))
                                   : 0;
-                                
+
                                 if (!globalPoEndDate) return null;
 
                                 const perDay = Number(group.perDaySalary) || 0;
@@ -1416,12 +1983,12 @@ const Salary = () => {
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                             {!isEditing && group.templateId && (
                               <Tooltip title="Print Splitup">
-                                <IconButton 
-                                  color="secondary" 
+                                <IconButton
+                                  color="secondary"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSplitupGroup(group);
-                                  }} 
+                                  }}
                                   size="small"
                                 >
                                   <PrintIcon fontSize="small" />
@@ -1430,9 +1997,9 @@ const Salary = () => {
                             )}
                             {isEditing && (
                               <Tooltip title="Cancel">
-                                <IconButton 
-                                  color="warning" 
-                                  onClick={(e) => handleCancelEditGroup(group.id, e)} 
+                                <IconButton
+                                  color="warning"
+                                  onClick={(e) => handleCancelEditGroup(group.id, e)}
                                   size="small"
                                   sx={{ backgroundColor: 'warning.50' }}
                                 >
@@ -1440,11 +2007,11 @@ const Salary = () => {
                                 </IconButton>
                               </Tooltip>
                             )}
-                            {(canCalculate || canUpdateConfig) && (
+                            {(canCalculate || canUpdateConfig) && isCurrentMonthEditable && (
                               <Tooltip title={isEditing ? "Save" : "Edit"}>
-                                <IconButton 
-                                  color={isEditing ? "success" : "primary"} 
-                                  onClick={(e) => toggleEditGroup(group.id, e)} 
+                                <IconButton
+                                  color={isEditing ? "success" : "primary"}
+                                  onClick={(e) => toggleEditGroup(group.id, e)}
                                   size="small"
                                   sx={{ backgroundColor: isEditing ? 'success.50' : 'primary.50' }}
                                 >
@@ -1452,7 +2019,7 @@ const Salary = () => {
                                 </IconButton>
                               </Tooltip>
                             )}
-                            {canDeleteGroup && (
+                            {canDeleteGroup && isCurrentMonthEditable && (
                               <Tooltip title="Delete">
                                 <IconButton color="error" onClick={(e) => deleteGroup(group.id, e)} size="small">
                                   <DeleteIcon fontSize="small" />
@@ -1498,7 +2065,7 @@ const Salary = () => {
                                       ₹ {stats.remainingAmount.toLocaleString('en-IN')}
                                     </Typography>
                                   </Grid>
-                                  
+
                                   <Grid item xs={6} sm={4}>
                                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Consumed Units</Typography>
                                     <Typography variant="body2" fontWeight="700" color="primary.main">{(stats.consumedUnits || 0).toFixed(2)}</Typography>
@@ -1590,8 +2157,8 @@ const Salary = () => {
                                       </TableCell>
                                       {isEditing && (
                                         <TableCell align="center" sx={{ py: 1 }}>
-                                          <IconButton 
-                                            size="small" 
+                                          <IconButton
+                                            size="small"
                                             color="error"
                                             onClick={() => deleteMember(group.id, member.id)}
                                           >
@@ -1608,9 +2175,9 @@ const Salary = () => {
 
                           {isEditing && (
                             <Box sx={{ mt: 2 }}>
-                              <Button 
-                                size="small" 
-                                variant="outlined" 
+                              <Button
+                                size="small"
+                                variant="outlined"
                                 startIcon={<AddIcon />}
                                 onClick={() => addMember(group.id)}
                                 sx={{ textTransform: 'none', borderRadius: 1.5 }}
@@ -1633,15 +2200,15 @@ const Salary = () => {
       {activeTab === 1 && (
         <Box>
           {/* Bonus Control Panel */}
-          <Paper 
-            variant="outlined" 
-            sx={{ 
-              p: 2.5, 
-              mb: 3, 
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 2.5,
+              mb: 3,
               borderRadius: 2,
-              display: 'flex', 
-              flexDirection: { xs: 'column', md: 'row' }, 
-              justifyContent: 'space-between', 
+              display: 'flex',
+              flexDirection: { xs: 'column', md: 'row' },
+              justifyContent: 'space-between',
               alignItems: { xs: 'flex-start', md: 'center' },
               gap: 2,
               boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
@@ -1669,10 +2236,10 @@ const Salary = () => {
                   inputProps: { min: 0 }
                 }}
               />
-              <Button 
-                variant="outlined" 
-                size="small" 
-                startIcon={<SyncIcon />} 
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<SyncIcon />}
                 onClick={handleSyncFromSalary}
                 sx={{ borderRadius: 1.5, textTransform: 'none', px: 2, height: 40 }}
               >
@@ -1680,11 +2247,11 @@ const Salary = () => {
               </Button>
               <Tooltip title={isAllActiveAddedThisMonth ? "All active employees have already received a bonus this month" : `Quick add ₹${Number(bonusConfigAmount) || 1000} to all active employees`}>
                 <span>
-                  <Button 
-                    variant="contained" 
-                    size="small" 
+                  <Button
+                    variant="contained"
+                    size="small"
                     color="success"
-                    startIcon={<AddIcon />} 
+                    startIcon={<AddIcon />}
                     onClick={handleQuickAddAll}
                     disabled={isAllActiveAddedThisMonth}
                     sx={{ borderRadius: 1.5, textTransform: 'none', px: 2, height: 40, boxShadow: 'none' }}
@@ -1693,30 +2260,30 @@ const Salary = () => {
                   </Button>
                 </span>
               </Tooltip>
-              <Button 
-                variant="outlined" 
-                size="small" 
+              <Button
+                variant="outlined"
+                size="small"
                 color="error"
-                startIcon={<RefreshIcon />} 
+                startIcon={<RefreshIcon />}
                 onClick={handleResetAllBonus}
                 sx={{ borderRadius: 1.5, textTransform: 'none', px: 2, height: 40 }}
               >
                 Reset All to ₹0
               </Button>
-              <Button 
-                variant="outlined" 
-                size="small" 
+              <Button
+                variant="outlined"
+                size="small"
                 color="secondary"
-                startIcon={<HistoryIcon />} 
+                startIcon={<HistoryIcon />}
                 onClick={() => setIsHistoryDrawerOpen(true)}
                 sx={{ borderRadius: 1.5, textTransform: 'none', px: 2, height: 40 }}
               >
                 View History
               </Button>
-              <Button 
-                variant="contained" 
-                size="small" 
-                startIcon={<AddIcon />} 
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<AddIcon />}
                 onClick={handleOpenAddBonus}
                 sx={{ borderRadius: 1.5, textTransform: 'none', px: 2, height: 40, boxShadow: 'none' }}
               >
@@ -1789,9 +2356,9 @@ const Salary = () => {
                       const isExpanded = expandedBonusRowIds.includes(entry.id);
                       return (
                         <React.Fragment key={entry.id}>
-                          <TableRow 
-                            hover 
-                            sx={{ 
+                          <TableRow
+                            hover
+                            sx={{
                               backgroundColor: entry.resigned ? 'rgba(0, 0, 0, 0.03)' : 'inherit',
                               opacity: entry.resigned ? 0.75 : 1
                             }}
@@ -1804,16 +2371,17 @@ const Salary = () => {
                             <TableCell sx={{ fontWeight: 500 }}>
                               {entry.name}
                               {entry.resigned && (
-                                <Chip 
-                                  size="small" 
-                                  label="Resigned" 
-                                  color="error" 
-                                  sx={{ ml: 1, height: 20, fontSize: '0.75rem', fontWeight: 600 }} 
+                                <Chip
+                                  size="small"
+                                  label="Resigned"
+                                  color="error"
+                                  sx={{ ml: 1, height: 20, fontSize: '0.75rem', fontWeight: 600 }}
                                 />
                               )}
                             </TableCell>
                             <TableCell>
-                              <Box sx={{ display: 'inline-flex', px: 1.5, py: 0.5, borderRadius: 5, fontSize: '0.875rem', fontWeight: 600, 
+                              <Box sx={{
+                                display: 'inline-flex', px: 1.5, py: 0.5, borderRadius: 5, fontSize: '0.875rem', fontWeight: 600,
                                 backgroundColor: amt > 0 ? 'success.50' : amt < 0 ? 'error.50' : 'grey.100',
                                 color: amt > 0 ? 'success.700' : amt < 0 ? 'error.700' : 'text.secondary'
                               }}>
@@ -1821,9 +2389,9 @@ const Salary = () => {
                               </Box>
                             </TableCell>
                             <TableCell>
-                              <Chip 
-                                size="small" 
-                                label={entry.resigned ? "Inactive (Resigned)" : "Active"} 
+                              <Chip
+                                size="small"
+                                label={entry.resigned ? "Inactive (Resigned)" : "Active"}
                                 color={entry.resigned ? "default" : "success"}
                                 variant="outlined"
                               />
@@ -1849,10 +2417,10 @@ const Salary = () => {
                               <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center' }}>
                                 <Tooltip title={entry.resigned ? "Resigned employees cannot receive bonuses" : (entry.lastAddedMonth === dayjs().format('YYYY-MM') ? `Already added for ${dayjs().format('MMMM YYYY')}` : `Quick Add +₹${bonusConfigAmount}`)}>
                                   <span>
-                                    <Button 
-                                      size="small" 
-                                      variant="outlined" 
-                                      color="success" 
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      color="success"
                                       onClick={() => handleQuickAdd(entry)}
                                       disabled={isQuickAddDisabled}
                                       sx={{ textTransform: 'none', px: 1 }}
@@ -1873,27 +2441,27 @@ const Salary = () => {
                                   </Button>
                                 </Tooltip>
                                 <Tooltip title="Reset to ₹0">
-                                  <IconButton 
-                                    size="small" 
-                                    color="warning" 
+                                  <IconButton
+                                    size="small"
+                                    color="warning"
                                     onClick={() => handleQuickReset(entry)}
                                   >
                                     <RefreshIcon fontSize="small" />
                                   </IconButton>
                                 </Tooltip>
                                 <Tooltip title="Edit Details">
-                                  <IconButton 
-                                    size="small" 
-                                    color="primary" 
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
                                     onClick={() => handleOpenEditBonus(entry)}
                                   >
                                     <EditIcon fontSize="small" />
                                   </IconButton>
                                 </Tooltip>
                                 <Tooltip title="Delete">
-                                  <IconButton 
-                                    size="small" 
-                                    color="error" 
+                                  <IconButton
+                                    size="small"
+                                    color="error"
                                     onClick={() => handleDeleteBonusEntry(entry.id, entry.name)}
                                   >
                                     <DeleteIcon fontSize="small" />
@@ -1965,7 +2533,7 @@ const Salary = () => {
             </Typography>
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6}>
-                <TextField 
+                <TextField
                   fullWidth
                   size="small"
                   label="Common Company Name"
@@ -1976,7 +2544,7 @@ const Salary = () => {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField 
+                <TextField
                   fullWidth
                   size="small"
                   label="Common PO Number"
@@ -1987,7 +2555,7 @@ const Salary = () => {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField 
+                <TextField
                   fullWidth
                   size="small"
                   type="date"
@@ -2000,7 +2568,7 @@ const Salary = () => {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField 
+                <TextField
                   fullWidth
                   size="small"
                   type="date"
@@ -2035,10 +2603,10 @@ const Salary = () => {
             <Typography variant="h6" fontWeight="600">
               Splitup Templates
             </Typography>
-            <Button 
-              variant="contained" 
-              size="small" 
-              startIcon={<AddIcon />} 
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<AddIcon />}
               onClick={addTemplate}
               sx={{ borderRadius: 1.5, textTransform: 'none', boxShadow: 'none' }}
             >
@@ -2071,46 +2639,46 @@ const Salary = () => {
                       <Box sx={{ p: 2, backgroundColor: 'grey.50', borderBottom: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         {isEditing ? (
                           <Box sx={{ display: 'flex', gap: 2 }}>
-                            <TextField 
-                              size="small" 
-                              label="Template Title" 
-                              value={template.title} 
-                              onChange={(e) => updateTemplate(template.id, 'title', e.target.value)} 
+                            <TextField
+                              size="small"
+                              label="Template Title"
+                              value={template.title}
+                              onChange={(e) => updateTemplate(template.id, 'title', e.target.value)}
                               sx={{ backgroundColor: 'white' }}
                             />
-                            <TextField 
-                              size="small" 
+                            <TextField
+                              size="small"
                               type="number"
-                              label="Max Staffs" 
-                              value={template.maxStaffs ?? 0} 
-                              onChange={(e) => updateTemplate(template.id, 'maxStaffs', e.target.value)} 
+                              label="Max Staffs"
+                              value={template.maxStaffs ?? 0}
+                              onChange={(e) => updateTemplate(template.id, 'maxStaffs', e.target.value)}
                               sx={{ backgroundColor: 'white', width: 120 }}
                               inputProps={{ min: 0 }}
                             />
-                            <TextField 
-                              size="small" 
+                            <TextField
+                              size="small"
                               type="number"
-                              label="Max Day" 
+                              label="Max Day"
                               value={template.maxDays ?? ''}
                               placeholder={String(maxAllowedDays)}
-                              onChange={(e) => updateTemplate(template.id, 'maxDays', e.target.value)} 
+                              onChange={(e) => updateTemplate(template.id, 'maxDays', e.target.value)}
                               sx={{ backgroundColor: 'white', width: 120 }}
                               inputProps={{ min: 0 }}
                             />
-                            <TextField 
-                              size="small" 
+                            <TextField
+                              size="small"
                               type="number"
-                              label="Initial Consumed Amount (₹)" 
-                              value={template.initialConsumedAmount ?? 0} 
-                              onChange={(e) => updateTemplate(template.id, 'initialConsumedAmount', e.target.value)} 
+                              label="Initial Consumed Amount (₹)"
+                              value={template.initialConsumedAmount ?? 0}
+                              onChange={(e) => updateTemplate(template.id, 'initialConsumedAmount', e.target.value)}
                               sx={{ backgroundColor: 'white', width: 220 }}
                               inputProps={{ min: 0 }}
                             />
-                            <TextField 
-                              size="small" 
+                            <TextField
+                              size="small"
                               disabled
-                              label="Calculated Allotted (₹)" 
-                              value={template.activities.reduce((sum, act) => sum + (Number(act.rate) || 0) * (Number(act.maxUnits) || 0), 0)} 
+                              label="Calculated Allotted (₹)"
+                              value={template.activities.reduce((sum, act) => sum + (Number(act.rate) || 0) * (Number(act.maxUnits) || 0), 0)}
                               sx={{ backgroundColor: 'grey.100', width: 180 }}
                             />
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -2178,9 +2746,9 @@ const Salary = () => {
                         <Box sx={{ display: 'flex', gap: 1 }}>
                           {isEditing && (
                             <Tooltip title="Cancel">
-                              <IconButton 
-                                color="warning" 
-                                onClick={() => handleCancelEditTemplate(template.id)} 
+                              <IconButton
+                                color="warning"
+                                onClick={() => handleCancelEditTemplate(template.id)}
                                 size="small"
                                 sx={{ backgroundColor: 'warning.50' }}
                               >
@@ -2189,9 +2757,9 @@ const Salary = () => {
                             </Tooltip>
                           )}
                           <Tooltip title={isEditing ? "Save" : "Edit"}>
-                            <IconButton 
-                              color={isEditing ? "success" : "primary"} 
-                              onClick={() => toggleEditTemplate(template.id)} 
+                            <IconButton
+                              color={isEditing ? "success" : "primary"}
+                              onClick={() => toggleEditTemplate(template.id)}
                               size="small"
                               sx={{ backgroundColor: isEditing ? 'success.50' : 'primary.50' }}
                             >
@@ -2205,7 +2773,7 @@ const Salary = () => {
                           </Tooltip>
                         </Box>
                       </Box>
-                      
+
                       <CardContent>
                         <TableContainer component={Box} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1.5, overflow: 'hidden' }}>
                           <Table size="small">
@@ -2238,11 +2806,11 @@ const Salary = () => {
                                     <TableRow key={act.id}>
                                       <TableCell>
                                         {isEditing ? (
-                                          <TextField 
-                                            size="small" 
-                                            fullWidth 
-                                            value={act.name} 
-                                            onChange={(e) => updateActivity(template.id, act.id, 'name', e.target.value)} 
+                                          <TextField
+                                            size="small"
+                                            fullWidth
+                                            value={act.name}
+                                            onChange={(e) => updateActivity(template.id, act.id, 'name', e.target.value)}
                                             placeholder="Activity"
                                           />
                                         ) : (
@@ -2251,12 +2819,12 @@ const Salary = () => {
                                       </TableCell>
                                       <TableCell>
                                         {isEditing ? (
-                                          <TextField 
-                                            size="small" 
+                                          <TextField
+                                            size="small"
                                             type="number"
-                                            fullWidth 
-                                            value={act.rate} 
-                                            onChange={(e) => updateActivity(template.id, act.id, 'rate', e.target.value)} 
+                                            fullWidth
+                                            value={act.rate}
+                                            onChange={(e) => updateActivity(template.id, act.id, 'rate', e.target.value)}
                                           />
                                         ) : (
                                           <Typography variant="body2">₹{act.rate}</Typography>
@@ -2264,12 +2832,12 @@ const Salary = () => {
                                       </TableCell>
                                       <TableCell>
                                         {isEditing ? (
-                                          <TextField 
-                                            size="small" 
+                                          <TextField
+                                            size="small"
                                             type="number"
-                                            fullWidth 
-                                            value={act.maxUnits ?? 0} 
-                                            onChange={(e) => updateActivity(template.id, act.id, 'maxUnits', e.target.value)} 
+                                            fullWidth
+                                            value={act.maxUnits ?? 0}
+                                            onChange={(e) => updateActivity(template.id, act.id, 'maxUnits', e.target.value)}
                                             inputProps={{ min: 0 }}
                                           />
                                         ) : (
@@ -2282,9 +2850,9 @@ const Salary = () => {
                                         </Typography>
                                       </TableCell>
                                       <TableCell>
-                                        <Typography 
-                                          variant="body2" 
-                                          fontWeight="600" 
+                                        <Typography
+                                          variant="body2"
+                                          fontWeight="600"
                                           color={stats.isNotEnough ? 'error.main' : 'text.primary'}
                                         >
                                           {stats.remainingUnits.toFixed(2)}
@@ -2317,9 +2885,9 @@ const Salary = () => {
 
                         {isEditing && (
                           <Box sx={{ mt: 2 }}>
-                            <Button 
-                              size="small" 
-                              variant="outlined" 
+                            <Button
+                              size="small"
+                              variant="outlined"
                               startIcon={<AddIcon />}
                               onClick={() => addActivity(template.id)}
                               sx={{ textTransform: 'none', borderRadius: 1.5 }}
@@ -2340,9 +2908,14 @@ const Salary = () => {
 
       {/* Splitup Print Dialog Component */}
       <SalarySplitupModal
-        open={!!splitupGroup}
-        onClose={() => setSplitupGroup(null)}
+        open={!!splitupGroup || showAllSplitupsModal}
+        onClose={() => {
+          setSplitupGroup(null);
+          setShowAllSplitupsModal(false);
+        }}
         splitupGroup={splitupGroup}
+        allGroups={groups}
+        showAll={showAllSplitupsModal}
         templates={templates}
         salaryData={salaryData}
         currentMonth={currentMonth}
@@ -2353,6 +2926,63 @@ const Salary = () => {
         displayPeriod={displayPeriod}
         calculateGroupTotal={calculateGroupTotal}
       />
+
+      {/* Send Email to Accounts Modal */}
+      <Dialog open={showEmailModal} onClose={() => setShowEmailModal(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Typography variant="h6" fontWeight={700}>Send Salary Reports to Accounts</Typography>
+          <IconButton onClick={() => setShowEmailModal(false)} size="small">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            The following 2 PDF reports for period <strong>{displayPeriod}</strong> will be generated and attached to the email:
+          </Typography>
+          <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: 2, border: '1px solid #e2e8f0', mb: 3 }}>
+            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, fontWeight: 600, color: '#1e293b' }}>
+              📄 1. Salary Report: Individual Members (.pdf)
+            </Typography>
+            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600, color: '#1e293b' }}>
+              📄 2. All Splitup Reports (.pdf - multi-page)
+            </Typography>
+          </Box>
+          <TextField
+            label="Email Subject"
+            fullWidth
+            size="small"
+            value={emailSubject}
+            onChange={(e) => setEmailSubject(e.target.value)}
+            sx={{ mb: 2 }}
+            helperText="Formated as Datacenter-{PO Number} - Bill {Start Date} to {End Date} - {Year}"
+          />
+          <TextField
+            label="Recipient Email Address(es)"
+            fullWidth
+            size="small"
+            multiline
+            rows={2}
+            value={emailRecipients}
+            onChange={(e) => setEmailRecipients(e.target.value)}
+            placeholder="e.g. accounts@vssc.gov.in, officer@vssc.gov.in"
+            helperText="Separate multiple email addresses with commas."
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setShowEmailModal(false)} disabled={emailSending}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<MailIcon />}
+            onClick={handleSendSalaryEmail}
+            disabled={emailSending || !emailRecipients.trim()}
+          >
+            {emailSending ? 'Sending Email & PDFs...' : 'Send Email to Accounts'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Salary Print Dialog */}
       <Dialog open={showSalaryPrint} onClose={() => setShowSalaryPrint(false)} maxWidth="md" fullWidth>
@@ -2399,7 +3029,7 @@ const Salary = () => {
               }
             `}
           </style>
-          
+
           <Box sx={{ p: 2, bgcolor: 'white', color: 'black' }}>
             {/* Redesigned professional header */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #1e293b', pb: 1.5, mb: 3 }}>
@@ -2476,8 +3106,8 @@ const Salary = () => {
         </DialogActions>
       </Dialog>
 
-      <Dialog 
-        open={reserveModalOpen} 
+      <Dialog
+        open={reserveModalOpen}
         onClose={() => setReserveModalOpen(false)}
         slotProps={{
           paper: {
@@ -2530,7 +3160,7 @@ const Salary = () => {
           <Button onClick={() => setReserveModalOpen(false)} color="inherit" sx={{ borderRadius: 2 }}>
             Cancel
           </Button>
-          <Button 
+          <Button
             onClick={() => {
               if (reserveTargetTemplateId) {
                 setTemplates(prev => prev.map(t => {
@@ -2546,9 +3176,9 @@ const Salary = () => {
                 }));
               }
               setReserveModalOpen(false);
-            }} 
-            color="primary" 
-            variant="contained" 
+            }}
+            color="primary"
+            variant="contained"
             sx={{ borderRadius: 2 }}
           >
             Save Configuration
@@ -2557,8 +3187,8 @@ const Salary = () => {
       </Dialog>
 
       {/* Dialog for Adding/Editing Bonus Entry */}
-      <Dialog 
-        open={isBonusModalOpen} 
+      <Dialog
+        open={isBonusModalOpen}
         onClose={() => setIsBonusModalOpen(false)}
         slotProps={{
           paper: {
@@ -2610,10 +3240,10 @@ const Salary = () => {
           <Button onClick={() => setIsBonusModalOpen(false)} color="inherit" sx={{ borderRadius: 2 }}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleSaveBonusEntry} 
-            color="primary" 
-            variant="contained" 
+          <Button
+            onClick={handleSaveBonusEntry}
+            color="primary"
+            variant="contained"
             sx={{ borderRadius: 2 }}
           >
             Save Entry
@@ -2672,13 +3302,13 @@ const Salary = () => {
                       {dayjs(hist.timestamp).format('DD MMM YYYY, HH:mm')}
                     </TableCell>
                     <TableCell>
-                      <Chip 
-                        size="small" 
+                      <Chip
+                        size="small"
                         label={hist.action}
                         color={
                           hist.action === 'Created' || hist.action === 'Added' || hist.action === 'Bulk Add' ? 'success' :
-                          hist.action === 'Resigned' || hist.action === 'Deleted' ? 'error' :
-                          hist.action === 'Reset All' ? 'warning' : 'primary'
+                            hist.action === 'Resigned' || hist.action === 'Deleted' ? 'error' :
+                              hist.action === 'Reset All' ? 'warning' : 'primary'
                         }
                         variant="outlined"
                         sx={{ fontSize: '0.7rem', height: 20 }}

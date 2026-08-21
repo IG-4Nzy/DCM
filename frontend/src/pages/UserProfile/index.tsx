@@ -112,7 +112,7 @@ const UserProfile: React.FC = () => {
 
     const validateName = (v: string, label: string) => {
         if (!v) return "";
-        if (!/^[a-zA-Z0-9]+$/.test(v)) return `${label} must be alphanumeric only`;
+        if (!/^[a-zA-Z0-9_.\s]+$/.test(v)) return `${label} must contain alphanumeric characters, spaces, dots, or underscores only`;
         if (v.length > 20) return `${label} must be maximum 20 characters`;
         return "";
     };
@@ -143,16 +143,16 @@ const UserProfile: React.FC = () => {
             showToast("Please fix the validation errors before saving.", "error");
             return;
         }
-        if (form.firstName && !/^[a-zA-Z0-9]+$/.test(form.firstName)) {
-            showToast("First name must be alphanumeric only", "error");
+        if (form.firstName && !/^[a-zA-Z0-9_.\s]+$/.test(form.firstName)) {
+            showToast("First name must contain alphanumeric characters, spaces, dots, or underscores only", "error");
             return;
         }
         if (form.firstName && form.firstName.length > 20) {
             showToast("First name must be maximum 20 characters", "error");
             return;
         }
-        if (form.lastName && !/^[a-zA-Z0-9]+$/.test(form.lastName)) {
-            showToast("Last name must be alphanumeric only", "error");
+        if (form.lastName && !/^[a-zA-Z0-9_.\s]+$/.test(form.lastName)) {
+            showToast("Last name must contain alphanumeric characters, spaces, dots, or underscores only", "error");
             return;
         }
         if (form.lastName && form.lastName.length > 20) {

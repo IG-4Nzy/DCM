@@ -4,10 +4,10 @@
  */
 
 export const validators = {
-  // Alphanumeric only: a-z, A-Z, 0-9
+  // Alphanumeric, spaces, and underscores: a-z, A-Z, 0-9, _, space
   alphanumeric: (val: string, maxLen?: number, label = "Field") => {
     if (!val) return "";
-    if (!/^[a-zA-Z0-9]+$/.test(val)) return `${label} must be alphanumeric only`;
+    if (!/^[a-zA-Z0-9_\s]+$/.test(val)) return `${label} must contain alphanumeric characters, spaces, or underscores only`;
     if (maxLen && val.length > maxLen) return `${label} must be maximum ${maxLen} characters`;
     return "";
   },
@@ -68,10 +68,10 @@ export const validators = {
     return "";
   },
 
-  // Alphanumeric, underscore, and dots
+  // Alphanumeric, underscore, spaces, and dots
   alphanumericUnderscore: (val: string, maxLen?: number, label = "Field") => {
     if (!val) return "";
-    if (!/^[a-zA-Z0-9_]+$/.test(val)) return `${label} must be alphanumeric and underscores only`;
+    if (!/^[a-zA-Z0-9_\s]+$/.test(val)) return `${label} must contain alphanumeric characters, spaces, or underscores only`;
     if (maxLen && val.length > maxLen) return `${label} must be maximum ${maxLen} characters`;
     return "";
   },

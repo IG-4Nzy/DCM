@@ -162,18 +162,18 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
       if (details.osVersion) newErrors.osVersion = validators.osExpiry(details.osVersion, 100, 'OS and Version');
       if (details.ip) newErrors.ip = validators.ipv4(details.ip, 'IP Address');
       if (details.vmName) newErrors.vmName = validators.alphanumericSpacesDotsDashesUnderscores(details.vmName, 50, 'VM Name');
-      if (details.ram) newErrors.ram = validators.alphanumericSpacesDots(details.ram, 20, 'RAM');
-      if (details.hdd) newErrors.hdd = validators.alphanumericSpacesDots(details.hdd, 20, 'HDD');
-      if (details.cpu) newErrors.cpu = validators.alphanumericSpacesDots(details.cpu, 20, 'CPU');
+      if (details.ram) newErrors.ram = validators.alphanumeric(details.ram, 6, 'RAM');
+      if (details.hdd) newErrors.hdd = validators.alphanumeric(details.hdd, 6, 'HDD');
+      if (details.cpu) newErrors.cpu = validators.alphanumeric(details.cpu, 6, 'CPU');
       if (details.backupName) newErrors.backupName = validators.alphanumericSpacesDotsDashesUnderscores(details.backupName, 50, 'Backup Name');
     }
 
     // VM Management specific
     if (currentRequestType === 'VM Management' && details.vmId) {
       if (details.operationType === 'Resource Upgrade') {
-        if (details.newRam) newErrors.newRam = validators.alphanumericSpacesDots(details.newRam, 20, 'New RAM');
-        if (details.newHdd) newErrors.newHdd = validators.alphanumericSpacesDots(details.newHdd, 20, 'New HDD');
-        if (details.newCpu) newErrors.newCpu = validators.alphanumericSpacesDots(details.newCpu, 20, 'New CPU');
+        if (details.newRam) newErrors.newRam = validators.alphanumeric(details.newRam, 6, 'New RAM');
+        if (details.newHdd) newErrors.newHdd = validators.alphanumeric(details.newHdd, 6, 'New HDD');
+        if (details.newCpu) newErrors.newCpu = validators.alphanumeric(details.newCpu, 6, 'New CPU');
       }
       if (details.operationType === 'Clone' && details.cloneName) {
         newErrors.cloneName = validators.alphanumericSpacesDotsDashesUnderscores(details.cloneName, 50, 'Clone Name');
@@ -437,7 +437,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                         if (!vm) return '';
                         if (typeof vm === 'string') return vm;
                         const vmCode = vm.vmId ? `[${vm.vmId}] ` : '';
-                        const vmName = vm.applications || 'Unnamed VM';
+                        const vmName = vm.vmName || vm.applications || vm.name || 'Unnamed VM';
                         const vmIp = vm.ipAddress ? ` (${vm.ipAddress})` : '';
                         return `${vmCode}${vmName}${vmIp}`;
                       }}
@@ -453,7 +453,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                           setDetails((prev: any) => ({
                             ...prev,
                             vmId: selectedVm.id || selectedVm._id,
-                            vmName: selectedVm.applications || selectedVm.vmId || '',
+                            vmName: selectedVm.vmName || selectedVm.applications || selectedVm.name || selectedVm.vmId || '',
                             osVersion: selectedVm.osAndExpiry || '',
                             ram: selectedVm.ram || '',
                             hdd: selectedVm.hdd || '',

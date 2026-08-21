@@ -376,7 +376,8 @@ const Requests: React.FC = () => {
 
                 if (row.details) {
                     if (row.requestType === 'VM Creation' || row.requestType === 'VM Management') {
-                        if (row.details.vmName) parts.push(`VM: ${row.details.vmName}`);
+                        const vmNameVal = row.details.vmName || row.details.applications || row.details.vmId;
+                        if (vmNameVal) parts.push(`VM: ${vmNameVal}`);
                         if (row.details.osVersion) parts.push(`OS: ${row.details.osVersion}`);
                         if (row.details.ram) parts.push(`RAM: ${row.details.ram}`);
                     } else if (row.requestType === 'DC Entry') {

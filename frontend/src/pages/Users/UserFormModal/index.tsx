@@ -120,7 +120,7 @@ const UserFormModal = ({
 
     const validateName = (v: string, label: string) => {
         if (!v) return "";
-        if (!/^[a-zA-Z0-9]+$/.test(v)) return `${label} must be alphanumeric only`;
+        if (!/^[a-zA-Z0-9_.\s]+$/.test(v)) return `${label} must contain alphanumeric characters, spaces, dots, or underscores only`;
         if (v.length > 20) return `${label} must be maximum 20 characters`;
         return "";
     };
