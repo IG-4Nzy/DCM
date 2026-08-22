@@ -85,39 +85,6 @@ const ServerDetails = () => {
         }
     }, [activeTab]);
 
-    useEffect(() => {
-        if (isProgrammaticTabChangeRef.current) {
-            isProgrammaticTabChangeRef.current = false;
-            return;
-        }
-
-        const filterKeys = [
-            'cluster_search',
-            'cluster_typeFilter',
-            'VMDetails_adminFilter',
-            'VMDetails_nodeFilter',
-            'VMDetails_powerStatusFilter',
-            'VMDetails_networkTypeFilter',
-            'VMDetails_clusterTypeFilter',
-            'Racks_search',
-            'Nodes_search',
-            'Nodes_clusterFilter',
-            'Nodes_serverModelFilter',
-            'Nodes_adminFilter',
-            'Nodes_rackFilter',
-            'Nodes_osFilter',
-            'Nodes_custodianFilter',
-            'Nodes_gpuFilter',
-            'Nodes_deviceTypeFilter',
-            'Nodes_networkTypeFilter',
-            'cluster_page',
-            'Racks_page',
-            'Nodes_page'
-        ];
-        filterKeys.forEach(key => {
-            localStorage.removeItem(key);
-        });
-    }, [activeTab]);
 
     useEffect(() => {
         const handleTabChange = (e: CustomEvent) => {
@@ -152,11 +119,11 @@ const ServerDetails = () => {
             <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 {activeTab === 'racks' && <Racks key={activeTab} />}
                 {activeTab === 'clusters' && <Clusters key={activeTab} />}
-                {activeTab === 'nodes' && <Nodes key={activeTab} dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter={dashboardDeviceTypeFilter || undefined} />}
+                {activeTab === 'nodes' && <Nodes key={activeTab} storagePrefix="all" dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter={dashboardDeviceTypeFilter || undefined} />}
                 {activeTab === 'vms' && <VMs key={activeTab} dashboardAdminFilter={dashboardAdminFilter} />}
-                {activeTab === 'physical_servers' && <Nodes key={activeTab} dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="physical" />}
-                {activeTab === 'network_devices' && <Nodes key={activeTab} dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="appliance" />}
-                {activeTab === 'storage_systems' && <Nodes key={activeTab} dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="storage" />}
+                {activeTab === 'physical_servers' && <Nodes key={activeTab} storagePrefix="physical" dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="physical" />}
+                {activeTab === 'network_devices' && <Nodes key={activeTab} storagePrefix="appliance" dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="appliance" />}
+                {activeTab === 'storage_systems' && <Nodes key={activeTab} storagePrefix="storage" dashboardAdminFilter={dashboardAdminFilter} nodeTypeFilter="storage" />}
             </Box>
         </Box>
     );

@@ -33,9 +33,9 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
     const [data, setData] = useState<VMDetailsData[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(25);
+    const [searchQuery, setSearchQuery] = useTableState("VMDetails_search", "");
+    const [page, setPage] = useTableState("VMDetails_page", 0);
+    const [rowsPerPage, setRowsPerPage] = useTableState("VMDetails_rowsPerPage", 25);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<VMDetailsData | null>(null);

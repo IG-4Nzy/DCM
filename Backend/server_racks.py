@@ -56,30 +56,30 @@ async def list_items(
     query = {}
     
     if search:
-        terms = search.strip().split()
-        if terms:
-            term_queries = []
-            for term in terms:
-                escaped_term = re.escape(term)
-                numeric_match = []
-                try:
-                    # If term is numeric, allow exact match on numeric fields
-                    num_val = int(term)
-                    numeric_match = [
-                        {"rackCapacity": num_val},
-                        {"temperature": num_val}
-                    ]
-                except ValueError:
-                    pass
-                term_queries.append({
-                    "$or": [
-                        {"serverRack": {"$regex": escaped_term, "$options": "i"}},
-                        {"remarks": {"$regex": escaped_term, "$options": "i"}},
-                        {"createdBy": {"$regex": escaped_term, "$options": "i"}},
-                        {"updatedAt": {"$regex": escaped_term, "$options": "i"}},
-                    ] + numeric_match
-                })
-            query["$and"] = term_queries
+        from search_utils import resolve_search_references
+        matched_users, _, _ = await resolve_search_references(search)
+        escaped_search = re.escape(search.strip())
+        numeric_match = []
+        try:
+            num_val = int(search.strip())
+            numeric_match = [
+                {"rackCapacity": num_val},
+                {"temperature": num_val}
+            ]
+        except ValueError:
+            pass
+        or_conds = [
+            {"serverRack": {"$regex": escaped_search, "$options": "i"}},
+            {"remarks": {"$regex": escaped_search, "$options": "i"}},
+            {"createdBy": {"$regex": escaped_search, "$options": "i"}},
+            {"updatedAt": {"$regex": escaped_search, "$options": "i"}},
+        ] + numeric_match
+        if matched_users:
+            user_strs = [val for val in matched_users if isinstance(val, str)]
+            if user_strs:
+                or_conds.append({"createdBy": {"$in": user_strs}})
+                or_conds.append({"updatedBy": {"$in": user_strs}})
+        query["$and"] = [{"$or": or_conds}]
 
     actual_sort_by = sortBy or sort_by or "serverRack"
     sort_order = 1 if order == "asc" else -1

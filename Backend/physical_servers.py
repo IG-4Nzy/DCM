@@ -101,41 +101,34 @@ async def list_items(
         query["clusterId"] = clusterId
     
     if search:
-        terms = search.strip().split()
-        if terms:
-            # Cross-entity lookup: find clusters matching any search term
-            cluster_queries = []
-            for term in terms:
-                cluster_queries.append({"clusterName": {"$regex": re.escape(term), "$options": "i"}})
-            clusters_col = db.get_collection("clusters")
-            matching_clusters = await clusters_col.find({"$or": cluster_queries}, {"_id": 1}).to_list(length=None)
-            matching_cluster_ids = [str(doc["_id"]) for doc in matching_clusters]
-
-            term_queries = []
-            for term in terms:
-                escaped_term = re.escape(term)
-                
-                or_conditions = [
-                    {"ipAddress": {"$regex": escaped_term, "$options": "i"}},
-                    {"applications": {"$regex": escaped_term, "$options": "i"}},
-                    {"node": {"$regex": escaped_term, "$options": "i"}},
-                    {"ram": {"$regex": escaped_term, "$options": "i"}},
-                    {"hdd": {"$regex": escaped_term, "$options": "i"}},
-                    {"cpu": {"$regex": escaped_term, "$options": "i"}},
-                    {"backupLocation": {"$regex": escaped_term, "$options": "i"}},
-                    {"adminName": {"$regex": escaped_term, "$options": "i"}},
-                    {"adminContact": {"$regex": escaped_term, "$options": "i"}},
-                    {"remarks": {"$regex": escaped_term, "$options": "i"}},
-                    {"createdBy": {"$regex": escaped_term, "$options": "i"}},
-                    {"createdAt": {"$regex": escaped_term, "$options": "i"}},
-                    {"updatedAt": {"$regex": escaped_term, "$options": "i"}},
-                ]
-
-                if matching_cluster_ids:
-                    or_conditions.append({"clusterId": {"$in": matching_cluster_ids}})
-
-                term_queries.append({"$or": or_conditions})
-            query["$and"] = term_queries
+        from search_utils import resolve_search_references
+        matched_users, matched_clusters, _ = await resolve_search_references(search)
+        escaped_search = re.escape(search.strip())
+        or_conditions = [
+            {"ipAddress": {"$regex": escaped_search, "$options": "i"}},
+            {"applications": {"$regex": escaped_search, "$options": "i"}},
+            {"node": {"$regex": escaped_search, "$options": "i"}},
+            {"ram": {"$regex": escaped_search, "$options": "i"}},
+            {"hdd": {"$regex": escaped_search, "$options": "i"}},
+            {"cpu": {"$regex": escaped_search, "$options": "i"}},
+            {"backupLocation": {"$regex": escaped_search, "$options": "i"}},
+            {"adminName": {"$regex": escaped_search, "$options": "i"}},
+            {"adminContact": {"$regex": escaped_search, "$options": "i"}},
+            {"remarks": {"$regex": escaped_search, "$options": "i"}},
+            {"createdBy": {"$regex": escaped_search, "$options": "i"}},
+            {"createdAt": {"$regex": escaped_search, "$options": "i"}},
+            {"updatedAt": {"$regex": escaped_search, "$options": "i"}},
+        ]
+        if matched_users:
+            or_conditions.append({"admin": {"$in": matched_users}})
+        if matched_clusters:
+            or_conditions.append({"clusterId": {"$in": [str(c) for c in matched_clusters] + matched_clusters}})
+            
+        and_conds = []
+        for k, v in list(query.items()):
+            and_conds.append({k: v})
+        and_conds.append({"$or": or_conditions})
+        query = {"$and": and_conds}
 
     actual_sort_by = sortBy or sort_by or "createdAt"
     sort_order = 1 if order == "asc" else -1

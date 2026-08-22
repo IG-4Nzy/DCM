@@ -84,6 +84,12 @@ export const playBeep = (volume: number = 0.5) => {
     osc.connect(gain);
     gain.connect(ctx.destination);
 
+    // Cleanup Web Audio nodes on completion to prevent memory leaks
+    osc.onended = () => {
+      osc.disconnect();
+      gain.disconnect();
+    };
+
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.15);
   } catch (e) {

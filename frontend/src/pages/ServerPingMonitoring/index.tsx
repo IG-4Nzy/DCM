@@ -139,6 +139,8 @@ const ServerPingMonitoring: React.FC = () => {
 
     // Optimistically check if we should mute the alarm sound immediately
     const hasUnmutedOffline = servers.some(s => {
+      if (!s) return false;
+      if (!s.isEnabled) return false;
       if (nextMuted.includes(s.id)) return false;
       if (s.isAcknowledged) return false;
       return s.status === 'DOWN' || 
@@ -272,6 +274,12 @@ const ServerPingMonitoring: React.FC = () => {
       gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
       
+      // Cleanup Web Audio nodes on completion to prevent memory leaks
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        gainNode.disconnect();
+      };
+
       oscillator.start(audioCtx.currentTime);
       oscillator.stop(audioCtx.currentTime + 0.5);
     } catch (e) {
@@ -282,6 +290,8 @@ const ServerPingMonitoring: React.FC = () => {
   // Sound Loop management
   useEffect(() => {
     const hasUnmutedOfflineServers = servers.some(s => {
+      if (!s) return false;
+      if (!s.isEnabled) return false;
       if (mutedServerIds.includes(s.id)) return false;
       if (s.isAcknowledged) return false;
       return s.status === 'DOWN' || 
@@ -708,6 +718,8 @@ const ServerPingMonitoring: React.FC = () => {
       // Optimistically stop the alarm if this server is being acknowledged and no other offline servers remain
       if (nextState) {
         const hasOtherUnacknowledgedOffline = servers.some(s => {
+          if (!s) return false;
+          if (!s.isEnabled) return false;
           if (s.id === ackTargetServer.id) return false;
           if (mutedServerIds.includes(s.id)) return false;
           if (s.isAcknowledged) return false;
@@ -868,7 +880,7 @@ const ServerPingMonitoring: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {servers.map((srv) => (
+              {servers.filter(Boolean).map((srv) => (
                 <TableRow key={srv.id} hover>
                   <TableCell sx={{ fontWeight: 600, py: 0.75 }}>{srv.name}</TableCell>
                   <TableCell sx={{ py: 0.75 }}>{srv.ipAddress}</TableCell>
@@ -1049,7 +1061,7 @@ const ServerPingMonitoring: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {dropLogs.map((log) => (
+              {dropLogs.filter(Boolean).map((log) => (
                 <TableRow key={log.id} hover>
                   <TableCell sx={{ fontWeight: 600, py: 0.75 }}>{log.name}</TableCell>
                   <TableCell sx={{ py: 0.75 }}>{log.ipAddress}</TableCell>

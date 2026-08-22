@@ -184,6 +184,12 @@ const ServerMonitoring: React.FC = () => {
       oscillator.frequency.value = 800;
       gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
 
+      // Cleanup Web Audio nodes on completion to prevent memory leaks
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        gainNode.disconnect();
+      };
+
       oscillator.start();
       oscillator.stop(audioCtx.currentTime + 0.5);
     } catch (e) {
