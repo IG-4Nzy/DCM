@@ -51,11 +51,15 @@ interface MonitoredServer {
 let sharedAudioContext: AudioContext | null = null;
 
 const getSharedAudioContext = (): AudioContext | null => {
-  if (!sharedAudioContext) {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (AudioContextClass) {
-      sharedAudioContext = new AudioContextClass();
+  try {
+    if (!sharedAudioContext) {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContextClass) {
+        sharedAudioContext = new AudioContextClass();
+      }
     }
+  } catch (err) {
+    console.error("Failed to create AudioContext:", err);
   }
   return sharedAudioContext;
 };
@@ -70,6 +74,76 @@ if (typeof window !== 'undefined') {
   window.addEventListener('keydown', resumeAudio, { capture: true, passive: true });
 }
 
+// LocalStorage helpers to prevent security or quota exceptions from crashing
+const safeGetLocalStorage = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key);
+  } catch (err) {
+    console.warn("Failed to read from localStorage:", err);
+    return null;
+  }
+};
+
+const safeSetLocalStorage = (key: string, value: string) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch (err) {
+    console.warn("Failed to write to localStorage:", err);
+  }
+};
+
+// Safe stop audio helper to prevent InvalidStateError / DOMException on currentTime manipulation
+const safeStopAudio = (audio: HTMLAudioElement | null) => {
+  if (!audio) return;
+  try {
+    audio.pause();
+    if (audio.readyState > 0 && isFinite(audio.duration)) {
+      audio.currentTime = 0;
+    }
+  } catch (err) {
+    console.warn("Failed to stop audio safely:", err);
+  }
+};
+
+// Defensive helper to extract port status entries safely
+const getPortsStatusEntries = (portsStatus: any): [string, 'UP' | 'DOWN'][] => {
+  if (portsStatus && typeof portsStatus === 'object' && !Array.isArray(portsStatus)) {
+    return Object.entries(portsStatus);
+  }
+  return [];
+};
+
+// Defensive helper to check for offline ports safely
+const hasOfflinePorts = (srv: MonitoredServer | null | undefined): boolean => {
+  if (!srv || !srv.portsStatus || typeof srv.portsStatus !== 'object' || Array.isArray(srv.portsStatus)) {
+    return false;
+  }
+  return Object.values(srv.portsStatus).includes('DOWN');
+};
+
+// Safe date formatting helpers to prevent RangeError or conversion failures
+const safeFormatDateTime = (dateStr: any): string => {
+  if (!dateStr) return '--';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '--';
+    return d.toLocaleString();
+  } catch {
+    return '--';
+  }
+};
+
+const safeFormatTime = (dateStr: any): string => {
+  if (!dateStr) return '--';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '--';
+    return d.toLocaleTimeString();
+  } catch {
+    return '--';
+  }
+};
+
 const ServerPingMonitoring: React.FC = () => {
   const { privileges = [], isSuperuser } = useSelector((state: RootState) => state.auth);
   
@@ -80,7 +154,7 @@ const ServerPingMonitoring: React.FC = () => {
   const canDelete = privileges.includes("Delete Server Ping Monitoring") || isSuperuser;
 
   // Sound States (Persistent)
-  const [isMuted, setIsMuted] = useState(() => localStorage.getItem('dcm_alert_muted') === 'true');
+  const [isMuted, setIsMuted] = useState(() => safeGetLocalStorage('dcm_alert_muted') === 'true');
   const [audioFileName, setAudioFileName] = useState('');
   const [customAlarmUrl, setCustomAlarmUrl] = useState<string | null>(null);
   const activeAlarmUrlRef = useRef<string | null>(null);
@@ -123,7 +197,7 @@ const ServerPingMonitoring: React.FC = () => {
   // Individual Muted Servers State
   const [mutedServerIds, setMutedServerIds] = useState<string[]>(() => {
     try {
-      const stored = localStorage.getItem('dcm_muted_server_ids');
+      const stored = safeGetLocalStorage('dcm_muted_server_ids');
       return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
@@ -135,7 +209,7 @@ const ServerPingMonitoring: React.FC = () => {
       ? mutedServerIds.filter(id => id !== serverId)
       : [...mutedServerIds, serverId];
     setMutedServerIds(nextMuted);
-    localStorage.setItem('dcm_muted_server_ids', JSON.stringify(nextMuted));
+    safeSetLocalStorage('dcm_muted_server_ids', JSON.stringify(nextMuted));
 
     // Optimistically check if we should mute the alarm sound immediately
     const hasUnmutedOffline = servers.some(s => {
@@ -144,9 +218,7 @@ const ServerPingMonitoring: React.FC = () => {
       if (nextMuted.includes(s.id)) return false;
       if (s.isAcknowledged) return false;
       return s.status === 'DOWN' || 
-        ((s.monitoringType === 'both' || s.monitoringType === 'port') && 
-         s.portsStatus && 
-         Object.values(s.portsStatus).includes('DOWN'));
+        ((s.monitoringType === 'both' || s.monitoringType === 'port') && hasOfflinePorts(s));
     });
 
     if (!hasUnmutedOffline || isMuted) {
@@ -154,10 +226,7 @@ const ServerPingMonitoring: React.FC = () => {
         clearInterval(audioIntervalRef.current);
         audioIntervalRef.current = null;
       }
-      if (audioInstanceRef.current) {
-        audioInstanceRef.current.pause();
-        audioInstanceRef.current.currentTime = 0;
-      }
+      safeStopAudio(audioInstanceRef.current);
     }
   };
 
@@ -295,9 +364,7 @@ const ServerPingMonitoring: React.FC = () => {
       if (mutedServerIds.includes(s.id)) return false;
       if (s.isAcknowledged) return false;
       return s.status === 'DOWN' || 
-        ((s.monitoringType === 'both' || s.monitoringType === 'port') && 
-         s.portsStatus && 
-         Object.values(s.portsStatus).includes('DOWN'));
+        ((s.monitoringType === 'both' || s.monitoringType === 'port') && hasOfflinePorts(s));
     });
 
     const shouldPlay = hasUnmutedOfflineServers && !isMuted;
@@ -315,7 +382,7 @@ const ServerPingMonitoring: React.FC = () => {
         // Handle custom audio playback
         if (!audioInstanceRef.current || lastAlarmUrlRef.current !== customAlarmUrl) {
           if (audioInstanceRef.current) {
-            audioInstanceRef.current.pause();
+            safeStopAudio(audioInstanceRef.current);
           }
           const audio = new Audio(customAlarmUrl);
           audio.loop = true;
@@ -325,9 +392,7 @@ const ServerPingMonitoring: React.FC = () => {
 
         // Play if paused
         if (audioInstanceRef.current.paused) {
-          audioInstanceRef.current.play().catch(e => {
-            console.warn("Custom audio playback blocked, playing synthesizer beep instead:", e);
-            // Fallback to synth beep loop
+          const triggerFallbackBeep = () => {
             if (!audioIntervalRef.current) {
               playAlertBeep();
               audioIntervalRef.current = setInterval(() => {
@@ -338,12 +403,19 @@ const ServerPingMonitoring: React.FC = () => {
             // Register one-time user interaction listener to play custom sound once allowed
             const startOnInteraction = () => {
               if (audioInstanceRef.current && audioInstanceRef.current.paused) {
-                audioInstanceRef.current.play().then(() => {
-                  if (audioIntervalRef.current) {
-                    clearInterval(audioIntervalRef.current);
-                    audioIntervalRef.current = null;
+                try {
+                  const playPromise = audioInstanceRef.current.play();
+                  if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                      if (audioIntervalRef.current) {
+                        clearInterval(audioIntervalRef.current);
+                        audioIntervalRef.current = null;
+                      }
+                    }).catch(err => console.warn("Failed to play custom alarm on interaction:", err));
                   }
-                }).catch(err => console.warn("Failed to play custom alarm on interaction:", err));
+                } catch (err) {
+                  console.warn("Sync error playing custom alarm on interaction:", err);
+                }
               }
               cleanupListeners();
             };
@@ -356,12 +428,25 @@ const ServerPingMonitoring: React.FC = () => {
             window.addEventListener('click', startOnInteraction);
             window.addEventListener('keydown', startOnInteraction);
             interactionCleanup = cleanupListeners;
-          });
+          };
+
+          try {
+            const playPromise = audioInstanceRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(e => {
+                console.warn("Custom audio playback blocked, playing synthesizer beep instead:", e);
+                triggerFallbackBeep();
+              });
+            }
+          } catch (e) {
+            console.warn("Sync error playing custom alarm:", e);
+            triggerFallbackBeep();
+          }
         }
       } else {
         // Fallback beep loop (no custom alarm)
         if (audioInstanceRef.current) {
-          audioInstanceRef.current.pause();
+          safeStopAudio(audioInstanceRef.current);
           audioInstanceRef.current = null;
         }
 
@@ -378,10 +463,7 @@ const ServerPingMonitoring: React.FC = () => {
         clearInterval(audioIntervalRef.current);
         audioIntervalRef.current = null;
       }
-      if (audioInstanceRef.current) {
-        audioInstanceRef.current.pause();
-        audioInstanceRef.current.currentTime = 0; // Rewind
-      }
+      safeStopAudio(audioInstanceRef.current);
     }
 
     return () => {
@@ -419,8 +501,7 @@ const ServerPingMonitoring: React.FC = () => {
       
       const isOffline = srv.status === 'DOWN' || 
                         ((srv.monitoringType === 'both' || srv.monitoringType === 'port') && 
-                         srv.portsStatus && 
-                         Object.values(srv.portsStatus).includes('DOWN'));
+                         hasOfflinePorts(srv));
                          
       if (!isOffline) {
         changed = true;
@@ -431,7 +512,7 @@ const ServerPingMonitoring: React.FC = () => {
     
     if (changed) {
       setMutedServerIds(nextMutedIds);
-      localStorage.setItem('dcm_muted_server_ids', JSON.stringify(nextMutedIds));
+      safeSetLocalStorage('dcm_muted_server_ids', JSON.stringify(nextMutedIds));
     }
   }, [servers, mutedServerIds]);
 
@@ -464,7 +545,7 @@ const ServerPingMonitoring: React.FC = () => {
       setServers(loadedServers);
 
       // Track newly offline servers to automatically trigger sound/unmute
-      const currentOfflineIds = loadedServers.filter((s: MonitoredServer) => s.status === 'DOWN').map((s: MonitoredServer) => s.id);
+      const currentOfflineIds = loadedServers.filter((s: MonitoredServer) => s && s.status === 'DOWN').map((s: MonitoredServer) => s.id);
       
       if (isFirstLoadRef.current) {
         prevOfflineServersRef.current = currentOfflineIds;
@@ -474,7 +555,7 @@ const ServerPingMonitoring: React.FC = () => {
         if (hasNewOffline) {
           // Unmute when another server drops ping
           setIsMuted(false);
-          localStorage.setItem('dcm_alert_muted', 'false');
+          safeSetLocalStorage('dcm_alert_muted', 'false');
         }
         prevOfflineServersRef.current = currentOfflineIds;
       }
@@ -548,17 +629,14 @@ const ServerPingMonitoring: React.FC = () => {
   const handleToggleMute = () => {
     const newMuteState = !isMuted;
     setIsMuted(newMuteState);
-    localStorage.setItem('dcm_alert_muted', String(newMuteState));
+    safeSetLocalStorage('dcm_alert_muted', String(newMuteState));
 
     if (newMuteState) {
       if (audioIntervalRef.current) {
         clearInterval(audioIntervalRef.current);
         audioIntervalRef.current = null;
       }
-      if (audioInstanceRef.current) {
-        audioInstanceRef.current.pause();
-        audioInstanceRef.current.currentTime = 0;
-      }
+      safeStopAudio(audioInstanceRef.current);
     }
   };
 
@@ -724,9 +802,7 @@ const ServerPingMonitoring: React.FC = () => {
           if (mutedServerIds.includes(s.id)) return false;
           if (s.isAcknowledged) return false;
           return s.status === 'DOWN' || 
-            ((s.monitoringType === 'both' || s.monitoringType === 'port') && 
-             s.portsStatus && 
-             Object.values(s.portsStatus).includes('DOWN'));
+            ((s.monitoringType === 'both' || s.monitoringType === 'port') && hasOfflinePorts(s));
         });
 
         if (!hasOtherUnacknowledgedOffline) {
@@ -734,10 +810,7 @@ const ServerPingMonitoring: React.FC = () => {
             clearInterval(audioIntervalRef.current);
             audioIntervalRef.current = null;
           }
-          if (audioInstanceRef.current) {
-            audioInstanceRef.current.pause();
-            audioInstanceRef.current.currentTime = 0;
-          }
+          safeStopAudio(audioInstanceRef.current);
         }
       }
 
@@ -910,9 +983,9 @@ const ServerPingMonitoring: React.FC = () => {
                             sx={{ fontWeight: 600, fontSize: '0.65rem', height: '18px', mt: 0.25 }} 
                           />
                         )}
-                        {srv.monitoringType === 'both' && srv.portsStatus && Object.keys(srv.portsStatus).length > 0 && (
+                        {srv.monitoringType === 'both' && getPortsStatusEntries(srv.portsStatus).length > 0 && (
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.25 }}>
-                            {Object.entries(srv.portsStatus).map(([port, status]) => (
+                            {getPortsStatusEntries(srv.portsStatus).map(([port, status]) => (
                               <Tooltip key={port} title={`Port ${port}: ${status}`}>
                                 <Chip
                                   size="small"
@@ -936,8 +1009,7 @@ const ServerPingMonitoring: React.FC = () => {
                       {/* Individual Mute/Alarm toggle */}
                       {(srv.status === 'DOWN' || 
                         ((srv.monitoringType === 'both' || srv.monitoringType === 'port') && 
-                         srv.portsStatus && 
-                         Object.values(srv.portsStatus).includes('DOWN'))) && (
+                         hasOfflinePorts(srv))) && (
                         <Tooltip title={mutedServerIds.includes(srv.id) ? "Unmute this server alert" : "Mute this server alert"}>
                           <IconButton 
                             size="small" 
@@ -961,10 +1033,10 @@ const ServerPingMonitoring: React.FC = () => {
                   </TableCell>
 
                   <TableCell sx={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 500, py: 0.75 }}>
-                    {srv.lastFailedTime ? new Date(srv.lastFailedTime).toLocaleString() : '--'}
+                    {safeFormatDateTime(srv.lastFailedTime)}
                   </TableCell>
                   <TableCell sx={{ fontSize: '0.75rem', color: '#64748b', py: 0.75 }}>
-                    {srv.lastUpdated ? new Date(srv.lastUpdated).toLocaleTimeString() : '--'}
+                    {safeFormatTime(srv.lastUpdated)}
                   </TableCell>
                   {canUpdate || canDelete ? (
                     <TableCell align="center" sx={{ py: 0.75 }}>
@@ -976,8 +1048,7 @@ const ServerPingMonitoring: React.FC = () => {
                         )}
                         {canUpdate && (srv.status === 'DOWN' || 
                           ((srv.monitoringType === 'both' || srv.monitoringType === 'port') && 
-                           srv.portsStatus && 
-                           Object.values(srv.portsStatus).includes('DOWN'))) && (
+                           hasOfflinePorts(srv))) && (
                           <Tooltip title={srv.isAcknowledged ? "Unacknowledge Server" : "Acknowledge Server"}>
                             <IconButton 
                               size="small" 
@@ -1067,7 +1138,7 @@ const ServerPingMonitoring: React.FC = () => {
                   <TableCell sx={{ py: 0.75 }}>{log.ipAddress}</TableCell>
                   <TableCell sx={{ py: 0.75 }}>{log.adminName || '--'}</TableCell>
                   <TableCell sx={{ color: '#ef4444', fontWeight: 500, py: 0.75, fontSize: '0.75rem' }}>
-                    {new Date(log.timestamp).toLocaleString()}
+                    {safeFormatDateTime(log.timestamp)}
                   </TableCell>
                   <TableCell sx={{ py: 0.75 }}>
                     <Chip size="small" label={log.pingStatus} color="error" variant="outlined" sx={{ fontWeight: 700, fontSize: '0.65rem', height: '18px' }} />

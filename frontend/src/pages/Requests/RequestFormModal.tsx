@@ -59,8 +59,6 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
 
   useEffect(() => {
     if (isModalOpen) {
-      dispatch(fetchInventory({ pagination: false }));
-      
       // Fetch clusters for dropdown
       request.get('/api/clusters/', { params: { pagination: false } })
         .then(res => setClustersList(res.data.data || []))

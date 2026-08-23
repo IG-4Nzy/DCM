@@ -97,7 +97,6 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   useEffect(() => {
     if (isOpen && requestId) {
       dispatch(fetchUsers({ pagination: false }));
-      dispatch(fetchInventory({ pagination: false }));
 
       setLoadingLogs(true);
       fetchRequestLogs(requestId)

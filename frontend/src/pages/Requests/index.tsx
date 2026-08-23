@@ -124,7 +124,6 @@ const Requests: React.FC = () => {
         loadData();
         fetchRequestTypes();
         dispatch(fetchUsers({ pagination: false }));
-        dispatch(fetchInventory({ pagination: false }));
     }, [loadData, fetchRequestTypes, dispatch]);
 
     useEffect(() => {

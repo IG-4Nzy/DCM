@@ -231,9 +231,14 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                 let selectedIds = Array.isArray(value) ? value : [value];
                 if (isRestrictedAdmin) {
                     const currentUserId = currentUser?._id || currentUser?.id || username;
-                    if (selectedIds.includes('unassigned')) {
-                        selectedIds = ['unassigned'];
-                    } else if (selectedIds.length === 0) {
+                    if (selectedIds.includes('unassigned') && selectedIds.includes(currentUserId)) {
+                        const prevAdmin = prev.admin || [];
+                        if (prevAdmin.includes('unassigned')) {
+                            selectedIds = [currentUserId];
+                        } else {
+                            selectedIds = ['unassigned'];
+                        }
+                    } else if (selectedIds.includes('unassigned') || selectedIds.length === 0) {
                         selectedIds = ['unassigned'];
                     } else {
                         selectedIds = selectedIds.filter(id => id === currentUserId);
@@ -341,7 +346,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         };
         setErrors(newErrors);
         if (Object.values(newErrors).some(err => !!err)) return;
-        
+
         // Compute final admin array
         let currentAdmin: string[] = Array.isArray(formData.admin) ? formData.admin : [];
         if (currentAdmin.includes('Other')) {
@@ -356,7 +361,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
             const changedData: UpdateVMDetailsPayload = {};
             // Normalize undefined/null to empty string for comparison
             const norm = (v: any) => v ?? '';
-            
+
             if (formData.vmName !== norm(editingItem.vmName)) changedData.vmName = formData.vmName;
             if (formData.clusterId !== norm(editingItem.clusterId)) changedData.clusterId = formData.clusterId;
             if (formData.ipAddress !== norm(editingItem.ipAddress)) changedData.ipAddress = formData.ipAddress;
@@ -372,11 +377,11 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
             if (formData.datastore !== norm(editingItem.datastore)) changedData.datastore = formData.datastore;
             if (formData.adminName !== norm(editingItem.adminName)) changedData.adminName = formData.adminName;
             if (formData.adminContact !== norm(editingItem.adminContact)) changedData.adminContact = formData.adminContact;
-            
+
             const oldAdmin = Array.isArray(editingItem.admin) ? editingItem.admin : (editingItem.admin ? [editingItem.admin] : []);
             const adminChanged = oldAdmin.length !== currentAdmin.length || oldAdmin.some((val, idx) => val !== currentAdmin[idx]);
             if (adminChanged) changedData.admin = currentAdmin;
-            
+
             if (formData.powerStatus !== norm(editingItem.powerStatus)) changedData.powerStatus = formData.powerStatus;
             if (formData.isNetworkConnected !== editingItem.isNetworkConnected) changedData.isNetworkConnected = formData.isNetworkConnected;
             if (formData.networkType !== norm(editingItem.networkType)) changedData.networkType = formData.networkType;
@@ -400,251 +405,251 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                 <Box className={styles.formGrid}>
 
                     {!!editingItem && (
-                        <TextField 
-                            label="VM ID" 
+                        <TextField
+                            label="VM ID"
                             size="small"
                             className={styles.formGrid__field}
-                            value={formData.vmId} 
-                            onChange={(e) => handleChange('vmId', e.target.value)} 
+                            value={formData.vmId}
+                            onChange={(e) => handleChange('vmId', e.target.value)}
                             disabled={true}
                         />
                     )}
-                    <TextField 
-                        label="VM Name" 
+                    <TextField
+                        label="VM Name"
                         size="small"
                         className={styles.formGrid__field}
-                        value={formData.vmName} 
-                        onChange={(e) => handleChange('vmName', e.target.value)} 
+                        value={formData.vmName}
+                        onChange={(e) => handleChange('vmName', e.target.value)}
                         disabled={isRestrictedAdmin}
                         error={!!errors.vmName}
                         helperText={errors.vmName}
                     />
                     {(!clusterId || clusterId === '') && (
-                        <Dropdown 
-                            label="Cluster" 
+                        <Dropdown
+                            label="Cluster"
                             size="small"
                             fullWidth
                             searchable
                             clearable
                             disabled={isRestrictedAdmin}
-                            value={formData.clusterId} 
-                            onChange={(val) => handleChange('clusterId', val)} 
+                            value={formData.clusterId}
+                            onChange={(val) => handleChange('clusterId', val)}
                             options={clusters.map((c) => ({ label: c.clusterName || c.id, value: c.id || c._id }))}
                         />
                     )}
-                    <TextField 
-                        label="IP Address" 
+                    <TextField
+                        label="IP Address"
                         size="small"
                         className={styles.formGrid__field}
-                        value={formData.ipAddress} 
-                        onChange={(e) => handleChange('ipAddress', e.target.value)} 
+                        value={formData.ipAddress}
+                        onChange={(e) => handleChange('ipAddress', e.target.value)}
                         disabled={isRestrictedAdmin}
                         error={!!errors.ipAddress}
                         helperText={errors.ipAddress}
                     />
-                    <Dropdown 
-                        label="Datastore" 
+                    <Dropdown
+                        label="Datastore"
                         size="small"
                         fullWidth
                         searchable
                         clearable
                         disabled={isRestrictedAdmin}
-                        value={formData.datastore} 
-                        onChange={(val) => handleChange('datastore', val)} 
+                        value={formData.datastore}
+                        onChange={(val) => handleChange('datastore', val)}
                         options={datastores.map((ds) => ({ label: `${ds.name || ds.datastoreName || ds.id}${ds.capacity ? ` (${ds.freeSpace || ''} free)` : ''}`, value: ds.name || ds.datastoreName || ds.id || ds._id }))}
                     />
-                    <Dropdown 
-                        label="Network Type" 
+                    <Dropdown
+                        label="Network Type"
                         size="small"
                         fullWidth
                         disabled={isRestrictedAdmin}
-                        value={formData.networkType || (formData.ipAddress?.startsWith('192.168') ? 'Internet' : formData.ipAddress?.startsWith('10.') ? 'Intranet' : 'Internet')} 
-                        onChange={(val) => handleChange('networkType', val)} 
+                        value={formData.networkType || (formData.ipAddress?.startsWith('192.168') ? 'Internet' : formData.ipAddress?.startsWith('10.') ? 'Intranet' : 'Internet')}
+                        onChange={(val) => handleChange('networkType', val)}
                         options={[
                             { label: 'Internet (192.168.x.x)', value: 'Internet' },
                             { label: 'Intranet (10.x.x.x)', value: 'Intranet' }
                         ]}
                     />
-                    <TextField 
-                        label="Applications" 
+                    <TextField
+                        label="Applications"
                         size="small"
                         className={styles.formGrid__field}
-                        value={formData.applications} 
-                        onChange={(e) => handleChange('applications', e.target.value)} 
+                        value={formData.applications}
+                        onChange={(e) => handleChange('applications', e.target.value)}
                         error={!!errors.applications}
                         helperText={errors.applications}
                     />
-                    <Dropdown 
-                        label="Node" 
+                    <Dropdown
+                        label="Node"
                         size="small"
                         fullWidth
                         searchable
                         clearable
                         disabled={isRestrictedAdmin}
-                        value={formData.node} 
-                        onChange={(val) => handleChange('node', val)} 
+                        value={formData.node}
+                        onChange={(val) => handleChange('node', val)}
                         options={nodeOptions}
                     />
-                    <TextField 
-                        label="OS and Expiry" 
+                    <TextField
+                        label="OS and Expiry"
                         size="small"
                         className={styles.formGrid__field}
-                        value={formData.osAndExpiry} 
-                        onChange={(e) => handleChange('osAndExpiry', e.target.value)} 
+                        value={formData.osAndExpiry}
+                        onChange={(e) => handleChange('osAndExpiry', e.target.value)}
                         disabled={isRestrictedAdmin}
                         error={!!errors.osAndExpiry}
                         helperText={errors.osAndExpiry}
                     />
-                    <TextField 
-                        label="Backup Name" 
+                    <TextField
+                        label="Backup Name"
                         size="small"
                         className={styles.formGrid__field}
-                        value={formData.backupName} 
-                        onChange={(e) => handleChange('backupName', e.target.value)} 
+                        value={formData.backupName}
+                        onChange={(e) => handleChange('backupName', e.target.value)}
                         disabled={isRestrictedAdmin}
                         error={!!errors.backupName}
                         helperText={errors.backupName}
                     />
-                    <Dropdown 
-                        label="Backup Node" 
+                    <Dropdown
+                        label="Backup Node"
                         size="small"
                         fullWidth
                         searchable
                         clearable
                         disabled={isRestrictedAdmin}
-                        value={formData.backupNode} 
-                        onChange={(val) => handleChange('backupNode', val)} 
+                        value={formData.backupNode}
+                        onChange={(val) => handleChange('backupNode', val)}
                         options={backupNodeOptions}
                     />
-                    <Dropdown 
-                        label="Backup Storage" 
+                    <Dropdown
+                        label="Backup Storage"
                         size="small"
                         fullWidth
                         searchable
                         clearable
                         disabled={isRestrictedAdmin}
-                        value={formData.backupStorage} 
-                        onChange={(val) => handleChange('backupStorage', val)} 
+                        value={formData.backupStorage}
+                        onChange={(val) => handleChange('backupStorage', val)}
                         options={nodes.filter(n => n.type === 'storage' || n.isStorage).map(n => {
                             const nodeName = n.node || n.hostName || n.nodeId || '';
                             return { label: nodeName, value: nodeName };
                         })}
                     />
-                    <Dropdown 
-                        label="Datastore" 
+                    <Dropdown
+                        label="Datastore"
                         size="small"
                         fullWidth
                         searchable
                         clearable
                         disabled={isRestrictedAdmin}
-                        value={formData.datastore} 
-                        onChange={(val) => handleChange('datastore', val)} 
+                        value={formData.datastore}
+                        onChange={(val) => handleChange('datastore', val)}
                         options={datastores.map(d => ({ label: `${d.name} (${d.type} - ${d.capacity})`, value: d.name }))}
                     />
-                    <Dropdown 
-                        label="Power Status" 
+                    <Dropdown
+                        label="Power Status"
                         size="small"
                         fullWidth
                         clearable
                         disabled={isRestrictedAdmin}
-                        value={formData.powerStatus || 'on'} 
-                        onChange={(val) => handleChange('powerStatus', val)} 
+                        value={formData.powerStatus || 'on'}
+                        onChange={(val) => handleChange('powerStatus', val)}
                         options={[
                             { label: 'On', value: 'on' },
                             { label: 'Off', value: 'off' }
                         ]}
                     />
-                    <Dropdown 
-                        label="Network Connection" 
+                    <Dropdown
+                        label="Network Connection"
                         size="small"
                         fullWidth
                         clearable
                         disabled={isRestrictedAdmin}
-                        value={formData.isNetworkConnected !== false ? 'connected' : 'disconnected'} 
-                        onChange={(val) => handleChange('isNetworkConnected', val === 'connected')} 
+                        value={formData.isNetworkConnected !== false ? 'connected' : 'disconnected'}
+                        onChange={(val) => handleChange('isNetworkConnected', val === 'connected')}
                         options={[
                             { label: 'Connected', value: 'connected' },
                             { label: 'Disconnected', value: 'disconnected' }
                         ]}
                     />
 
-                    <Dropdown 
-                        label="Admin" 
+                    <Dropdown
+                        label="Admin"
                         size="small"
                         fullWidth
                         searchable
                         clearable
                         multiple
                         disabled={!isFullAdmin && !isRestrictedAdmin}
-                        value={formData.admin} 
-                        onChange={(val) => handleChange('admin', val)} 
+                        value={formData.admin}
+                        onChange={(val) => handleChange('admin', val)}
                         options={isRestrictedAdmin ? restrictedAdminOptions : adminOptions}
                     />
                     {Array.isArray(formData.admin) && formData.admin.includes('Other') && (
-                        <TextField 
-                            label="Other Admin Name" 
+                        <TextField
+                            label="Other Admin Name"
                             size="small"
                             className={styles.formGrid__field}
-                            value={otherAdminName} 
+                            value={otherAdminName}
                             onChange={(e) => {
                                 setOtherAdminName(e.target.value);
                                 const selectedUsers = users.filter(u => formData.admin.includes(u._id || u.id));
                                 const names = selectedUsers.map(u => [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || u.username);
                                 if (e.target.value.trim()) names.push(e.target.value.trim());
                                 setFormData(prev => ({ ...prev, adminName: names.join(', ') }));
-                            }} 
+                            }}
                             required
                             disabled={isRestrictedAdmin}
                         />
                     )}
-                    <TextField 
-                        label="Admin Name (Auto-filled)" 
+                    <TextField
+                        label="Admin Name (Auto-filled)"
                         size="small"
                         className={styles.formGrid__field}
-                        value={formData.adminName} 
-                        onChange={(e) => handleChange('adminName', e.target.value)} 
+                        value={formData.adminName}
+                        onChange={(e) => handleChange('adminName', e.target.value)}
                         disabled
                     />
-                    <TextField 
-                        label="Admin Contact Number" 
+                    <TextField
+                        label="Admin Contact Number"
                         size="small"
                         className={styles.formGrid__field}
-                        value={formData.adminContact} 
-                        onChange={(e) => handleChange('adminContact', e.target.value)} 
+                        value={formData.adminContact}
+                        onChange={(e) => handleChange('adminContact', e.target.value)}
                         error={!!errors.adminContact}
                         helperText={errors.adminContact}
                     />
-                    
+
                     <Typography variant="subtitle1" className={styles.formGrid__title}>
                         Resource Allotter
                     </Typography>
-                    
-                    <TextField 
-                        label="HDD" 
+
+                    <TextField
+                        label="HDD"
                         size="small"
                         className={styles.formGrid__field}
-                        value={formData.hdd} 
-                        onChange={(e) => handleChange('hdd', e.target.value)} 
+                        value={formData.hdd}
+                        onChange={(e) => handleChange('hdd', e.target.value)}
                         disabled={isRestrictedAdmin}
                         error={!!errors.hdd}
                         helperText={errors.hdd}
                     />
-                    <TextField 
-                        label="RAM" 
+                    <TextField
+                        label="RAM"
                         size="small"
                         className={styles.formGrid__field}
-                        value={formData.ram} 
-                        onChange={(e) => handleChange('ram', e.target.value)} 
+                        value={formData.ram}
+                        onChange={(e) => handleChange('ram', e.target.value)}
                         disabled={isRestrictedAdmin}
                         error={!!errors.ram}
                         helperText={errors.ram}
                     />
-                    <TextField 
-                        label="CPU" 
+                    <TextField
+                        label="CPU"
                         size="small"
                         className={styles.formGrid__field}
-                        value={formData.cpu} 
-                        onChange={(e) => handleChange('cpu', e.target.value)} 
+                        value={formData.cpu}
+                        onChange={(e) => handleChange('cpu', e.target.value)}
                         disabled={isRestrictedAdmin}
                         error={!!errors.cpu}
                         helperText={errors.cpu}
@@ -657,11 +662,11 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     <Box sx={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: 1 }}>
                         {(formData.clones || []).map((clone, idx) => (
                             <Box key={idx} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                <TextField 
-                                    label="Clone Name" 
-                                    size="small" 
+                                <TextField
+                                    label="Clone Name"
+                                    size="small"
                                     sx={{ flex: 1 }}
-                                    value={clone.name} 
+                                    value={clone.name}
                                     disabled={isRestrictedAdmin}
                                     onChange={(e) => {
                                         const updated = [...(formData.clones || [])];
@@ -669,11 +674,11 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                         setFormData(prev => ({ ...prev, clones: updated }));
                                     }}
                                 />
-                                <TextField 
-                                    label="Remarks" 
-                                    size="small" 
+                                <TextField
+                                    label="Remarks"
+                                    size="small"
                                     sx={{ flex: 2 }}
-                                    value={clone.remarks || ''} 
+                                    value={clone.remarks || ''}
                                     disabled={isRestrictedAdmin}
                                     onChange={(e) => {
                                         const updated = [...(formData.clones || [])];
@@ -681,9 +686,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                         setFormData(prev => ({ ...prev, clones: updated }));
                                     }}
                                 />
-                                <Button 
-                                    variant="outlined" 
-                                    color="error" 
+                                <Button
+                                    variant="outlined"
+                                    color="error"
                                     size="small"
                                     disabled={isRestrictedAdmin}
                                     onClick={() => {
@@ -695,9 +700,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                 </Button>
                             </Box>
                         ))}
-                        <Button 
-                            variant="outlined" 
-                            size="small" 
+                        <Button
+                            variant="outlined"
+                            size="small"
                             sx={{ alignSelf: 'flex-start', mt: 0.5 }}
                             disabled={isRestrictedAdmin}
                             onClick={() => {
@@ -718,11 +723,11 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     <Box sx={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: 1 }}>
                         {(formData.snapshots || []).map((snap, idx) => (
                             <Box key={idx} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                <TextField 
-                                    label="Snapshot Name" 
-                                    size="small" 
+                                <TextField
+                                    label="Snapshot Name"
+                                    size="small"
                                     sx={{ flex: 1 }}
-                                    value={snap.name} 
+                                    value={snap.name}
                                     disabled={isRestrictedAdmin}
                                     onChange={(e) => {
                                         const updated = [...(formData.snapshots || [])];
@@ -730,11 +735,11 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                         setFormData(prev => ({ ...prev, snapshots: updated }));
                                     }}
                                 />
-                                <TextField 
-                                    label="Remarks" 
-                                    size="small" 
+                                <TextField
+                                    label="Remarks"
+                                    size="small"
                                     sx={{ flex: 2 }}
-                                    value={snap.remarks || ''} 
+                                    value={snap.remarks || ''}
                                     disabled={isRestrictedAdmin}
                                     onChange={(e) => {
                                         const updated = [...(formData.snapshots || [])];
@@ -742,9 +747,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                         setFormData(prev => ({ ...prev, snapshots: updated }));
                                     }}
                                 />
-                                <Button 
-                                    variant="outlined" 
-                                    color="error" 
+                                <Button
+                                    variant="outlined"
+                                    color="error"
                                     size="small"
                                     disabled={isRestrictedAdmin}
                                     onClick={() => {
@@ -756,9 +761,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                 </Button>
                             </Box>
                         ))}
-                        <Button 
-                            variant="outlined" 
-                            size="small" 
+                        <Button
+                            variant="outlined"
+                            size="small"
                             sx={{ alignSelf: 'flex-start', mt: 0.5 }}
                             disabled={isRestrictedAdmin}
                             onClick={() => {
@@ -779,11 +784,11 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     <Box sx={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: 1 }}>
                         {(formData.templates || []).map((tpl, idx) => (
                             <Box key={idx} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                <TextField 
-                                    label="Template Name" 
-                                    size="small" 
+                                <TextField
+                                    label="Template Name"
+                                    size="small"
                                     sx={{ flex: 1 }}
-                                    value={tpl.name} 
+                                    value={tpl.name}
                                     disabled={isRestrictedAdmin}
                                     onChange={(e) => {
                                         const updated = [...(formData.templates || [])];
@@ -791,11 +796,11 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                         setFormData(prev => ({ ...prev, templates: updated }));
                                     }}
                                 />
-                                <TextField 
-                                    label="Remarks" 
-                                    size="small" 
+                                <TextField
+                                    label="Remarks"
+                                    size="small"
                                     sx={{ flex: 2 }}
-                                    value={tpl.remarks || ''} 
+                                    value={tpl.remarks || ''}
                                     disabled={isRestrictedAdmin}
                                     onChange={(e) => {
                                         const updated = [...(formData.templates || [])];
@@ -803,9 +808,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                         setFormData(prev => ({ ...prev, templates: updated }));
                                     }}
                                 />
-                                <Button 
-                                    variant="outlined" 
-                                    color="error" 
+                                <Button
+                                    variant="outlined"
+                                    color="error"
                                     size="small"
                                     disabled={isRestrictedAdmin}
                                     onClick={() => {
@@ -817,9 +822,9 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                                 </Button>
                             </Box>
                         ))}
-                        <Button 
-                            variant="outlined" 
-                            size="small" 
+                        <Button
+                            variant="outlined"
+                            size="small"
                             sx={{ alignSelf: 'flex-start', mt: 0.5 }}
                             disabled={isRestrictedAdmin}
                             onClick={() => {

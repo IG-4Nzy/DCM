@@ -141,7 +141,7 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         const payload = {
             ...formData,
             totalRam: formData.totalRam ? Number(formData.totalRam) : undefined,
@@ -177,12 +177,12 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                         />
                     </Box>
                     <Box>
-                        <TextField 
-                            fullWidth 
-                            label="Host Name" 
-                            value={formData.hostName} 
-                            onChange={(e) => handleChange('hostName', e.target.value)} 
-                            required 
+                        <TextField
+                            fullWidth
+                            label="Host Name"
+                            value={formData.hostName}
+                            onChange={(e) => handleChange('hostName', e.target.value)}
+                            required
                         />
                     </Box>
                     <Box>
@@ -271,30 +271,30 @@ const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ open, onClose, onSu
                             disabled={isRestrictedAdmin}
                         />
                     </Box>
-                    
+
                     <Box className={styles.formGrid__fullWidth}>
                         <Divider className={styles.formGrid__divider} />
                         <Typography variant="subtitle2" className={styles.formGrid__title}>
                             Resource Capacity Configuration
                         </Typography>
                         <Box className={styles.formGrid__resourceGrid}>
-                            <TextField 
+                            <TextField
                                 fullWidth
-                                label="Total RAM" 
-                                value={formData.totalRam ?? ''} 
-                                onChange={(e) => handleChange('totalRam', e.target.value)} 
+                                label="Total RAM"
+                                value={formData.totalRam ?? ''}
+                                onChange={(e) => handleChange('totalRam', e.target.value)}
                             />
-                            <TextField 
+                            <TextField
                                 fullWidth
-                                label="Total HDD" 
-                                value={formData.totalHardisk ?? ''} 
-                                onChange={(e) => handleChange('totalHardisk', e.target.value)} 
+                                label="Total HDD"
+                                value={formData.totalHardisk ?? ''}
+                                onChange={(e) => handleChange('totalHardisk', e.target.value)}
                             />
-                            <TextField 
+                            <TextField
                                 fullWidth
-                                label="Total CPU" 
-                                value={formData.totalCpu ?? ''} 
-                                onChange={(e) => handleChange('totalCpu', e.target.value)} 
+                                label="Total CPU"
+                                value={formData.totalCpu ?? ''}
+                                onChange={(e) => handleChange('totalCpu', e.target.value)}
                             />
                         </Box>
                     </Box>

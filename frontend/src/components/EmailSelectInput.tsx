@@ -67,10 +67,8 @@ const EmailSelectInput: React.FC<EmailSelectInputProps> = ({
     ? value.split(',').map((e: string) => e.trim()).filter(Boolean)
     : [];
 
-  const AutocompleteAny = Autocomplete as any;
-
   return (
-    <AutocompleteAny
+    <Autocomplete
       multiple
       freeSolo
       size={size}
@@ -97,7 +95,7 @@ const EmailSelectInput: React.FC<EmailSelectInputProps> = ({
           }
         }
       }}
-      renderTags={(tagValue, getTagProps) =>
+      renderValue={(tagValue, getTagProps) =>
         tagValue.map((option, index) => (
           <Chip
             key={index}

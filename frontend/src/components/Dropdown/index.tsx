@@ -55,7 +55,7 @@ const Dropdown: React.FC<DropdownProps> = ({
     const opts = [...(options || [])];
     const optionValues = new Set(opts.map(o => String(o.value)));
     const displayVal = multiple ? (Array.isArray(value) ? value : []) : (value !== undefined && value !== null ? [value] : []);
-    
+
     displayVal.forEach((v) => {
       if (v !== '' && v !== null && v !== undefined && !optionValues.has(String(v))) {
         opts.push({ label: String(v), value: v });

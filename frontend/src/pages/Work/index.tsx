@@ -182,6 +182,7 @@ const Works: React.FC = () => {
       showToast: undefined
     }));
     dispatch(fetchDepartments({
+      pagination: false,
       limit: 1000
     }));
   }, [dispatch]);

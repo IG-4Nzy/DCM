@@ -7,13 +7,20 @@ interface CustomTextFieldProps extends Omit<MuiTextFieldProps, 'helperText'> {
   helperText?: React.ReactNode;
 }
 
-const TextField: React.FC<CustomTextFieldProps> = ({ showCount, helperText, ...props }) => {
+const TextField: React.FC<CustomTextFieldProps> = ({
+  showCount,
+  helperText,
+  InputLabelProps,
+  inputProps,
+  InputProps,
+  ...props
+}) => {
   const isTextArea = props.multiline || props.rows || props.maxRows || props.minRows;
   const maxLimit = isTextArea ? 200 : 100;
 
   const htmlInputProps = {
-    maxLength: props.inputProps?.maxLength !== undefined ? props.inputProps.maxLength : maxLimit,
-    ...props.inputProps,
+    maxLength: inputProps?.maxLength !== undefined ? inputProps.maxLength : maxLimit,
+    ...inputProps,
     ...props.slotProps?.htmlInput,
   };
 
@@ -22,10 +29,19 @@ const TextField: React.FC<CustomTextFieldProps> = ({ showCount, helperText, ...p
     htmlInput: htmlInputProps,
   };
 
-  const inputProps = {
-    maxLength: htmlInputProps.maxLength,
-    ...props.inputProps,
-  };
+  if (InputLabelProps) {
+    slotProps.inputLabel = {
+      ...InputLabelProps,
+      ...slotProps.inputLabel,
+    };
+  }
+
+  if (InputProps) {
+    slotProps.input = {
+      ...InputProps,
+      ...slotProps.input,
+    };
+  }
 
   const currentLength = typeof props.value === 'string' ? props.value.length : 0;
   const maxLength = htmlInputProps.maxLength;
@@ -43,7 +59,6 @@ const TextField: React.FC<CustomTextFieldProps> = ({ showCount, helperText, ...p
   return (
     <MuiTextField
       {...props}
-      inputProps={inputProps}
       slotProps={slotProps}
       helperText={renderedHelperText}
       sx={{

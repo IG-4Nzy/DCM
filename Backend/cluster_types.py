@@ -13,7 +13,7 @@ import csv
 router = APIRouter()
 cluster_types_collection = db.get_collection("cluster_types")
 
-@router.get("/", response_description="List all cluster types", response_model=PaginatedClusterTypesModel, response_model_by_alias=False, dependencies=[Depends(require_privilege("View Configurations"))])
+@router.get("/", response_description="List all cluster types", response_model=PaginatedClusterTypesModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["View Configurations", "Create Server Details", "View Server Details", "View All Server Details", "VM View", "Nodes View", "Create Request", "Update Request", "View Request", "Update Node (Restricted)", "Update VMs (Restricted)"]))])
 async def list_cluster_types(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),

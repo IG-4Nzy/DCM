@@ -21,10 +21,10 @@ const matchesPosition = (nodeRackPosition: string | undefined, posIndex: number)
     const parts = nodeRackPosition.split(',').map(p => p.trim().toLowerCase());
     const pad2 = String(posIndex).padStart(2, '0');
     return parts.some(norm =>
-        norm === `m ${posIndex}` || 
-        norm === `m${posIndex}` || 
-        norm === `m-${posIndex}` || 
-        norm === `${posIndex}` || 
+        norm === `m ${posIndex}` ||
+        norm === `m${posIndex}` ||
+        norm === `m-${posIndex}` ||
+        norm === `${posIndex}` ||
         norm === pad2
     );
 };
@@ -62,7 +62,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
     const [os, setOs] = useState<string>('');
     const [gpu, setGpu] = useState<string>('');
     const [networkType, setNetworkType] = useState<string>('intranet');
-    
+
     const [racks, setRacks] = useState<any[]>([]);
     const [serverModels, setServerModels] = useState<any[]>([]);
     const [gpusList, setGpusList] = useState<any[]>([]);
@@ -262,7 +262,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         const nodeErr = validators.alphanumericSpacesDotsDashesUnderscores(node, 50, "Node Name");
         const ipErr = isApplianceItem
             ? (ip && ip.trim() ? validators.ipv4(ip, "IP Address") : "")
@@ -327,8 +327,8 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
             return;
         }
 
-        const computedRackUnits = rackUnits.trim() !== '' 
-            ? Number(rackUnits) 
+        const computedRackUnits = rackUnits.trim() !== ''
+            ? Number(rackUnits)
             : (rackPosition && rackPosition.length > 0 ? rackPosition.length : undefined);
 
         // Compute final admin array including custom admin name if 'Other' selected
@@ -424,446 +424,446 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
 
     return (
         <>
-        <Modal
-            open={open}
-            handleClose={onClose}
-            title={editingItem ? 'Edit Node' : 'Add Node'}
-            maxWidth="sm"
-        >
-            <form onSubmit={handleSubmit}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-                        <Box sx={{ flexGrow: 1 }}>
-                            <FormLabel sx={{ display: 'block', mb: 1, fontWeight: 500, fontSize: '0.875rem' }}>
-                                Device Type
-                            </FormLabel>
-                            <ToggleButtonGroup
-                                color="primary"
-                                value={nodeType}
-                                exclusive
-                                disabled={isRestrictedAdmin}
-                                onChange={(e, val) => {
-                                    if (val !== null) {
-                                        setNodeType(val);
-                                        if (val !== 'node') {
-                                            setIsPhysical(false);
+            <Modal
+                open={open}
+                handleClose={onClose}
+                title={editingItem ? 'Edit Node' : 'Add Node'}
+                maxWidth="sm"
+            >
+                <form onSubmit={handleSubmit}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                            <Box sx={{ flexGrow: 1 }}>
+                                <FormLabel sx={{ display: 'block', mb: 1, fontWeight: 500, fontSize: '0.875rem' }}>
+                                    Device Type
+                                </FormLabel>
+                                <ToggleButtonGroup
+                                    color="primary"
+                                    value={nodeType}
+                                    exclusive
+                                    disabled={isRestrictedAdmin}
+                                    onChange={(e, val) => {
+                                        if (val !== null) {
+                                            setNodeType(val);
+                                            if (val !== 'node') {
+                                                setIsPhysical(false);
+                                            }
                                         }
-                                    }
-                                }}
-                                fullWidth
-                                size="small"
-                            >
-                                <ToggleButton value="node" sx={{ textTransform: 'none', fontWeight: 600 }}>Node</ToggleButton>
-                                <ToggleButton value="appliance" sx={{ textTransform: 'none', fontWeight: 600 }}>Appliance</ToggleButton>
-                                <ToggleButton value="storage" sx={{ textTransform: 'none', fontWeight: 600 }}>Storage</ToggleButton>
-                            </ToggleButtonGroup>
-                        </Box>
-                        {nodeType === 'node' && (
-                            <Box sx={{ pt: 2 }}>
-                                <FormControlLabel
-                                    control={
-                                        <Checkbox
-                                            checked={isPhysical}
-                                            disabled={isRestrictedAdmin}
-                                            onChange={(e) => setIsPhysical(e.target.checked)}
-                                            color="primary"
-                                        />
-                                    }
-                                    label="Is Physical Server"
-                                />
+                                    }}
+                                    fullWidth
+                                    size="small"
+                                >
+                                    <ToggleButton value="node" sx={{ textTransform: 'none', fontWeight: 600 }}>Node</ToggleButton>
+                                    <ToggleButton value="appliance" sx={{ textTransform: 'none', fontWeight: 600 }}>Appliance</ToggleButton>
+                                    <ToggleButton value="storage" sx={{ textTransform: 'none', fontWeight: 600 }}>Storage</ToggleButton>
+                                </ToggleButtonGroup>
                             </Box>
-                        )}
-                    </Box>
+                            {nodeType === 'node' && (
+                                <Box sx={{ pt: 2 }}>
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                checked={isPhysical}
+                                                disabled={isRestrictedAdmin}
+                                                onChange={(e) => setIsPhysical(e.target.checked)}
+                                                color="primary"
+                                            />
+                                        }
+                                        label="Is Physical Server"
+                                    />
+                                </Box>
+                            )}
+                        </Box>
 
-                    <Grid container spacing={2}>
-                        <Grid size={{xs: 12, sm: 4}}>
-                            <TextField
-                                fullWidth
-                                label="Cluster"
-                                value={editingItem?.clusterName || editingItem?.clusterId || '--'}
-                                disabled
-                            />
-                        </Grid>
-                        <Grid size={{xs: 12, sm: 4}}>
-                            <TextField
-                                fullWidth
-                                label="Node Name"
-                                placeholder="e.g. Node-01"
-                                value={node}
-                                required
-                                onChange={(e) => {
-                                    setField(e.target.value);
-                                    setErrors(prev => ({ ...prev, node: '' }));
-                                }}
-                                error={!!errors.node}
-                                helperText={errors.node}
-                            />
-                        </Grid>
-                        <Grid size={{xs: 12, sm: 4}}>
-                            <TextField
-                                fullWidth
-                                label="IP Address"
-                                placeholder="e.g. 192.168.1.10"
-                                value={ip}
-                                required={!isApplianceItem}
-                                onChange={(e) => {
-                                    setIp(e.target.value);
-                                    setErrors(prev => ({ ...prev, ip: '' }));
-                                }}
-                                error={!!errors.ip}
-                                helperText={errors.ip}
-                            />
-                        </Grid>
-                        <Grid size={{xs: 12, sm: 6}}>
-                            <TextField
-                                fullWidth
-                                label="Operating System"
-                                placeholder="e.g. RHEL 8 / Ubuntu 22.04"
-                                value={os}
-                                onChange={(e) => {
-                                    setOs(e.target.value);
-                                    setErrors(prev => ({ ...prev, os: '' }));
-                                }}
-                                error={!!errors.os}
-                                helperText={errors.os}
-                            />
-                        </Grid>
-                        <Grid size={{xs: 12, sm: 6}}>
-                            <Dropdown
-                                label="Network Type"
-                                fullWidth
-                                value={networkType}
-                                onChange={(val) => setNetworkType(val)}
-                                options={[
-                                    { label: 'Intranet', value: 'intranet' },
-                                    { label: 'Internet', value: 'internet' }
-                                ]}
-                            />
-                        </Grid>
-                    </Grid>
- 
-                    <Grid container spacing={2}>
-                        <Grid size={{xs: 12, sm: 6}}>
-                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                        <Grid container spacing={2}>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Cluster"
+                                    value={editingItem?.clusterName || editingItem?.clusterId || '--'}
+                                    disabled
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Node Name"
+                                    placeholder="e.g. Node-01"
+                                    value={node}
+                                    required
+                                    onChange={(e) => {
+                                        setField(e.target.value);
+                                        setErrors(prev => ({ ...prev, node: '' }));
+                                    }}
+                                    error={!!errors.node}
+                                    helperText={errors.node}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                                <TextField
+                                    fullWidth
+                                    label="IP Address"
+                                    placeholder="e.g. 192.168.1.10"
+                                    value={ip}
+                                    required={!isApplianceItem}
+                                    onChange={(e) => {
+                                        setIp(e.target.value);
+                                        setErrors(prev => ({ ...prev, ip: '' }));
+                                    }}
+                                    error={!!errors.ip}
+                                    helperText={errors.ip}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Operating System"
+                                    placeholder="e.g. RHEL 8 / Ubuntu 22.04"
+                                    value={os}
+                                    onChange={(e) => {
+                                        setOs(e.target.value);
+                                        setErrors(prev => ({ ...prev, os: '' }));
+                                    }}
+                                    error={!!errors.os}
+                                    helperText={errors.os}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
                                 <Dropdown
-                                    label="Server Model"
+                                    label="Network Type"
+                                    fullWidth
+                                    value={networkType}
+                                    onChange={(val) => setNetworkType(val)}
+                                    options={[
+                                        { label: 'Intranet', value: 'intranet' },
+                                        { label: 'Internet', value: 'internet' }
+                                    ]}
+                                />
+                            </Grid>
+                        </Grid>
+
+                        <Grid container spacing={2}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                                    <Dropdown
+                                        label="Server Model"
+                                        fullWidth
+                                        searchable
+                                        clearable
+                                        disabled={isRestrictedAdmin}
+                                        value={serverModel}
+                                        onChange={(val) => setServerModel(val)}
+                                        options={serverModels.map(sm => ({ label: sm.serverModel, value: sm.serverModel }))}
+                                    />
+                                    <IconButton
+                                        color="primary"
+                                        disabled={isRestrictedAdmin}
+                                        onClick={() => setShowNewModelModal(true)}
+                                        sx={{ mt: 1.5, border: '1px solid #1976d2', borderRadius: '8px', padding: '10px' }}
+                                        title="Add New Server Model"
+                                    >
+                                        <AddIcon />
+                                    </IconButton>
+                                </Box>
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}   >
+                                <TextField
+                                    fullWidth
+                                    label="Serial Number"
+                                    placeholder="e.g. SN-12345"
+                                    value={serialNumber}
+                                    required
+                                    disabled={isRestrictedAdmin}
+                                    onChange={(e) => {
+                                        setSerialNumber(e.target.value);
+                                        setErrors(prev => ({ ...prev, serialNumber: '' }));
+                                    }}
+                                    error={!!errors.serialNumber}
+                                    helperText={errors.serialNumber}
+                                />
+                            </Grid>
+                        </Grid>
+
+                        <Grid container spacing={2}>
+                            <Grid size={{ xs: 12, sm: 4 }}   >
+                                <TextField
+                                    fullWidth
+                                    label="Asset Number"
+                                    placeholder="e.g. AST-12345"
+                                    value={assetNumber}
+                                    required
+                                    disabled={isRestrictedAdmin}
+                                    onChange={(e) => {
+                                        setAssetNumber(e.target.value);
+                                        setErrors(prev => ({ ...prev, assetNumber: '' }));
+                                    }}
+                                    error={!!errors.assetNumber}
+                                    helperText={errors.assetNumber}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 4 }}   >
+                                <TextField
+                                    fullWidth
+                                    label="Custodian"
+                                    placeholder="e.g. John Doe"
+                                    value={custodian}
+                                    disabled={isRestrictedAdmin}
+                                    onChange={(e) => {
+                                        setCustodian(e.target.value);
+                                        setErrors(prev => ({ ...prev, custodian: '' }));
+                                    }}
+                                    error={!!errors.custodian}
+                                    helperText={errors.custodian}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: admin.includes('Other') ? 2 : 4 }}>
+                                <Dropdown
+                                    label="Admin"
                                     fullWidth
                                     searchable
                                     clearable
-                                    disabled={isRestrictedAdmin}
-                                    value={serverModel}
-                                    onChange={(val) => setServerModel(val)}
-                                    options={serverModels.map(sm => ({ label: sm.serverModel, value: sm.serverModel }))}
-                                />
-                                <IconButton 
-                                    color="primary" 
-                                    disabled={isRestrictedAdmin}
-                                    onClick={() => setShowNewModelModal(true)}
-                                    sx={{ mt: 1.5, border: '1px solid #1976d2', borderRadius: '8px', padding: '10px' }}
-                                    title="Add New Server Model"
-                                >
-                                    <AddIcon />
-                                </IconButton>
-                            </Box>
-                        </Grid>
-                        <Grid size={{xs: 12, sm: 6}}   >
-                            <TextField
-                                fullWidth
-                                label="Serial Number"
-                                placeholder="e.g. SN-12345"
-                                value={serialNumber}
-                                required
-                                disabled={isRestrictedAdmin}
-                                onChange={(e) => {
-                                    setSerialNumber(e.target.value);
-                                    setErrors(prev => ({ ...prev, serialNumber: '' }));
-                                }}
-                                error={!!errors.serialNumber}
-                                helperText={errors.serialNumber}
-                            />
-                        </Grid>
-                    </Grid>
- 
-                    <Grid container spacing={2}>
-                        <Grid size={{xs: 12, sm: 4}}   >
-                            <TextField
-                                fullWidth
-                                label="Asset Number"
-                                placeholder="e.g. AST-12345"
-                                value={assetNumber}
-                                required
-                                disabled={isRestrictedAdmin}
-                                onChange={(e) => {
-                                    setAssetNumber(e.target.value);
-                                    setErrors(prev => ({ ...prev, assetNumber: '' }));
-                                }}
-                                error={!!errors.assetNumber}
-                                helperText={errors.assetNumber}
-                            />
-                        </Grid>
-                        <Grid size={{xs: 12, sm: 4}}   >
-                            <TextField
-                                fullWidth
-                                label="Custodian"
-                                placeholder="e.g. John Doe"
-                                value={custodian}
-                                disabled={isRestrictedAdmin}
-                                onChange={(e) => {
-                                    setCustodian(e.target.value);
-                                    setErrors(prev => ({ ...prev, custodian: '' }));
-                                }}
-                                error={!!errors.custodian}
-                                helperText={errors.custodian}
-                            />
-                        </Grid>
-                        <Grid size={{xs: 12, sm: admin.includes('Other') ? 2 : 4}}>
-                            <Dropdown
-                                label="Admin"
-                                fullWidth
-                                searchable
-                                clearable
-                                multiple
-                                disabled={!isFullAdmin && !isRestrictedAdmin}
-                                value={admin}
-                                onChange={(val) => {
-                                    let selectedIds = Array.isArray(val) ? val : [val];
-                                    if (isRestrictedAdmin) {
-                                        const currentUserId = currentUser?._id || currentUser?.id || username;
-                                        if (selectedIds.includes('unassigned')) {
-                                            selectedIds = ['unassigned'];
-                                        } else if (selectedIds.length === 0) {
-                                            selectedIds = ['unassigned'];
-                                        } else {
-                                            selectedIds = selectedIds.filter(id => id === currentUserId);
+                                    multiple
+                                    disabled={!isFullAdmin && !isRestrictedAdmin}
+                                    value={admin}
+                                    onChange={(val) => {
+                                        let selectedIds = Array.isArray(val) ? val : [val];
+                                        if (isRestrictedAdmin) {
+                                            const currentUserId = currentUser?._id || currentUser?.id || username;
+                                            if (selectedIds.includes('unassigned')) {
+                                                selectedIds = ['unassigned'];
+                                            } else if (selectedIds.length === 0) {
+                                                selectedIds = ['unassigned'];
+                                            } else {
+                                                selectedIds = selectedIds.filter(id => id === currentUserId);
+                                            }
                                         }
-                                    }
-                                    setAdmin(selectedIds);
-                                }}
-                                options={isRestrictedAdmin ? restrictedAdminOptions : adminOptions}
-                            />
-                        </Grid>
-                        {admin.includes('Other') && (
-                            <Grid size={{xs: 12, sm: 2}}>
-                                <TextField
-                                    fullWidth
-                                    label="Other Admin Name"
-                                    placeholder="Enter name"
-                                    value={otherAdminName}
-                                    disabled={isRestrictedAdmin}
-                                    onChange={(e) => setOtherAdminName(e.target.value)}
-                                    required
+                                        setAdmin(selectedIds);
+                                    }}
+                                    options={isRestrictedAdmin ? restrictedAdminOptions : adminOptions}
                                 />
                             </Grid>
-                        )}
-                    </Grid>
- 
-                    <Box>
-                        <FormLabel sx={{ display: 'block', mb: 1, fontWeight: 500, fontSize: '0.875rem' }}>
-                            RAID Configuration
-                        </FormLabel>
-                        <FormGroup row sx={{ gap: 1 }}>
-                            {['RAID 0', 'RAID 1', 'RAID 5', 'RAID 6', 'RAID 10'].map((level) => (
-                                <FormControlLabel
-                                    key={level}
-                                    control={
-                                        <Checkbox
-                                            checked={raidConfiguration.includes(level)}
-                                            disabled={isRestrictedAdmin}
-                                            onChange={(e) => handleRaidChange(level, e.target.checked)}
-                                        />
-                                    }
-                                    label={level}
+                            {admin.includes('Other') && (
+                                <Grid size={{ xs: 12, sm: 2 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Other Admin Name"
+                                        placeholder="Enter name"
+                                        value={otherAdminName}
+                                        disabled={isRestrictedAdmin}
+                                        onChange={(e) => setOtherAdminName(e.target.value)}
+                                        required
+                                    />
+                                </Grid>
+                            )}
+                        </Grid>
+
+                        <Box>
+                            <FormLabel sx={{ display: 'block', mb: 1, fontWeight: 500, fontSize: '0.875rem' }}>
+                                RAID Configuration
+                            </FormLabel>
+                            <FormGroup row sx={{ gap: 1 }}>
+                                {['RAID 0', 'RAID 1', 'RAID 5', 'RAID 6', 'RAID 10'].map((level) => (
+                                    <FormControlLabel
+                                        key={level}
+                                        control={
+                                            <Checkbox
+                                                checked={raidConfiguration.includes(level)}
+                                                disabled={isRestrictedAdmin}
+                                                onChange={(e) => handleRaidChange(level, e.target.checked)}
+                                            />
+                                        }
+                                        label={level}
+                                    />
+                                ))}
+                            </FormGroup>
+                        </Box>
+
+                        <Grid container spacing={2}>
+                            <Grid size={{ xs: 12, sm: 3 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Total RAM"
+                                    placeholder="e.g. 128"
+                                    value={totalRam}
+                                    onChange={(e) => {
+                                        setTotalRam(e.target.value);
+                                        setErrors(prev => ({ ...prev, totalRam: '' }));
+                                    }}
+                                    error={!!errors.totalRam}
+                                    helperText={errors.totalRam}
                                 />
-                            ))}
-                        </FormGroup>
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 3 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Total HDD"
+                                    placeholder="e.g. 1000"
+                                    value={totalHardisk}
+                                    onChange={(e) => {
+                                        setTotalHardisk(e.target.value);
+                                        setErrors(prev => ({ ...prev, totalHardisk: '' }));
+                                    }}
+                                    error={!!errors.totalHardisk}
+                                    helperText={errors.totalHardisk}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 3 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Total CPU"
+                                    placeholder="e.g. 32"
+                                    value={totalCpu}
+                                    onChange={(e) => {
+                                        setTotalCpu(e.target.value);
+                                        setErrors(prev => ({ ...prev, totalCpu: '' }));
+                                    }}
+                                    error={!!errors.totalCpu}
+                                    helperText={errors.totalCpu}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 3 }}>
+                                <Dropdown
+                                    label="GPU"
+                                    fullWidth
+                                    searchable
+                                    clearable
+                                    value={gpu}
+                                    onChange={(val) => setGpu(val)}
+                                    options={gpusList.map(g => ({ label: g.gpuName, value: g.gpuName }))}
+                                />
+                            </Grid>
+                        </Grid>
+
+                        <Grid container spacing={2}>
+                            <Grid size={{ xs: 12, sm: 4 }}   >
+                                <Dropdown
+                                    label="Server Rack"
+                                    fullWidth
+                                    required
+                                    clearable
+                                    disabled={isRestrictedAdmin}
+                                    value={rack}
+                                    onChange={(val) => setRack(val)}
+                                    options={racks.map(r => ({ label: r.serverRack, value: r.serverRack }))}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 4 }}   >
+                                <Dropdown
+                                    label="Rack Position"
+                                    fullWidth
+                                    required
+                                    clearable
+                                    multiple
+                                    searchable
+                                    disabled={isRestrictedAdmin}
+                                    value={rackPosition}
+                                    onChange={(val) => setRackPosition(val)}
+                                    options={availablePositions}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 4 }}   >
+                                <TextField
+                                    fullWidth
+                                    type="number"
+                                    label="Rack Units (U)"
+                                    placeholder="e.g. 2"
+                                    disabled={isRestrictedAdmin}
+                                    value={rackUnits}
+                                    onChange={(e) => {
+                                        setRackUnits(e.target.value);
+                                        setErrors(prev => ({ ...prev, rackUnits: '' }));
+                                    }}
+                                    error={!!errors.rackUnits}
+                                    helperText={errors.rackUnits}
+                                />
+                            </Grid>
+                        </Grid>
+
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            <TextField
+                                fullWidth
+                                multiline
+                                rows={3}
+                                label="Remarks"
+                                placeholder="Enter remarks..."
+                                value={remarks}
+                                onChange={(e) => {
+                                    setRemarks(e.target.value);
+                                    setErrors(prev => ({ ...prev, remarks: '' }));
+                                }}
+                                error={!!errors.remarks}
+                                helperText={errors.remarks}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-4px' }}>
+                                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                    {remarks ? remarks.length : 0} / 125
+                                </span>
+                            </div>
+                        </Box>
                     </Box>
-                    
-                    <Grid container spacing={2}>
-                        <Grid size={{xs: 12, sm: 3}}>
-                            <TextField
-                                fullWidth
-                                label="Total RAM"
-                                placeholder="e.g. 128"
-                                value={totalRam}
-                                onChange={(e) => {
-                                    setTotalRam(e.target.value);
-                                    setErrors(prev => ({ ...prev, totalRam: '' }));
-                                }}
-                                error={!!errors.totalRam}
-                                helperText={errors.totalRam}
-                            />
-                        </Grid>
-                        <Grid size={{xs: 12, sm: 3}}>
-                            <TextField
-                                fullWidth
-                                label="Total HDD"
-                                placeholder="e.g. 1000"
-                                value={totalHardisk}
-                                onChange={(e) => {
-                                    setTotalHardisk(e.target.value);
-                                    setErrors(prev => ({ ...prev, totalHardisk: '' }));
-                                }}
-                                error={!!errors.totalHardisk}
-                                helperText={errors.totalHardisk}
-                            />
-                        </Grid>
-                        <Grid size={{xs: 12, sm: 3}}>
-                            <TextField
-                                fullWidth
-                                label="Total CPU"
-                                placeholder="e.g. 32"
-                                value={totalCpu}
-                                onChange={(e) => {
-                                    setTotalCpu(e.target.value);
-                                    setErrors(prev => ({ ...prev, totalCpu: '' }));
-                                }}
-                                error={!!errors.totalCpu}
-                                helperText={errors.totalCpu}
-                            />
-                        </Grid>
-                        <Grid size={{xs: 12, sm: 3}}>
-                            <Dropdown
-                                label="GPU"
-                                fullWidth
-                                searchable
-                                clearable
-                                value={gpu}
-                                onChange={(val) => setGpu(val)}
-                                options={gpusList.map(g => ({ label: g.gpuName, value: g.gpuName }))}
-                            />
-                        </Grid>
-                    </Grid>
- 
-                    <Grid container spacing={2}>
-                        <Grid size={{xs: 12, sm: 4}}   >
-                            <Dropdown
-                                label="Server Rack"
-                                fullWidth
-                                required
-                                clearable
-                                disabled={isRestrictedAdmin}
-                                value={rack}
-                                onChange={(val) => setRack(val)}
-                                options={racks.map(r => ({ label: r.serverRack, value: r.serverRack }))}
-                            />
-                        </Grid>
-                        <Grid size={{xs: 12, sm: 4}}   >
-                            <Dropdown
-                                label="Rack Position"
-                                fullWidth
-                                required
-                                clearable
-                                multiple
-                                searchable
-                                disabled={isRestrictedAdmin}
-                                value={rackPosition}
-                                onChange={(val) => setRackPosition(val)}
-                                options={availablePositions}
-                            />
-                        </Grid>
-                        <Grid size={{xs: 12, sm: 4}}   >
-                            <TextField
-                                fullWidth
-                                type="number"
-                                label="Rack Units (U)"
-                                placeholder="e.g. 2"
-                                disabled={isRestrictedAdmin}
-                                value={rackUnits}
-                                onChange={(e) => {
-                                    setRackUnits(e.target.value);
-                                    setErrors(prev => ({ ...prev, rackUnits: '' }));
-                                }}
-                                error={!!errors.rackUnits}
-                                helperText={errors.rackUnits}
-                            />
-                        </Grid>
-                    </Grid>
- 
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+                        <Button variant="text" onClick={onClose} style={{ color: '#637381' }}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" variant="contained" color="primary">
+                            {editingItem ? 'Update' : 'Save'}
+                        </Button>
+                    </Box>
+                </form>
+            </Modal>
+            <Dialog
+                open={showNewModelModal}
+                onClose={() => {
+                    setShowNewModelModal(false);
+                    setNewModelName('');
+                    setNewModelRemarks('');
+                }}
+                maxWidth="xs"
+                fullWidth
+            >
+                <DialogTitle sx={{ fontWeight: 'bold', color: '#333' }}>Add New Server Model</DialogTitle>
+                <DialogContent>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+                        <TextField
+                            fullWidth
+                            label="Server Model Name"
+                            placeholder="e.g. Dell PowerEdge R740"
+                            value={newModelName}
+                            onChange={(e) => setNewModelName(e.target.value)}
+                        />
                         <TextField
                             fullWidth
                             multiline
-                            rows={3}
+                            rows={2}
                             label="Remarks"
-                            placeholder="Enter remarks..."
-                            value={remarks}
-                            onChange={(e) => {
-                                setRemarks(e.target.value);
-                                setErrors(prev => ({ ...prev, remarks: '' }));
-                            }}
-                            error={!!errors.remarks}
-                            helperText={errors.remarks}
+                            placeholder="Optional remarks..."
+                            value={newModelRemarks}
+                            onChange={(e) => setNewModelRemarks(e.target.value)}
                         />
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-4px' }}>
-                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                {remarks ? remarks.length : 0} / 125
-                            </span>
-                        </div>
                     </Box>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
-                    <Button variant="text" onClick={onClose} style={{ color: '#637381' }}>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button
+                        variant="text"
+                        onClick={() => {
+                            setShowNewModelModal(false);
+                            setNewModelName('');
+                            setNewModelRemarks('');
+                        }}
+                        style={{ color: '#637381' }}
+                    >
                         Cancel
                     </Button>
-                    <Button type="submit" variant="contained" color="primary">
-                        {editingItem ? 'Update' : 'Save'}
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleSaveNewModel}
+                        disabled={!newModelName.trim()}
+                    >
+                        Save Model
                     </Button>
-                </Box>
-            </form>
-        </Modal>
-        <Dialog 
-            open={showNewModelModal} 
-            onClose={() => {
-                setShowNewModelModal(false);
-                setNewModelName('');
-                setNewModelRemarks('');
-            }}
-            maxWidth="xs"
-            fullWidth
-        >
-            <DialogTitle sx={{ fontWeight: 'bold', color: '#333' }}>Add New Server Model</DialogTitle>
-            <DialogContent>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-                    <TextField
-                        fullWidth
-                        label="Server Model Name"
-                        placeholder="e.g. Dell PowerEdge R740"
-                        value={newModelName}
-                        onChange={(e) => setNewModelName(e.target.value)}
-                    />
-                    <TextField
-                        fullWidth
-                        multiline
-                        rows={2}
-                        label="Remarks"
-                        placeholder="Optional remarks..."
-                        value={newModelRemarks}
-                        onChange={(e) => setNewModelRemarks(e.target.value)}
-                    />
-                </Box>
-            </DialogContent>
-            <DialogActions sx={{ px: 3, pb: 2 }}>
-                <Button 
-                    variant="text" 
-                    onClick={() => {
-                        setShowNewModelModal(false);
-                        setNewModelName('');
-                        setNewModelRemarks('');
-                    }} 
-                    style={{ color: '#637381' }}
-                >
-                    Cancel
-                </Button>
-                <Button 
-                    variant="contained" 
-                    color="primary"
-                    onClick={handleSaveNewModel}
-                    disabled={!newModelName.trim()}
-                >
-                    Save Model
-                </Button>
-            </DialogActions>
-        </Dialog>
+                </DialogActions>
+            </Dialog>
         </>
     );
 };

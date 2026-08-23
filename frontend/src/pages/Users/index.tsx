@@ -231,16 +231,16 @@ const Users: React.FC = () => {
       showToast("Password must be maximum 20 characters", "error");
       return;
     }
-    if (formFirstName && !/^[a-zA-Z0-9]+$/.test(formFirstName)) {
-      showToast("First name must be alphanumeric", "error");
+    if (formFirstName && !/^[a-zA-Z0-9_.\s]+$/.test(formFirstName)) {
+      showToast("First name must contain alphanumeric characters, spaces, dots, or underscores only", "error");
       return;
     }
     if (formFirstName && formFirstName.length > 20) {
       showToast("First name must be maximum 20 characters", "error");
       return;
     }
-    if (formLastName && !/^[a-zA-Z0-9]+$/.test(formLastName)) {
-      showToast("Last name must be alphanumeric", "error");
+    if (formLastName && !/^[a-zA-Z0-9_.\s]+$/.test(formLastName)) {
+      showToast("Last name must contain alphanumeric characters, spaces, dots, or underscores only", "error");
       return;
     }
     if (formLastName && formLastName.length > 20) {
