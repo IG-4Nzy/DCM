@@ -120,7 +120,7 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
     const validateField = (field: string, value: string) => {
         let errMsg = '';
         if (field === 'ipAddress') {
-            errMsg = validators.ipv4(value, 'IP Address');
+            errMsg = validators.ipv4CommaSeparated(value, 'IP Address');
         } else if (field === 'applications') {
             errMsg = validators.alphanumericGeneral(value, 100, 'Applications');
         } else if (field === 'osAndExpiry') {
@@ -128,11 +128,11 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
         } else if (field === 'backupLocation') {
             errMsg = validators.alphanumericGeneral(value, 100, 'Server Backup Location');
         } else if (field === 'hdd') {
-            errMsg = validators.alphanumericGeneral(value, 100, 'HDD');
+            errMsg = validators.alphanumericSpacesDots(value, 10, 'HDD');
         } else if (field === 'ram') {
-            errMsg = validators.alphanumericGeneral(value, 100, 'RAM');
+            errMsg = validators.alphanumericSpacesDots(value, 10, 'RAM');
         } else if (field === 'cpu') {
-            errMsg = validators.alphanumericGeneral(value, 100, 'CPU');
+            errMsg = validators.alphanumericSpacesDots(value, 10, 'CPU');
         }
         setErrors(prev => ({ ...prev, [field]: errMsg }));
         return errMsg;
@@ -181,13 +181,13 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
-        const ipErr = validators.ipv4(formData.ipAddress, 'IP Address');
+        const ipErr = validators.ipv4CommaSeparated(formData.ipAddress, 'IP Address');
         const appErr = validators.alphanumericGeneral(formData.applications, 100, 'Applications');
         const osErr = validators.alphanumericGeneral(formData.osAndExpiry, 100, 'OS and Expiry');
         const backErr = validators.alphanumericGeneral(formData.backupLocation, 100, 'Server Backup Location');
-        const hddErr = validators.alphanumericGeneral(formData.hdd, 100, 'HDD');
-        const ramErr = validators.alphanumericGeneral(formData.ram, 100, 'RAM');
-        const cpuErr = validators.alphanumericGeneral(formData.cpu, 100, 'CPU');
+        const hddErr = validators.alphanumericSpacesDots(formData.hdd, 10, 'HDD');
+        const ramErr = validators.alphanumericSpacesDots(formData.ram, 10, 'RAM');
+        const cpuErr = validators.alphanumericSpacesDots(formData.cpu, 10, 'CPU');
 
         const newErrors = {
             ipAddress: ipErr,

@@ -632,12 +632,24 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
     "& .MuiOutlinedInput-root": { borderRadius: "8px" },
   };
 
+  const hasDeptView = hasPrivilege("view_department_devices");
   const hasViewAll = isSuperuser || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
+
+  const currentUserDoc = allUsers.find(u => u.username === username);
+  const currentUserDept = currentUserDoc?.department || "";
+
+  const deptAdminsList = allUsers
+    .filter(u => u.department === currentUserDept)
+    .map(u => ({
+      label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+      value: u.username
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   const filteredAdmins = allUsers
     .map(u => ({
       label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
-      value: u._id || u.id || u.username
+      value: u.username
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
@@ -649,11 +661,18 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
         { label: "Other", value: "other" },
         ...filteredAdmins
       ]
-    : [
-        { label: "Me & Unassigned", value: "my_unassigned" },
-        { label: "Assigned to Me", value: "assigned" },
-        { label: "Unassigned", value: "unassigned" }
-      ];
+    : hasDeptView
+      ? [
+          { label: "All Dept Admins", value: "" },
+          { label: "Me & Unassigned", value: "my_unassigned" },
+          { label: "Unassigned", value: "unassigned" },
+          ...deptAdminsList
+        ]
+      : [
+          { label: "Me & Unassigned", value: "my_unassigned" },
+          { label: "Assigned to Me", value: "assigned" },
+          { label: "Unassigned", value: "unassigned" }
+        ];
 
   const activeFilterCount = [
     clusterFilter,
@@ -768,6 +787,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
               { label: "All Networks", value: "" },
               { label: "Intranet", value: "intranet" },
               { label: "Internet", value: "internet" },
+              { label: "Device Management", value: "device management" },
             ]}
           />
 
@@ -860,7 +880,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
             size="small"
             searchable
             clearable
-            value={!hasViewAll && adminFilter === "" ? "my_unassigned" : adminFilter}
+            value={!(hasViewAll || hasDeptView) && adminFilter === "" ? "my_unassigned" : adminFilter}
             onChange={(val) => {
               setAdminFilter(val);
               setPage(0);

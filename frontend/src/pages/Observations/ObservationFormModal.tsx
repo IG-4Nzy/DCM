@@ -65,6 +65,8 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
   const [commentFile, setCommentFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  const [racks, setRacks] = useState<any[]>([]);
+
   useEffect(() => {
     if (isModalOpen) {
       request.get('/api/observations/', { params: { pagination: false } })
@@ -74,6 +76,10 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
           setAllObservations(list.filter((o: any) => (o._id || o.id) !== currentId));
         })
         .catch(err => console.error('Failed to fetch observations for repeat dropdown', err));
+      
+      request.get('/api/server-racks/', { params: { pagination: false } })
+        .then(res => setRacks(res.data.data || []))
+        .catch(err => console.error('Failed to fetch server racks for dropdown', err));
     }
   }, [isModalOpen, editingObs]);
 
@@ -173,6 +179,12 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
               <ViewField label="Category" value={formData.category} />
               <ViewField label="AMC" value={formData.amc} />
             </div>
+            {formData.category?.toLowerCase() === 'hard disk failures' && (
+              <div className={styles.row}>
+                <ViewField label="Server Rack" value={formData.serverRack} />
+                <ViewField label="Rack Position" value={formData.rackPosition} />
+              </div>
+            )}
             <div className={styles.row}>
               <ViewField label="Description" value={formData.description} />
             </div>
@@ -311,6 +323,36 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
               </FormControl>
             </div>
             
+            {formData.category?.toLowerCase() === 'hard disk failures' && (
+              <div className={styles.row}>
+                <FormControl fullWidth className={styles.field}>
+                  <InputLabel>Server Rack</InputLabel>
+                  <Select
+                    value={formData.serverRack || ""}
+                    label="Server Rack"
+                    onChange={(e) => setFormData({ ...formData, serverRack: e.target.value })}
+                    sx={{ borderRadius: '8px' }}
+                    required
+                  >
+                    <MenuItem value=""><em>None</em></MenuItem>
+                    {racks.map(r => (
+                      <MenuItem key={r._id || r.id} value={r.serverRack}>{r.serverRack}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                
+                <TextField
+                  className={styles.field}
+                  fullWidth
+                  label="Rack Position"
+                  value={formData.rackPosition || ""}
+                  onChange={(e: any) => setFormData({ ...formData, rackPosition: e.target.value })}
+                  placeholder="Enter rack position"
+                  required
+                />
+              </div>
+            )}
+            
             <div className={styles.row}>
               <TextField
                 className={styles.field}
@@ -323,7 +365,7 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                 multiline
                 rows={3}
                 showCount={true}
-                inputProps={{ maxLength: 220 }}
+                inputProps={{ maxLength: 1500 }}
               />
             </div>
             

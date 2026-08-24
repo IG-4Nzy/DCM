@@ -387,7 +387,8 @@ const Clusters = () => {
                             options={[
                                 { label: 'All Networks', value: '' },
                                 { label: 'Intranet', value: 'intranet' },
-                                { label: 'Internet', value: 'internet' }
+                                { label: 'Internet', value: 'internet' },
+                                { label: 'Device Management', value: 'device management' }
                             ]}
                         />
                     </Box>

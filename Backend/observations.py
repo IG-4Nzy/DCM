@@ -213,11 +213,13 @@ async def list_observations(
         else:
             query["loggedBy"] = current_user["sub"]
 
-    actual_sort_by = sortBy or sort_by or "observationId"
-    sort_order = 1 if order == "asc" else -1
-    
     total = await obs_collection.count_documents(query)
-    cursor = obs_collection.find(query).sort(actual_sort_by, sort_order)
+    if category_filter and category_filter.strip().lower() == "hard disk failures" and not sortBy and not sort_by:
+        cursor = obs_collection.find(query).sort([("serverRack", 1), ("rackPosition", 1)])
+    else:
+        actual_sort_by = sortBy or sort_by or "observationId"
+        sort_order = 1 if order == "asc" else -1
+        cursor = obs_collection.find(query).sort(actual_sort_by, sort_order)
     if pagination:
         cursor = cursor.skip(skip).limit(limit)
         observations = await cursor.to_list(length=limit)

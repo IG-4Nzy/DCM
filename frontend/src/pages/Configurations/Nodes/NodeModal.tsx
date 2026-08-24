@@ -264,11 +264,11 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
         e.preventDefault();
 
         const nodeErr = validators.alphanumericSpacesDotsDashesUnderscores(node, 50, "Node Name");
-        const ipErr = isApplianceItem
-            ? (ip && ip.trim() ? validators.ipv4(ip, "IP Address") : "")
-            : (ip && ip.trim() ? validators.ipv4(ip, "IP Address") : "IP Address is required");
+        const ipErr = ip && ip.trim() ? validators.ipv4CommaSeparated(ip, "IP Address") : "";
+        const rackErr = !editingItem && !(rack && rack.trim()) ? "Server Rack is required" : "";
+        const rackPosErr = !editingItem && !(rackPosition && rackPosition.length > 0) ? "Rack Position is required" : "";
         const osErr = validators.alphanumericSpacesDotsDashesUnderscores(os, 50, "Operating System");
-        const modelErr = validators.alphanumericSpaces(serverModel, 50, "Server Model");
+        const modelErr = validators.maxLength(serverModel, 50, "Server Model");
         const serialErr = validators.serialAsset(serialNumber, 50, "Serial Number");
         const assetErr = validators.serialAsset(assetNumber, 50, "Asset Number");
         const custodianErr = validators.alphabetsSpaces(custodian, 50, "Custodian");
@@ -318,7 +318,9 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
             totalRam: totalRamErr,
             totalHardisk: totalHardiskErr,
             totalCpu: totalCpuErr,
-            rackUnits: rackUnitsErr
+            rackUnits: rackUnitsErr,
+            rack: rackErr,
+            rackPosition: rackPosErr
         };
 
         setErrors(newErrors);
@@ -490,7 +492,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                     label="Node Name"
                                     placeholder="e.g. Node-01"
                                     value={node}
-                                    required
+
                                     onChange={(e) => {
                                         setField(e.target.value);
                                         setErrors(prev => ({ ...prev, node: '' }));
@@ -505,7 +507,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                     label="IP Address"
                                     placeholder="e.g. 192.168.1.10"
                                     value={ip}
-                                    required={!isApplianceItem}
+
                                     onChange={(e) => {
                                         setIp(e.target.value);
                                         setErrors(prev => ({ ...prev, ip: '' }));
@@ -536,7 +538,8 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                     onChange={(val) => setNetworkType(val)}
                                     options={[
                                         { label: 'Intranet', value: 'intranet' },
-                                        { label: 'Internet', value: 'internet' }
+                                        { label: 'Internet', value: 'internet' },
+                                        { label: 'Device Management', value: 'device management' }
                                     ]}
                                 />
                             </Grid>
@@ -572,7 +575,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                     label="Serial Number"
                                     placeholder="e.g. SN-12345"
                                     value={serialNumber}
-                                    required
+
                                     disabled={isRestrictedAdmin}
                                     onChange={(e) => {
                                         setSerialNumber(e.target.value);
@@ -591,7 +594,7 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                     label="Asset Number"
                                     placeholder="e.g. AST-12345"
                                     value={assetNumber}
-                                    required
+
                                     disabled={isRestrictedAdmin}
                                     onChange={(e) => {
                                         setAssetNumber(e.target.value);
@@ -743,8 +746,13 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                     clearable
                                     disabled={isRestrictedAdmin}
                                     value={rack}
-                                    onChange={(val) => setRack(val)}
+                                    onChange={(val) => {
+                                        setRack(val);
+                                        setErrors(prev => ({ ...prev, rack: '' }));
+                                    }}
                                     options={racks.map(r => ({ label: r.serverRack, value: r.serverRack }))}
+                                    error={!!errors.rack}
+                                    helperText={errors.rack}
                                 />
                             </Grid>
                             <Grid size={{ xs: 12, sm: 4 }}   >
@@ -757,8 +765,13 @@ const NodeModal: React.FC<NodeModalProps> = ({ open, onClose, onSubmit, editingI
                                     searchable
                                     disabled={isRestrictedAdmin}
                                     value={rackPosition}
-                                    onChange={(val) => setRackPosition(val)}
+                                    onChange={(val) => {
+                                        setRackPosition(val);
+                                        setErrors(prev => ({ ...prev, rackPosition: '' }));
+                                    }}
                                     options={availablePositions}
+                                    error={!!errors.rackPosition}
+                                    helperText={errors.rackPosition}
                                 />
                             </Grid>
                             <Grid size={{ xs: 12, sm: 4 }}   >

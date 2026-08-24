@@ -52,8 +52,8 @@ class CreateGPUModel(BaseModel):
         if v is not None:
             v_trimmed = v.strip()
             if v_trimmed:
-                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
                 if len(v_trimmed) > 125:
                     raise ValueError("Remarks must be maximum 125 characters")
             return v_trimmed
@@ -86,8 +86,8 @@ class UpdateGPUModel(BaseModel):
         if v is not None:
             v_trimmed = v.strip()
             if v_trimmed:
-                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
                 if len(v_trimmed) > 125:
                     raise ValueError("Remarks must be maximum 125 characters")
             return v_trimmed

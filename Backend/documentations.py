@@ -38,8 +38,8 @@ async def create_documentation(
     if not title:
         raise HTTPException(status_code=400, detail="Title cannot be empty")
     import re
-    if not re.match(r"^[a-zA-Z0-9\s,.-]+$", title):
-        raise HTTPException(status_code=400, detail="Title must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+    if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", title):
+        raise HTTPException(status_code=400, detail="Title must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
     if len(title) > 100:
         raise HTTPException(status_code=400, detail="Title must be maximum 100 characters")
 
@@ -104,8 +104,8 @@ async def update_documentation(
     if not title:
         raise HTTPException(status_code=400, detail="Title cannot be empty")
     import re
-    if not re.match(r"^[a-zA-Z0-9\s,.-]+$", title):
-        raise HTTPException(status_code=400, detail="Title must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+    if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", title):
+        raise HTTPException(status_code=400, detail="Title must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
     if len(title) > 100:
         raise HTTPException(status_code=400, detail="Title must be maximum 100 characters")
 

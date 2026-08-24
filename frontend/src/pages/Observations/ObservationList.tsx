@@ -48,6 +48,8 @@ const ObservationList: React.FC = () => {
     observedTime: '',
     category: '',
     description: '',
+    serverRack: '',
+    rackPosition: '',
     amc: '',
     informedTo: [] as string[],
     informedToOther: '',
@@ -106,6 +108,8 @@ const ObservationList: React.FC = () => {
         observedTime: obs.observedTime || '',
         category: obs.category,
         description: obs.description,
+        serverRack: obs.serverRack || '',
+        rackPosition: obs.rackPosition || '',
         amc: obs.amc,
         informedTo: Array.isArray(obs.informedTo) ? obs.informedTo : (obs.informedTo ? [obs.informedTo] : []),
         informedToOther: obs.informedToOther || '',
@@ -148,8 +152,8 @@ const ObservationList: React.FC = () => {
          return;
       }
     }
-    if (formData.description && formData.description.length > 220) {
-       alert("Description must be maximum 220 characters");
+    if (formData.description && formData.description.length > 1500) {
+       alert("Description must be maximum 1500 characters");
        return;
     }
     if (formData.actionsTaken && formData.actionsTaken.length > 220) {
@@ -162,6 +166,10 @@ const ObservationList: React.FC = () => {
     }
 
     const payload: any = { ...formData };
+    if (payload.category?.toLowerCase() !== 'hard disk failures') {
+      payload.serverRack = null;
+      payload.rackPosition = null;
+    }
     if (!payload.informedTo.includes('Other')) {
       payload.informedToOther = '';
     }
@@ -240,21 +248,33 @@ const ObservationList: React.FC = () => {
       const loggedUser = users.find((user: any) => user.username === row.loggedBy || user.id === row.loggedBy);
       const loggedBy = loggedUser ? `${loggedUser.firstName || ''} ${loggedUser.lastName || ''}`.trim() || loggedUser.username : row.loggedBy;
 
-      return [
+      const baseRow: any[] = [
         row.observationId,
         row.observedDate,
         row.observedTime,
         row.category,
+      ];
+      if (categoryFilter?.toLowerCase() === 'hard disk failures') {
+        baseRow.push(row.serverRack || '', row.rackPosition || '');
+      }
+      baseRow.push(
         row.description,
         row.amc,
         informedText,
         loggedBy,
         row.status,
-      ].map(csvEscape).join(',');
+      );
+      return baseRow.map(csvEscape).join(',');
     });
 
+    const headers = ['ID', 'Observed Date', 'Observed Time', 'Category'];
+    if (categoryFilter?.toLowerCase() === 'hard disk failures') {
+      headers.push('Server Rack', 'Rack Position');
+    }
+    headers.push('Description', 'AMC', 'Informed To', 'Logged By', 'Status');
+
     const csv = [
-      ['ID', 'Observed Date', 'Observed Time', 'Category', 'Description', 'AMC', 'Informed To', 'Logged By', 'Status'].map(csvEscape).join(','),
+      headers.map(csvEscape).join(','),
       ...rows,
     ].join('\n');
 
@@ -296,6 +316,10 @@ const ObservationList: React.FC = () => {
       render: (row) => `${row.observedDate} ${row.observedTime || ''}`.trim()
     },
     { id: 'category', label: 'Category', sortable: true },
+    ...(categoryFilter?.toLowerCase() === 'hard disk failures' ? [
+      { id: 'serverRack', label: 'Server Rack', sortable: true, render: (row: any) => row.serverRack || '-' },
+      { id: 'rackPosition', label: 'Rack Position', sortable: true, render: (row: any) => row.rackPosition || '-' },
+    ] : []),
     { id: 'description', label: 'Description', sortable: false },
     { id: 'amc', label: 'AMC', sortable: true },
     { 

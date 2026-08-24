@@ -145,6 +145,15 @@ async def list_items(
     if target_user_id:
         user_admin_identifiers.append(target_user_id)
 
+    has_dept_priv = "view_department_devices" in privs
+    current_dept = user_doc.get("department") if user_doc else None
+    if has_dept_priv and current_dept:
+        dept_users = await users_col.find({"department": current_dept}).to_list(length=None)
+        for du in dept_users:
+            user_admin_identifiers.append(du["username"])
+            user_admin_identifiers.append(str(du["_id"]))
+        user_admin_identifiers = list(set(user_admin_identifiers))
+
     known_ids = set()
     if admin and admin.lower() == "other":
         users_col_adm = db.get_collection("users")
@@ -201,6 +210,9 @@ async def list_items(
             elif admin.lower() == "my_unassigned":
                 return {"$or": [{"admin": {"$in": user_admin_identifiers}}, *no_admin_conditions]}
             else:
+                if has_dept_priv:
+                    allowed_filter = list(admin_vals.intersection(set(user_admin_identifiers)))
+                    return {"admin": {"$in": allowed_filter}}
                 return {"admin": {"$in": user_admin_identifiers}}
 
 

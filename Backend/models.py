@@ -991,8 +991,8 @@ class CreateClusterTypeModel(BaseModel):
         if v is not None:
             v_trimmed = v.strip()
             if v_trimmed:
-                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
                 if len(v_trimmed) > 125:
                     raise ValueError("Remarks must be maximum 125 characters")
             return v_trimmed
@@ -1024,8 +1024,8 @@ class UpdateClusterTypeModel(BaseModel):
         if v is not None:
             v_trimmed = v.strip()
             if v_trimmed:
-                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
                 if len(v_trimmed) > 125:
                     raise ValueError("Remarks must be maximum 125 characters")
             return v_trimmed
@@ -1077,8 +1077,8 @@ class CreateHypervisorModel(BaseModel):
         if v is not None:
             v_trimmed = v.strip()
             if v_trimmed:
-                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
                 if len(v_trimmed) > 125:
                     raise ValueError("Remarks must be maximum 125 characters")
             return v_trimmed
@@ -1110,8 +1110,8 @@ class UpdateHypervisorModel(BaseModel):
         if v is not None:
             v_trimmed = v.strip()
             if v_trimmed:
-                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
                 if len(v_trimmed) > 125:
                     raise ValueError("Remarks must be maximum 125 characters")
             return v_trimmed
@@ -1307,8 +1307,8 @@ class CreateServerRackModel(BaseModel):
         if v is not None:
             v_trimmed = v.strip()
             if v_trimmed:
-                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
                 if len(v_trimmed) > 125:
                     raise ValueError("Remarks must be maximum 125 characters")
             return v_trimmed
@@ -1377,8 +1377,8 @@ class UpdateServerRackModel(BaseModel):
         if v is not None:
             v_trimmed = v.strip()
             if v_trimmed:
-                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
                 if len(v_trimmed) > 125:
                     raise ValueError("Remarks must be maximum 125 characters")
             return v_trimmed
@@ -1430,8 +1430,8 @@ class CreateServerModelModel(BaseModel):
         if v is not None:
             v_trimmed = v.strip()
             if v_trimmed:
-                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
                 if len(v_trimmed) > 125:
                     raise ValueError("Remarks must be maximum 125 characters")
             return v_trimmed
@@ -1463,8 +1463,8 @@ class UpdateServerModelModel(BaseModel):
         if v is not None:
             v_trimmed = v.strip()
             if v_trimmed:
-                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
                 if len(v_trimmed) > 125:
                     raise ValueError("Remarks must be maximum 125 characters")
             return v_trimmed
@@ -1634,8 +1634,8 @@ class CreateNodeDetailsModel(BaseModel):
         if v is not None:
             v_trimmed = v.strip()
             if v_trimmed:
-                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
                 if len(v_trimmed) > 125:
                     raise ValueError("Remarks must be maximum 125 characters")
             return v_trimmed
@@ -1758,8 +1758,8 @@ class UpdateNodeDetailsModel(BaseModel):
         if v is not None:
             v_trimmed = v.strip()
             if v_trimmed:
-                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
                 if len(v_trimmed) > 125:
                     raise ValueError("Remarks must be maximum 125 characters")
             return v_trimmed
@@ -1838,8 +1838,8 @@ class CreateClusterModel(BaseModel):
         if v is not None:
             v_trimmed = v.strip()
             if v_trimmed:
-                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
                 if len(v_trimmed) > 125:
                     raise ValueError("Remarks must be maximum 125 characters")
             return v_trimmed
@@ -1889,8 +1889,8 @@ class UpdateClusterModel(BaseModel):
         if v is not None:
             v_trimmed = v.strip()
             if v_trimmed:
-                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
                 if len(v_trimmed) > 125:
                     raise ValueError("Remarks must be maximum 125 characters")
             return v_trimmed
@@ -2158,9 +2158,9 @@ class CreateVMDetailsModel(BaseModel):
                 if not re.match(r"^[a-zA-Z0-9\s.]+$", v_trimmed):
                     label = info.field_name.upper()
                     raise ValueError(f"{label} must contain alphanumeric characters, spaces, or dots only")
-                if len(v_trimmed) > 20:
+                if len(v_trimmed) > 10:
                     label = info.field_name.upper()
-                    raise ValueError(f"{label} must be maximum 20 characters")
+                    raise ValueError(f"{label} must be maximum 10 characters")
             return v_trimmed
         return v
 
@@ -2283,9 +2283,9 @@ class UpdateVMDetailsModel(BaseModel):
                 if not re.match(r"^[a-zA-Z0-9\s.]+$", v_trimmed):
                     label = info.field_name.upper()
                     raise ValueError(f"{label} must contain alphanumeric characters, spaces, or dots only")
-                if len(v_trimmed) > 20:
+                if len(v_trimmed) > 10:
                     label = info.field_name.upper()
-                    raise ValueError(f"{label} must be maximum 20 characters")
+                    raise ValueError(f"{label} must be maximum 10 characters")
             return v_trimmed
         return v
 
@@ -2368,10 +2368,10 @@ class CreateRequestModel(BaseModel):
                 val = v.get(field)
                 if val:
                     val_str = str(val).strip()
-                    if not re.match(r"^[a-zA-Z0-9_\s]+$", val_str):
-                        raise ValueError(f"{field.upper()} must contain alphanumeric characters, spaces, or underscores only")
-                    if len(val_str) > 6:
-                        raise ValueError(f"{field.upper()} must be maximum 6 characters")
+                    if not re.match(r"^[a-zA-Z0-9_\s.]+$", val_str):
+                        raise ValueError(f"{field.upper()} must contain alphanumeric characters, spaces, underscores, or dots only")
+                    if len(val_str) > 10:
+                        raise ValueError(f"{field.upper()} must be maximum 10 characters")
         return v
 
     model_config = ConfigDict(
@@ -2453,10 +2453,10 @@ class UpdateRequestModel(BaseModel):
                 val = v.get(field)
                 if val:
                     val_str = str(val).strip()
-                    if not re.match(r"^[a-zA-Z0-9_\s]+$", val_str):
-                        raise ValueError(f"{field.upper()} must contain alphanumeric characters, spaces, or underscores only")
-                    if len(val_str) > 6:
-                        raise ValueError(f"{field.upper()} must be maximum 6 characters")
+                    if not re.match(r"^[a-zA-Z0-9_\s.]+$", val_str):
+                        raise ValueError(f"{field.upper()} must contain alphanumeric characters, spaces, underscores, or dots only")
+                    if len(val_str) > 10:
+                        raise ValueError(f"{field.upper()} must be maximum 10 characters")
         return v
 
     model_config = ConfigDict(
@@ -2862,8 +2862,8 @@ class CreateDatastoreModel(BaseModel):
         if v is not None:
             v_trimmed = v.strip()
             if v_trimmed:
-                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
                 if len(v_trimmed) > 125:
                     raise ValueError("Remarks must be maximum 125 characters")
             return v_trimmed
@@ -2927,8 +2927,8 @@ class UpdateDatastoreModel(BaseModel):
         if v is not None:
             v_trimmed = v.strip()
             if v_trimmed:
-                if not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
                 if len(v_trimmed) > 125:
                     raise ValueError("Remarks must be maximum 125 characters")
             return v_trimmed

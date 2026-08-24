@@ -165,7 +165,8 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
                             onChange={(val) => handleChange('networkType', val)}
                             options={[
                                 { label: 'Intranet', value: 'intranet' },
-                                { label: 'Internet', value: 'internet' }
+                                { label: 'Internet', value: 'internet' },
+                                { label: 'Device Management', value: 'device management' }
                             ]}
                         />
                     </Box>

@@ -45,8 +45,8 @@ class IpListModel(BaseModel):
     def validate_purpose(cls, v):
         if v is not None:
             v_trimmed = v.strip()
-            if v_trimmed and not re.match(r"^[a-zA-Z0-9\s,.-]+$", v_trimmed):
-                raise ValueError("Purpose must contain alphanumeric characters, spaces, commas, periods, or dashes only")
+            if v_trimmed and not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                raise ValueError("Purpose must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
             if len(v_trimmed) > 100:
                 raise ValueError("Purpose must be maximum 100 characters")
             return v_trimmed

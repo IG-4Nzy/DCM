@@ -95,6 +95,16 @@ async def list_items(
         admins = [target_username]
         if target_user_id:
             admins.append(target_user_id)
+
+        has_dept_priv = "view_department_devices" in privs
+        current_dept = user_doc.get("department") if user_doc else None
+        if has_dept_priv and current_dept:
+            dept_users = await users_col.find({"department": current_dept}).to_list(length=None)
+            for du in dept_users:
+                admins.append(du["username"])
+                admins.append(str(du["_id"]))
+            admins = list(set(admins))
+
         query["admin"] = {"$in": admins}
     
     if clusterId:

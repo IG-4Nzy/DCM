@@ -330,6 +330,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                   >
                     <MenuItem value="Internet">Internet</MenuItem>
                     <MenuItem value="Intranet">Intranet</MenuItem>
+                    <MenuItem value="Device Management">Device Management</MenuItem>
                   </Select>
                 </FormControl>
 

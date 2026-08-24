@@ -66,8 +66,9 @@ const getSharedAudioContext = (): AudioContext | null => {
 
 if (typeof window !== 'undefined') {
   const resumeAudio = () => {
-    if (sharedAudioContext && sharedAudioContext.state === 'suspended') {
-      sharedAudioContext.resume().catch(err => console.warn("Failed to resume AudioContext:", err));
+    const audioCtx = getSharedAudioContext();
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(err => console.warn("Failed to resume AudioContext:", err));
     }
   };
   window.addEventListener('click', resumeAudio, { capture: true, passive: true });
@@ -329,7 +330,10 @@ const ServerPingMonitoring: React.FC = () => {
   const playAlertBeep = () => {
     try {
       const audioCtx = getSharedAudioContext();
-      if (!audioCtx || audioCtx.state !== 'running') return;
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(err => console.warn("Failed to resume AudioContext in playAlertBeep:", err));
+      }
 
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
@@ -615,6 +619,15 @@ const ServerPingMonitoring: React.FC = () => {
     }
     return () => clearInterval(interval);
   }, [canView, search, sortBy, order]);
+
+  // Automatically reload the page every 1 hour (3600000 ms) while on this page
+  useEffect(() => {
+    const reloadTimer = setInterval(() => {
+      window.location.reload();
+    }, 3600000);
+
+    return () => clearInterval(reloadTimer);
+  }, []);
 
   if (!canView) {
     return (

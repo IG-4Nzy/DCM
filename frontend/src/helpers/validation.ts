@@ -44,10 +44,10 @@ export const validators = {
     return "";
   },
 
-  // Alphanumeric, spaces, commas, hyphens, and dots
+  // Alphanumeric, spaces, commas, hyphens, dots, and colons
   alphanumericGeneral: (val: string, maxLen?: number, label = "Field") => {
     if (!val) return "";
-    if (!/^[a-zA-Z0-9\s,.-]+$/.test(val)) return `${label} must contain alphanumeric characters, spaces, commas, periods, or dashes only`;
+    if (!/^[a-zA-Z0-9\s,.:-]+$/.test(val)) return `${label} must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only`;
     if (maxLen && val.length > maxLen) return `${label} must be maximum ${maxLen} characters`;
     return "";
   },
@@ -155,6 +155,20 @@ export const validators = {
     if (!val) return "";
     const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
     if (!ipRegex.test(val)) return `${label} must be a valid IPv4 address (e.g. 192.168.1.1)`;
+    return "";
+  },
+
+  // IPv4 Comma-Separated Address validation
+  ipv4CommaSeparated: (val: string, label = "IP Address") => {
+    if (!val) return "";
+    const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    const parts = val.split(',').map(part => part.trim()).filter(Boolean);
+    if (parts.length === 0) return "";
+    for (const part of parts) {
+      if (!ipRegex.test(part)) {
+        return `${label} must contain valid IPv4 addresses separated by commas (e.g. 192.168.1.1, 192.168.1.2)`;
+      }
+    }
     return "";
   },
 

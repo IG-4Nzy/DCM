@@ -324,13 +324,13 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
 
         // --- Validate all fields ---
         const vmNameErr = validators.alphanumericSpacesDotsDashesUnderscores(formData.vmName || '', 50, 'VM Name');
-        const ipErr = validators.ipv4(formData.ipAddress || '', 'IP Address');
+        const ipErr = validators.ipv4CommaSeparated(formData.ipAddress || '', 'IP Address');
         const osErr = validators.osExpiry(formData.osAndExpiry || '', 100, 'OS and Expiry');
         const appsErr = validators.applicationsGeneral(formData.applications || '', 200, 'Applications');
         const backupNameErr = validators.alphanumericSpacesDotsDashesUnderscores(formData.backupName || '', 50, 'Backup Name');
-        const hddErr = validators.alphanumeric(formData.hdd || '', 6, 'HDD');
-        const ramErr = validators.alphanumeric(formData.ram || '', 6, 'RAM');
-        const cpuErr = validators.alphanumeric(formData.cpu || '', 6, 'CPU');
+        const hddErr = validators.alphanumericSpacesDots(formData.hdd || '', 10, 'HDD');
+        const ramErr = validators.alphanumericSpacesDots(formData.ram || '', 10, 'RAM');
+        const cpuErr = validators.alphanumericSpacesDots(formData.cpu || '', 10, 'CPU');
         const contactErr = validators.phoneDigits(formData.adminContact || '', 50, 'Admin Contact');
 
         const newErrors = {
@@ -467,7 +467,8 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         onChange={(val) => handleChange('networkType', val)}
                         options={[
                             { label: 'Internet (192.168.x.x)', value: 'Internet' },
-                            { label: 'Intranet (10.x.x.x)', value: 'Intranet' }
+                            { label: 'Intranet (10.x.x.x)', value: 'Intranet' },
+                            { label: 'Device Management', value: 'Device Management' }
                         ]}
                     />
                     <TextField

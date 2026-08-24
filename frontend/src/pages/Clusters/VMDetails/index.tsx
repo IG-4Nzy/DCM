@@ -325,18 +325,23 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
         }
     };
 
+    const hasDeptView = hasPrivilege("view_department_devices");
     const hasViewAll = isSuperuser || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
     const currentUser = allUsers.find(u => u.username === username);
     const userDept = currentUser?.department;
 
-    const filteredAdmins = allUsers
-        .filter(u => {
-            if (hasViewAll) return true;
-            return u.department === userDept;
-        })
+    const deptAdminsList = allUsers
+        .filter(u => u.department === userDept)
         .map(u => ({
             label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
-            value: u._id || u.id || u.username
+            value: u.username
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+
+    const filteredAdmins = allUsers
+        .map(u => ({
+            label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+            value: u.username
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
 
@@ -348,12 +353,18 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
             { label: 'Other', value: 'other' },
             ...filteredAdmins
         ]
-        : [
-            { label: 'Me & Unassigned', value: 'my_unassigned' },
-            { label: 'Assigned to Me', value: 'assigned' },
-            { label: 'Unassigned', value: 'unassigned' },
-            ...filteredAdmins
-        ];
+        : hasDeptView
+            ? [
+                { label: 'All Dept Admins', value: '' },
+                { label: 'Me & Unassigned', value: 'my_unassigned' },
+                { label: 'Unassigned', value: 'unassigned' },
+                ...deptAdminsList
+            ]
+            : [
+                { label: 'Me & Unassigned', value: 'my_unassigned' },
+                { label: 'Assigned to Me', value: 'assigned' },
+                { label: 'Unassigned', value: 'unassigned' }
+            ];
 
     const activeFilterCount = [
         (!clusterId && selectedClusterFilter !== 'All') ? selectedClusterFilter : '',
@@ -492,7 +503,8 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                             { label: 'All Networks', value: '' },
                             { label: 'Intranet', value: 'intranet' },
                             { label: 'Internet', value: 'internet' },
-                            { label: 'Disconnected', value: 'disconnected' }
+                            { label: 'Disconnected', value: 'disconnected' },
+                            { label: 'Device Management', value: 'device management' }
                         ]}
                     />
                 </FilterGroup>
@@ -504,7 +516,7 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                             size="small"
                             searchable
                             clearable
-                            value={!hasViewAll && adminFilter === "" ? "my_unassigned" : adminFilter}
+                            value={!(hasViewAll || hasDeptView) && adminFilter === "" ? "my_unassigned" : adminFilter}
                             onChange={(val) => {
                                 setAdminFilter(val);
                                 setPage(0);
