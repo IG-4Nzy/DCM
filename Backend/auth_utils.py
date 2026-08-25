@@ -4,13 +4,37 @@ import jwt
 import os
 import sys
 
-# Import SECRET_KEY and ALGORITHM from auth
-# If they are not accessible, we should move them to a config or redefine here
-try:
-    from auth import SECRET_KEY, ALGORITHM
-except ImportError:
-    SECRET_KEY = "super-secret-jwt-key-replace-me-in-production"
-    ALGORITHM = "HS256"
+import secrets
+
+def load_or_generate_jwt_secret():
+    # 1. Try environment variable
+    secret = os.environ.get("JWT_SECRET_KEY")
+    if secret and len(secret) >= 32:
+        return secret
+        
+    # 2. Try file-based secret in Backend directory
+    backend_dir = os.path.dirname(os.path.abspath(__file__))
+    secret_file = os.path.join(backend_dir, ".jwt_secret")
+    if os.path.exists(secret_file):
+        try:
+            with open(secret_file, "r") as f:
+                s = f.read().strip()
+                if len(s) >= 64:
+                    return s
+        except Exception:
+            pass
+            
+    # 3. Generate a new cryptographically secure secret
+    s = secrets.token_hex(64)
+    try:
+        with open(secret_file, "w") as f:
+            f.write(s)
+    except Exception as e:
+        print(f"Warning: Could not save JWT secret to file: {e}")
+    return s
+
+SECRET_KEY = load_or_generate_jwt_secret()
+ALGORITHM = "HS256"
 
 # Simple in-memory cache to prevent database bottlenecks under heavy concurrent load
 from datetime import datetime, timezone

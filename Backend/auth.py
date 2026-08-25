@@ -5,13 +5,11 @@ import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
 from database import db, get_local_now
-from auth_utils import get_current_user
+from auth_utils import get_current_user, SECRET_KEY, ALGORITHM
 from models import check_first_name, check_last_name, check_mobile
 
 router = APIRouter()
 
-SECRET_KEY = "super-secret-jwt-key-replace-me-in-production"
-ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480 # Token valid for 8 hours
 
 class LoginRequest(BaseModel):
@@ -95,12 +93,50 @@ async def login(credentials: LoginRequest):
             detail="Invalid username or password"
         )
         
+    now_utc = datetime.now(timezone.utc)
+    lockout_until_str = user.get("lockout_until")
+    if lockout_until_str:
+        try:
+            lockout_until = datetime.fromisoformat(lockout_until_str.replace("Z", "+00:00"))
+            if now_utc < lockout_until:
+                diff_mins = int((lockout_until - now_utc).total_seconds() / 60) + 1
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Account is locked due to too many failed attempts. Try again in {diff_mins} minutes."
+                )
+        except Exception:
+            pass
+            
     is_valid = bcrypt.checkpw(credentials.password.encode('utf-8'), user["password"].encode('utf-8'))
     if not is_valid:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password"
-        )
+        failed_attempts = user.get("failed_login_attempts", 0) + 1
+        update_fields = {"failed_login_attempts": failed_attempts}
+        if failed_attempts >= 5:
+            lockout_time = now_utc + timedelta(minutes=15)
+            update_fields["lockout_until"] = lockout_time.isoformat().replace("+00:00", "Z")
+            await users_collection.update_one(
+                {"username": credentials.username},
+                {"$set": update_fields}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is locked due to too many failed attempts. Try again in 15 minutes."
+            )
+        else:
+            await users_collection.update_one(
+                {"username": credentials.username},
+                {"$set": update_fields}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid username or password"
+            )
+            
+    # Reset lockout counters on successful login
+    await users_collection.update_one(
+        {"username": credentials.username},
+        {"$set": {"failed_login_attempts": 0, "lockout_until": None}}
+    )
         
     if user.get("status") is False:
         raise HTTPException(
