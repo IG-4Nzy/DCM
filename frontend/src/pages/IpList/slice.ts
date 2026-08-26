@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createSlice } from '@reduxjs/toolkit';
 import { fetchIpList, createIp, updateIp, deleteIp } from './action';
 import type { IpListModel } from './model';

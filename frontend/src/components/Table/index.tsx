@@ -10,7 +10,8 @@ import {
   TableSortLabel,
   TablePagination,
   Paper,
-  Box
+  Box,
+  LinearProgress
 } from '@mui/material';
 
 export interface Column<T> {
@@ -34,6 +35,7 @@ interface ReusableTableProps<T> {
   onRowsPerPageChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   totalCount?: number;
   onRowClick?: (row: T) => void;
+  loading?: boolean;
 }
 
 function Table<T extends { id?: string | number }>(props: ReusableTableProps<T>) {
@@ -48,7 +50,8 @@ function Table<T extends { id?: string | number }>(props: ReusableTableProps<T>)
     onPageChange,
     onRowsPerPageChange,
     totalCount,
-    onRowClick
+    onRowClick,
+    loading
   } = props;
 
   return (
@@ -65,7 +68,23 @@ function Table<T extends { id?: string | number }>(props: ReusableTableProps<T>)
         height: '100%'
       }}
     >
-      <TableContainer className="table-container-scroll" sx={{ flexGrow: 1, overflow: 'auto' }}>
+      <TableContainer className="table-container-scroll" sx={{ flexGrow: 1, overflow: 'auto', position: 'relative' }}>
+        {loading && (
+          <LinearProgress
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 10,
+              height: 3,
+              backgroundColor: 'rgba(24, 144, 255, 0.1)',
+              '& .MuiLinearProgress-bar': {
+                backgroundColor: '#1890ff'
+              }
+            }}
+          />
+        )}
         <MuiTable stickyHeader aria-label="modern table" sx={{ minWidth: { xs: 300, sm: 650 } }}>
           <TableHead>
             <TableRow>
@@ -105,7 +124,15 @@ function Table<T extends { id?: string | number }>(props: ReusableTableProps<T>)
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.length > 0 ? (
+            {loading && data.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} align="center" sx={{ borderBottom: 'none' }}>
+                  <Box sx={{ py: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#919eab' }}>
+                    <label style={{ fontSize: '1.1rem', fontWeight: 500 }}>Loading...</label>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ) : data.length > 0 ? (
               data.map((row, index) => {
                 const isLast = index === data.length - 1;
                 const serialNumber = page !== undefined && rowsPerPage !== undefined

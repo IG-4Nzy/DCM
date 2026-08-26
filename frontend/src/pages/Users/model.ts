@@ -61,6 +61,7 @@ export interface UpdateUserPayload {
 
 export interface UsersState {
   users: UserData[];
+  adminUsers: UserData[];
   availableRoles: { id: string; name: string }[];
   availableDepartments: any[];
   totalCount: number;

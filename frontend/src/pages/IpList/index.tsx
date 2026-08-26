@@ -1,5 +1,4 @@
-// @ts-nocheck
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, Paper, Tooltip, IconButton, Chip, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdRefresh as RefreshIcon } from 'react-icons/md';
@@ -58,8 +57,19 @@ const IpList: React.FC = () => {
         return users.filter(u => u.department === loggedInUser.department);
     }, [users, loggedInUser, isSuperuser]);
 
+    const totalCountRef = useRef(totalCount);
+    useEffect(() => {
+        totalCountRef.current = totalCount;
+    }, [totalCount]);
+
     const loadData = useCallback(() => {
         if (!hasViewPrivilege) return;
+
+        if (totalCountRef.current > 0 && page * rowsPerPage >= totalCountRef.current) {
+            setPage(0);
+            return;
+        }
+
         let isUsedParam: boolean | undefined = undefined;
         if (isUsedFilter === 'free') isUsedParam = false;
         else if (isUsedFilter === 'used') isUsedParam = true;
@@ -71,7 +81,7 @@ const IpList: React.FC = () => {
             isUsed: isUsedParam,
             takenBy: userFilter === 'all' ? undefined : userFilter
         }));
-    }, [dispatch, hasViewPrivilege, page, rowsPerPage, searchQuery, isUsedFilter, userFilter]);
+    }, [dispatch, hasViewPrivilege, page, rowsPerPage, searchQuery, isUsedFilter, userFilter, setPage]);
 
     useEffect(() => {
         dispatch(fetchUsers({ pagination: false }));
@@ -82,9 +92,7 @@ const IpList: React.FC = () => {
     }, [loadData]);
 
     useEffect(() => {
-        if (totalCount === 0 && page > 0) {
-            setPage(0);
-        } else if (totalCount > 0 && page * rowsPerPage >= totalCount) {
+        if (totalCount > 0 && page * rowsPerPage >= totalCount) {
             setPage(0);
         }
     }, [totalCount, page, rowsPerPage, setPage]);

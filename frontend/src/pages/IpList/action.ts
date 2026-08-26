@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import request from '../../services/request';
 import type { IpListModel } from './model';

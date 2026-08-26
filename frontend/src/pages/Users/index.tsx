@@ -27,17 +27,31 @@ import type { AppDispatch, RootState } from "../../store";
 import type { UserData } from "./model";
 import UserFormModal from "./UserFormModal";
 import { hasPrivilege } from "../../helpers/authUtils";
+import { jwtDecode } from "jwt-decode";
 import { getServerTime } from "../../helpers/time";
 import styles from "./index.module.scss";
 import { PRIVILEGES } from "../../helpers/privileges";
 
 type Order = "asc" | "desc";
 
+const getLoggedInUserDepartment = (): string => {
+  try {
+    const token = localStorage.getItem("token");
+    if (token) {
+      const decoded: any = jwtDecode(token);
+      return decoded.department || "All Departments";
+    }
+  } catch (e) {
+    console.error("Error decoding token:", e);
+  }
+  return "All Departments";
+};
+
 const Users: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { username: currentUsername } = useSelector((state: RootState) => state.auth);
   const {
-    users,
+    adminUsers,
     availableRoles,
     availableDepartments,
     totalCount,
@@ -46,8 +60,18 @@ const Users: React.FC = () => {
   } = useSelector((state: RootState) => state.users);
   const { showToast } = useToast();
 
+  const hasViewAll = hasPrivilege(PRIVILEGES.USER_VIEW_ALL);
+  const defaultDept = hasViewAll ? "All Departments" : getLoggedInUserDepartment();
+
   const [searchQuery, setSearchQuery] = useTableState("users_search", "");
-  const [selectedDepartment, setSelectedDepartment] = useTableState("users_filter_dept", "All Departments");
+  const [selectedDepartment, setSelectedDepartment] = useTableState("users_filter_dept", defaultDept);
+
+  useEffect(() => {
+    if (!hasViewAll && selectedDepartment === "All Departments") {
+      setSelectedDepartment(getLoggedInUserDepartment());
+    }
+  }, [hasViewAll, selectedDepartment, setSelectedDepartment]);
+
   const [selectedRole, setSelectedRole] = useTableState("users_filter_role", "All Roles");
   const [selectedStatus, setSelectedStatus] = useTableState("users_filter_status", "active");
   const [page, setPage] = useTableState("users_page", 0);
@@ -328,7 +352,7 @@ const Users: React.FC = () => {
     if (await confirm("Are you sure you want to delete this user?", "Delete User")) {
       try {
         await dispatch(deleteUser({ id, showToast })).unwrap();
-        if (users.length === 1 && page > 0) {
+        if (adminUsers.length === 1 && page > 0) {
           setPage(page - 1);
         } else {
           loadData();
@@ -580,7 +604,7 @@ const Users: React.FC = () => {
         {/* Table */}
         <Table
           columns={columns}
-          data={users || []}
+          data={adminUsers || []}
           orderBy={orderBy as string}
           order={order}
           onRequestSort={(prop) => handleRequestSort(prop as keyof UserData)}
