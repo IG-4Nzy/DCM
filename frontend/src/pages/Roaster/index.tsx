@@ -1,28 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from "react";
-import {
-  Box,
-  Typography,
-  Button,
-  Autocomplete,
-  TextField,
-  Tooltip,
-  Chip,
-  Menu,
-  MenuItem,
-  IconButton,
-  Tabs,
-  Tab,
-  Paper,
-  Switch,
-  FormControlLabel,
-  FormControl,
-  Select,
-  InputLabel,
-  Drawer,
-  Divider,
-  Avatar
-} from "@mui/material";
+import { Box, Typography, Button, Autocomplete, Tooltip, Chip, Menu, MenuItem, IconButton, Tabs, Tab, Paper, Switch, FormControlLabel, FormControl, Select, InputLabel, Drawer, Divider, Avatar } from '@mui/material';
+import TextField from '../../components/TextField';
 import { MdEdit as EditIcon, MdSave as SaveIcon, MdClose as CancelIcon, MdPrint as PrintIcon, MdContentCopy as CopyIcon, MdUndo as UndoIcon, MdHistory as HistoryIcon, MdCalendarToday, MdBusiness, MdDownload as DownloadIcon } from "react-icons/md";
 import dayjs, { Dayjs } from "dayjs";
 import { getServerTime } from "../../helpers/time";

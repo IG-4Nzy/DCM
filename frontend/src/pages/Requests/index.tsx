@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Box, Paper, Tooltip, IconButton, Chip, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Tabs, Tab } from '@mui/material';
+import { Box, Paper, Tooltip, IconButton, Chip, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Tabs, Tab } from '@mui/material';
+import TextField from '../../components/TextField';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import SearchBar from '../../components/SearchBar';
 import Table, { type Column } from '../../components/Table';
@@ -123,7 +124,6 @@ const Requests: React.FC = () => {
         loadData();
         fetchRequestTypes();
         dispatch(fetchUsers({ pagination: false }));
-        dispatch(fetchInventory({ pagination: false }));
     }, [loadData, fetchRequestTypes, dispatch]);
 
     useEffect(() => {
@@ -375,7 +375,8 @@ const Requests: React.FC = () => {
 
                 if (row.details) {
                     if (row.requestType === 'VM Creation' || row.requestType === 'VM Management') {
-                        if (row.details.vmName) parts.push(`VM: ${row.details.vmName}`);
+                        const vmNameVal = row.details.vmName || row.details.applications || row.details.vmId;
+                        if (vmNameVal) parts.push(`VM: ${vmNameVal}`);
                         if (row.details.osVersion) parts.push(`OS: ${row.details.osVersion}`);
                         if (row.details.ram) parts.push(`RAM: ${row.details.ram}`);
                     } else if (row.requestType === 'DC Entry') {

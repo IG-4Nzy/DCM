@@ -63,11 +63,160 @@ class UserModel(BaseModel):
     passNumber: Optional[str] = None
     lastActive: Optional[str] = None
     isMonitorUser: Optional[bool] = None
+    activated: Optional[bool] = Field(default=True)
 
     model_config = ConfigDict(
         populate_by_name=True,
         arbitrary_types_allowed=True,
     )
+
+def check_username(v: Optional[str]) -> Optional[str]:
+    if v is not None:
+        v_trimmed = v.strip()
+        if not all(c.isalnum() or c == '_' for c in v_trimmed):
+            raise ValueError("Username must contain alphabets, underscore, and numbers only")
+        if len(v_trimmed) > 20:
+            raise ValueError("Username must be maximum 20 characters")
+        return v_trimmed
+    return v
+
+def check_password(v: Optional[str]) -> Optional[str]:
+    if v is not None:
+        if len(v) > 20:
+            raise ValueError("Password must be maximum 20 characters")
+    return v
+
+def check_status(v: Any) -> bool:
+    if isinstance(v, str):
+        val_str = v.lower().strip()
+        if val_str not in ['active', 'inactive']:
+            raise ValueError("Status must be 'active' or 'inactive'")
+        return val_str == 'active'
+    if isinstance(v, bool):
+        return v
+    raise ValueError("Status must be 'active', 'inactive', true, or false")
+
+def check_first_name(v: Optional[str]) -> Optional[str]:
+    if v:
+        v_trimmed = v.strip()
+        if not all(c.isalnum() or c.isspace() or c == '_' or c == '.' for c in v_trimmed):
+            raise ValueError("First name must contain alphanumeric characters, spaces, dots, or underscores only")
+        if len(v_trimmed) > 20:
+            raise ValueError("First name must be maximum 20 characters")
+        return v_trimmed
+    return v
+
+def check_last_name(v: Optional[str]) -> Optional[str]:
+    if v:
+        v_trimmed = v.strip()
+        if not all(c.isalnum() or c.isspace() or c == '_' or c == '.' for c in v_trimmed):
+            raise ValueError("Last name must contain alphanumeric characters, spaces, dots, or underscores only")
+        if len(v_trimmed) > 20:
+            raise ValueError("Last name must be maximum 20 characters")
+        return v_trimmed
+    return v
+
+def check_mobile(v: Optional[str]) -> Optional[str]:
+    if v:
+        v_trimmed = v.strip()
+        if not all(c.isdigit() or c == ',' for c in v_trimmed):
+            raise ValueError("Mobile number must contain numbers and commas only")
+        return v_trimmed
+    return v
+
+def check_pass_number(v: Optional[str]) -> Optional[str]:
+    if v:
+        v_trimmed = v.strip()
+        if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+            raise ValueError("Pass number must contain alphanumeric characters, spaces, or underscores only")
+        if len(v_trimmed) > 15:
+            raise ValueError("Pass number must be maximum 15 characters")
+        return v_trimmed
+    return v
+
+def check_date_of_join(v: Optional[str]) -> Optional[str]:
+    if v:
+        from datetime import datetime, date
+        try:
+            date_str = v.split('T')[0]
+            parsed_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            if parsed_date > date.today():
+                raise ValueError("Date of join cannot be a future date")
+        except ValueError as e:
+            if "future date" in str(e):
+                raise
+    return v
+
+def check_role_name(v: Optional[str]) -> Optional[str]:
+    if v is not None:
+        if not all(c.isalnum() or c.isspace() or c == '_' for c in v):
+            raise ValueError("Role name must be alphanumeric with spaces or underscores only")
+        if not (2 <= len(v) <= 30):
+            raise ValueError("Role name must be between 2 to 30 characters")
+    return v
+
+def check_department_name(v: Optional[str]) -> Optional[str]:
+    if v is not None:
+        if not all(c.isalnum() or c.isspace() or c == '-' or c == '_' for c in v):
+            raise ValueError("Department name must be alphanumeric with spaces, dashes, or underscores only")
+        if not (2 <= len(v) <= 50):
+            raise ValueError("Department name must be between 2 to 50 characters")
+    return v
+
+def check_inventory_item_name(v: Optional[str]) -> Optional[str]:
+    if v is not None:
+        v_trimmed = v.strip()
+        if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+            raise ValueError("Item name must contain alphanumeric characters, spaces, or underscores only")
+        if len(v_trimmed) > 20:
+            raise ValueError("Item name must be maximum 20 characters")
+        return v_trimmed
+    return v
+
+def check_almira_number(v: Optional[str]) -> Optional[str]:
+    if v:
+        v_trimmed = v.strip()
+        if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+            raise ValueError("Almira number must contain alphanumeric characters, spaces, or underscores only")
+        if len(v_trimmed) > 5:
+            raise ValueError("Almira number must be maximum 5 characters")
+        return v_trimmed
+    return v
+
+def check_rack_number(v: Optional[str]) -> Optional[str]:
+    if v:
+        v_trimmed = v.strip()
+        if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+            raise ValueError("Rack number must contain alphanumeric characters, spaces, or underscores only")
+        if len(v_trimmed) > 5:
+            raise ValueError("Rack number must be maximum 5 characters")
+        return v_trimmed
+    return v
+
+def check_inventory_description(v: Optional[str]) -> Optional[str]:
+    if v:
+        v_trimmed = v.strip()
+        if len(v_trimmed) > 220:
+            raise ValueError("Description must be maximum 220 characters")
+        return v_trimmed
+    return v
+
+def check_inventory_quantity(v: Optional[int]) -> Optional[int]:
+    if v is not None:
+        if v < 0:
+            raise ValueError("Quantity must be greater than or equal to 0")
+    return v
+
+def check_give_quantity(v: int) -> int:
+    if v <= 0:
+        raise ValueError("Give quantity must be greater than 0")
+    return v
+
+def check_observation_description(v: Optional[str]) -> Optional[str]:
+    if v is not None:
+        if len(v) > 1000:
+            raise ValueError("Description must be maximum 1000 characters")
+    return v
 
 class CreateUserModel(BaseModel):
     username: str
@@ -87,6 +236,47 @@ class CreateUserModel(BaseModel):
     passNumber: Optional[str] = None
     lastActive: Optional[str] = None
     isMonitorUser: Optional[bool] = None
+    activated: bool = Field(default=False)
+
+    @field_validator('username')
+    @classmethod
+    def validate_username(cls, v):
+        return check_username(v)
+
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v):
+        return check_password(v)
+
+    @field_validator('status')
+    @classmethod
+    def validate_status(cls, v):
+        return check_status(v)
+
+    @field_validator('firstName')
+    @classmethod
+    def validate_first_name(cls, v):
+        return check_first_name(v)
+
+    @field_validator('lastName')
+    @classmethod
+    def validate_last_name(cls, v):
+        return check_last_name(v)
+
+    @field_validator('mobile')
+    @classmethod
+    def validate_mobile(cls, v):
+        return check_mobile(v)
+
+    @field_validator('dateOfJoin')
+    @classmethod
+    def validate_date_of_join(cls, v):
+        return check_date_of_join(v)
+
+    @field_validator('passNumber')
+    @classmethod
+    def validate_pass_number(cls, v):
+        return check_pass_number(v)
 
 class UpdateUserModel(BaseModel):
     username: Optional[str] = None
@@ -106,6 +296,47 @@ class UpdateUserModel(BaseModel):
     passNumber: Optional[str] = None
     lastActive: Optional[str] = None
     isMonitorUser: Optional[bool] = None
+    activated: Optional[bool] = None
+
+    @field_validator('username')
+    @classmethod
+    def validate_username(cls, v):
+        return check_username(v)
+
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v):
+        return check_password(v)
+
+    @field_validator('status')
+    @classmethod
+    def validate_status(cls, v):
+        return check_status(v)
+
+    @field_validator('firstName')
+    @classmethod
+    def validate_first_name(cls, v):
+        return check_first_name(v)
+
+    @field_validator('lastName')
+    @classmethod
+    def validate_last_name(cls, v):
+        return check_last_name(v)
+
+    @field_validator('mobile')
+    @classmethod
+    def validate_mobile(cls, v):
+        return check_mobile(v)
+
+    @field_validator('dateOfJoin')
+    @classmethod
+    def validate_date_of_join(cls, v):
+        return check_date_of_join(v)
+
+    @field_validator('passNumber')
+    @classmethod
+    def validate_pass_number(cls, v):
+        return check_pass_number(v)
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -135,11 +366,21 @@ class CreateRoleModel(BaseModel):
     lateLoginPrivileges: List[str] = Field(default_factory=list)
     usersCount: Optional[int] = None
 
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v):
+        return check_role_name(v)
+
 class UpdateRoleModel(BaseModel):
     name: Optional[str] = None
     status: Optional[bool] = None
     privileges: Optional[List[str]] = None
     lateLoginPrivileges: Optional[List[str]] = None
+    
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v):
+        return check_role_name(v)
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -231,6 +472,31 @@ class CreateWorkModel(BaseModel):
     approved: bool = True
     createdBy: Optional[str] = None
 
+    @field_validator('workName')
+    @classmethod
+    def validate_work_name(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Work title cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                raise ValueError("Work title must contain alphanumeric characters and spaces only")
+            if len(v_trimmed) > 100:
+                raise ValueError("Work title must be maximum 100 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('description')
+    @classmethod
+    def validate_description(cls, v):
+        if v is not None:
+            v_trimmed = v.strip()
+            if len(v_trimmed) > 220:
+                raise ValueError("Description must be maximum 220 characters")
+            return v_trimmed
+        return v
+
     @model_validator(mode='before')
     @classmethod
     def convert_assignee_to_assignees(cls, data: Any) -> Any:
@@ -261,6 +527,31 @@ class UpdateWorkModel(BaseModel):
     isEmergency: Optional[bool] = None
     approved: Optional[bool] = None
     createdBy: Optional[str] = None
+
+    @field_validator('workName')
+    @classmethod
+    def validate_work_name(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Work title cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                raise ValueError("Work title must contain alphanumeric characters and spaces only")
+            if len(v_trimmed) > 100:
+                raise ValueError("Work title must be maximum 100 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('description')
+    @classmethod
+    def validate_description(cls, v):
+        if v is not None:
+            v_trimmed = v.strip()
+            if len(v_trimmed) > 220:
+                raise ValueError("Description must be maximum 220 characters")
+            return v_trimmed
+        return v
 
     @model_validator(mode='before')
     @classmethod
@@ -339,10 +630,20 @@ class CreateDepartmentModel(BaseModel):
     status: bool = True
     departmentHead: Optional[str] = None
 
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v):
+        return check_department_name(v)
+
 class UpdateDepartmentModel(BaseModel):
     name: Optional[str] = None
     status: Optional[bool] = None
     departmentHead: Optional[str] = None
+    
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v):
+        return check_department_name(v)
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -492,6 +793,11 @@ class CreateObservationModel(BaseModel):
     isRepeated: Optional[bool] = False
     repeatedFromId: Optional[str] = None
 
+    @field_validator('description')
+    @classmethod
+    def validate_description(cls, v):
+        return check_observation_description(v)
+
 class UpdateObservationModel(BaseModel):
     observedDate: Optional[str] = None
     observedTime: Optional[str] = None
@@ -506,6 +812,11 @@ class UpdateObservationModel(BaseModel):
     comments: Optional[List[dict]] = None
     isRepeated: Optional[bool] = None
     repeatedFromId: Optional[str] = None
+
+    @field_validator('description')
+    @classmethod
+    def validate_description(cls, v):
+        return check_observation_description(v)
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -559,6 +870,31 @@ class CreateInventoryModel(BaseModel):
     almiraNumber: Optional[str] = None
     rackNumber: Optional[str] = None
 
+    @field_validator('itemName')
+    @classmethod
+    def validate_item_name(cls, v):
+        return check_inventory_item_name(v)
+
+    @field_validator('quantity')
+    @classmethod
+    def validate_quantity(cls, v):
+        return check_inventory_quantity(v)
+
+    @field_validator('almiraNumber')
+    @classmethod
+    def validate_almira_number(cls, v):
+        return check_almira_number(v)
+
+    @field_validator('rackNumber')
+    @classmethod
+    def validate_rack_number(cls, v):
+        return check_rack_number(v)
+
+    @field_validator('description')
+    @classmethod
+    def validate_description(cls, v):
+        return check_inventory_description(v)
+
 class UpdateInventoryModel(BaseModel):
     quantityChange: int
     action: str
@@ -573,10 +909,40 @@ class EditInventoryModel(BaseModel):
     almiraNumber: Optional[str] = ""
     rackNumber: Optional[str] = ""
 
+    @field_validator('itemName')
+    @classmethod
+    def validate_item_name(cls, v):
+        return check_inventory_item_name(v)
+
+    @field_validator('quantity')
+    @classmethod
+    def validate_quantity(cls, v):
+        return check_inventory_quantity(v)
+
+    @field_validator('almiraNumber')
+    @classmethod
+    def validate_almira_number(cls, v):
+        return check_almira_number(v)
+
+    @field_validator('rackNumber')
+    @classmethod
+    def validate_rack_number(cls, v):
+        return check_rack_number(v)
+
+    @field_validator('description')
+    @classmethod
+    def validate_description(cls, v):
+        return check_inventory_description(v)
+
 class InventoryGiveModel(BaseModel):
     givenTo: str
     date: str
     quantity: int = 1
+
+    @field_validator('quantity')
+    @classmethod
+    def validate_quantity(cls, v):
+        return check_give_quantity(v)
 
 
 class InventoryReturnModel(BaseModel):
@@ -603,9 +969,67 @@ class CreateClusterTypeModel(BaseModel):
     clusterType: str
     remarks: Optional[str] = None
 
+    @field_validator('clusterType')
+    @classmethod
+    def validate_cluster_type(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Cluster type cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                raise ValueError("Cluster type must contain alphanumeric characters and spaces only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Cluster type must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+                if len(v_trimmed) > 125:
+                    raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
+
 class UpdateClusterTypeModel(BaseModel):
     clusterType: Optional[str] = None
     remarks: Optional[str] = None
+
+    @field_validator('clusterType')
+    @classmethod
+    def validate_cluster_type(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Cluster type cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                raise ValueError("Cluster type must contain alphanumeric characters and spaces only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Cluster type must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+                if len(v_trimmed) > 125:
+                    raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -631,9 +1055,67 @@ class CreateHypervisorModel(BaseModel):
     hypervisor: str
     remarks: Optional[str] = None
 
+    @field_validator('hypervisor')
+    @classmethod
+    def validate_hypervisor(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Hypervisor cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                raise ValueError("Hypervisor must contain alphanumeric characters and spaces only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Hypervisor must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+                if len(v_trimmed) > 125:
+                    raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
+
 class UpdateHypervisorModel(BaseModel):
     hypervisor: Optional[str] = None
     remarks: Optional[str] = None
+
+    @field_validator('hypervisor')
+    @classmethod
+    def validate_hypervisor(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Hypervisor cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                raise ValueError("Hypervisor must contain alphanumeric characters and spaces only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Hypervisor must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+                if len(v_trimmed) > 125:
+                    raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -773,6 +1255,65 @@ class CreateServerRackModel(BaseModel):
     sparePowerC90: Optional[str] = None
     remarks: Optional[str] = None
 
+    @field_validator('serverRack')
+    @classmethod
+    def validate_server_rack(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Server rack name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                raise ValueError("Server rack name must contain alphanumeric characters and spaces only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Server rack name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('rackCapacity')
+    @classmethod
+    def validate_rack_capacity(cls, v):
+        if v is not None:
+            if v < 0 or v > 100:
+                raise ValueError("Rack capacity must be between 0 and 100 U")
+        return v
+
+    @field_validator('temperature')
+    @classmethod
+    def validate_temperature(cls, v):
+        if v is not None:
+            if v < -50.0 or v > 100.0:
+                raise ValueError("Temperature must be between -50°C and 100°C")
+        return v
+
+    @field_validator('sparePowerC30', 'sparePowerC90')
+    @classmethod
+    def validate_spare_power(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                    raise ValueError("Spare power must contain alphanumeric characters and spaces only")
+                if len(v_trimmed) > 50:
+                    raise ValueError("Spare power must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+                if len(v_trimmed) > 125:
+                    raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
+
 class UpdateServerRackModel(BaseModel):
     serverRack: Optional[str] = None
     networksAvailable: Optional[List[str]] = None
@@ -783,6 +1324,65 @@ class UpdateServerRackModel(BaseModel):
     sparePowerC30: Optional[str] = None
     sparePowerC90: Optional[str] = None
     remarks: Optional[str] = None
+
+    @field_validator('serverRack')
+    @classmethod
+    def validate_server_rack(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Server rack name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                raise ValueError("Server rack name must contain alphanumeric characters and spaces only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Server rack name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('rackCapacity')
+    @classmethod
+    def validate_rack_capacity(cls, v):
+        if v is not None:
+            if v < 0 or v > 100:
+                raise ValueError("Rack capacity must be between 0 and 100 U")
+        return v
+
+    @field_validator('temperature')
+    @classmethod
+    def validate_temperature(cls, v):
+        if v is not None:
+            if v < -50.0 or v > 100.0:
+                raise ValueError("Temperature must be between -50°C and 100°C")
+        return v
+
+    @field_validator('sparePowerC30', 'sparePowerC90')
+    @classmethod
+    def validate_spare_power(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                    raise ValueError("Spare power must contain alphanumeric characters and spaces only")
+                if len(v_trimmed) > 50:
+                    raise ValueError("Spare power must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+                if len(v_trimmed) > 125:
+                    raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -808,9 +1408,67 @@ class CreateServerModelModel(BaseModel):
     serverModel: str
     remarks: Optional[str] = None
 
+    @field_validator('serverModel')
+    @classmethod
+    def validate_server_model(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Server model name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                raise ValueError("Server model name must contain alphanumeric characters and spaces only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Server model name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+                if len(v_trimmed) > 125:
+                    raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
+
 class UpdateServerModelModel(BaseModel):
     serverModel: Optional[str] = None
     remarks: Optional[str] = None
+
+    @field_validator('serverModel')
+    @classmethod
+    def validate_server_model(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Server model name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                raise ValueError("Server model name must contain alphanumeric characters and spaces only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Server model name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+                if len(v_trimmed) > 125:
+                    raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -838,7 +1496,7 @@ class NodeDetailsModel(BaseModel):
     indentor: str
     poNum: str
     assetNum: str
-    custodian: str
+    custodian: Optional[str] = None
     redundancyPower: str
     totalRam: Optional[Union[int, str]] = None
     totalHardisk: Optional[Union[int, str]] = None
@@ -875,7 +1533,7 @@ class CreateNodeDetailsModel(BaseModel):
     indentor: str
     poNum: str
     assetNum: str
-    custodian: str
+    custodian: Optional[str] = None
     redundancyPower: str
     totalRam: Optional[Union[int, str]] = None
     totalHardisk: Optional[Union[int, str]] = None
@@ -884,6 +1542,104 @@ class CreateNodeDetailsModel(BaseModel):
     type: Optional[str] = "Node"
     isPhysical: Optional[bool] = False
     os: Optional[str] = None
+
+    @field_validator('hostName')
+    @classmethod
+    def validate_hostname(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Node name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
+                raise ValueError("Node name must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Node name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('ipAddress')
+    @classmethod
+    def validate_ip_address(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                ip_regex = r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                if not re.match(ip_regex, v_trimmed):
+                    raise ValueError("IP Address must be a valid IPv4 address")
+            return v_trimmed
+        return v
+
+    @field_validator('os')
+    @classmethod
+    def validate_os(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
+                    raise ValueError("Operating System must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
+                if len(v_trimmed) > 50:
+                    raise ValueError("Operating System must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('serialNumber')
+    @classmethod
+    def validate_serial_number(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s./_-]+$", v_trimmed):
+                    raise ValueError("Serial number must contain alphanumeric characters, spaces, dots, slashes, underscores, or dashes only")
+                if len(v_trimmed) > 50:
+                    raise ValueError("Serial number must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('assetNum')
+    @classmethod
+    def validate_asset_num(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s./_-]+$", v_trimmed):
+                    raise ValueError("Asset number must contain alphanumeric characters, spaces, dots, slashes, underscores, or dashes only")
+                if len(v_trimmed) > 50:
+                    raise ValueError("Asset number must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('custodian')
+    @classmethod
+    def validate_custodian(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z\s]+$", v_trimmed):
+                    raise ValueError("Custodian must contain alphabetic characters and spaces only")
+                if len(v_trimmed) > 50:
+                    raise ValueError("Custodian must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+                if len(v_trimmed) > 125:
+                    raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
 
 class UpdateNodeDetailsModel(BaseModel):
     nodeId: Optional[str] = None
@@ -910,6 +1666,104 @@ class UpdateNodeDetailsModel(BaseModel):
     type: Optional[str] = None
     isPhysical: Optional[bool] = None
     os: Optional[str] = None
+
+    @field_validator('hostName')
+    @classmethod
+    def validate_hostname(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Node name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
+                raise ValueError("Node name must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Node name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('ipAddress')
+    @classmethod
+    def validate_ip_address(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                ip_regex = r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                if not re.match(ip_regex, v_trimmed):
+                    raise ValueError("IP Address must be a valid IPv4 address")
+            return v_trimmed
+        return v
+
+    @field_validator('os')
+    @classmethod
+    def validate_os(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
+                    raise ValueError("Operating System must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
+                if len(v_trimmed) > 50:
+                    raise ValueError("Operating System must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('serialNumber')
+    @classmethod
+    def validate_serial_number(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s./_-]+$", v_trimmed):
+                    raise ValueError("Serial number must contain alphanumeric characters, spaces, dots, slashes, underscores, or dashes only")
+                if len(v_trimmed) > 50:
+                    raise ValueError("Serial number must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('assetNum')
+    @classmethod
+    def validate_asset_num(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s./_-]+$", v_trimmed):
+                    raise ValueError("Asset number must contain alphanumeric characters, spaces, dots, slashes, underscores, or dashes only")
+                if len(v_trimmed) > 50:
+                    raise ValueError("Asset number must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('custodian')
+    @classmethod
+    def validate_custodian(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z\s]+$", v_trimmed):
+                    raise ValueError("Custodian must contain alphabetic characters and spaces only")
+                if len(v_trimmed) > 50:
+                    raise ValueError("Custodian must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+                if len(v_trimmed) > 125:
+                    raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -949,6 +1803,48 @@ class CreateClusterModel(BaseModel):
     networkType: Optional[str] = "intranet"
     remarks: Optional[str] = None
 
+    @field_validator('clusterName')
+    @classmethod
+    def validate_cluster_name(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Cluster name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                raise ValueError("Cluster name must contain alphanumeric characters and spaces only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Cluster name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('ipAddress')
+    @classmethod
+    def validate_ip_address(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                ip_regex = r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                if not re.match(ip_regex, v_trimmed):
+                    raise ValueError("IP Address must be a valid IPv4 address")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+                if len(v_trimmed) > 125:
+                    raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
+
 class UpdateClusterModel(BaseModel):
     clusterName: Optional[str] = None
     ipAddress: Optional[str] = None
@@ -957,6 +1853,48 @@ class UpdateClusterModel(BaseModel):
     nodes: Optional[List[str]] = None
     networkType: Optional[str] = None
     remarks: Optional[str] = None
+
+    @field_validator('clusterName')
+    @classmethod
+    def validate_cluster_name(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Cluster name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                raise ValueError("Cluster name must contain alphanumeric characters and spaces only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Cluster name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('ipAddress')
+    @classmethod
+    def validate_ip_address(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                ip_regex = r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                if not re.match(ip_regex, v_trimmed):
+                    raise ValueError("IP Address must be a valid IPv4 address")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+                if len(v_trimmed) > 125:
+                    raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -1141,6 +2079,105 @@ class CreateVMDetailsModel(BaseModel):
     snapshots: Optional[List[dict]] = Field(default_factory=list)
     templates: Optional[List[dict]] = Field(default_factory=list)
 
+    @field_validator('vmName')
+    @classmethod
+    def validate_vm_name(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
+                    raise ValueError("VM Name must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
+                if len(v_trimmed) > 50:
+                    raise ValueError("VM Name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('ipAddress')
+    @classmethod
+    def validate_ip_address(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                ip_regex = r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                if not re.match(ip_regex, v_trimmed):
+                    raise ValueError("IP Address must be a valid IPv4 address")
+            return v_trimmed
+        return v
+
+    @field_validator('osAndExpiry')
+    @classmethod
+    def validate_os_and_expiry(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s._/()-]+$", v_trimmed):
+                    raise ValueError("OS and Expiry must contain alphanumeric characters, spaces, dots, slashes, parentheses, or dashes only")
+                if len(v_trimmed) > 100:
+                    raise ValueError("OS and Expiry must be maximum 100 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('applications')
+    @classmethod
+    def validate_applications(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,._/()-]+$", v_trimmed):
+                    raise ValueError("Applications must contain alphanumeric characters, spaces, commas, dots, slashes, parentheses, or dashes only")
+                if len(v_trimmed) > 200:
+                    raise ValueError("Applications must be maximum 200 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('backupName')
+    @classmethod
+    def validate_backup_name(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
+                    raise ValueError("Backup Name must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
+                if len(v_trimmed) > 50:
+                    raise ValueError("Backup Name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('hdd', 'ram', 'cpu')
+    @classmethod
+    def validate_resource(cls, v, info):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s.]+$", v_trimmed):
+                    label = info.field_name.upper()
+                    raise ValueError(f"{label} must contain alphanumeric characters, spaces, or dots only")
+                if len(v_trimmed) > 10:
+                    label = info.field_name.upper()
+                    raise ValueError(f"{label} must be maximum 10 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('adminContact')
+    @classmethod
+    def validate_admin_contact(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[0-9\s,+-]+$", v_trimmed):
+                    raise ValueError("Admin Contact must contain digits, spaces, commas, plus signs, or dashes only")
+                if len(v_trimmed) > 50:
+                    raise ValueError("Admin Contact must be maximum 50 characters")
+            return v_trimmed
+        return v
+
 class UpdateVMDetailsModel(BaseModel):
     vmId: Optional[str] = None
     vmName: Optional[str] = None
@@ -1167,6 +2204,105 @@ class UpdateVMDetailsModel(BaseModel):
     snapshots: Optional[List[dict]] = None
     templates: Optional[List[dict]] = None
 
+    @field_validator('vmName')
+    @classmethod
+    def validate_vm_name(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
+                    raise ValueError("VM Name must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
+                if len(v_trimmed) > 50:
+                    raise ValueError("VM Name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('ipAddress')
+    @classmethod
+    def validate_ip_address(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                ip_regex = r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                if not re.match(ip_regex, v_trimmed):
+                    raise ValueError("IP Address must be a valid IPv4 address")
+            return v_trimmed
+        return v
+
+    @field_validator('osAndExpiry')
+    @classmethod
+    def validate_os_and_expiry(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s._/()-]+$", v_trimmed):
+                    raise ValueError("OS and Expiry must contain alphanumeric characters, spaces, dots, slashes, parentheses, or dashes only")
+                if len(v_trimmed) > 100:
+                    raise ValueError("OS and Expiry must be maximum 100 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('applications')
+    @classmethod
+    def validate_applications(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,._/()-]+$", v_trimmed):
+                    raise ValueError("Applications must contain alphanumeric characters, spaces, commas, dots, slashes, parentheses, or dashes only")
+                if len(v_trimmed) > 200:
+                    raise ValueError("Applications must be maximum 200 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('backupName')
+    @classmethod
+    def validate_backup_name(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
+                    raise ValueError("Backup Name must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
+                if len(v_trimmed) > 50:
+                    raise ValueError("Backup Name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('hdd', 'ram', 'cpu')
+    @classmethod
+    def validate_resource(cls, v, info):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s.]+$", v_trimmed):
+                    label = info.field_name.upper()
+                    raise ValueError(f"{label} must contain alphanumeric characters, spaces, or dots only")
+                if len(v_trimmed) > 10:
+                    label = info.field_name.upper()
+                    raise ValueError(f"{label} must be maximum 10 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('adminContact')
+    @classmethod
+    def validate_admin_contact(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[0-9\s,+-]+$", v_trimmed):
+                    raise ValueError("Admin Contact must contain digits, spaces, commas, plus signs, or dashes only")
+                if len(v_trimmed) > 50:
+                    raise ValueError("Admin Contact must be maximum 50 characters")
+            return v_trimmed
+        return v
+
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
     )
@@ -1180,6 +2316,64 @@ class CreateRequestModel(BaseModel):
     purpose: Optional[str] = None
     details: Optional[dict] = None
 
+    @field_validator('requestType')
+    @classmethod
+    def validate_request_type(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Request type cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
+                raise ValueError("Request type must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Request type must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('purpose')
+    @classmethod
+    def validate_purpose(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,._/()-]+$", v_trimmed):
+                    raise ValueError("Purpose must contain alphanumeric characters, spaces, commas, dots, slashes, parentheses, or dashes only")
+                if len(v_trimmed) > 200:
+                    raise ValueError("Purpose must be maximum 200 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('description')
+    @classmethod
+    def validate_description(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,._/()-]+$", v_trimmed):
+                    raise ValueError("Description must contain alphanumeric characters, spaces, commas, dots, slashes, parentheses, or dashes only")
+                if len(v_trimmed) > 500:
+                    raise ValueError("Description must be maximum 500 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('details')
+    @classmethod
+    def validate_details(cls, v):
+        import re
+        if v and isinstance(v, dict):
+            for field in ['ram', 'hdd', 'cpu', 'newRam', 'newHdd', 'newCpu']:
+                val = v.get(field)
+                if val:
+                    val_str = str(val).strip()
+                    if not re.match(r"^[a-zA-Z0-9_\s.]+$", val_str):
+                        raise ValueError(f"{field.upper()} must contain alphanumeric characters, spaces, underscores, or dots only")
+                    if len(val_str) > 10:
+                        raise ValueError(f"{field.upper()} must be maximum 10 characters")
+        return v
+
     model_config = ConfigDict(
         populate_by_name=True,
         arbitrary_types_allowed=True,
@@ -1192,6 +2386,78 @@ class UpdateRequestModel(BaseModel):
     details: Optional[dict] = None
     status: Optional[str] = None
     remarks: Optional[str] = None
+
+    @field_validator('requestType')
+    @classmethod
+    def validate_request_type(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Request type cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
+                raise ValueError("Request type must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Request type must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('purpose')
+    @classmethod
+    def validate_purpose(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,._/()-]+$", v_trimmed):
+                    raise ValueError("Purpose must contain alphanumeric characters, spaces, commas, dots, slashes, parentheses, or dashes only")
+                if len(v_trimmed) > 200:
+                    raise ValueError("Purpose must be maximum 200 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('description')
+    @classmethod
+    def validate_description(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,._/()-]+$", v_trimmed):
+                    raise ValueError("Description must contain alphanumeric characters, spaces, commas, dots, slashes, parentheses, or dashes only")
+                if len(v_trimmed) > 500:
+                    raise ValueError("Description must be maximum 500 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,._/()-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, dots, slashes, parentheses, or dashes only")
+                if len(v_trimmed) > 500:
+                    raise ValueError("Remarks must be maximum 500 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('details')
+    @classmethod
+    def validate_details(cls, v):
+        import re
+        if v and isinstance(v, dict):
+            for field in ['ram', 'hdd', 'cpu', 'newRam', 'newHdd', 'newCpu']:
+                val = v.get(field)
+                if val:
+                    val_str = str(val).strip()
+                    if not re.match(r"^[a-zA-Z0-9_\s.]+$", val_str):
+                        raise ValueError(f"{field.upper()} must contain alphanumeric characters, spaces, underscores, or dots only")
+                    if len(val_str) > 10:
+                        raise ValueError(f"{field.upper()} must be maximum 10 characters")
+        return v
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -1267,9 +2533,40 @@ class RequestRoutingStage(BaseModel):
         extra="allow",
     )
 
+class CreateRequestRoutingStage(RequestRoutingStage):
+    @field_validator('stageName')
+    @classmethod
+    def validate_stage_name(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Stage name cannot be empty")
+            if not re.match(r"^[a-zA-Z\s]+$", v_trimmed):
+                raise ValueError("Stage name must contain alphabets and spaces only")
+            if len(v_trimmed) > 20:
+                raise ValueError("Stage name must be maximum 20 characters")
+            return v_trimmed
+        return v
+
 class CreateRequestRoutingModel(BaseModel):
     requestType: str
-    stages: List[RequestRoutingStage] = []
+    stages: List[CreateRequestRoutingStage] = []
+
+    @field_validator('requestType')
+    @classmethod
+    def validate_request_type(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Request Type cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
+                raise ValueError("Request Type must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Request Type must be maximum 50 characters")
+            return v_trimmed
+        return v
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -1278,12 +2575,22 @@ class CreateRequestRoutingModel(BaseModel):
 
 class UpdateRequestRoutingModel(BaseModel):
     requestType: Optional[str] = None
-    stages: Optional[List[RequestRoutingStage]] = None
+    stages: Optional[List[CreateRequestRoutingStage]] = None
 
-    model_config = ConfigDict(
-        populate_by_name=True,
-        arbitrary_types_allowed=True,
-    )
+    @field_validator('requestType')
+    @classmethod
+    def validate_request_type(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Request Type cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
+                raise ValueError("Request Type must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Request Type must be maximum 50 characters")
+            return v_trimmed
+        return v
 
 class RequestRoutingModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
@@ -1350,9 +2657,41 @@ class ShiftInfoModel(BaseModel):
     startTime: str  # "HH:MM"
     endTime: str    # "HH:MM"
 
+class CreateShiftInfoModel(ShiftInfoModel):
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Shift name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                raise ValueError("Shift name must contain alphanumeric characters and spaces only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Shift name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
 class RosterRowModel(BaseModel):
     name: str
     mappedShift: str
+
+class CreateRosterRowModel(RosterRowModel):
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Roster row name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                raise ValueError("Roster row name must contain alphanumeric characters and spaces only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Roster row name must be maximum 50 characters")
+            return v_trimmed
+        return v
 
 class RosterValidationRuleModel(BaseModel):
     id: Optional[str] = None
@@ -1378,6 +2717,17 @@ class AttendanceConfigModel(BaseModel):
         populate_by_name=True,
         arbitrary_types_allowed=True,
     )
+
+class CreateAttendanceConfigModel(AttendanceConfigModel):
+    shifts: List[CreateShiftInfoModel] = Field(default_factory=list)
+    rosterRows: List[CreateRosterRowModel] = Field(default_factory=list)
+
+    @field_validator('shifts')
+    @classmethod
+    def validate_shifts_count(cls, v):
+        if not v or len(v) < 4:
+            raise ValueError("At least 4 shifts must be configured")
+        return v
 
 class PhysicalServerModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
@@ -1462,6 +2812,63 @@ class CreateDatastoreModel(BaseModel):
     mountPath: Optional[str] = None
     remarks: Optional[str] = None
 
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v):
+        import re
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s,.-_]+$", v_trimmed):
+                raise ValueError("Name must contain alphanumeric characters, spaces, commas, periods, dashes, or underscores only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('capacity')
+    @classmethod
+    def validate_capacity(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                    raise ValueError("Capacity must contain alphanumeric characters and spaces only")
+                if len(v_trimmed) > 20:
+                    raise ValueError("Capacity must be maximum 20 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('mountPath')
+    @classmethod
+    def validate_mount_path(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.-_/]+$", v_trimmed):
+                    raise ValueError("Mount Path must contain alphanumeric characters, spaces, slashes, periods, dashes, or underscores only")
+                if len(v_trimmed) > 100:
+                    raise ValueError("Mount Path must be maximum 100 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+                if len(v_trimmed) > 125:
+                    raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
+
 class UpdateDatastoreModel(BaseModel):
     name: Optional[str] = None
     type: Optional[str] = None
@@ -1469,6 +2876,63 @@ class UpdateDatastoreModel(BaseModel):
     node: Optional[str] = None
     mountPath: Optional[str] = None
     remarks: Optional[str] = None
+
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("Name cannot be empty")
+            if not re.match(r"^[a-zA-Z0-9\s,.-_]+$", v_trimmed):
+                raise ValueError("Name must contain alphanumeric characters, spaces, commas, periods, dashes, or underscores only")
+            if len(v_trimmed) > 50:
+                raise ValueError("Name must be maximum 50 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('capacity')
+    @classmethod
+    def validate_capacity(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s]+$", v_trimmed):
+                    raise ValueError("Capacity must contain alphanumeric characters and spaces only")
+                if len(v_trimmed) > 20:
+                    raise ValueError("Capacity must be maximum 20 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('mountPath')
+    @classmethod
+    def validate_mount_path(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.-_/]+$", v_trimmed):
+                    raise ValueError("Mount Path must contain alphanumeric characters, spaces, slashes, periods, dashes, or underscores only")
+                if len(v_trimmed) > 100:
+                    raise ValueError("Mount Path must be maximum 100 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('remarks')
+    @classmethod
+    def validate_remarks(cls, v):
+        import re
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed:
+                if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                    raise ValueError("Remarks must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+                if len(v_trimmed) > 125:
+                    raise ValueError("Remarks must be maximum 125 characters")
+            return v_trimmed
+        return v
 
 class PaginatedDatastoresModel(BaseModel):
     data: List[DatastoreModel]

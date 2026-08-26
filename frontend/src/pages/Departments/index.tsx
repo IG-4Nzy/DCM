@@ -82,6 +82,18 @@ const Departments: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formName) {
+      showToast("Department name is required", "error");
+      return;
+    }
+    if (!/^[a-zA-Z0-9\s-]+$/.test(formName)) {
+      showToast("Department name must be alphanumeric with spaces or dashes only", "error");
+      return;
+    }
+    if (formName.length < 2 || formName.length > 50) {
+      showToast("Department name must be between 2 to 50 characters", "error");
+      return;
+    }
     try {
       if (editingDepartment) {
         await dispatch(updateDepartment({

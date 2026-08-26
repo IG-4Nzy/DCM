@@ -11,6 +11,7 @@ interface AuthState {
   privileges: string[];
   isSuperuser: boolean;
   isAuthenticated: boolean;
+  activated: boolean;
 }
 
 const initialState: AuthState = {
@@ -21,6 +22,7 @@ const initialState: AuthState = {
   privileges: JSON.parse(getItemFromLocalstorage('PRIVILEGES') || '[]'),
   isSuperuser: getItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.IS_SUPERUSER) === true,
   isAuthenticated: !!getItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.TOKEN),
+  activated: getItemFromLocalstorage('activated') !== 'false',
 };
 
 export const logoutUser = createAsyncThunk(
@@ -40,13 +42,14 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    loginSuccess(state, action: PayloadAction<{ token: string; role: string | string[]; username: string; displayName?: string; privileges: string[], isSuperuser: boolean }>) {
+    loginSuccess(state, action: PayloadAction<{ token: string; role: string | string[]; username: string; displayName?: string; privileges: string[], isSuperuser: boolean; activated?: boolean }>) {
       state.token = action.payload.token;
       state.role = action.payload.role;
       state.username = action.payload.username;
       state.displayName = action.payload.displayName || action.payload.username;
       state.privileges = action.payload.privileges || [];
       state.isSuperuser = action.payload.isSuperuser;
+      state.activated = action.payload.activated !== false;
       state.isAuthenticated = true;
       setItemToLocalstorage(LOCAL_STORAGE_PARAMETERS.TOKEN, action.payload.token);
       setItemToLocalstorage(LOCAL_STORAGE_PARAMETERS.ROLE, action.payload.role);
@@ -54,6 +57,7 @@ const authSlice = createSlice({
       setItemToLocalstorage('displayName', action.payload.displayName || action.payload.username);
       setItemToLocalstorage('PRIVILEGES', JSON.stringify(action.payload.privileges || []));
       setItemToLocalstorage(LOCAL_STORAGE_PARAMETERS.IS_SUPERUSER, action.payload.isSuperuser);
+      setItemToLocalstorage('activated', action.payload.activated !== false ? 'true' : 'false');
     },
     logout(state) {
       state.token = null;
@@ -63,15 +67,21 @@ const authSlice = createSlice({
       state.privileges = [];
       state.isSuperuser = false;
       state.isAuthenticated = false;
+      state.activated = true;
       removeItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.TOKEN);
       removeItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.ROLE);
       removeItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.USERNAME);
       removeItemFromLocalstorage('displayName');
       removeItemFromLocalstorage('PRIVILEGES');
       removeItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.IS_SUPERUSER);
+      removeItemFromLocalstorage('activated');
     },
+    activateAccount(state) {
+      state.activated = true;
+      setItemToLocalstorage('activated', 'true');
+    }
   },
 });
 
-export const { loginSuccess, logout } = authSlice.actions;
+export const { loginSuccess, logout, activateAccount } = authSlice.actions;
 export default authSlice.reducer;

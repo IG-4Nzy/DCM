@@ -24,15 +24,44 @@ async def send_email(
     settings_col = db.get_collection("mail_config")
     doc = await settings_col.find_one({"_id": "mail_config"})
 
+    # Check if configured from App UI (i.e. not empty/default/localhost and no placeholder username/password)
+    is_configured = False
     if doc:
-        host = doc.get("host", mail_config.SMTP_HOST)
-        port = int(doc.get("port", mail_config.SMTP_PORT))
-        username = doc.get("username", mail_config.SMTP_USERNAME)
-        password = doc.get("password", mail_config.SMTP_PASSWORD)
-        from_email = doc.get("fromEmail", mail_config.SMTP_FROM_EMAIL)
-        use_tls = doc.get("useTls", mail_config.SMTP_USE_TLS)
-        use_ssl = doc.get("useSsl", mail_config.SMTP_USE_SSL)
+        h_val = str(doc.get("host", "")).strip().lower()
+        if "gmail.com" in h_val:
+            h_val = "smtp.gmail.com"
+        u_val = str(doc.get("username", "")).strip()
+        p_val = str(doc.get("password", "")).strip()
+        
+        is_host_valid = h_val and h_val not in ("localhost", "127.0.0.1")
+        is_user_valid = u_val and "placeholder" not in u_val.lower() and "vssc.dcm.dev@gmail.com" not in u_val.lower()
+        is_pass_valid = p_val and "placeholder" not in p_val.lower() and "your_gmail_app_password" not in p_val.lower()
+        
+        if is_host_valid and is_user_valid and is_pass_valid:
+            is_configured = True
+
+    if is_configured and doc:
+        host = str(doc.get("host")).strip()
+        if "gmail.com" in host.lower():
+            host = "smtp.gmail.com"
+        port = int(doc.get("port", 587))
+        username = str(doc.get("username")).strip()
+        password = doc.get("password")
+        from_email = doc.get("fromEmail") or username
+        
+        use_tls = doc.get("useTls")
+        if use_tls is None or use_tls == "":
+            use_tls = mail_config.SMTP_USE_TLS
+        else:
+            use_tls = str(use_tls).lower() in ("true", "1", "yes")
+            
+        use_ssl = doc.get("useSsl")
+        if use_ssl is None or use_ssl == "":
+            use_ssl = mail_config.SMTP_USE_SSL
+        else:
+            use_ssl = str(use_ssl).lower() in ("true", "1", "yes")
     else:
+        # Fall back to Gmail development configuration
         host = mail_config.SMTP_HOST
         port = mail_config.SMTP_PORT
         username = mail_config.SMTP_USERNAME
@@ -40,6 +69,21 @@ async def send_email(
         from_email = mail_config.SMTP_FROM_EMAIL
         use_tls = mail_config.SMTP_USE_TLS
         use_ssl = mail_config.SMTP_USE_SSL
+
+    # Normalize settings and credentials for Gmail host to prevent handshake and login failures
+    if host.lower() == "smtp.gmail.com":
+        if port == 465:
+            use_tls = False
+            use_ssl = True
+        else:
+            port = 587
+            use_tls = True
+            use_ssl = False
+            
+        if username:
+            username = str(username).strip()
+        if password:
+            password = str(password).replace(" ", "").strip()
 
     def send_smtp_sync():
         if attachments:
@@ -62,12 +106,21 @@ async def send_email(
             
             # Attach files
             for att in attachments:
-                part = MIMEBase("application", "octet-stream")
+                content_type = att.get("content_type", "")
+                if "/" in content_type:
+                    maintype, subtype = content_type.split("/", 1)
+                elif att.get("filename", "").endswith(".pdf"):
+                    maintype, subtype = "application", "pdf"
+                else:
+                    maintype, subtype = "application", "octet-stream"
+
+                part = MIMEBase(maintype, subtype)
                 part.set_payload(att["content"])
                 encoders.encode_base64(part)
+                filename = att.get("filename", "attachment.pdf")
                 part.add_header(
                     "Content-Disposition",
-                    f"attachment; filename={att['filename']}",
+                    f'attachment; filename="{filename}"',
                 )
                 msg.attach(part)
         else:
@@ -108,6 +161,29 @@ async def send_email(
     await asyncio.to_thread(send_smtp_sync)
 
 
+def get_chrome_executable() -> str:
+    import shutil
+    import os
+    candidates = [
+        "google-chrome",
+        "google-chrome-stable",
+        "chromium",
+        "chromium-browser",
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/snap/bin/chromium"
+    ]
+    for cand in candidates:
+        found = shutil.which(cand)
+        if found:
+            return found
+        if os.path.exists(cand) and os.access(cand, os.X_OK):
+            return cand
+    return "google-chrome"
+
+
 async def html_to_pdf_bytes(html_content: str) -> bytes:
     import subprocess
     import tempfile
@@ -129,7 +205,6 @@ async def html_to_pdf_bytes(html_content: str) -> bytes:
         styled_html = html_content.replace("<head>", f"<head>{style_inject}")
     elif "<html>" in html_content:
         style_inject = """
-        <head>
         <style>
         @media print {
             body {
@@ -143,32 +218,40 @@ async def html_to_pdf_bytes(html_content: str) -> bytes:
         styled_html = html_content.replace("<html>", f"<html>{style_inject}")
         
     def run_chrome():
-        with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as html_file:
-            html_file.write(styled_html.encode("utf-8"))
-            html_path = html_file.name
-            
-        pdf_path = html_path.replace(".html", ".pdf")
-        
         try:
-            cmd = [
-                "google-chrome",
-                "--headless=new",
-                "--disable-gpu",
-                "--no-sandbox",
-                "--no-pdf-header-footer",
-                f"--print-to-pdf={pdf_path}",
-                html_path
-            ]
-            subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, timeout=15)
+            chrome_bin = get_chrome_executable()
+            if not chrome_bin:
+                print("Warning: No headless Chrome/Chromium executable found.")
+                return None
+            with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as html_file:
+                html_file.write(styled_html.encode("utf-8"))
+                html_path = html_file.name
             
-            with open(pdf_path, "rb") as f:
-                pdf_bytes = f.read()
-            return pdf_bytes
-        finally:
-            if os.path.exists(html_path):
-                os.remove(html_path)
-            if os.path.exists(pdf_path):
-                os.remove(pdf_path)
+            pdf_path = html_path.replace(".html", ".pdf")
+            
+            try:
+                cmd = [
+                    chrome_bin,
+                    "--headless=new",
+                    "--disable-gpu",
+                    "--no-sandbox",
+                    "--no-pdf-header-footer",
+                    f"--print-to-pdf={pdf_path}",
+                    html_path
+                ]
+                subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, timeout=15)
+                
+                with open(pdf_path, "rb") as f:
+                    pdf_bytes = f.read()
+                return pdf_bytes
+            finally:
+                if os.path.exists(html_path):
+                    os.remove(html_path)
+                if os.path.exists(pdf_path):
+                    os.remove(pdf_path)
+        except Exception as e:
+            print(f"Warning: html_to_pdf_bytes failed: {e}")
+            return None
 
     return await asyncio.to_thread(run_chrome)
 

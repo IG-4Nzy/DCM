@@ -15,6 +15,7 @@ import CategoryFormModal from './CategoryFormModal';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { useTableState } from '../../hooks/useTableState';
+import { validators } from '../../helpers/validation';
 
 type Order = 'asc' | 'desc';
 
@@ -78,6 +79,16 @@ const CategoryList: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const nameErr = validators.alphanumeric(formName, 20, "Category name");
+    if (nameErr) {
+      alert(nameErr);
+      return;
+    }
+    const remarksErr = validators.maxLength(formRemarks, 125, "Remarks");
+    if (remarksErr) {
+      alert(remarksErr);
+      return;
+    }
     const reportsToStr = formReportsTo.join(', ');
     if (editingCategory) {
       await dispatch(updateObservationCategory({ 

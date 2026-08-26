@@ -3,7 +3,7 @@ from auth_utils import get_current_user
 from typing import Optional, List
 from database import db
 from models import (
-    AttendanceModel, CreateAttendanceModel, UpdateAttendanceModel, PaginatedAttendanceModel, AttendanceConfigModel
+    AttendanceModel, CreateAttendanceModel, UpdateAttendanceModel, PaginatedAttendanceModel, AttendanceConfigModel, CreateAttendanceConfigModel
 )
 from bson import ObjectId
 from datetime import datetime, timedelta
@@ -398,7 +398,8 @@ async def get_attendance_config():
             "shifts": [
                 {"name": "Shift-1", "startTime": "06:30", "endTime": "14:30"},
                 {"name": "Shift-2", "startTime": "14:30", "endTime": "22:30"},
-                {"name": "Shift-3", "startTime": "22:30", "endTime": "06:30"}
+                {"name": "Shift-3", "startTime": "22:30", "endTime": "06:30"},
+                {"name": "Shift-4", "startTime": "09:00", "endTime": "17:00"}
             ],
             "rosterRows": [
                 {"name": "Shift 1 Row 1", "mappedShift": "Shift-1"},
@@ -424,6 +425,13 @@ async def get_attendance_config():
         config = await config_collection.find_one({})
     # Backward compatibility for existing configs
     updates = {}
+    if "shifts" in config and len(config["shifts"]) < 4:
+        shifts_list = list(config["shifts"])
+        while len(shifts_list) < 4:
+            idx = len(shifts_list) + 1
+            shifts_list.append({"name": f"Shift-{idx}", "startTime": "09:00", "endTime": "17:00"})
+        config["shifts"] = shifts_list
+        updates["shifts"] = shifts_list
     if "rosterRows" not in config:
         config["rosterRows"] = [
             {"name": "Shift 1 Row 1", "mappedShift": "Shift-1"},
@@ -455,7 +463,7 @@ async def get_attendance_config():
 
 @router.post("/config", response_model=AttendanceConfigModel, response_model_by_alias=False)
 async def update_attendance_config(
-    payload: AttendanceConfigModel = Body(...),
+    payload: CreateAttendanceConfigModel = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
     is_superuser = current_user.get("isSuperuser", False)

@@ -147,6 +147,7 @@
     "View Salary Calculation",
     "Create Salary Calculation",
     "Update Salary Calculation",
+    "Calculate Salary",
     "Delete Salary Calculation",
     "Edit About App",
     "View About App",
@@ -160,5 +161,6 @@
     "Update Storage (Restricted)",
     "Update Network Device (Restricted)",
     "Mail Config View",
-    "Mail Config Update"
+    "Mail Config Update",
+    "view_department_devices"
 ]

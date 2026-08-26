@@ -31,7 +31,17 @@ async def list_departments(
         "Create Observation" in privileges or
         "Update Observation" in privileges or
         "Create User" in privileges or
-        "Update User" in privileges
+        "Update User" in privileges or
+        "View Works" in privileges or
+        "View All Department Works" in privileges or
+        "View Work" in privileges or
+        "View Work Log" in privileges or
+        "View All Work Logs" in privileges or
+        "View Attendance" in privileges or
+        "View Morning Checklist" in privileges or
+        "View BMS Checklist" in privileges or
+        "View Cluster Checklist" in privileges or
+        "View Announcements" in privileges
     )
     if not allowed and pagination:
         raise HTTPException(status_code=403, detail="Not enough permissions to view departments")

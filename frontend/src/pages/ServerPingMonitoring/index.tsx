@@ -1,11 +1,6 @@
 // @ts-nocheck
 import React, { useEffect, useState, useRef } from 'react';
-import { 
-  Box, Button, Card, Grid, Typography, IconButton, 
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Chip, Checkbox, FormControlLabel, Select, MenuItem, InputLabel, FormControl,
-  TextField as MuiTextField, Tooltip
-} from '@mui/material';
+import { Box, Button, Card, Grid, Typography, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Checkbox, FormControlLabel, Select, MenuItem, InputLabel, FormControl, TextField as MuiTextField, Tooltip } from '@mui/material';
 import { 
   MdAdd as AddIcon, 
   MdDelete as DeleteIcon, 
@@ -24,7 +19,7 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import Modal from '../../components/Modal';
 import TextField from '../../components/TextField';
-import request from '../../services/request';
+import request, { API_BASE_URL } from '../../services/request';
 import { 
   fetchMonitoredServers, createMonitoredServer, updateMonitoredServer, deleteMonitoredServer,
   fetchDashboardData, fetchPingDropLogs, exportPingDropLogs, acknowledgeServer
@@ -52,6 +47,104 @@ interface MonitoredServer {
   lastFailedTime?: string;
 }
 
+// Shared AudioContext to prevent memory leaks from multiple AudioContext instances
+let sharedAudioContext: AudioContext | null = null;
+
+const getSharedAudioContext = (): AudioContext | null => {
+  try {
+    if (!sharedAudioContext) {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContextClass) {
+        sharedAudioContext = new AudioContextClass();
+      }
+    }
+  } catch (err) {
+    console.error("Failed to create AudioContext:", err);
+  }
+  return sharedAudioContext;
+};
+
+if (typeof window !== 'undefined') {
+  const resumeAudio = () => {
+    const audioCtx = getSharedAudioContext();
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(err => console.warn("Failed to resume AudioContext:", err));
+    }
+  };
+  window.addEventListener('click', resumeAudio, { capture: true, passive: true });
+  window.addEventListener('keydown', resumeAudio, { capture: true, passive: true });
+}
+
+// LocalStorage helpers to prevent security or quota exceptions from crashing
+const safeGetLocalStorage = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key);
+  } catch (err) {
+    console.warn("Failed to read from localStorage:", err);
+    return null;
+  }
+};
+
+const safeSetLocalStorage = (key: string, value: string) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch (err) {
+    console.warn("Failed to write to localStorage:", err);
+  }
+};
+
+// Safe stop audio helper to prevent InvalidStateError / DOMException on currentTime manipulation
+const safeStopAudio = (audio: HTMLAudioElement | null) => {
+  if (!audio) return;
+  try {
+    audio.pause();
+    if (audio.readyState > 0 && isFinite(audio.duration)) {
+      audio.currentTime = 0;
+    }
+  } catch (err) {
+    console.warn("Failed to stop audio safely:", err);
+  }
+};
+
+// Defensive helper to extract port status entries safely
+const getPortsStatusEntries = (portsStatus: any): [string, 'UP' | 'DOWN'][] => {
+  if (portsStatus && typeof portsStatus === 'object' && !Array.isArray(portsStatus)) {
+    return Object.entries(portsStatus);
+  }
+  return [];
+};
+
+// Defensive helper to check for offline ports safely
+const hasOfflinePorts = (srv: MonitoredServer | null | undefined): boolean => {
+  if (!srv || !srv.portsStatus || typeof srv.portsStatus !== 'object' || Array.isArray(srv.portsStatus)) {
+    return false;
+  }
+  return Object.values(srv.portsStatus).includes('DOWN');
+};
+
+// Safe date formatting helpers to prevent RangeError or conversion failures
+const safeFormatDateTime = (dateStr: any): string => {
+  if (!dateStr) return '--';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '--';
+    return d.toLocaleString();
+  } catch {
+    return '--';
+  }
+};
+
+const safeFormatTime = (dateStr: any): string => {
+  if (!dateStr) return '--';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '--';
+    return d.toLocaleTimeString();
+  } catch {
+    return '--';
+  }
+};
+
 const ServerPingMonitoring: React.FC = () => {
   const { privileges = [], isSuperuser } = useSelector((state: RootState) => state.auth);
   
@@ -62,20 +155,39 @@ const ServerPingMonitoring: React.FC = () => {
   const canDelete = privileges.includes("Delete Server Ping Monitoring") || isSuperuser;
 
   // Sound States (Persistent)
-  const [isMuted, setIsMuted] = useState(() => localStorage.getItem('dcm_alert_muted') === 'true');
+  const [isMuted, setIsMuted] = useState(() => safeGetLocalStorage('dcm_alert_muted') === 'true');
   const [audioFileName, setAudioFileName] = useState('');
   const [customAlarmUrl, setCustomAlarmUrl] = useState<string | null>(null);
+  const activeAlarmUrlRef = useRef<string | null>(null);
   const audioIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioInstanceRef = useRef<HTMLAudioElement | null>(null);
+  const lastAlarmUrlRef = useRef<string | null>(null);
+
+  const updateAlarmUrl = (url: string | null) => {
+    activeAlarmUrlRef.current = url;
+    setCustomAlarmUrl(url);
+  };
 
   const fetchCustomAlarm = async () => {
     try {
       const res = await request.get('/api/server-ping-monitoring/alarm-sound');
-      if (res.data && res.data.dataUrl) {
-        setCustomAlarmUrl(res.data.dataUrl);
+      if (res.data && res.data.filename) {
+        const fileRes = await request.get('/api/server-ping-monitoring/alarm-sound/file', {
+          responseType: 'blob'
+        });
+        const blobUrl = URL.createObjectURL(fileRes.data);
+        
+        if (activeAlarmUrlRef.current && activeAlarmUrlRef.current.startsWith('blob:')) {
+          URL.revokeObjectURL(activeAlarmUrlRef.current);
+        }
+        
+        updateAlarmUrl(blobUrl);
         setAudioFileName(res.data.filename || 'custom_alarm.mp3');
       } else {
-        setCustomAlarmUrl(null);
+        if (activeAlarmUrlRef.current && activeAlarmUrlRef.current.startsWith('blob:')) {
+          URL.revokeObjectURL(activeAlarmUrlRef.current);
+        }
+        updateAlarmUrl(null);
         setAudioFileName('');
       }
     } catch (err) {
@@ -86,7 +198,7 @@ const ServerPingMonitoring: React.FC = () => {
   // Individual Muted Servers State
   const [mutedServerIds, setMutedServerIds] = useState<string[]>(() => {
     try {
-      const stored = localStorage.getItem('dcm_muted_server_ids');
+      const stored = safeGetLocalStorage('dcm_muted_server_ids');
       return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
@@ -98,7 +210,25 @@ const ServerPingMonitoring: React.FC = () => {
       ? mutedServerIds.filter(id => id !== serverId)
       : [...mutedServerIds, serverId];
     setMutedServerIds(nextMuted);
-    localStorage.setItem('dcm_muted_server_ids', JSON.stringify(nextMuted));
+    safeSetLocalStorage('dcm_muted_server_ids', JSON.stringify(nextMuted));
+
+    // Optimistically check if we should mute the alarm sound immediately
+    const hasUnmutedOffline = servers.some(s => {
+      if (!s) return false;
+      if (!s.isEnabled) return false;
+      if (nextMuted.includes(s.id)) return false;
+      if (s.isAcknowledged) return false;
+      return s.status === 'DOWN' || 
+        ((s.monitoringType === 'both' || s.monitoringType === 'port') && hasOfflinePorts(s));
+    });
+
+    if (!hasUnmutedOffline || isMuted) {
+      if (audioIntervalRef.current) {
+        clearInterval(audioIntervalRef.current);
+        audioIntervalRef.current = null;
+      }
+      safeStopAudio(audioInstanceRef.current);
+    }
   };
 
   // Refs for tracking transitions of offline servers
@@ -138,12 +268,73 @@ const ServerPingMonitoring: React.FC = () => {
     isEnabled: true
   });
 
+  const validateServerName = (v: string) => {
+    if (!v) return "";
+    if (!/^[a-zA-Z0-9\s._-]+$/.test(v)) return "Friendly name must be alphanumeric with spaces, dashes, dots or underscores only";
+    if (v.length < 2 || v.length > 50) return "Friendly name must be between 2 to 50 characters";
+    return "";
+  };
+  const validateIpAddress = (v: string) => {
+    if (!v) return "";
+    const ipv4Regex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+    if (!ipv4Regex.test(v)) return "Must be a valid IPv4 address";
+    const parts = v.split('.');
+    for (const part of parts) {
+      const num = parseInt(part, 10);
+      if (isNaN(num) || num < 0 || num > 255) {
+        return "Must be a valid IPv4 address (octets 0-255)";
+      }
+    }
+    return "";
+  };
+  const validatePortsInput = (v: string) => {
+    if (!v) return "";
+    const ports = v.split(',').map(p => p.trim());
+    for (const p of ports) {
+      if (!p) continue;
+      const num = parseInt(p, 10);
+      if (isNaN(num) || num < 1 || num > 65535) {
+        return "Each port must be an integer between 1 and 65535";
+      }
+    }
+    return "";
+  };
+  const validateInterval = (v: number) => {
+    if (v === undefined || v === null || isNaN(v)) return "Interval is required";
+    if (v < 5 || v > 3600) return "Interval must be between 5 and 3600 seconds";
+    return "";
+  };
+  const validateTimeout = (v: number) => {
+    if (v === undefined || v === null || isNaN(v)) return "Timeout is required";
+    if (v < 1 || v > 30) return "Timeout must be between 1 and 30 seconds";
+    return "";
+  };
+  const validateRetryCount = (v: number) => {
+    if (v === undefined || v === null || isNaN(v)) return "Retry count is required";
+    if (v < 1 || v > 10) return "Retry count must be between 1 and 10";
+    return "";
+  };
+
+  const nameErr = validateServerName(serverForm.name);
+  const ipAddressErr = validateIpAddress(serverForm.ipAddress);
+  const portsInputErr = (serverForm.monitoringType === 'port' || serverForm.monitoringType === 'both') ? validatePortsInput(serverForm.portsInput) : "";
+  const intervalErr = validateInterval(serverForm.interval);
+  const timeoutErr = validateTimeout(serverForm.timeout);
+  const retryCountErr = validateRetryCount(serverForm.retryCount);
+
+  const isFormInvalid = !!nameErr || !!ipAddressErr || !!portsInputErr || !!intervalErr || !!timeoutErr || !!retryCountErr || !serverForm.name || !serverForm.ipAddress;
+
   const [loading, setLoading] = useState(false);
 
   // Web Audio fallback synthesizer
   const playAlertBeep = () => {
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioCtx = getSharedAudioContext();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(err => console.warn("Failed to resume AudioContext in playAlertBeep:", err));
+      }
+
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
       
@@ -156,6 +347,12 @@ const ServerPingMonitoring: React.FC = () => {
       gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
       
+      // Cleanup Web Audio nodes on completion to prevent memory leaks
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        gainNode.disconnect();
+      };
+
       oscillator.start(audioCtx.currentTime);
       oscillator.stop(audioCtx.currentTime + 0.5);
     } catch (e) {
@@ -166,15 +363,17 @@ const ServerPingMonitoring: React.FC = () => {
   // Sound Loop management
   useEffect(() => {
     const hasUnmutedOfflineServers = servers.some(s => {
+      if (!s) return false;
+      if (!s.isEnabled) return false;
       if (mutedServerIds.includes(s.id)) return false;
       if (s.isAcknowledged) return false;
       return s.status === 'DOWN' || 
-        ((s.monitoringType === 'both' || s.monitoringType === 'port') && 
-         s.portsStatus && 
-         Object.values(s.portsStatus).includes('DOWN'));
+        ((s.monitoringType === 'both' || s.monitoringType === 'port') && hasOfflinePorts(s));
     });
 
     const shouldPlay = hasUnmutedOfflineServers && !isMuted;
+
+    let interactionCleanup: (() => void) | null = null;
 
     if (shouldPlay) {
       if (customAlarmUrl) {
@@ -185,32 +384,73 @@ const ServerPingMonitoring: React.FC = () => {
         }
 
         // Handle custom audio playback
-        if (!audioInstanceRef.current || audioInstanceRef.current.src !== customAlarmUrl) {
+        if (!audioInstanceRef.current || lastAlarmUrlRef.current !== customAlarmUrl) {
           if (audioInstanceRef.current) {
-            audioInstanceRef.current.pause();
+            safeStopAudio(audioInstanceRef.current);
           }
           const audio = new Audio(customAlarmUrl);
           audio.loop = true;
           audioInstanceRef.current = audio;
+          lastAlarmUrlRef.current = customAlarmUrl;
         }
 
         // Play if paused
         if (audioInstanceRef.current.paused) {
-          audioInstanceRef.current.play().catch(e => {
-            console.warn("Custom audio playback blocked, playing synthesizer beep instead:", e);
-            // Fallback to synth beep loop
+          const triggerFallbackBeep = () => {
             if (!audioIntervalRef.current) {
               playAlertBeep();
               audioIntervalRef.current = setInterval(() => {
                 playAlertBeep();
               }, 3000);
             }
-          });
+
+            // Register one-time user interaction listener to play custom sound once allowed
+            const startOnInteraction = () => {
+              if (audioInstanceRef.current && audioInstanceRef.current.paused) {
+                try {
+                  const playPromise = audioInstanceRef.current.play();
+                  if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                      if (audioIntervalRef.current) {
+                        clearInterval(audioIntervalRef.current);
+                        audioIntervalRef.current = null;
+                      }
+                    }).catch(err => console.warn("Failed to play custom alarm on interaction:", err));
+                  }
+                } catch (err) {
+                  console.warn("Sync error playing custom alarm on interaction:", err);
+                }
+              }
+              cleanupListeners();
+            };
+
+            const cleanupListeners = () => {
+              window.removeEventListener('click', startOnInteraction);
+              window.removeEventListener('keydown', startOnInteraction);
+            };
+
+            window.addEventListener('click', startOnInteraction);
+            window.addEventListener('keydown', startOnInteraction);
+            interactionCleanup = cleanupListeners;
+          };
+
+          try {
+            const playPromise = audioInstanceRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(e => {
+                console.warn("Custom audio playback blocked, playing synthesizer beep instead:", e);
+                triggerFallbackBeep();
+              });
+            }
+          } catch (e) {
+            console.warn("Sync error playing custom alarm:", e);
+            triggerFallbackBeep();
+          }
         }
       } else {
         // Fallback beep loop (no custom alarm)
         if (audioInstanceRef.current) {
-          audioInstanceRef.current.pause();
+          safeStopAudio(audioInstanceRef.current);
           audioInstanceRef.current = null;
         }
 
@@ -227,15 +467,13 @@ const ServerPingMonitoring: React.FC = () => {
         clearInterval(audioIntervalRef.current);
         audioIntervalRef.current = null;
       }
-      if (audioInstanceRef.current) {
-        audioInstanceRef.current.pause();
-        audioInstanceRef.current.currentTime = 0; // Rewind
-      }
+      safeStopAudio(audioInstanceRef.current);
     }
 
     return () => {
-      // Don't fully tear down on every dependency change to prevent audio restarts,
-      // but clean up when components are completely unmounted or parameters change if necessary.
+      if (interactionCleanup) {
+        interactionCleanup();
+      }
     };
   }, [servers, isMuted, mutedServerIds, customAlarmUrl]);
 
@@ -249,6 +487,9 @@ const ServerPingMonitoring: React.FC = () => {
       if (audioInstanceRef.current) {
         audioInstanceRef.current.pause();
         audioInstanceRef.current = null;
+      }
+      if (activeAlarmUrlRef.current && activeAlarmUrlRef.current.startsWith('blob:')) {
+        URL.revokeObjectURL(activeAlarmUrlRef.current);
       }
     };
   }, []);
@@ -264,8 +505,7 @@ const ServerPingMonitoring: React.FC = () => {
       
       const isOffline = srv.status === 'DOWN' || 
                         ((srv.monitoringType === 'both' || srv.monitoringType === 'port') && 
-                         srv.portsStatus && 
-                         Object.values(srv.portsStatus).includes('DOWN'));
+                         hasOfflinePorts(srv));
                          
       if (!isOffline) {
         changed = true;
@@ -276,7 +516,7 @@ const ServerPingMonitoring: React.FC = () => {
     
     if (changed) {
       setMutedServerIds(nextMutedIds);
-      localStorage.setItem('dcm_muted_server_ids', JSON.stringify(nextMutedIds));
+      safeSetLocalStorage('dcm_muted_server_ids', JSON.stringify(nextMutedIds));
     }
   }, [servers, mutedServerIds]);
 
@@ -309,7 +549,7 @@ const ServerPingMonitoring: React.FC = () => {
       setServers(loadedServers);
 
       // Track newly offline servers to automatically trigger sound/unmute
-      const currentOfflineIds = loadedServers.filter((s: MonitoredServer) => s.status === 'DOWN').map((s: MonitoredServer) => s.id);
+      const currentOfflineIds = loadedServers.filter((s: MonitoredServer) => s && s.status === 'DOWN').map((s: MonitoredServer) => s.id);
       
       if (isFirstLoadRef.current) {
         prevOfflineServersRef.current = currentOfflineIds;
@@ -319,7 +559,7 @@ const ServerPingMonitoring: React.FC = () => {
         if (hasNewOffline) {
           // Unmute when another server drops ping
           setIsMuted(false);
-          localStorage.setItem('dcm_alert_muted', 'false');
+          safeSetLocalStorage('dcm_alert_muted', 'false');
         }
         prevOfflineServersRef.current = currentOfflineIds;
       }
@@ -345,12 +585,18 @@ const ServerPingMonitoring: React.FC = () => {
     }
   };
 
+  // Fetch custom alarm sound only once on mount
+  useEffect(() => {
+    if (canView) {
+      fetchCustomAlarm();
+    }
+  }, [canView]);
+
   // Initial load
   useEffect(() => {
     if (canView) {
       loadDashboardMetrics();
       loadServers();
-      fetchCustomAlarm();
     }
   }, [canView, search, sortBy, order]);
 
@@ -369,11 +615,19 @@ const ServerPingMonitoring: React.FC = () => {
         if (document.hidden) return;
         loadDashboardMetrics();
         loadServers();
-        fetchCustomAlarm();
       }, 30000);
     }
     return () => clearInterval(interval);
   }, [canView, search, sortBy, order]);
+
+  // Automatically reload the page every 1 hour (3600000 ms) while on this page
+  useEffect(() => {
+    const reloadTimer = setInterval(() => {
+      window.location.reload();
+    }, 3600000);
+
+    return () => clearInterval(reloadTimer);
+  }, []);
 
   if (!canView) {
     return (
@@ -388,7 +642,15 @@ const ServerPingMonitoring: React.FC = () => {
   const handleToggleMute = () => {
     const newMuteState = !isMuted;
     setIsMuted(newMuteState);
-    localStorage.setItem('dcm_alert_muted', String(newMuteState));
+    safeSetLocalStorage('dcm_alert_muted', String(newMuteState));
+
+    if (newMuteState) {
+      if (audioIntervalRef.current) {
+        clearInterval(audioIntervalRef.current);
+        audioIntervalRef.current = null;
+      }
+      safeStopAudio(audioInstanceRef.current);
+    }
   };
 
   // Handle Audio File upload (converts to base64 Data URL and saves to backend)
@@ -409,8 +671,7 @@ const ServerPingMonitoring: React.FC = () => {
           dataUrl,
           filename: file.name
         });
-        setAudioFileName(file.name);
-        setCustomAlarmUrl(dataUrl);
+        await fetchCustomAlarm();
         alert(`Successfully uploaded custom alarm sound: ${file.name}`);
       } catch (err: any) {
         alert(err.response?.data?.detail || "Failed to upload custom alarm sound. File may be too large.");
@@ -423,7 +684,10 @@ const ServerPingMonitoring: React.FC = () => {
   const handleClearAudio = async () => {
     try {
       await request.delete('/api/server-ping-monitoring/alarm-sound');
-      setCustomAlarmUrl(null);
+      if (activeAlarmUrlRef.current && activeAlarmUrlRef.current.startsWith('blob:')) {
+        URL.revokeObjectURL(activeAlarmUrlRef.current);
+      }
+      updateAlarmUrl(null);
       setAudioFileName('');
       alert("Alert sound reset to default synthesizer beep.");
     } catch (err: any) {
@@ -485,6 +749,7 @@ const ServerPingMonitoring: React.FC = () => {
   // Handle server form submit
   const handleServerFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isFormInvalid) return;
     const ports = serverForm.portsInput
       .split(',')
       .map(p => parseInt(p.trim()))
@@ -540,6 +805,28 @@ const ServerPingMonitoring: React.FC = () => {
     if (!ackTargetServer) return;
     try {
       const nextState = !ackTargetServer.isAcknowledged;
+      
+      // Optimistically stop the alarm if this server is being acknowledged and no other offline servers remain
+      if (nextState) {
+        const hasOtherUnacknowledgedOffline = servers.some(s => {
+          if (!s) return false;
+          if (!s.isEnabled) return false;
+          if (s.id === ackTargetServer.id) return false;
+          if (mutedServerIds.includes(s.id)) return false;
+          if (s.isAcknowledged) return false;
+          return s.status === 'DOWN' || 
+            ((s.monitoringType === 'both' || s.monitoringType === 'port') && hasOfflinePorts(s));
+        });
+
+        if (!hasOtherUnacknowledgedOffline) {
+          if (audioIntervalRef.current) {
+            clearInterval(audioIntervalRef.current);
+            audioIntervalRef.current = null;
+          }
+          safeStopAudio(audioInstanceRef.current);
+        }
+      }
+
       await acknowledgeServer(ackTargetServer.id, nextState);
       setAckTargetServer(null);
       await loadServers();
@@ -679,7 +966,7 @@ const ServerPingMonitoring: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {servers.map((srv) => (
+              {servers.filter(Boolean).map((srv) => (
                 <TableRow key={srv.id} hover>
                   <TableCell sx={{ fontWeight: 600, py: 0.75 }}>{srv.name}</TableCell>
                   <TableCell sx={{ py: 0.75 }}>{srv.ipAddress}</TableCell>
@@ -709,9 +996,9 @@ const ServerPingMonitoring: React.FC = () => {
                             sx={{ fontWeight: 600, fontSize: '0.65rem', height: '18px', mt: 0.25 }} 
                           />
                         )}
-                        {srv.monitoringType === 'both' && srv.portsStatus && Object.keys(srv.portsStatus).length > 0 && (
+                        {srv.monitoringType === 'both' && getPortsStatusEntries(srv.portsStatus).length > 0 && (
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.25 }}>
-                            {Object.entries(srv.portsStatus).map(([port, status]) => (
+                            {getPortsStatusEntries(srv.portsStatus).map(([port, status]) => (
                               <Tooltip key={port} title={`Port ${port}: ${status}`}>
                                 <Chip
                                   size="small"
@@ -735,8 +1022,7 @@ const ServerPingMonitoring: React.FC = () => {
                       {/* Individual Mute/Alarm toggle */}
                       {(srv.status === 'DOWN' || 
                         ((srv.monitoringType === 'both' || srv.monitoringType === 'port') && 
-                         srv.portsStatus && 
-                         Object.values(srv.portsStatus).includes('DOWN'))) && (
+                         hasOfflinePorts(srv))) && (
                         <Tooltip title={mutedServerIds.includes(srv.id) ? "Unmute this server alert" : "Mute this server alert"}>
                           <IconButton 
                             size="small" 
@@ -760,10 +1046,10 @@ const ServerPingMonitoring: React.FC = () => {
                   </TableCell>
 
                   <TableCell sx={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 500, py: 0.75 }}>
-                    {srv.lastFailedTime ? new Date(srv.lastFailedTime).toLocaleString() : '--'}
+                    {safeFormatDateTime(srv.lastFailedTime)}
                   </TableCell>
                   <TableCell sx={{ fontSize: '0.75rem', color: '#64748b', py: 0.75 }}>
-                    {srv.lastUpdated ? new Date(srv.lastUpdated).toLocaleTimeString() : '--'}
+                    {safeFormatTime(srv.lastUpdated)}
                   </TableCell>
                   {canUpdate || canDelete ? (
                     <TableCell align="center" sx={{ py: 0.75 }}>
@@ -775,8 +1061,7 @@ const ServerPingMonitoring: React.FC = () => {
                         )}
                         {canUpdate && (srv.status === 'DOWN' || 
                           ((srv.monitoringType === 'both' || srv.monitoringType === 'port') && 
-                           srv.portsStatus && 
-                           Object.values(srv.portsStatus).includes('DOWN'))) && (
+                           hasOfflinePorts(srv))) && (
                           <Tooltip title={srv.isAcknowledged ? "Unacknowledge Server" : "Acknowledge Server"}>
                             <IconButton 
                               size="small" 
@@ -821,6 +1106,7 @@ const ServerPingMonitoring: React.FC = () => {
             label="Start Date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
             slotProps={{ inputLabel: { shrink: true } }}
             size="small"
             sx={{ '& .MuiOutlinedInput-root': { height: '30px', fontSize: '0.8rem' } }}
@@ -830,6 +1116,7 @@ const ServerPingMonitoring: React.FC = () => {
             label="End Date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
             slotProps={{ inputLabel: { shrink: true } }}
             size="small"
             sx={{ '& .MuiOutlinedInput-root': { height: '30px', fontSize: '0.8rem' } }}
@@ -858,13 +1145,13 @@ const ServerPingMonitoring: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {dropLogs.map((log) => (
+              {dropLogs.filter(Boolean).map((log) => (
                 <TableRow key={log.id} hover>
                   <TableCell sx={{ fontWeight: 600, py: 0.75 }}>{log.name}</TableCell>
                   <TableCell sx={{ py: 0.75 }}>{log.ipAddress}</TableCell>
                   <TableCell sx={{ py: 0.75 }}>{log.adminName || '--'}</TableCell>
                   <TableCell sx={{ color: '#ef4444', fontWeight: 500, py: 0.75, fontSize: '0.75rem' }}>
-                    {new Date(log.timestamp).toLocaleString()}
+                    {safeFormatDateTime(log.timestamp)}
                   </TableCell>
                   <TableCell sx={{ py: 0.75 }}>
                     <Chip size="small" label={log.pingStatus} color="error" variant="outlined" sx={{ fontWeight: 700, fontSize: '0.65rem', height: '18px' }} />
@@ -897,6 +1184,8 @@ const ServerPingMonitoring: React.FC = () => {
             onChange={(e) => setServerForm({ ...serverForm, name: e.target.value })}
             required
             fullWidth
+            error={!!nameErr}
+            helperText={nameErr}
           />
           <TextField
             label="IP Address or FQDN"
@@ -904,6 +1193,8 @@ const ServerPingMonitoring: React.FC = () => {
             onChange={(e) => setServerForm({ ...serverForm, ipAddress: e.target.value })}
             required
             fullWidth
+            error={!!ipAddressErr}
+            helperText={ipAddressErr}
           />
           <TextField
             label="Admin Name"
@@ -934,6 +1225,8 @@ const ServerPingMonitoring: React.FC = () => {
               onChange={(e) => setServerForm({ ...serverForm, portsInput: e.target.value })}
               placeholder="e.g. 22, 80, 443"
               fullWidth
+              error={!!portsInputErr}
+              helperText={portsInputErr}
             />
           )}
 
@@ -946,6 +1239,8 @@ const ServerPingMonitoring: React.FC = () => {
                 onChange={(e) => setServerForm({ ...serverForm, interval: Number(e.target.value) })}
                 required
                 fullWidth
+                error={!!intervalErr}
+                helperText={intervalErr}
               />
             </Grid>
             <Grid size={{xs: 4}}  >
@@ -956,6 +1251,8 @@ const ServerPingMonitoring: React.FC = () => {
                 onChange={(e) => setServerForm({ ...serverForm, timeout: Number(e.target.value) })}
                 required
                 fullWidth
+                error={!!timeoutErr}
+                helperText={timeoutErr}
               />
             </Grid>
             <Grid size={{xs: 4}}  >
@@ -966,6 +1263,8 @@ const ServerPingMonitoring: React.FC = () => {
                 onChange={(e) => setServerForm({ ...serverForm, retryCount: Number(e.target.value) })}
                 required
                 fullWidth
+                error={!!retryCountErr}
+                helperText={retryCountErr}
               />
             </Grid>
           </Grid>
@@ -983,7 +1282,7 @@ const ServerPingMonitoring: React.FC = () => {
 
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 1.5 }}>
             <Button size="small" onClick={() => setIsServerModalOpen(false)}>Cancel</Button>
-            <Button size="small" type="submit" variant="contained" sx={{ background: '#3b82f6', '&:hover': { background: '#2563eb' } }}>
+            <Button size="small" type="submit" variant="contained" disabled={isFormInvalid} sx={{ background: '#3b82f6', '&:hover': { background: '#2563eb' } }}>
               Save Configuration
             </Button>
           </Box>

@@ -6,6 +6,7 @@ import {
   MdAdd as AddIcon,
   MdEdit as EditIcon,
   MdDelete as DeleteIcon,
+  MdWarning,
 } from "react-icons/md";
 import Button from "../../components/Button";
 import SearchBar from "../../components/SearchBar";
@@ -26,17 +27,31 @@ import type { AppDispatch, RootState } from "../../store";
 import type { UserData } from "./model";
 import UserFormModal from "./UserFormModal";
 import { hasPrivilege } from "../../helpers/authUtils";
+import { jwtDecode } from "jwt-decode";
 import { getServerTime } from "../../helpers/time";
 import styles from "./index.module.scss";
 import { PRIVILEGES } from "../../helpers/privileges";
 
 type Order = "asc" | "desc";
 
+const getLoggedInUserDepartment = (): string => {
+  try {
+    const token = localStorage.getItem("token");
+    if (token) {
+      const decoded: any = jwtDecode(token);
+      return decoded.department || "All Departments";
+    }
+  } catch (e) {
+    console.error("Error decoding token:", e);
+  }
+  return "All Departments";
+};
+
 const Users: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { username: currentUsername } = useSelector((state: RootState) => state.auth);
   const {
-    users,
+    adminUsers,
     availableRoles,
     availableDepartments,
     totalCount,
@@ -45,8 +60,18 @@ const Users: React.FC = () => {
   } = useSelector((state: RootState) => state.users);
   const { showToast } = useToast();
 
+  const hasViewAll = hasPrivilege(PRIVILEGES.USER_VIEW_ALL);
+  const defaultDept = hasViewAll ? "All Departments" : getLoggedInUserDepartment();
+
   const [searchQuery, setSearchQuery] = useTableState("users_search", "");
-  const [selectedDepartment, setSelectedDepartment] = useTableState("users_filter_dept", "All Departments");
+  const [selectedDepartment, setSelectedDepartment] = useTableState("users_filter_dept", defaultDept);
+
+  useEffect(() => {
+    if (!hasViewAll && selectedDepartment === "All Departments") {
+      setSelectedDepartment(getLoggedInUserDepartment());
+    }
+  }, [hasViewAll, selectedDepartment, setSelectedDepartment]);
+
   const [selectedRole, setSelectedRole] = useTableState("users_filter_role", "All Roles");
   const [selectedStatus, setSelectedStatus] = useTableState("users_filter_status", "active");
   const [page, setPage] = useTableState("users_page", 0);
@@ -208,6 +233,65 @@ const Users: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validation checks
+    if (!formUsername) {
+      showToast("Username is required", "error");
+      return;
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(formUsername)) {
+      showToast("Username must contain alphabets, underscore, and numbers only", "error");
+      return;
+    }
+    if (formUsername.length > 20) {
+      showToast("Username must be maximum 20 characters", "error");
+      return;
+    }
+    if (!editingUser && !formPassword) {
+      showToast("Password is required", "error");
+      return;
+    }
+    if (formPassword && formPassword.length > 20) {
+      showToast("Password must be maximum 20 characters", "error");
+      return;
+    }
+    if (formFirstName && !/^[a-zA-Z0-9_.\s]+$/.test(formFirstName)) {
+      showToast("First name must contain alphanumeric characters, spaces, dots, or underscores only", "error");
+      return;
+    }
+    if (formFirstName && formFirstName.length > 20) {
+      showToast("First name must be maximum 20 characters", "error");
+      return;
+    }
+    if (formLastName && !/^[a-zA-Z0-9_.\s]+$/.test(formLastName)) {
+      showToast("Last name must contain alphanumeric characters, spaces, dots, or underscores only", "error");
+      return;
+    }
+    if (formLastName && formLastName.length > 20) {
+      showToast("Last name must be maximum 20 characters", "error");
+      return;
+    }
+    if (formMobile && !/^[0-9,]+$/.test(formMobile)) {
+      showToast("Mobile number must contain numbers and commas only", "error");
+      return;
+    }
+    if (formPassNumber && !/^[a-zA-Z0-9]+$/.test(formPassNumber)) {
+      showToast("Pass number must be alphanumeric only", "error");
+      return;
+    }
+    if (formPassNumber && formPassNumber.length > 20) {
+      showToast("Pass number must be maximum 20 characters", "error");
+      return;
+    }
+    if (formDateOfJoin) {
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      if (new Date(formDateOfJoin) > today) {
+        showToast("Date of join cannot be a future date", "error");
+        return;
+      }
+    }
+
     try {
       if (editingUser) {
         const payload: any = {
@@ -268,7 +352,7 @@ const Users: React.FC = () => {
     if (await confirm("Are you sure you want to delete this user?", "Delete User")) {
       try {
         await dispatch(deleteUser({ id, showToast })).unwrap();
-        if (users.length === 1 && page > 0) {
+        if (adminUsers.length === 1 && page > 0) {
           setPage(page - 1);
         } else {
           loadData();
@@ -300,27 +384,42 @@ const Users: React.FC = () => {
 
   const columns: Column<UserData>[] = [
     { id: "username", label: "Username", sortable: true },
-    { 
-      id: "fullName", 
-      label: "Full Name", 
+    {
+      id: "fullName",
+      label: "Full Name",
       sortable: false,
-      render: (row) => `${row.firstName || ''} ${row.lastName || ''}`.trim() || '-'
+      render: (row) => {
+        const name = `${row.firstName || ''} ${row.lastName || ''}`.trim() || '-';
+        const isActivated = row.activated !== false;
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <span>{name}</span>
+            {!isActivated && (
+              <Tooltip title="Not Activated" arrow>
+                <span>
+                  <MdWarning style={{ color: '#f44336', fontSize: '18px', verticalAlign: 'middle', flexShrink: 0 }} />
+                </span>
+              </Tooltip>
+            )}
+          </Box>
+        );
+      }
     },
     { id: "passNumber", label: "Pass Number", sortable: true, render: (row) => row.passNumber || '-' },
-    { 
-      id: "department", 
-      label: "Department", 
-      sortable: true, 
+    {
+      id: "department",
+      label: "Department",
+      sortable: true,
       render: (row) => {
         if (!row.department) return '-';
         const dept = availableDepartments.find((d: any) => d.id === row.department || d._id === row.department || d.name === row.department);
         return dept ? dept.name : row.department;
       }
     },
-    { 
-      id: "role", 
-      label: "Role", 
-      sortable: true, 
+    {
+      id: "role",
+      label: "Role",
+      sortable: true,
       render: (row) => {
         if (!row.role) return '-';
         const roleIds = Array.isArray(row.role) ? row.role : [row.role];
@@ -505,7 +604,7 @@ const Users: React.FC = () => {
         {/* Table */}
         <Table
           columns={columns}
-          data={users || []}
+          data={adminUsers || []}
           orderBy={orderBy as string}
           order={order}
           onRequestSort={(prop) => handleRequestSort(prop as keyof UserData)}

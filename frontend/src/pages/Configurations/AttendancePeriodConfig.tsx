@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from 'react';
-import { Box, Paper, Typography, TextField, Grid, Divider, FormControl, InputLabel, Select, MenuItem, FormControlLabel, Switch, Chip } from '@mui/material';
+import { Box, Paper, Typography, Grid, Divider, FormControl, InputLabel, Select, MenuItem, FormControlLabel, Switch, Chip } from '@mui/material';
+import TextField from '../../components/TextField';
 import Button from '../../components/Button';
 import { useToast } from '../../contexts/ToastContext';
 import { useSelector } from 'react-redux';
@@ -8,6 +9,7 @@ import { type RootState } from '../../store';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
 import request from '../../services/request';
+import { validators } from '../../helpers/validation';
 
 interface ShiftInfo {
     name: string;
@@ -35,7 +37,9 @@ const AttendancePeriodConfig = () => {
     const [lateGracePeriod, setLateGracePeriod] = useState<number | string>(30);
     const [maxAllowedDays, setMaxAllowedDays] = useState<number | string>(26);
     const [shifts, setShifts] = useState<ShiftInfo[]>([]);
+    const [shiftErrors, setShiftErrors] = useState<string[]>([]);
     const [rosterRows, setRosterRows] = useState<RosterRow[]>([]);
+    const [rowErrors, setRowErrors] = useState<string[]>([]);
     const [validationRules, setValidationRules] = useState<RosterValidationRule[]>([]);
     const [trackedRole, setTrackedRole] = useState<string>('All Roles');
     const [roles, setRoles] = useState<{id: string, name: string}[]>([{ id: 'All Roles', name: 'All Roles' }]);
@@ -57,8 +61,12 @@ const AttendancePeriodConfig = () => {
                 setShiftStart(response.data.shiftStart || '09:00');
                 setLateGracePeriod(response.data.lateGracePeriod || 30);
                 setMaxAllowedDays(response.data.maxAllowedDays || 26);
-                setShifts(response.data.shifts || []);
-                setRosterRows(response.data.rosterRows || []);
+                const fetchedShifts = response.data.shifts || [];
+                setShifts(fetchedShifts);
+                setShiftErrors(fetchedShifts.map(() => ''));
+                const fetchedRows = response.data.rosterRows || [];
+                setRosterRows(fetchedRows);
+                setRowErrors(fetchedRows.map(() => ''));
                 setValidationRules(response.data.validationRules || []);
                 setTrackedRole(response.data.trackedRole || 'All Roles');
                 setLateLoginRestriction(response.data.lateLoginRestriction !== undefined ? response.data.lateLoginRestriction : true);
@@ -102,23 +110,30 @@ const AttendancePeriodConfig = () => {
         }
 
         // Validate shift entries
-        for (const s of shifts) {
-            if (!s.name || !s.name.trim()) {
-                showToast('Shift name cannot be empty', 'warning');
-                return;
-            }
+        if (shifts.length < 4) {
+            showToast('At least 4 shifts must be configured', 'warning');
+            return;
         }
 
+        const newShiftErrors = shifts.map((s) => {
+            if (!s.name || !s.name.trim()) return 'Shift name cannot be empty';
+            return validators.alphanumericSpaces(s.name, 50, 'Shift Name');
+        });
+        setShiftErrors(newShiftErrors);
+
         // Validate roster row entries
-        for (const r of rosterRows) {
-            if (!r.name || !r.name.trim()) {
-                showToast('Roster row name cannot be empty', 'warning');
-                return;
-            }
-            if (!r.mappedShift) {
-                showToast('Please assign a shift to all roster rows', 'warning');
-                return;
-            }
+        const newRowErrors = rosterRows.map((r) => {
+            if (!r.name || !r.name.trim()) return 'Roster row name cannot be empty';
+            const valErr = validators.alphanumericSpaces(r.name, 50, 'Roster Row Name');
+            if (valErr) return valErr;
+            if (!r.mappedShift || r.mappedShift === 'None') return 'Please assign a shift to this row/slot';
+            return '';
+        });
+        setRowErrors(newRowErrors);
+
+        if (newShiftErrors.some(e => e !== '') || newRowErrors.some(e => e !== '')) {
+            showToast('Please fix all configuration validation errors before saving', 'warning');
+            return;
         }
 
         // Validate roster validation rules
@@ -221,6 +236,7 @@ const AttendancePeriodConfig = () => {
                                 value={shiftStart}
                                 onChange={(e) => setShiftStart(e.target.value)}
                                 disabled={!hasUpdate || saving}
+                                InputLabelProps={{ shrink: true }}
                                 slotProps={{ inputLabel: { shrink: true } }}
                                 helperText="Default work start time"
                             />
@@ -320,7 +336,10 @@ const AttendancePeriodConfig = () => {
                                     <Button
                                         variant="outlined"
                                         size="small"
-                                        onClick={() => setShifts([...shifts, { name: '', startTime: '09:00', endTime: '17:00' }])}
+                                        onClick={() => {
+                                            setShifts([...shifts, { name: '', startTime: '09:00', endTime: '17:00' }]);
+                                            setShiftErrors([...shiftErrors, '']);
+                                        }}
                                         disabled={saving}
                                     >
                                         + Add Shift
@@ -346,8 +365,15 @@ const AttendancePeriodConfig = () => {
                                                         const newShifts = [...shifts];
                                                         newShifts[idx].name = e.target.value;
                                                         setShifts(newShifts);
-                                                     }}
+                                                        setShiftErrors((prev) => {
+                                                            const updated = [...prev];
+                                                            updated[idx] = '';
+                                                            return updated;
+                                                        });
+                                                    }}
                                                     disabled={!hasUpdate || saving}
+                                                    error={!!shiftErrors[idx]}
+                                                    helperText={shiftErrors[idx]}
                                                 />
                                             </Grid>
                                             <Grid size={{xs: 6, sm: 3}}   >
@@ -362,6 +388,7 @@ const AttendancePeriodConfig = () => {
                                                         setShifts(newShifts);
                                                     }}
                                                     disabled={!hasUpdate || saving}
+                                                    InputLabelProps={{ shrink: true }}
                                                     slotProps={{ inputLabel: { shrink: true } }}
                                                 />
                                             </Grid>
@@ -377,6 +404,7 @@ const AttendancePeriodConfig = () => {
                                                         setShifts(newShifts);
                                                     }}
                                                     disabled={!hasUpdate || saving}
+                                                    InputLabelProps={{ shrink: true }}
                                                     slotProps={{ inputLabel: { shrink: true } }}
                                                 />
                                             </Grid>
@@ -389,6 +417,7 @@ const AttendancePeriodConfig = () => {
                                                         onClick={() => {
                                                             const newShifts = shifts.filter((_, sIdx) => sIdx !== idx);
                                                             setShifts(newShifts);
+                                                            setShiftErrors(shiftErrors.filter((_, sIdx) => sIdx !== idx));
                                                         }}
                                                         disabled={saving}
                                                     >
@@ -412,7 +441,10 @@ const AttendancePeriodConfig = () => {
                                     <Button
                                         variant="outlined"
                                         size="small"
-                                        onClick={() => setRosterRows([...rosterRows, { name: '', mappedShift: 'None' }])}
+                                        onClick={() => {
+                                            setRosterRows([...rosterRows, { name: '', mappedShift: 'None' }]);
+                                            setRowErrors([...rowErrors, '']);
+                                        }}
                                         disabled={saving}
                                     >
                                         + Add Row/Slot
@@ -438,12 +470,19 @@ const AttendancePeriodConfig = () => {
                                                         const newRows = [...rosterRows];
                                                         newRows[idx].name = e.target.value;
                                                         setRosterRows(newRows);
+                                                        setRowErrors((prev) => {
+                                                            const updated = [...prev];
+                                                            updated[idx] = '';
+                                                            return updated;
+                                                        });
                                                     }}
                                                     disabled={!hasUpdate || saving}
+                                                    error={!!rowErrors[idx]}
+                                                    helperText={rowErrors[idx]}
                                                 />
                                             </Grid>
                                             <Grid size={{xs: 12, sm: 5}}   >
-                                                <FormControl fullWidth>
+                                                <FormControl fullWidth error={!!rowErrors[idx] && (rowErrors[idx].includes('assign') || rowErrors[idx].includes('shift'))}>
                                                     <InputLabel>Mapped Shift</InputLabel>
                                                     <Select
                                                         value={row.mappedShift}
@@ -452,6 +491,11 @@ const AttendancePeriodConfig = () => {
                                                             const newRows = [...rosterRows];
                                                             newRows[idx].mappedShift = e.target.value as string;
                                                             setRosterRows(newRows);
+                                                            setRowErrors((prev) => {
+                                                                const updated = [...prev];
+                                                                updated[idx] = '';
+                                                                return updated;
+                                                            });
                                                         }}
                                                         disabled={!hasUpdate || saving}
                                                     >
@@ -461,6 +505,11 @@ const AttendancePeriodConfig = () => {
                                                         ))}
                                                         <MenuItem value="Leave">Leave</MenuItem>
                                                     </Select>
+                                                    {rowErrors[idx] && (rowErrors[idx].includes('assign') || rowErrors[idx].includes('shift')) && (
+                                                        <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
+                                                            {rowErrors[idx]}
+                                                        </Typography>
+                                                    )}
                                                 </FormControl>
                                             </Grid>
                                             <Grid size={{xs: 12, sm: 2}}   >
@@ -472,6 +521,7 @@ const AttendancePeriodConfig = () => {
                                                         onClick={() => {
                                                             const newRows = rosterRows.filter((_, rIdx) => rIdx !== idx);
                                                             setRosterRows(newRows);
+                                                            setRowErrors(rowErrors.filter((_, rIdx) => rIdx !== idx));
                                                         }}
                                                         disabled={saving}
                                                     >

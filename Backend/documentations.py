@@ -34,6 +34,15 @@ async def create_documentation(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
+    title = title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Title cannot be empty")
+    import re
+    if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", title):
+        raise HTTPException(status_code=400, detail="Title must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+    if len(title) > 100:
+        raise HTTPException(status_code=400, detail="Title must be maximum 100 characters")
+
     base_dir = "uploads/documentations"
     os.makedirs(base_dir, exist_ok=True)
     
@@ -91,6 +100,15 @@ async def update_documentation(
     file: Optional[UploadFile] = File(default=None),
     current_user: dict = Depends(get_current_user)
 ):
+    title = title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Title cannot be empty")
+    import re
+    if not re.match(r"^[a-zA-Z0-9\s,.:-]+$", title):
+        raise HTTPException(status_code=400, detail="Title must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+    if len(title) > 100:
+        raise HTTPException(status_code=400, detail="Title must be maximum 100 characters")
+
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
         

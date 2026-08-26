@@ -8,6 +8,7 @@ import Button from '../../../components/Button';
 import { fetchAllNodes } from './action';
 import { fetchClusters } from '../../Clusters/action';
 import request from '../../../services/request';
+import { validators } from '../../../helpers/validation';
 import styles from './modal.module.scss';
 
 interface PhysicalServerModalProps {
@@ -36,9 +37,11 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
     const [nodes, setNodes] = useState<any[]>([]);
     const [clusters, setClusters] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         if (open) {
+            setErrors({});
             const activeClusterId = editingItem ? editingItem.clusterId : (formData.clusterId || clusterId);
             const nodeParams: any = {};
             if (activeClusterId) {
@@ -114,8 +117,32 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
         }
     }, [users, formData.admin]);
 
+    const validateField = (field: string, value: string) => {
+        let errMsg = '';
+        if (field === 'ipAddress') {
+            errMsg = validators.ipv4CommaSeparated(value, 'IP Address');
+        } else if (field === 'applications') {
+            errMsg = validators.alphanumericGeneral(value, 100, 'Applications');
+        } else if (field === 'osAndExpiry') {
+            errMsg = validators.alphanumericGeneral(value, 100, 'OS and Expiry');
+        } else if (field === 'backupLocation') {
+            errMsg = validators.alphanumericGeneral(value, 100, 'Server Backup Location');
+        } else if (field === 'hdd') {
+            errMsg = validators.alphanumericSpacesDots(value, 10, 'HDD');
+        } else if (field === 'ram') {
+            errMsg = validators.alphanumericSpacesDots(value, 10, 'RAM');
+        } else if (field === 'cpu') {
+            errMsg = validators.alphanumericSpacesDots(value, 10, 'CPU');
+        }
+        setErrors(prev => ({ ...prev, [field]: errMsg }));
+        return errMsg;
+    };
+
     const handleChange = (field: keyof CreatePhysicalServerPayload, value: string | string[]) => {
         setFormData(prev => ({ ...prev, [field]: value }));
+        if (typeof value === 'string') {
+            validateField(field, value);
+        }
     };
 
     const handleCheckboxChange = (field: keyof CreatePhysicalServerPayload, checked: boolean) => {
@@ -153,6 +180,30 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        
+        const ipErr = validators.ipv4CommaSeparated(formData.ipAddress, 'IP Address');
+        const appErr = validators.alphanumericGeneral(formData.applications, 100, 'Applications');
+        const osErr = validators.alphanumericGeneral(formData.osAndExpiry, 100, 'OS and Expiry');
+        const backErr = validators.alphanumericGeneral(formData.backupLocation, 100, 'Server Backup Location');
+        const hddErr = validators.alphanumericSpacesDots(formData.hdd, 10, 'HDD');
+        const ramErr = validators.alphanumericSpacesDots(formData.ram, 10, 'RAM');
+        const cpuErr = validators.alphanumericSpacesDots(formData.cpu, 10, 'CPU');
+
+        const newErrors = {
+            ipAddress: ipErr,
+            applications: appErr,
+            osAndExpiry: osErr,
+            backupLocation: backErr,
+            hdd: hddErr,
+            ram: ramErr,
+            cpu: cpuErr
+        };
+
+        setErrors(newErrors);
+
+        if (Object.values(newErrors).some(err => !!err)) {
+            return;
+        }
         
         if (editingItem) {
             const changedData: UpdatePhysicalServerPayload = {};
@@ -199,6 +250,8 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
                         className={styles.formGrid__field}
                         value={formData.ipAddress} 
                         onChange={(e) => handleChange('ipAddress', e.target.value)} 
+                        error={!!errors.ipAddress}
+                        helperText={errors.ipAddress}
                     />
                     <TextField 
                         label="Applications" 
@@ -206,6 +259,8 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
                         className={styles.formGrid__field}
                         value={formData.applications} 
                         onChange={(e) => handleChange('applications', e.target.value)} 
+                        error={!!errors.applications}
+                        helperText={errors.applications}
                     />
                     <Dropdown 
                         label="Node" 
@@ -221,6 +276,8 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
                         className={styles.formGrid__field}
                         value={formData.osAndExpiry} 
                         onChange={(e) => handleChange('osAndExpiry', e.target.value)} 
+                        error={!!errors.osAndExpiry}
+                        helperText={errors.osAndExpiry}
                     />
                     <TextField 
                         label="Server Backup Location" 
@@ -228,6 +285,8 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
                         className={styles.formGrid__field}
                         value={formData.backupLocation} 
                         onChange={(e) => handleChange('backupLocation', e.target.value)} 
+                        error={!!errors.backupLocation}
+                        helperText={errors.backupLocation}
                     />
                     <Dropdown 
                         label="Admin" 
@@ -261,6 +320,8 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
                         className={styles.formGrid__field}
                         value={formData.hdd} 
                         onChange={(e) => handleChange('hdd', e.target.value)} 
+                        error={!!errors.hdd}
+                        helperText={errors.hdd}
                     />
                     <TextField 
                         label="RAM" 
@@ -268,6 +329,8 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
                         className={styles.formGrid__field}
                         value={formData.ram} 
                         onChange={(e) => handleChange('ram', e.target.value)} 
+                        error={!!errors.ram}
+                        helperText={errors.ram}
                     />
                     <TextField 
                         label="CPU" 
@@ -275,6 +338,8 @@ const PhysicalServerModal: React.FC<PhysicalServerModalProps> = ({ open, onClose
                         className={styles.formGrid__field}
                         value={formData.cpu} 
                         onChange={(e) => handleChange('cpu', e.target.value)} 
+                        error={!!errors.cpu}
+                        helperText={errors.cpu}
                     />
                 </Box>
                 <Box className={styles.buttonContainer}>

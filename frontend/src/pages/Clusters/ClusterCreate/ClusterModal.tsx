@@ -1,10 +1,10 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { Box } from '@mui/material';
 import Modal from '../../../components/Modal';
 import TextField from '../../../components/TextField';
 import Dropdown from '../../../components/Dropdown';
 import Button from '../../../components/Button';
+import { validators } from '../../../helpers/validation';
 import { type ClusterData, type CreateClusterPayload, type UpdateClusterPayload } from '../model';
 import { fetchClusterTypes } from '../../Configurations/ClusterTypes/action';
 import request from '../../../services/request';
@@ -29,9 +29,11 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
 
     const [clusterTypes, setClusterTypes] = useState<any[]>([]);
     const [nodes, setNodes] = useState<any[]>([]);
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         if (open) {
+            setErrors({});
             fetchClusterTypes({ pagination: false })
                 .then(res => setClusterTypes(res.data || []))
                 .catch(err => console.error("Failed to load cluster types", err));
@@ -73,24 +75,50 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
 
     const handleChange = (field: keyof CreateClusterPayload, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
+        setErrors(prev => ({ ...prev, [field]: '' }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
+        const nameErr = validators.alphanumericSpaces(formData.clusterName, 50, "Cluster Name");
+        const ipErr = validators.ipv4(formData.ipAddress, "IP Address");
+        const remarksErr = validators.alphanumericGeneral(formData.remarks, 125, "Remarks");
+
+        const newErrors = {
+            clusterName: nameErr,
+            ipAddress: ipErr,
+            remarks: remarksErr
+        };
+
+        setErrors(newErrors);
+
+        if (nameErr || ipErr || remarksErr) {
+            return;
+        }
+
+        const payloadData = {
+            clusterName: formData.clusterName.trim(),
+            ipAddress: formData.ipAddress.trim() ? formData.ipAddress.trim() : undefined,
+            clusterType: formData.clusterType,
+            networkType: formData.networkType,
+            remarks: formData.remarks.trim(),
+            nodes: formData.nodes
+        };
+
         if (editingItem) {
             const changedData: UpdateClusterPayload = {};
-            if (formData.clusterName !== editingItem.clusterName) changedData.clusterName = formData.clusterName;
-            if (formData.ipAddress !== editingItem.ipAddress) changedData.ipAddress = formData.ipAddress;
-            if (formData.clusterType !== editingItem.clusterType) changedData.clusterType = formData.clusterType;
-            if (formData.networkType !== editingItem.networkType) changedData.networkType = formData.networkType;
-            if (formData.remarks !== editingItem.remarks) changedData.remarks = formData.remarks;
-            if (JSON.stringify(formData.nodes || []) !== JSON.stringify(editingItem.nodes || [])) {
-                changedData.nodes = formData.nodes;
+            if (payloadData.clusterName !== editingItem.clusterName) changedData.clusterName = payloadData.clusterName;
+            if (payloadData.ipAddress !== editingItem.ipAddress) changedData.ipAddress = payloadData.ipAddress;
+            if (payloadData.clusterType !== editingItem.clusterType) changedData.clusterType = payloadData.clusterType;
+            if (payloadData.networkType !== editingItem.networkType) changedData.networkType = payloadData.networkType;
+            if (payloadData.remarks !== editingItem.remarks) changedData.remarks = payloadData.remarks;
+            if (JSON.stringify(payloadData.nodes || []) !== JSON.stringify(editingItem.nodes || [])) {
+                changedData.nodes = payloadData.nodes;
             }
             onSubmit(changedData);
         } else {
-            onSubmit(formData);
+            onSubmit(payloadData);
         }
     };
 
@@ -124,6 +152,9 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
                             label="Cluster Name"
                             value={formData.clusterName}
                             onChange={(e) => handleChange('clusterName', e.target.value)}
+                            required
+                            error={!!errors.clusterName}
+                            helperText={errors.clusterName}
                         />
                     </Box>
                     <Box sx={{ mt: 1, mb: 1 }}>
@@ -134,7 +165,8 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
                             onChange={(val) => handleChange('networkType', val)}
                             options={[
                                 { label: 'Intranet', value: 'intranet' },
-                                { label: 'Internet', value: 'internet' }
+                                { label: 'Internet', value: 'internet' },
+                                { label: 'Device Management', value: 'device management' }
                             ]}
                         />
                     </Box>
@@ -145,6 +177,8 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
                             label="IP Address"
                             value={formData.ipAddress}
                             onChange={(e) => handleChange('ipAddress', e.target.value)}
+                            error={!!errors.ipAddress}
+                            helperText={errors.ipAddress}
                         />
                     </Box>
                     <Box sx={{ mt: 1 }}>
@@ -158,14 +192,21 @@ const ClusterModal: React.FC<ClusterModalProps> = ({ open, onClose, onSubmit, ed
                             options={nodes.map(n => ({ label: getNodeLabel(n), value: n.id || n._id }))}
                         />
                     </Box>
-                    <Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         <TextField
                             fullWidth
                             className={styles.container__field}
                             label="Remarks"
                             value={formData.remarks}
                             onChange={(e) => handleChange('remarks', e.target.value)}
+                            error={!!errors.remarks}
+                            helperText={errors.remarks}
                         />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-4px' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                {formData.remarks ? formData.remarks.length : 0} / 125
+                            </span>
+                        </div>
                     </Box>
                 </Box>
                 <Box className={styles["container__buttonContainer"]}>

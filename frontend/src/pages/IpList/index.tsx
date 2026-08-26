@@ -1,8 +1,7 @@
-// @ts-nocheck
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, Paper, Tooltip, IconButton, Chip, ToggleButton, ToggleButtonGroup } from '@mui/material';
-import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
+import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdRefresh as RefreshIcon } from 'react-icons/md';
 import SearchBar from '../../components/SearchBar';
 import Dropdown from '../../components/Dropdown';
 import Table, { type Column } from '../../components/Table';
@@ -31,7 +30,7 @@ const IpList: React.FC = () => {
     const { data: ips, totalCount, loading } = useSelector((state: RootState) => state.ipList);
 
     const [page, setPage] = useTableState('ip_list_page', 0);
-    const [rowsPerPage, setRowsPerPage] = useTableState('ip_list_rowsPerPage', 5);
+    const [rowsPerPage, setRowsPerPage] = useTableState('ip_list_rowsPerPage', 25);
     const [searchQuery, setSearchQuery] = useTableState('ip_list_search', '');
     const [isUsedFilter, setIsUsedFilter] = useTableState<'all' | 'free' | 'used'>('ip_list_isUsedFilter', 'all');
     const [userFilter, setUserFilter] = useTableState<string>('ip_list_userFilter', 'all');
@@ -58,8 +57,19 @@ const IpList: React.FC = () => {
         return users.filter(u => u.department === loggedInUser.department);
     }, [users, loggedInUser, isSuperuser]);
 
+    const totalCountRef = useRef(totalCount);
+    useEffect(() => {
+        totalCountRef.current = totalCount;
+    }, [totalCount]);
+
     const loadData = useCallback(() => {
         if (!hasViewPrivilege) return;
+
+        if (totalCountRef.current > 0 && page * rowsPerPage >= totalCountRef.current) {
+            setPage(0);
+            return;
+        }
+
         let isUsedParam: boolean | undefined = undefined;
         if (isUsedFilter === 'free') isUsedParam = false;
         else if (isUsedFilter === 'used') isUsedParam = true;
@@ -71,7 +81,7 @@ const IpList: React.FC = () => {
             isUsed: isUsedParam,
             takenBy: userFilter === 'all' ? undefined : userFilter
         }));
-    }, [dispatch, hasViewPrivilege, page, rowsPerPage, searchQuery, isUsedFilter, userFilter]);
+    }, [dispatch, hasViewPrivilege, page, rowsPerPage, searchQuery, isUsedFilter, userFilter, setPage]);
 
     useEffect(() => {
         dispatch(fetchUsers({ pagination: false }));
@@ -80,6 +90,19 @@ const IpList: React.FC = () => {
     useEffect(() => {
         loadData();
     }, [loadData]);
+
+    useEffect(() => {
+        if (totalCount > 0 && page * rowsPerPage >= totalCount) {
+            setPage(0);
+        }
+    }, [totalCount, page, rowsPerPage, setPage]);
+
+    const handleResetFilters = () => {
+        setSearchQuery('');
+        setIsUsedFilter('all');
+        setUserFilter('all');
+        setPage(0);
+    };
 
     const handleOpenModal = (item?: IpListModel) => {
         if (item) {
@@ -258,6 +281,10 @@ const IpList: React.FC = () => {
                         sx={{ minWidth: 150, width: 200 }}
                         searchable
                     />
+
+                    <Button variant="outlined" color="inherit" startIcon={<RefreshIcon />} onClick={handleResetFilters}>
+                        Reset
+                    </Button>
 
                     {hasCreatePrivilege && (
                         <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => handleOpenModal()}>

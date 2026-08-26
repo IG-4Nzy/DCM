@@ -5,17 +5,18 @@ import type { CreateDepartmentPayload, UpdateDepartmentPayload } from './model';
 
 export const fetchDepartments = createAsyncThunk(
   'departments/fetchDepartments',
-  async ({ skip = 0, limit = 10, sortBy = 'name', order = 'asc', search = '', showToast }: {
+  async ({ skip = 0, limit = 10, sortBy = 'name', order = 'asc', search = '', pagination, showToast }: {
     skip?: number;
     limit?: number;
     sortBy?: string;
     order?: 'asc' | 'desc';
     search?: string;
+    pagination?: boolean;
     showToast?: (msg: string, type: 'success' | 'error') => void;
   }, { rejectWithValue }) => {
     try {
       const response = await request.get('/api/departments/', {
-        params: { skip, limit, sort_by: sortBy, order, search }
+        params: { skip, limit, sort_by: sortBy, order, search, pagination }
       });
       return response.data;
     } catch (error: any) {

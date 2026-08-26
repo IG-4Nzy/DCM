@@ -6,7 +6,7 @@ from database import db, get_next_sequence
 from models import RequestModel, CreateRequestModel, UpdateRequestModel, PaginatedRequestsModel
 from bson import ObjectId
 from datetime import datetime, timezone
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 router = APIRouter()
 collection = db.get_collection("requests")
@@ -24,6 +24,52 @@ class VisitorLogCreate(BaseModel):
     keptItemsOnExit: bool = False
     requestId: Optional[str] = ""
 
+    @field_validator('visitorName')
+    @classmethod
+    def validate_visitor_name(cls, v):
+        if v:
+            v_trimmed = v.strip()
+            if not all(c.isalnum() or c == ',' or c.isspace() for c in v_trimmed):
+                raise ValueError("Visitor name must contain alphanumeric characters and commas only")
+            if len(v_trimmed) > 40:
+                raise ValueError("Visitor name must be maximum 40 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('division')
+    @classmethod
+    def validate_division(cls, v):
+        if v:
+            v_trimmed = v.strip()
+            if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+                raise ValueError("Division must contain alphanumeric characters, spaces, or underscores only")
+            if len(v_trimmed) > 60:
+                raise ValueError("Division must be maximum 60 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('purpose')
+    @classmethod
+    def validate_purpose(cls, v):
+        if v:
+            v_trimmed = v.strip()
+            if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+                raise ValueError("Purpose of visit must contain alphanumeric characters, spaces, or underscores only")
+            if len(v_trimmed) > 125:
+                raise ValueError("Purpose of visit must be maximum 125 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('itemsToBring')
+    @classmethod
+    def validate_items_to_bring(cls, v):
+        if v:
+            v_trimmed = v.strip()
+            if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+                raise ValueError("Tools/items to bring must contain alphanumeric characters, spaces, or underscores only")
+            return v_trimmed
+        return v
+
 class VisitorLogUpdate(BaseModel):
     visitorName: Optional[str] = None
     division: Optional[str] = None
@@ -33,6 +79,52 @@ class VisitorLogUpdate(BaseModel):
     itemsToBring: Optional[str] = None
     keptItemsOnExit: Optional[bool] = None
     requestId: Optional[str] = None
+
+    @field_validator('visitorName')
+    @classmethod
+    def validate_visitor_name(cls, v):
+        if v is not None:
+            v_trimmed = v.strip()
+            if not all(c.isalnum() or c == ',' or c.isspace() for c in v_trimmed):
+                raise ValueError("Visitor name must contain alphanumeric characters and commas only")
+            if len(v_trimmed) > 40:
+                raise ValueError("Visitor name must be maximum 40 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('division')
+    @classmethod
+    def validate_division(cls, v):
+        if v is not None:
+            v_trimmed = v.strip()
+            if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+                raise ValueError("Division must contain alphanumeric characters, spaces, or underscores only")
+            if len(v_trimmed) > 60:
+                raise ValueError("Division must be maximum 60 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('purpose')
+    @classmethod
+    def validate_purpose(cls, v):
+        if v is not None:
+            v_trimmed = v.strip()
+            if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+                raise ValueError("Purpose of visit must contain alphanumeric characters, spaces, or underscores only")
+            if len(v_trimmed) > 125:
+                raise ValueError("Purpose of visit must be maximum 125 characters")
+            return v_trimmed
+        return v
+
+    @field_validator('itemsToBring')
+    @classmethod
+    def validate_items_to_bring(cls, v):
+        if v is not None:
+            v_trimmed = v.strip()
+            if not all(c.isalnum() or c.isspace() or c == '_' for c in v_trimmed):
+                raise ValueError("Tools/items to bring must contain alphanumeric characters, spaces, or underscores only")
+            return v_trimmed
+        return v
 
 
 async def log_request_action(request_id: str, action: str, details: str, username: str, remarks: Optional[str] = None):

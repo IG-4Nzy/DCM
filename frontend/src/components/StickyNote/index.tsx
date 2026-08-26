@@ -11,7 +11,7 @@ import type { RootState } from '../../store';
 
 const StickyNote: React.FC = () => {
     const { isAuthenticated } = useSelector((state: RootState) => state.auth);
-    const [enabled, setEnabled] = useState(false);
+    const [enabled, setEnabled] = useState(true);
     const [isNoteVisible, setIsNoteVisible] = useState(false);
     const [content, setContent] = useState('');
     const [position, setPosition] = useState({ x: 100, y: 100 });
@@ -41,17 +41,12 @@ const StickyNote: React.FC = () => {
     const fetchProfile = async () => {
         try {
             const res = await request.get('/api/auth/me');
-            if (res.data.stickyNoteEnabled) {
-                setEnabled(true);
-                setContent(res.data.stickyNoteContent || '');
-                setPosition({ 
-                    x: res.data.stickyNotePositionX || 100, 
-                    y: res.data.stickyNotePositionY || 100 
-                });
-            } else {
-                setEnabled(false);
-                setIsNoteVisible(false);
-            }
+            setEnabled(true);
+            setContent(res.data.stickyNoteContent || '');
+            setPosition({ 
+                x: res.data.stickyNotePositionX || 100, 
+                y: res.data.stickyNotePositionY || 100 
+            });
         } catch (error) {
             console.error("Failed to load sticky note preferences", error);
         }
@@ -65,7 +60,7 @@ const StickyNote: React.FC = () => {
                 stickyNoteContent: newContent,
                 stickyNotePositionX: newPosition.x,
                 stickyNotePositionY: newPosition.y,
-                stickyNoteEnabled: isEnabled
+                stickyNoteEnabled: true
             });
         } catch (error) {
             console.error("Failed to save sticky note", error);
@@ -84,13 +79,13 @@ const StickyNote: React.FC = () => {
     const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const val = e.target.value;
         setContent(val);
-        debouncedSave(val, position, enabled);
+        debouncedSave(val, position, true);
     };
 
     const handleDragStop = (e: any, data: any) => {
         const newPos = { x: data.x, y: data.y };
         setPosition(newPos);
-        debouncedSave(content, newPos, enabled);
+        debouncedSave(content, newPos, true);
     };
 
     const handleClose = () => {
@@ -130,6 +125,7 @@ const StickyNote: React.FC = () => {
                             value={content}
                             onChange={handleContentChange}
                             placeholder="Type your notes here..."
+                            maxLength={200}
                         />
                     </Paper>
                 </Draggable>

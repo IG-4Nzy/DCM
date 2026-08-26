@@ -17,7 +17,7 @@ export interface NodeDetailsData {
     indentor: string;
     poNum: string;
     assetNum: string;
-    custodian: string;
+    custodian?: string;
     redundancyPower: string;
     totalRam?: number | string;
     totalHardisk?: number | string;

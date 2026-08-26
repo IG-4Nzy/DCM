@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Autocomplete, TextField, Chip } from '@mui/material';
+import { Autocomplete, Chip } from '@mui/material';
+import TextField from '../components/TextField';
 import request from '../services/request';
 
 interface EmailSelectInputProps {
@@ -66,10 +67,8 @@ const EmailSelectInput: React.FC<EmailSelectInputProps> = ({
     ? value.split(',').map((e: string) => e.trim()).filter(Boolean)
     : [];
 
-  const AutocompleteAny = Autocomplete as any;
-
   return (
-    <AutocompleteAny
+    <Autocomplete
       multiple
       freeSolo
       size={size}
@@ -96,7 +95,7 @@ const EmailSelectInput: React.FC<EmailSelectInputProps> = ({
           }
         }
       }}
-      renderTags={(tagValue, getTagProps) =>
+      renderValue={(tagValue, getTagProps) =>
         tagValue.map((option, index) => (
           <Chip
             key={index}

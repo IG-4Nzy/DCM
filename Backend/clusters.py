@@ -85,23 +85,24 @@ async def list_items(
         and_conditions.append({"networkType": networkType})
     
     if search:
-        terms = search.strip().split()
-        if terms:
-            term_queries = []
-            for term in terms:
-                escaped_term = re.escape(term)
-                term_queries.append({
-                    "$or": [
-                        {"clusterName": {"$regex": escaped_term, "$options": "i"}},
-                        {"ipAddress": {"$regex": escaped_term, "$options": "i"}},
-                        {"slNumber": {"$regex": escaped_term, "$options": "i"}},
-                        {"networkType": {"$regex": escaped_term, "$options": "i"}},
-                        {"remarks": {"$regex": escaped_term, "$options": "i"}},
-                        {"createdBy": {"$regex": escaped_term, "$options": "i"}},
-                        {"updatedAt": {"$regex": escaped_term, "$options": "i"}},
-                    ]
-                })
-            query["$and"] = term_queries
+        from search_utils import resolve_search_references
+        matched_users, _, _ = await resolve_search_references(search)
+        escaped_search = re.escape(search.strip())
+        or_conds = [
+            {"clusterName": {"$regex": escaped_search, "$options": "i"}},
+            {"ipAddress": {"$regex": escaped_search, "$options": "i"}},
+            {"slNumber": {"$regex": escaped_search, "$options": "i"}},
+            {"networkType": {"$regex": escaped_search, "$options": "i"}},
+            {"remarks": {"$regex": escaped_search, "$options": "i"}},
+            {"createdBy": {"$regex": escaped_search, "$options": "i"}},
+            {"updatedAt": {"$regex": escaped_search, "$options": "i"}},
+        ]
+        if matched_users:
+            user_strs = [val for val in matched_users if isinstance(val, str)]
+            if user_strs:
+                or_conds.append({"createdBy": {"$in": user_strs}})
+                or_conds.append({"updatedBy": {"$in": user_strs}})
+        query["$and"] = [{"$or": or_conds}]
 
     if and_conditions:
         if "$and" in query:

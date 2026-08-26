@@ -3,11 +3,11 @@ import asyncio
 import time
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, Query, status
+from fastapi import APIRouter, HTTPException, Depends, Query, status, Request
 from fastapi.responses import StreamingResponse
 import io
 import csv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from bson import ObjectId
 from database import db
 from auth_utils import get_current_user, require_privilege
@@ -23,22 +23,128 @@ class MonitoredServerCreate(BaseModel):
     ipAddress: str = Field(..., min_length=1)
     adminName: Optional[str] = Field(None)
     monitoringType: str = Field("heartbeat", pattern="^(ping|port|both|heartbeat)$")
-    interval: int = Field(60, ge=10) # default 60s, min 10s
-    timeout: int = Field(5, ge=1, le=10) # default 5s
-    retryCount: int = Field(3, ge=1, le=10) # default 3 retries
+    interval: int = Field(60) # default 60s
+    timeout: int = Field(5) # default 5s
+    retryCount: int = Field(3) # default 3 retries
     ports: List[int] = Field(default_factory=list)
     isEnabled: bool = Field(True)
+
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        import re
+        if not re.match(r'^[a-zA-Z0-9\s._-]+$', v):
+            raise ValueError("Friendly name must be alphanumeric with spaces, dashes, dots or underscores only")
+        if not (2 <= len(v) <= 50):
+            raise ValueError("Friendly name must be between 2 to 50 characters")
+        return v
+
+    @field_validator('ipAddress')
+    @classmethod
+    def validate_ip(cls, v: str) -> str:
+        import re
+        if not re.match(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$', v):
+            raise ValueError("Must be a valid IPv4 address")
+        for part in v.split('.'):
+            if not (0 <= int(part) <= 255):
+                raise ValueError("Must be a valid IPv4 address (octets 0-255)")
+        return v
+
+    @field_validator('interval')
+    @classmethod
+    def validate_interval(cls, v: int) -> int:
+        if not (5 <= v <= 3600):
+            raise ValueError("Interval must be between 5 and 3600 seconds")
+        return v
+
+    @field_validator('timeout')
+    @classmethod
+    def validate_timeout(cls, v: int) -> int:
+        if not (1 <= v <= 30):
+            raise ValueError("Timeout must be between 1 and 30 seconds")
+        return v
+
+    @field_validator('retryCount')
+    @classmethod
+    def validate_retry(cls, v: int) -> int:
+        if not (1 <= v <= 10):
+            raise ValueError("Retry count must be between 1 and 10")
+        return v
+
+    @field_validator('ports')
+    @classmethod
+    def validate_ports(cls, v: List[int]) -> List[int]:
+        for port in v:
+            if not (1 <= port <= 65535):
+                raise ValueError("Each port must be between 1 and 65535")
+        return v
 
 class MonitoredServerUpdate(BaseModel):
     name: Optional[str] = None
     ipAddress: Optional[str] = None
     adminName: Optional[str] = None
     monitoringType: Optional[str] = Field(None, pattern="^(ping|port|both|heartbeat)$")
-    interval: Optional[int] = Field(None, ge=10)
-    timeout: Optional[int] = Field(None, ge=1, le=10)
-    retryCount: Optional[int] = Field(None, ge=1, le=10)
+    interval: Optional[int] = None
+    timeout: Optional[int] = None
+    retryCount: Optional[int] = None
     ports: Optional[List[int]] = None
     isEnabled: Optional[bool] = None
+
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            import re
+            if not re.match(r'^[a-zA-Z0-9\s._-]+$', v):
+                raise ValueError("Friendly name must be alphanumeric with spaces, dashes, dots or underscores only")
+            if not (2 <= len(v) <= 50):
+                raise ValueError("Friendly name must be between 2 to 50 characters")
+        return v
+
+    @field_validator('ipAddress')
+    @classmethod
+    def validate_ip(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            import re
+            if not re.match(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$', v):
+                raise ValueError("Must be a valid IPv4 address")
+            for part in v.split('.'):
+                if not (0 <= int(part) <= 255):
+                    raise ValueError("Must be a valid IPv4 address (octets 0-255)")
+        return v
+
+    @field_validator('interval')
+    @classmethod
+    def validate_interval(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None:
+            if not (5 <= v <= 3600):
+                raise ValueError("Interval must be between 5 and 3600 seconds")
+        return v
+
+    @field_validator('timeout')
+    @classmethod
+    def validate_timeout(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None:
+            if not (1 <= v <= 30):
+                raise ValueError("Timeout must be between 1 and 30 seconds")
+        return v
+
+    @field_validator('retryCount')
+    @classmethod
+    def validate_retry(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None:
+            if not (1 <= v <= 10):
+                raise ValueError("Retry count must be between 1 and 10")
+        return v
+
+    @field_validator('ports')
+    @classmethod
+    def validate_ports(cls, v: Optional[List[int]]) -> Optional[List[int]]:
+        if v is not None:
+            for port in v:
+                if not (1 <= port <= 65535):
+                    raise ValueError("Each port must be between 1 and 65535")
+        return v
 
 class NotificationChannelUpdate(BaseModel):
     isEnabled: bool
@@ -777,6 +883,110 @@ async def list_monitored_servers(
 
     return {"data": hydrated, "total": total}
 
+# 6. Custom Alarm Sound Management
+@router.get("/alarm-sound", response_description="Get current custom alarm sound")
+async def get_alarm_sound(current_user: dict = Depends(get_current_user)):
+    config_col = db.get_collection("alarm_config")
+    config = await config_col.find_one({"_id": "custom_alarm"})
+    if not config:
+        return {"dataUrl": None, "filename": None}
+    return {
+        "dataUrl": config.get("dataUrl"),
+        "filename": config.get("filename")
+    }
+
+async def get_current_user_url_compatible(
+    request: Request,
+    token: Optional[str] = Query(None)
+):
+    # Try Authorization header first
+    auth_header = request.headers.get("Authorization")
+    token_str = None
+    if auth_header and auth_header.startswith("Bearer "):
+        token_str = auth_header.split(" ")[1]
+    elif token:
+        token_str = token
+        
+    if not token_str:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    from auth_utils import SECRET_KEY, ALGORITHM
+    import jwt
+    try:
+        payload = jwt.decode(token_str, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            raise HTTPException(status_code=401, detail="Invalid token payload")
+        users_col = db.get_collection("users")
+        user = await users_col.find_one({"username": username})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+
+@router.get("/alarm-sound/file", response_description="Get current custom alarm sound as a binary file")
+async def get_alarm_sound_file(current_user: dict = Depends(get_current_user_url_compatible)):
+    config_col = db.get_collection("alarm_config")
+    config = await config_col.find_one({"_id": "custom_alarm"})
+    if not config or not config.get("dataUrl"):
+        raise HTTPException(status_code=404, detail="No custom alarm sound configured")
+    
+    data_url = config.get("dataUrl")
+    try:
+        header, encoded = data_url.split(",", 1)
+        mime_type = header.split(";")[0].split(":")[1]
+        import base64
+        file_bytes = base64.b64decode(encoded)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to decode audio data: {str(e)}")
+    
+    return StreamingResponse(
+        io.BytesIO(file_bytes),
+        media_type=mime_type
+    )
+
+@router.post("/alarm-sound", response_description="Upload custom alarm sound")
+async def upload_alarm_sound(
+    payload: UploadAlarmSoundSchema,
+    current_user: dict = Depends(get_current_user)
+):
+    if not current_user.get("isSuperuser", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only superusers are authorized to upload alarm sounds."
+        )
+    
+    config_col = db.get_collection("alarm_config")
+    await config_col.update_one(
+        {"_id": "custom_alarm"},
+        {"$set": {
+            "dataUrl": payload.dataUrl,
+            "filename": payload.filename,
+            "updatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        }},
+        upsert=True
+    )
+    return {"message": "Custom alarm sound uploaded successfully"}
+
+@router.delete("/alarm-sound", response_description="Clear custom alarm sound")
+async def clear_alarm_sound(current_user: dict = Depends(get_current_user)):
+    if not current_user.get("isSuperuser", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only superusers are authorized to clear alarm sounds."
+        )
+    
+    config_col = db.get_collection("alarm_config")
+    await config_col.delete_one({"_id": "custom_alarm"})
+    return {"message": "Custom alarm sound cleared successfully"}
+
 @router.put("/{id}", response_description="Update monitored server configuration")
 async def update_monitored_server(
     id: str,
@@ -1059,49 +1269,3 @@ async def export_ping_drop_logs(
         headers={"Content-Disposition": "attachment; filename=server_ping_drops.csv"}
     )
 
-# 6. Custom Alarm Sound Management
-@router.get("/alarm-sound", response_description="Get current custom alarm sound")
-async def get_alarm_sound(current_user: dict = Depends(get_current_user)):
-    config_col = db.get_collection("alarm_config")
-    config = await config_col.find_one({"_id": "custom_alarm"})
-    if not config:
-        return {"dataUrl": None, "filename": None}
-    return {
-        "dataUrl": config.get("dataUrl"),
-        "filename": config.get("filename")
-    }
-
-@router.post("/alarm-sound", response_description="Upload custom alarm sound")
-async def upload_alarm_sound(
-    payload: UploadAlarmSoundSchema,
-    current_user: dict = Depends(get_current_user)
-):
-    if not current_user.get("isSuperuser", False):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only superusers are authorized to upload alarm sounds."
-        )
-    
-    config_col = db.get_collection("alarm_config")
-    await config_col.update_one(
-        {"_id": "custom_alarm"},
-        {"$set": {
-            "dataUrl": payload.dataUrl,
-            "filename": payload.filename,
-            "updatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-        }},
-        upsert=True
-    )
-    return {"message": "Custom alarm sound uploaded successfully"}
-
-@router.delete("/alarm-sound", response_description="Clear custom alarm sound")
-async def clear_alarm_sound(current_user: dict = Depends(get_current_user)):
-    if not current_user.get("isSuperuser", False):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only superusers are authorized to clear alarm sounds."
-        )
-    
-    config_col = db.get_collection("alarm_config")
-    await config_col.delete_one({"_id": "custom_alarm"})
-    return {"message": "Custom alarm sound cleared successfully"}

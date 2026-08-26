@@ -16,7 +16,7 @@ ENV VITE_DEPLOY_ENV=RUNTIME_DEPLOY_ENV_PLACEHOLDER
 RUN npx vite build
 
 # Production Stage
-FROM nginx:alpine
+FROM dcm_frontend:latest
 
 # Copy the build output to Nginx's web root
 COPY --from=build /app/dist /usr/share/nginx/html

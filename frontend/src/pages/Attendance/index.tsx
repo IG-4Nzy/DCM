@@ -1,10 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-    Box, Paper, Typography, MenuItem, Select, FormControl, InputLabel, Grid,
-    Tooltip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions,
-    TextField, Chip, LinearProgress, Tabs, Tab, Divider
-} from '@mui/material';
+import { Box, Paper, Typography, MenuItem, Select, FormControl, InputLabel, Grid, Tooltip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Chip, LinearProgress, Tabs, Tab, Divider } from '@mui/material';
+import TextField from '../../components/TextField';
 import {
     MdCheck as ApproveIcon,
     MdClose as RejectIcon,
@@ -1179,6 +1176,7 @@ const Attendance: React.FC = () => {
                         fullWidth
                         value={editDate}
                         onChange={(e) => setEditDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
                         slotProps={{ inputLabel: { shrink: true } }}
                     />
                     <Grid container spacing={2}>
@@ -1189,6 +1187,7 @@ const Attendance: React.FC = () => {
                                 fullWidth
                                 value={editLogin}
                                 onChange={(e) => setEditLogin(e.target.value)}
+                                InputLabelProps={{ shrink: true }}
                                 slotProps={{ inputLabel: { shrink: true } }}
                             />
                         </Grid>
@@ -1199,6 +1198,7 @@ const Attendance: React.FC = () => {
                                 fullWidth
                                 value={editLogout}
                                 onChange={(e) => setEditLogout(e.target.value)}
+                                InputLabelProps={{ shrink: true }}
                                 slotProps={{ inputLabel: { shrink: true } }}
                             />
                         </Grid>

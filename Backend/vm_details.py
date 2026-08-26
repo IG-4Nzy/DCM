@@ -157,6 +157,14 @@ async def list_items(
         if user_doc.get("username"):
             user_admins.add(user_doc["username"])
 
+    has_dept_priv = "view_department_devices" in privs
+    current_dept = user_doc.get("department") if user_doc else None
+    if has_dept_priv and current_dept:
+        dept_users = await users_col.find({"department": current_dept}).to_list(length=None)
+        for du in dept_users:
+            user_admins.add(du["username"])
+            user_admins.add(str(du["_id"]))
+
     if can_view_all:
         if admin:
             if admin.lower() == "unassigned":
@@ -209,7 +217,20 @@ async def list_items(
             elif admin.lower() == "assigned":
                 and_conditions.append({"admin": {"$in": list(user_admins)}})
             else:
-                and_conditions.append({"admin": {"$in": list(user_admins)}})
+                if has_dept_priv:
+                    adm_doc = await users_col.find_one({"username": admin})
+                    if not adm_doc and ObjectId.is_valid(admin):
+                        adm_doc = await users_col.find_one({"_id": ObjectId(admin)})
+                    target_admins = set()
+                    target_admins.add(admin)
+                    if adm_doc:
+                        target_admins.add(str(adm_doc["_id"]))
+                        if adm_doc.get("username"):
+                            target_admins.add(adm_doc["username"])
+                    allowed_filter = list(target_admins.intersection(user_admins))
+                    and_conditions.append({"admin": {"$in": allowed_filter}})
+                else:
+                    and_conditions.append({"admin": {"$in": list(user_admins)}})
         else:
             and_conditions.append({
                 "$or": [
@@ -225,7 +246,7 @@ async def list_items(
         and_conditions.append({"node": node})
 
     if powerStatus:
-        and_conditions.append({"powerStatus": {"$regex": f"^{re.escape(powerStatus)}$", "$options": "i"}})
+        and_conditions.append({"powerStatus": re.compile(f"^{re.escape(powerStatus)}$", re.I)})
 
     if networkType and networkType.strip():
         nt_val = networkType.strip().lower()
@@ -234,24 +255,28 @@ async def list_items(
         elif nt_val == "internet":
             and_conditions.append({
                 "$or": [
-                    {"networkType": {"$regex": "^internet$", "$options": "i"}},
-                    {"ipAddress": {"$regex": r"^192\.168\."}},
-                    {"ip": {"$regex": r"^192\.168\."}}
+                    {"networkType": re.compile("^internet$", re.I)},
+                    {"ipAddress": re.compile(r"^192\.168\.")},
+                    {"ip": re.compile(r"^192\.168\.")}
                 ]
             })
         elif nt_val == "intranet":
             and_conditions.append({
                 "$or": [
-                    {"networkType": {"$regex": "^intranet$", "$options": "i"}},
-                    {"ipAddress": {"$regex": r"^10\."}},
-                    {"ip": {"$regex": r"^10\."}}
+                    {"networkType": re.compile("^intranet$", re.I)},
+                    {"ipAddress": re.compile(r"^10\.")},
+                    {"ip": re.compile(r"^10\.")}
                 ]
+            })
+        else:
+            and_conditions.append({
+                "networkType": re.compile(f"^{re.escape(nt_val)}$", re.I)
             })
 
     if clusterType and clusterType.strip():
         ct_val = clusterType.strip()
         clusters_col = db.get_collection("clusters")
-        matching_clusters_cursor = clusters_col.find({"clusterType": {"$regex": f"^{re.escape(ct_val)}$", "$options": "i"}}, {"_id": 1})
+        matching_clusters_cursor = clusters_col.find({"clusterType": re.compile(f"^{re.escape(ct_val)}$", re.I)}, {"_id": 1})
         matching_clusters = await matching_clusters_cursor.to_list(length=None)
         cluster_ids = [str(c["_id"]) for c in matching_clusters]
         if not cluster_ids:
@@ -260,45 +285,50 @@ async def list_items(
             and_conditions.append({"clusterId": {"$in": cluster_ids}})
     
     if search:
-        terms = search.strip().split()
-        if terms:
-            # Cross-entity lookup: find clusters matching any search term
-            cluster_queries = []
-            for term in terms:
-                cluster_queries.append({"clusterName": {"$regex": re.escape(term), "$options": "i"}})
-            clusters_col = db.get_collection("clusters")
-            matching_clusters = await clusters_col.find({"$or": cluster_queries}, {"_id": 1}).to_list(length=None)
-            matching_cluster_ids = [str(doc["_id"]) for doc in matching_clusters]
+        search_parts = [p.strip() for p in search.split(",") if p.strip()]
+        if not search_parts:
+            search_parts = [search.strip()]
 
-            for term in terms:
-                escaped_term = re.escape(term)
+        from search_utils import resolve_search_references
+        
+        all_or_conditions = []
+        for part in search_parts:
+            matched_users, matched_clusters, _ = await resolve_search_references(part)
+            escaped_search = re.escape(part)
+            regex_pat = re.compile(escaped_search, re.I)
+            
+            or_conditions = [
+                {"ipAddress": regex_pat},
+                {"ip": regex_pat},
+                {"vmId": regex_pat},
+                {"vmName": regex_pat},
+                {"applications": regex_pat},
+                {"node": regex_pat},
+                {"adminName": regex_pat},
+                {"adminContact": regex_pat},
+                {"osAndExpiry": regex_pat},
+                {"hdd": regex_pat},
+                {"ram": regex_pat},
+                {"cpu": regex_pat},
+                {"backupName": regex_pat},
+                {"backupNode": regex_pat},
+                {"backupStorage": regex_pat},
+                {"datastore": regex_pat},
+                {"powerStatus": regex_pat},
+                {"createdBy": regex_pat},
+                {"createdAt": regex_pat},
+                {"updatedAt": regex_pat},
+                {"remarks": regex_pat},
+            ]
+            if matched_users:
+                or_conditions.append({"admin": {"$in": matched_users}})
+            if matched_clusters:
+                or_conditions.append({"clusterId": {"$in": [str(c) for c in matched_clusters] + matched_clusters}})
                 
-                or_conditions = [
-                    {"ipAddress": {"$regex": escaped_term, "$options": "i"}},
-                    {"vmId": {"$regex": escaped_term, "$options": "i"}},
-                    {"vmName": {"$regex": escaped_term, "$options": "i"}},
-                    {"applications": {"$regex": escaped_term, "$options": "i"}},
-                    {"node": {"$regex": escaped_term, "$options": "i"}},
-                    {"adminName": {"$regex": escaped_term, "$options": "i"}},
-                    {"adminContact": {"$regex": escaped_term, "$options": "i"}},
-                    {"osAndExpiry": {"$regex": escaped_term, "$options": "i"}},
-                    {"hdd": {"$regex": escaped_term, "$options": "i"}},
-                    {"ram": {"$regex": escaped_term, "$options": "i"}},
-                    {"cpu": {"$regex": escaped_term, "$options": "i"}},
-                    {"backupName": {"$regex": escaped_term, "$options": "i"}},
-                    {"backupNode": {"$regex": escaped_term, "$options": "i"}},
-                    {"backupStorage": {"$regex": escaped_term, "$options": "i"}},
-                    {"datastore": {"$regex": escaped_term, "$options": "i"}},
-                    {"powerStatus": {"$regex": escaped_term, "$options": "i"}},
-                    {"createdBy": {"$regex": escaped_term, "$options": "i"}},
-                    {"createdAt": {"$regex": escaped_term, "$options": "i"}},
-                    {"updatedAt": {"$regex": escaped_term, "$options": "i"}},
-                ]
-
-                if matching_cluster_ids:
-                    or_conditions.append({"clusterId": {"$in": matching_cluster_ids}})
-
-                and_conditions.append({"$or": or_conditions})
+            all_or_conditions.extend(or_conditions)
+            
+        if all_or_conditions:
+            and_conditions.append({"$or": all_or_conditions})
 
     query = {"$and": and_conditions} if len(and_conditions) > 1 else (and_conditions[0] if and_conditions else {})
 

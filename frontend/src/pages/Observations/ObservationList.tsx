@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Paper, Tooltip, IconButton, MenuItem, Select, FormControl, TextField, Chip } from '@mui/material';
+import { Box, Paper, Tooltip, IconButton, MenuItem, Select, FormControl, Chip } from '@mui/material';
+import TextField from '../../components/TextField';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon, MdDownload as DownloadIcon } from 'react-icons/md';
 import type { AppDispatch, RootState } from '../../store';
 import { fetchObservations, createObservation, updateObservation, deleteObservation, downloadObservations } from './action';
@@ -47,6 +48,8 @@ const ObservationList: React.FC = () => {
     observedTime: '',
     category: '',
     description: '',
+    serverRack: '',
+    rackPosition: '',
     amc: '',
     informedTo: [] as string[],
     informedToOther: '',
@@ -105,6 +108,8 @@ const ObservationList: React.FC = () => {
         observedTime: obs.observedTime || '',
         category: obs.category,
         description: obs.description,
+        serverRack: obs.serverRack || '',
+        rackPosition: obs.rackPosition || '',
         amc: obs.amc,
         informedTo: Array.isArray(obs.informedTo) ? obs.informedTo : (obs.informedTo ? [obs.informedTo] : []),
         informedToOther: obs.informedToOther || '',
@@ -139,12 +144,32 @@ const ObservationList: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.observedDate) {
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      if (new Date(formData.observedDate) > today) {
+         alert("Observed date cannot be a future date");
+         return;
+      }
+    }
+    if (formData.description && formData.description.length > 1500) {
+       alert("Description must be maximum 1500 characters");
+       return;
+    }
+    if (formData.actionsTaken && formData.actionsTaken.length > 220) {
+       alert("Actions taken must be maximum 220 characters");
+       return;
+    }
     if (formData.status === 'Resolved' && !formData.remarks?.trim()) {
        alert("Remarks are mandatory when resolving an observation.");
        return;
     }
 
     const payload: any = { ...formData };
+    if (payload.category?.toLowerCase() !== 'hard disk failures') {
+      payload.serverRack = null;
+      payload.rackPosition = null;
+    }
     if (!payload.informedTo.includes('Other')) {
       payload.informedToOther = '';
     }
@@ -223,21 +248,33 @@ const ObservationList: React.FC = () => {
       const loggedUser = users.find((user: any) => user.username === row.loggedBy || user.id === row.loggedBy);
       const loggedBy = loggedUser ? `${loggedUser.firstName || ''} ${loggedUser.lastName || ''}`.trim() || loggedUser.username : row.loggedBy;
 
-      return [
+      const baseRow: any[] = [
         row.observationId,
         row.observedDate,
         row.observedTime,
         row.category,
+      ];
+      if (categoryFilter?.toLowerCase() === 'hard disk failures') {
+        baseRow.push(row.serverRack || '', row.rackPosition || '');
+      }
+      baseRow.push(
         row.description,
         row.amc,
         informedText,
         loggedBy,
         row.status,
-      ].map(csvEscape).join(',');
+      );
+      return baseRow.map(csvEscape).join(',');
     });
 
+    const headers = ['ID', 'Observed Date', 'Observed Time', 'Category'];
+    if (categoryFilter?.toLowerCase() === 'hard disk failures') {
+      headers.push('Server Rack', 'Rack Position');
+    }
+    headers.push('Description', 'AMC', 'Informed To', 'Logged By', 'Status');
+
     const csv = [
-      ['ID', 'Observed Date', 'Observed Time', 'Category', 'Description', 'AMC', 'Informed To', 'Logged By', 'Status'].map(csvEscape).join(','),
+      headers.map(csvEscape).join(','),
       ...rows,
     ].join('\n');
 
@@ -279,6 +316,10 @@ const ObservationList: React.FC = () => {
       render: (row) => `${row.observedDate} ${row.observedTime || ''}`.trim()
     },
     { id: 'category', label: 'Category', sortable: true },
+    ...(categoryFilter?.toLowerCase() === 'hard disk failures' ? [
+      { id: 'serverRack', label: 'Server Rack', sortable: true, render: (row: any) => row.serverRack || '-' },
+      { id: 'rackPosition', label: 'Rack Position', sortable: true, render: (row: any) => row.rackPosition || '-' },
+    ] : []),
     { id: 'description', label: 'Description', sortable: false },
     { id: 'amc', label: 'AMC', sortable: true },
     { 
@@ -401,6 +442,7 @@ const ObservationList: React.FC = () => {
             size="small"
             value={dateFilter} 
             onChange={(e: any) => { setDateFilter(e.target.value); setPage(0); }} 
+            InputLabelProps={{ shrink: true }}
             slotProps={{ inputLabel: { shrink: true } }}
           />
           {dateFilter ? (

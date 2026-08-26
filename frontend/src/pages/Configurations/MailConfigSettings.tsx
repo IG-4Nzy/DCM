@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Typography, TextField, FormControlLabel, Checkbox, Divider, Grid } from '@mui/material';
+import { Box, Paper, Typography, FormControlLabel, Checkbox, Divider, Grid } from '@mui/material';
+import TextField from '../../components/TextField';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../store';
 import { hasPrivilege } from '../../helpers/authUtils';
@@ -28,10 +29,14 @@ const MailConfigSettings: React.FC = () => {
     const [useTls, setUseTls] = useState(false);
     const [useSsl, setUseSsl] = useState(false);
     const [rosterMailEnabled, setRosterMailEnabled] = useState(true);
+    const [dailyChecklistMailEnabled, setDailyChecklistMailEnabled] = useState(true);
+    const [bmsChecklistMailEnabled, setBmsChecklistMailEnabled] = useState(true);
+    const [accountsMailEnabled, setAccountsMailEnabled] = useState(true);
     const [savedEmailsText, setSavedEmailsText] = useState('');
     const [savedEmailsRosterText, setSavedEmailsRosterText] = useState('');
     const [savedEmailsDailyChecklistText, setSavedEmailsDailyChecklistText] = useState('');
     const [savedEmailsBmsChecklistText, setSavedEmailsBmsChecklistText] = useState('');
+    const [savedEmailsAccountsText, setSavedEmailsAccountsText] = useState('');
  
      // Test send email states
      const [testToEmail, setTestToEmail] = useState('');
@@ -52,6 +57,9 @@ const MailConfigSettings: React.FC = () => {
                  setUseTls(res.data.useTls || false);
                  setUseSsl(res.data.useSsl || false);
                  setRosterMailEnabled(res.data.rosterMailEnabled !== false);
+                 setDailyChecklistMailEnabled(res.data.dailyChecklistMailEnabled !== false);
+                 setBmsChecklistMailEnabled(res.data.bmsChecklistMailEnabled !== false);
+                 setAccountsMailEnabled(res.data.accountsMailEnabled !== false);
                  const saved = res.data.savedEmails || [];
                  setSavedEmailsText(saved.join(', '));
                  const savedRoster = res.data.savedEmailsRoster || [];
@@ -60,6 +68,8 @@ const MailConfigSettings: React.FC = () => {
                  setSavedEmailsDailyChecklistText(savedDaily.join(', '));
                  const savedBms = res.data.savedEmailsBmsChecklist || [];
                  setSavedEmailsBmsChecklistText(savedBms.join(', '));
+                 const savedAcc = res.data.savedEmailsAccounts || [];
+                 setSavedEmailsAccountsText(savedAcc.join(', '));
              }
          } catch (err: any) {
              showToast(err.response?.data?.detail || 'Failed to load mail configuration', 'error');
@@ -87,6 +97,10 @@ const MailConfigSettings: React.FC = () => {
                  .split(',')
                  .map((e) => e.trim())
                  .filter((e) => e.length > 0);
+             const savedEmailsAccounts = savedEmailsAccountsText
+                 .split(',')
+                 .map((e) => e.trim())
+                 .filter((e) => e.length > 0);
  
              await request.put('/api/mail-config/', {
                  host,
@@ -100,7 +114,11 @@ const MailConfigSettings: React.FC = () => {
                  savedEmailsRoster,
                  savedEmailsDailyChecklist,
                  savedEmailsBmsChecklist,
-                 rosterMailEnabled
+                 savedEmailsAccounts,
+                 rosterMailEnabled,
+                 dailyChecklistMailEnabled,
+                 bmsChecklistMailEnabled,
+                 accountsMailEnabled
              });
              showToast('Mail configuration saved successfully!', 'success');
              setIsEditing(false);
@@ -295,6 +313,21 @@ const MailConfigSettings: React.FC = () => {
                         />
                     </Grid>
 
+                    <Grid item xs={12}>
+                        <TextField
+                            label="Saved Default Emails - Accounts / Salary (comma-separated)"
+                            fullWidth
+                            multiline
+                            rows={2}
+                            size="small"
+                            value={savedEmailsAccountsText}
+                            onChange={(e) => setSavedEmailsAccountsText(e.target.value)}
+                            disabled={!canUpdate || !isEditing}
+                            placeholder="e.g. accounts1@vssc.gov.in, accounts2@vssc.gov.in"
+                            helperText="Pre-configured recipients specifically for sending Salary Reports and Splitups to Accounts."
+                        />
+                    </Grid>
+
                     <Grid item xs={12} sx={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                         <FormControlLabel
                             control={
@@ -326,6 +359,39 @@ const MailConfigSettings: React.FC = () => {
                                 />
                             }
                             label="Enable Roster Email Delivery"
+                        />
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={dailyChecklistMailEnabled}
+                                    onChange={(e) => setDailyChecklistMailEnabled(e.target.checked)}
+                                    disabled={!canUpdate || !isEditing}
+                                    color="primary"
+                                />
+                            }
+                            label="Enable Cluster Checklist Email Delivery"
+                        />
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={bmsChecklistMailEnabled}
+                                    onChange={(e) => setBmsChecklistMailEnabled(e.target.checked)}
+                                    disabled={!canUpdate || !isEditing}
+                                    color="primary"
+                                />
+                            }
+                            label="Enable BMS Checklist Email Delivery"
+                        />
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={accountsMailEnabled}
+                                    onChange={(e) => setAccountsMailEnabled(e.target.checked)}
+                                    disabled={!canUpdate || !isEditing}
+                                    color="primary"
+                                />
+                            }
+                            label="Enable Accounts Email Delivery"
                         />
                     </Grid>
                 </Grid>

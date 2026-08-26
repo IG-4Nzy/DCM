@@ -6,13 +6,14 @@ import type { RootState } from '../store';
 import { ROUTE_CONSTANTS } from './constant';
 import { logout } from '../store/authSlice';
 import {jwtDecode} from "jwt-decode";
+import PasswordResetModal from '../components/PasswordResetModal';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, token } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, token, activated } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
   
   useEffect(() => {
@@ -28,6 +29,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   if (!isAuthenticated || !token) {
     return <Navigate to={ROUTE_CONSTANTS.LOGIN} replace />;
+  }
+
+  if (activated === false) {
+    return <PasswordResetModal />;
   }
   
   return <>{children}</>;

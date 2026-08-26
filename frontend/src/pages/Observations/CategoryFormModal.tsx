@@ -21,6 +21,8 @@ interface CategoryFormModalProps {
   handleSubmit: (e: React.FormEvent) => void;
 }
 
+import { validators } from '../../helpers/validation';
+
 const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
   isModalOpen,
   handleCloseModal,
@@ -36,6 +38,8 @@ const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
   setFormRemarks,
   handleSubmit
 }) => {
+  const nameErr = validators.alphanumeric(formName, 20, "Category name");
+  const remarksErr = validators.maxLength(formRemarks, 125, "Remarks");
   return (
     <Modal
       open={isModalOpen}
@@ -52,6 +56,9 @@ const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
             onChange={(e: any) => setFormName(e.target.value)}
             placeholder="Enter category name"
             required
+            error={!!nameErr}
+            helperText={nameErr}
+            inputProps={{ maxLength: 20 }}
           />
           <FormControl fullWidth className={styles.field}>
             <InputLabel>Status</InputLabel>
@@ -99,6 +106,9 @@ const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
             value={formRemarks}
             onChange={(e: any) => setFormRemarks(e.target.value)}
             placeholder="Enter remarks"
+            error={!!remarksErr}
+            helperText={remarksErr}
+            inputProps={{ maxLength: 125 }}
           />
         </div>
 
@@ -106,7 +116,7 @@ const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
           <Button variant="text" onClick={handleCloseModal} type="button">
             Cancel
           </Button>
-          <Button type="submit" variant="contained" color="primary">
+          <Button type="submit" variant="contained" color="primary" disabled={!!nameErr || !!remarksErr}>
             {editingCategory ? "Update" : "Save"}
           </Button>
         </div>

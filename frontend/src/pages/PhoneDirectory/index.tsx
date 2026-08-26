@@ -11,6 +11,7 @@ import { fetchPhoneDirectory, createPhoneEntry, updatePhoneEntry, deletePhoneEnt
 import styles from './index.module.scss';
 import { useToast } from '../../contexts/ToastContext';
 import type { Column } from '../../components/Table';
+import { validators } from '../../helpers/validation';
 
 interface PhoneEntry {
   _id: string;
@@ -42,6 +43,7 @@ const PhoneDirectory: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<PhoneEntry | null>(null);
   const [formData, setFormData] = useState({ name: '', contact_number: '', remarks: '' });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const loadData = async () => {
     if (!canView) return;
@@ -64,6 +66,7 @@ const PhoneDirectory: React.FC = () => {
   }, [page, search, canView]);
 
   const handleOpenModal = (entry: PhoneEntry | null = null) => {
+    setErrors({});
     if (entry) {
       setEditingEntry(entry);
       setFormData({ name: entry.name, contact_number: entry.contact_number, remarks: entry.remarks || '' });
@@ -76,6 +79,23 @@ const PhoneDirectory: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const nameErr = validators.alphanumericGeneral(formData.name, 100, 'Name');
+    const contactErr = validators.contactNumber(formData.contact_number, 15, 'Contact Number');
+    const remarksErr = validators.alphanumericGeneral(formData.remarks, 125, 'Remarks');
+
+    const newErrors = {
+      name: nameErr,
+      contact_number: contactErr,
+      remarks: remarksErr
+    };
+
+    setErrors(newErrors);
+
+    if (Object.values(newErrors).some(err => !!err)) {
+      return;
+    }
+
     try {
       if (editingEntry) {
         await updatePhoneEntry(editingEntry._id, formData);
@@ -170,21 +190,36 @@ const PhoneDirectory: React.FC = () => {
           <TextField 
             label="Name" 
             value={formData.name} 
-            onChange={(e) => setFormData({...formData, name: e.target.value})} 
+            onChange={(e) => {
+              setFormData({...formData, name: e.target.value});
+              setErrors(prev => ({ ...prev, name: '' }));
+            }} 
             required 
+            error={!!errors.name}
+            helperText={errors.name}
           />
           <TextField 
             label="Contact Number" 
             value={formData.contact_number} 
-            onChange={(e) => setFormData({...formData, contact_number: e.target.value})} 
+            onChange={(e) => {
+              setFormData({...formData, contact_number: e.target.value});
+              setErrors(prev => ({ ...prev, contact_number: '' }));
+            }} 
             required 
+            error={!!errors.contact_number}
+            helperText={errors.contact_number}
           />
           <TextField 
             label="Remarks" 
             value={formData.remarks} 
-            onChange={(e) => setFormData({...formData, remarks: e.target.value})} 
+            onChange={(e) => {
+              setFormData({...formData, remarks: e.target.value});
+              setErrors(prev => ({ ...prev, remarks: '' }));
+            }} 
             multiline
             rows={3}
+            error={!!errors.remarks}
+            helperText={errors.remarks}
           />
           <Button type="submit" variant="contained" sx={{ mt: 2 }}>
             {editingEntry ? "Update" : "Save"}

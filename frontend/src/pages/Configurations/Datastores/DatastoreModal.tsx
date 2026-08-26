@@ -1,23 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import {
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Button,
-    TextField,
-    Grid,
-    MenuItem,
-    Box,
-    Typography,
-    Autocomplete,
-    IconButton,
-    InputAdornment,
-    Chip,
-    Paper,
-    CircularProgress
-} from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Grid, MenuItem, Box, Typography, Autocomplete, IconButton, InputAdornment, Chip, Paper, CircularProgress } from '@mui/material';
+import TextField from '../../../components/TextField';
 import CloseIcon from '@mui/icons-material/Close';
 import StorageIcon from '@mui/icons-material/Storage';
 import FolderIcon from '@mui/icons-material/Folder';
@@ -56,12 +40,14 @@ const DatastoreModal: React.FC<DatastoreModalProps> = ({
     const [mountPath, setMountPath] = useState('');
     const [capacity, setCapacity] = useState('');
     const [remarks, setRemarks] = useState('');
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [nodesList, setNodesList] = useState<any[]>([]);
     const [loadingNodes, setLoadingNodes] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         if (open) {
+            setErrors({});
             setLoadingNodes(true);
             fetchNodesOptions().then(nodes => {
                 setNodesList(nodes);
@@ -88,7 +74,35 @@ const DatastoreModal: React.FC<DatastoreModalProps> = ({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim()) return;
+        
+        const nameErr = !name ? "Datastore Name is required" :
+                        !/^[a-zA-Z0-9\s,.-_]+$/.test(name) ? "Datastore Name must contain alphanumeric characters, spaces, commas, periods, dashes, or underscores only" :
+                        name.length > 50 ? "Datastore Name must be maximum 50 characters" : "";
+        const capacityErr = capacity ? (
+                            !/^[a-zA-Z0-9\s]+$/.test(capacity) ? "Capacity must contain alphanumeric characters and spaces only" :
+                            capacity.length > 20 ? "Capacity must be maximum 20 characters" : ""
+                        ) : "";
+        const mountPathErr = mountPath ? (
+                             !/^[a-zA-Z0-9\s,.-_/]+$/.test(mountPath) ? "Mount Path must contain alphanumeric characters, spaces, slashes, periods, dashes, or underscores only" :
+                             mountPath.length > 100 ? "Mount Path must be maximum 100 characters" : ""
+                         ) : "";
+        const remarksErr = remarks ? (
+                           !/^[a-zA-Z0-9\s,.-]+$/.test(remarks) ? "Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only" :
+                           remarks.length > 125 ? "Remarks must be maximum 125 characters" : ""
+                       ) : "";
+
+        const newErrors = {
+            name: nameErr,
+            capacity: capacityErr,
+            mountPath: mountPathErr,
+            remarks: remarksErr
+        };
+
+        setErrors(newErrors);
+
+        if (nameErr || capacityErr || mountPathErr || remarksErr) {
+            return;
+        }
 
         setSubmitting(true);
         try {
@@ -193,9 +207,14 @@ const DatastoreModal: React.FC<DatastoreModalProps> = ({
                                     required
                                     fullWidth
                                     value={name}
-                                    onChange={(e) => setName(e.target.value)}
+                                    onChange={(e) => {
+                                        setName(e.target.value);
+                                        setErrors(prev => ({ ...prev, name: '' }));
+                                    }}
                                     placeholder="e.g. datastore1_local, NAS_Storage_01"
                                     autoFocus
+                                    error={!!errors.name}
+                                    helperText={errors.name}
                                     InputProps={{
                                         startAdornment: (
                                             <InputAdornment position="start">
@@ -265,9 +284,13 @@ const DatastoreModal: React.FC<DatastoreModalProps> = ({
                                     label="Mount Path"
                                     fullWidth
                                     value={mountPath}
-                                    onChange={(e) => setMountPath(e.target.value)}
+                                    onChange={(e) => {
+                                        setMountPath(e.target.value);
+                                        setErrors(prev => ({ ...prev, mountPath: '' }));
+                                    }}
                                     placeholder="e.g. /mnt/datastore1"
-                                    helperText="Mount path or network location"
+                                    error={!!errors.mountPath}
+                                    helperText={errors.mountPath || "Mount path or network location"}
                                     InputProps={{
                                         startAdornment: (
                                             <InputAdornment position="start">
@@ -292,8 +315,13 @@ const DatastoreModal: React.FC<DatastoreModalProps> = ({
                                     label="Storage Capacity"
                                     fullWidth
                                     value={capacity}
-                                    onChange={(e) => setCapacity(e.target.value)}
+                                    onChange={(e) => {
+                                        setCapacity(e.target.value);
+                                        setErrors(prev => ({ ...prev, capacity: '' }));
+                                    }}
                                     placeholder="e.g. 2 TB, 500 GB"
+                                    error={!!errors.capacity}
+                                    helperText={errors.capacity}
                                     InputProps={{
                                         startAdornment: (
                                             <InputAdornment position="start">
@@ -311,8 +339,13 @@ const DatastoreModal: React.FC<DatastoreModalProps> = ({
                                     multiline
                                     rows={2.5}
                                     value={remarks}
-                                    onChange={(e) => setRemarks(e.target.value)}
+                                    onChange={(e) => {
+                                        setRemarks(e.target.value);
+                                        setErrors(prev => ({ ...prev, remarks: '' }));
+                                    }}
                                     placeholder="Add any additional notes or details..."
+                                    error={!!errors.remarks}
+                                    helperText={errors.remarks}
                                     InputProps={{
                                         startAdornment: (
                                             <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1 }}>
@@ -321,6 +354,11 @@ const DatastoreModal: React.FC<DatastoreModalProps> = ({
                                         ),
                                     }}
                                 />
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                        {remarks ? remarks.length : 0} / 125
+                                    </span>
+                                </div>
                             </Grid>
                         </Grid>
                     </Paper>

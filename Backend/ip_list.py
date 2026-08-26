@@ -2,9 +2,10 @@ from fastapi import APIRouter, HTTPException, status, Depends, Query, Body
 from auth_utils import get_current_user, require_privilege
 from database import db
 from bson import ObjectId
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
+import re
 
 router = APIRouter()
 collection = db.get_collection("ip_list")
@@ -22,6 +23,34 @@ class IpListModel(BaseModel):
         populate_by_name=True,
         arbitrary_types_allowed=True,
     )
+
+    @field_validator('ip')
+    @classmethod
+    def validate_ip(cls, v):
+        if v:
+            v_trimmed = v.strip()
+            if not v_trimmed:
+                raise ValueError("IP address cannot be empty")
+            if not re.match(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$", v_trimmed):
+                raise ValueError("IP Address must be a valid IPv4 address")
+            parts = v_trimmed.split(".")
+            for part in parts:
+                if not 0 <= int(part) <= 255:
+                    raise ValueError("Each octet of IP Address must be between 0 and 255")
+            return v_trimmed
+        return v
+
+    @field_validator('purpose')
+    @classmethod
+    def validate_purpose(cls, v):
+        if v is not None:
+            v_trimmed = v.strip()
+            if v_trimmed and not re.match(r"^[a-zA-Z0-9\s,.:-]+$", v_trimmed):
+                raise ValueError("Purpose must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only")
+            if len(v_trimmed) > 100:
+                raise ValueError("Purpose must be maximum 100 characters")
+            return v_trimmed
+        return v
 
 class PaginatedIpListModel(BaseModel):
     data: List[IpListModel]

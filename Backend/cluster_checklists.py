@@ -193,6 +193,15 @@ async def send_cluster_checklist_email(
     current_user: dict = Depends(get_current_user)
 ):
     try:
+        # Check if daily checklist email is enabled in mail config
+        config_col = db.get_collection("mail_config")
+        config = await config_col.find_one({"_id": "mail_config"})
+        if config and not config.get("dailyChecklistMailEnabled", True):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Sending Daily/Cluster Checklist emails is currently disabled in Mail Configuration."
+            )
+
         if not ObjectId.is_valid(id):
             raise HTTPException(status_code=400, detail="Invalid ID format")
 

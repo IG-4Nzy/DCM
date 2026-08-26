@@ -1,34 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Box, 
-  Paper, 
-  Typography, 
-  Grid, 
-  CircularProgress, 
-  Button, 
-  Dialog, 
-  DialogTitle, 
-  DialogContent, 
-  DialogActions, 
-  TextField, 
-  Chip,
-  IconButton,
-  Switch,
-  FormControlLabel,
-  InputAdornment,
-  Table as MuiTable,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Tooltip,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem
-} from '@mui/material';
+import { Box, Paper, Typography, Grid, CircularProgress, Button, Dialog, DialogTitle, DialogContent, DialogActions, Chip, IconButton, Switch, FormControlLabel, InputAdornment, Table as MuiTable, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import TextField from '../../components/TextField';
 import { 
   MdDns as ServerIcon, 
   MdSpeed as CpuIcon, 
@@ -162,6 +135,29 @@ interface MonitorData {
   actions: Action[];
 }
 
+// Shared AudioContext to prevent memory leaks from multiple AudioContext instances
+let sharedAudioContext: AudioContext | null = null;
+
+const getSharedAudioContext = (): AudioContext | null => {
+  if (!sharedAudioContext) {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (AudioContextClass) {
+      sharedAudioContext = new AudioContextClass();
+    }
+  }
+  return sharedAudioContext;
+};
+
+if (typeof window !== 'undefined') {
+  const resumeAudio = () => {
+    if (sharedAudioContext && sharedAudioContext.state === 'suspended') {
+      sharedAudioContext.resume().catch(err => console.warn("Failed to resume AudioContext:", err));
+    }
+  };
+  window.addEventListener('click', resumeAudio, { capture: true, passive: true });
+  window.addEventListener('keydown', resumeAudio, { capture: true, passive: true });
+}
+
 const ServerMonitoring: React.FC = () => {
   const { showToast } = useToast();
   const { isSuperuser } = useSelector((state: RootState) => state.auth);
@@ -171,7 +167,13 @@ const ServerMonitoring: React.FC = () => {
 
   const playAlarmSound = () => {
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioCtx = getSharedAudioContext();
+      if (!audioCtx) return;
+
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
 
@@ -181,6 +183,12 @@ const ServerMonitoring: React.FC = () => {
       oscillator.type = 'sine';
       oscillator.frequency.value = 800;
       gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+
+      // Cleanup Web Audio nodes on completion to prevent memory leaks
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        gainNode.disconnect();
+      };
 
       oscillator.start();
       oscillator.stop(audioCtx.currentTime + 0.5);
@@ -197,21 +205,11 @@ const ServerMonitoring: React.FC = () => {
   
   const [loadingList, setLoadingList] = useState(false);
   const [loadingMonitor, setLoadingMonitor] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshingVcId, setRefreshingVcId] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [vmSearch, setVmSearch] = useState('');
   const [vcenterSearch, setVcenterSearch] = useState('');
-
-  const handleToggleAutoRefresh = async (enabled: boolean) => {
-    setAutoRefresh(enabled);
-    try {
-      await request.put('/api/vcenter-details/config', { autoRefresh: enabled });
-      showToast(`vCenter Auto Refresh is now ${enabled ? 'ENABLED' : 'DISABLED'}`, 'info');
-    } catch (err) {
-      console.error('Failed to sync autoRefresh config:', err);
-    }
-  };
+  const autoRefresh = false;
 
   const handleManualRefreshSingle = async (vcId: string) => {
     setRefreshingVcId(vcId);
@@ -305,9 +303,6 @@ const ServerMonitoring: React.FC = () => {
       setVcenters(vcList);
       setClusters(clusterList);
       setNodesList(nodesRes);
-      if (configRes && typeof configRes.autoRefresh === 'boolean') {
-        setAutoRefresh(configRes.autoRefresh);
-      }
 
       if (clusterList && clusterList.length > 0) {
         setNewVcenter(prev => ({ 
@@ -613,16 +608,6 @@ const ServerMonitoring: React.FC = () => {
               </Typography>
             </Box>
             <Box display="flex" gap={2} alignItems="center">
-              <FormControlLabel
-                control={
-                  <Switch 
-                    checked={autoRefresh} 
-                    onChange={(e) => handleToggleAutoRefresh(e.target.checked)} 
-                    color="primary"
-                  />
-                }
-                label={<Typography variant="body2" sx={{ fontWeight: 600 }}>Auto-Refresh</Typography>}
-              />
               <Button
                 variant="outlined"
                 color="primary"
@@ -1131,16 +1116,6 @@ const ServerMonitoring: React.FC = () => {
             </Box>
 
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <FormControlLabel
-                control={
-                  <Switch 
-                    checked={autoRefresh} 
-                    onChange={(e) => handleToggleAutoRefresh(e.target.checked)} 
-                    color="primary"
-                  />
-                }
-                label={<Typography variant="body2" sx={{ fontWeight: 600 }}>Auto-Refresh</Typography>}
-              />
               
               <Button
                 variant="contained"

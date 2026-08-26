@@ -43,7 +43,7 @@ import request from "../../../services/request";
 
 type Order = "asc" | "desc";
 
-const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?: string; nodeTypeFilter?: string }) => {
+const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashboardAdminFilter?: string; nodeTypeFilter?: string; storagePrefix?: string }) => {
   const { isSuperuser, username } = useSelector((state: RootState) => state.auth);
   const [data, setData] = useState<NodeData[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -198,30 +198,31 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
   const hasDelete =
     isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
 
-  const [searchQuery, setSearchQuery] = useTableState("Nodes_search", "");
+  const prefix = storagePrefix || "all";
+  const [searchQuery, setSearchQuery] = useTableState(`Nodes_${prefix}_search`, "");
   const [clusterFilter, setClusterFilter] = useTableState(
-    "Nodes_clusterFilter",
+    `Nodes_${prefix}_clusterFilter`,
     "",
   );
   const [serverModelFilter, setServerModelFilter] = useTableState(
-    "Nodes_serverModelFilter",
+    `Nodes_${prefix}_serverModelFilter`,
     "",
   );
-  const [adminFilter, setAdminFilter] = useTableState("Nodes_adminFilter", dashboardAdminFilter || "");
-  const [rackFilter, setRackFilter] = useTableState("Nodes_rackFilter", "");
-  const [osFilter, setOsFilter] = useTableState("Nodes_osFilter", "");
-  const [custodianFilter, setCustodianFilter] = useTableState("Nodes_custodianFilter", "");
-  const [gpuFilter, setGpuFilter] = useTableState("Nodes_gpuFilter", "");
-  const [deviceTypeFilter, setDeviceTypeFilter] = useTableState("Nodes_deviceTypeFilter", "");
-  const [networkTypeFilter, setNetworkTypeFilter] = useTableState("Nodes_networkTypeFilter", "");
+  const [adminFilter, setAdminFilter] = useTableState(`Nodes_${prefix}_adminFilter`, dashboardAdminFilter || "");
+  const [rackFilter, setRackFilter] = useTableState(`Nodes_${prefix}_rackFilter`, "");
+  const [osFilter, setOsFilter] = useTableState(`Nodes_${prefix}_osFilter`, "");
+  const [custodianFilter, setCustodianFilter] = useTableState(`Nodes_${prefix}_custodianFilter`, "");
+  const [gpuFilter, setGpuFilter] = useTableState(`Nodes_${prefix}_gpuFilter`, "");
+  const [deviceTypeFilter, setDeviceTypeFilter] = useTableState(`Nodes_${prefix}_deviceTypeFilter`, "");
+  const [networkTypeFilter, setNetworkTypeFilter] = useTableState(`Nodes_${prefix}_networkTypeFilter`, "");
   const [osList, setOsList] = useState<string[]>([]);
   const [custodiansList, setCustodiansList] = useState<string[]>([]);
   const [gpusList, setGpusList] = useState<string[]>([]);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
-  const [page, setPage] = useTableState("Nodes_page", 0);
-  const [rowsPerPage, setRowsPerPage] = useTableState("Nodes_rowsPerPage", 5);
-  const [order, setOrder] = useTableState<Order>("Nodes_order", "asc");
-  const [orderBy, setOrderBy] = useTableState<string>("Nodes_orderBy", "nodeId");
+  const [page, setPage] = useTableState(`Nodes_${prefix}_page`, 0);
+  const [rowsPerPage, setRowsPerPage] = useTableState(`Nodes_${prefix}_rowsPerPage`, 5);
+  const [order, setOrder] = useTableState<Order>(`Nodes_${prefix}_order`, "asc");
+  const [orderBy, setOrderBy] = useTableState<string>(`Nodes_${prefix}_orderBy`, "nodeId");
 
   // Reset page when dashboard filter changes
   useEffect(() => {
@@ -631,12 +632,24 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
     "& .MuiOutlinedInput-root": { borderRadius: "8px" },
   };
 
+  const hasDeptView = hasPrivilege("view_department_devices");
   const hasViewAll = isSuperuser || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
+
+  const currentUserDoc = allUsers.find(u => u.username === username);
+  const currentUserDept = currentUserDoc?.department || "";
+
+  const deptAdminsList = allUsers
+    .filter(u => u.department === currentUserDept)
+    .map(u => ({
+      label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+      value: u.username
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   const filteredAdmins = allUsers
     .map(u => ({
       label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
-      value: u._id || u.id || u.username
+      value: u.username
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
@@ -648,11 +661,18 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
         { label: "Other", value: "other" },
         ...filteredAdmins
       ]
-    : [
-        { label: "Me & Unassigned", value: "my_unassigned" },
-        { label: "Assigned to Me", value: "assigned" },
-        { label: "Unassigned", value: "unassigned" }
-      ];
+    : hasDeptView
+      ? [
+          { label: "All Dept Admins", value: "" },
+          { label: "Me & Unassigned", value: "my_unassigned" },
+          { label: "Unassigned", value: "unassigned" },
+          ...deptAdminsList
+        ]
+      : [
+          { label: "Me & Unassigned", value: "my_unassigned" },
+          { label: "Assigned to Me", value: "assigned" },
+          { label: "Unassigned", value: "unassigned" }
+        ];
 
   const activeFilterCount = [
     clusterFilter,
@@ -767,6 +787,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
               { label: "All Networks", value: "" },
               { label: "Intranet", value: "intranet" },
               { label: "Internet", value: "internet" },
+              { label: "Device Management", value: "device management" },
             ]}
           />
 
@@ -859,7 +880,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter }: { dashboardAdminFilter?
             size="small"
             searchable
             clearable
-            value={!hasViewAll && adminFilter === "" ? "my_unassigned" : adminFilter}
+            value={!(hasViewAll || hasDeptView) && adminFilter === "" ? "my_unassigned" : adminFilter}
             onChange={(val) => {
               setAdminFilter(val);
               setPage(0);

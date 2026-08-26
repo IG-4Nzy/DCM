@@ -33,9 +33,9 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
     const [data, setData] = useState<VMDetailsData[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(25);
+    const [searchQuery, setSearchQuery] = useTableState("VMDetails_search", "");
+    const [page, setPage] = useTableState("VMDetails_page", 0);
+    const [rowsPerPage, setRowsPerPage] = useTableState("VMDetails_rowsPerPage", 25);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<VMDetailsData | null>(null);
@@ -62,6 +62,7 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
     const hasCreate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
     const hasUpdate = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE) || hasPrivilege(PRIVILEGES.UPDATE_VMS_RESTRICTED);
     const hasDelete = isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
+    const isRestrictedAdmin = !isSuperuser && !hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE) && hasPrivilege(PRIVILEGES.UPDATE_VMS_RESTRICTED);
 
     const [clusters, setClusters] = useState<any[]>([]);
     const [selectedClusterFilter, setSelectedClusterFilter] = useState<string>('All');
@@ -266,6 +267,10 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
     };
 
     const handleAddToMonitoring = async (row: VMDetailsData) => {
+        if (isRestrictedAdmin) {
+            showToast("You do not have permission to add VMs to monitoring", "error");
+            return;
+        }
         if (!row.ipAddress) {
             showToast("This VM does not have an IP address configured. Edit the VM to set an IP first.", "warning");
             return;
@@ -320,18 +325,23 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
         }
     };
 
+    const hasDeptView = hasPrivilege("view_department_devices");
     const hasViewAll = isSuperuser || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
     const currentUser = allUsers.find(u => u.username === username);
     const userDept = currentUser?.department;
 
-    const filteredAdmins = allUsers
-        .filter(u => {
-            if (hasViewAll) return true;
-            return u.department === userDept;
-        })
+    const deptAdminsList = allUsers
+        .filter(u => u.department === userDept)
         .map(u => ({
             label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
-            value: u._id || u.id || u.username
+            value: u.username
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+
+    const filteredAdmins = allUsers
+        .map(u => ({
+            label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+            value: u.username
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
 
@@ -343,12 +353,18 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
             { label: 'Other', value: 'other' },
             ...filteredAdmins
         ]
-        : [
-            { label: 'Me & Unassigned', value: 'my_unassigned' },
-            { label: 'Assigned to Me', value: 'assigned' },
-            { label: 'Unassigned', value: 'unassigned' },
-            ...filteredAdmins
-        ];
+        : hasDeptView
+            ? [
+                { label: 'All Dept Admins', value: '' },
+                { label: 'Me & Unassigned', value: 'my_unassigned' },
+                { label: 'Unassigned', value: 'unassigned' },
+                ...deptAdminsList
+            ]
+            : [
+                { label: 'Me & Unassigned', value: 'my_unassigned' },
+                { label: 'Assigned to Me', value: 'assigned' },
+                { label: 'Unassigned', value: 'unassigned' }
+            ];
 
     const activeFilterCount = [
         (!clusterId && selectedClusterFilter !== 'All') ? selectedClusterFilter : '',
@@ -487,7 +503,8 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                             { label: 'All Networks', value: '' },
                             { label: 'Intranet', value: 'intranet' },
                             { label: 'Internet', value: 'internet' },
-                            { label: 'Disconnected', value: 'disconnected' }
+                            { label: 'Disconnected', value: 'disconnected' },
+                            { label: 'Device Management', value: 'device management' }
                         ]}
                     />
                 </FilterGroup>
@@ -499,7 +516,7 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                             size="small"
                             searchable
                             clearable
-                            value={!hasViewAll && adminFilter === "" ? "my_unassigned" : adminFilter}
+                            value={!(hasViewAll || hasDeptView) && adminFilter === "" ? "my_unassigned" : adminFilter}
                             onChange={(val) => {
                                 setAdminFilter(val);
                                 setPage(0);
@@ -749,20 +766,22 @@ const VMDetails = ({ clusterId = '', dashboardAdminFilter }: VMDetailsProps) => 
                                         {(hasUpdate || hasDelete) && (
                                             <TableCell align="right" onClick={(e) => e.stopPropagation()}>
                                                 <Box className={styles.tableWrapper__actions}>
-                                                    {row.ipAddress && monitoredIps.has(row.ipAddress) ? (
-                                                        <Tooltip title="Already Monitored">
-                                                            <span>
-                                                                <IconButton size="small" disabled className={styles.tableWrapper__actions__editBtn} sx={{ mr: 0.5, color: '#2e7d32', backgroundColor: 'rgba(46, 125, 50, 0.08)', '&.Mui-disabled': { color: '#2e7d32' } }}>
+                                                    {!isRestrictedAdmin && (
+                                                        row.ipAddress && monitoredIps.has(row.ipAddress) ? (
+                                                            <Tooltip title="Already Monitored">
+                                                                <span>
+                                                                    <IconButton size="small" disabled className={styles.tableWrapper__actions__editBtn} sx={{ mr: 0.5, color: '#2e7d32', backgroundColor: 'rgba(46, 125, 50, 0.08)', '&.Mui-disabled': { color: '#2e7d32' } }}>
+                                                                        <MonitorIcon fontSize="small" />
+                                                                    </IconButton>
+                                                                </span>
+                                                            </Tooltip>
+                                                        ) : (
+                                                            <Tooltip title="Add to Monitoring">
+                                                                <IconButton size="small" color="info" className={styles.tableWrapper__actions__editBtn} onClick={() => handleAddToMonitoring(row)} sx={{ mr: 0.5 }}>
                                                                     <MonitorIcon fontSize="small" />
                                                                 </IconButton>
-                                                            </span>
-                                                        </Tooltip>
-                                                    ) : (
-                                                        <Tooltip title="Add to Monitoring">
-                                                            <IconButton size="small" color="info" className={styles.tableWrapper__actions__editBtn} onClick={() => handleAddToMonitoring(row)} sx={{ mr: 0.5 }}>
-                                                                <MonitorIcon fontSize="small" />
-                                                            </IconButton>
-                                                        </Tooltip>
+                                                            </Tooltip>
+                                                        )
                                                     )}
                                                     {hasUpdate && (
                                                         <Tooltip title="Edit">

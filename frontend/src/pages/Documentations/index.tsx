@@ -1,25 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Paper, 
-  Typography, 
-  TextField, 
-  Button, 
-  IconButton, 
-  Tooltip, 
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Grid,
-  Card,
-  CardContent,
-  CardActions,
-  ToggleButtonGroup,
-  ToggleButton
-} from '@mui/material';
+import { Box, Paper, Typography, Button, IconButton, Tooltip, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Card, CardContent, CardActions, ToggleButtonGroup, ToggleButton } from '@mui/material';
+import TextField from '../../components/TextField';
 import { 
   MdAdd as AddIcon, 
   MdDelete as DeleteIcon, 
@@ -38,6 +20,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
+import { validators } from '../../helpers/validation';
 
 interface Documentation {
   id?: string;
@@ -66,6 +49,8 @@ const Documentations: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [editingDoc, setEditingDoc] = useState<Documentation | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [titleError, setTitleError] = useState('');
+  const [fileError, setFileError] = useState('');
   
   const { showToast } = useToast();
   const { confirm } = useConfirm();
@@ -117,6 +102,8 @@ const Documentations: React.FC = () => {
     setEditingDoc(null);
     setModalTitle('');
     setSelectedFile(null);
+    setTitleError('');
+    setFileError('');
     setIsModalOpen(true);
   };
 
@@ -124,23 +111,40 @@ const Documentations: React.FC = () => {
     setEditingDoc(doc);
     setModalTitle(doc.title);
     setSelectedFile(null);
+    setTitleError('');
+    setFileError('');
     setIsModalOpen(true);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      const err = validators.fileSize(file, 5, 'File');
+      if (err) {
+        setFileError(err);
+        setSelectedFile(null);
+      } else {
+        setSelectedFile(file);
+        setFileError('');
+      }
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!modalTitle.trim()) {
-      showToast('Title is required', 'warning');
+    
+    const titleErr = validators.alphanumericGeneral(modalTitle, 100, 'Document Title');
+    if (titleErr) {
+      setTitleError(titleErr);
       return;
     }
+    
     if (!editingDoc && !selectedFile) {
-      showToast('Please select a file to upload', 'warning');
+      setFileError('Please select a file to upload');
+      return;
+    }
+
+    if (fileError) {
       return;
     }
 
@@ -496,7 +500,12 @@ const Documentations: React.FC = () => {
               fullWidth
               required
               value={modalTitle}
-              onChange={(e) => setModalTitle(e.target.value)}
+              onChange={(e) => {
+                setModalTitle(e.target.value);
+                setTitleError('');
+              }}
+              error={!!titleError}
+              helperText={titleError}
               placeholder="e.g. Server Rack Layout Guide"
               slotProps={{ inputLabel: { shrink: true } }}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
@@ -532,6 +541,11 @@ const Documentations: React.FC = () => {
                   onChange={handleFileChange}
                 />
               </Button>
+              {fileError && (
+                <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                  {fileError}
+                </Typography>
+              )}
               {selectedFile && (
                 <Typography variant="body2" sx={{ color: '#3182ce', mt: 1, fontWeight: '500', display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   <FileIcon /> {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)

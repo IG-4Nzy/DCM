@@ -5,29 +5,8 @@ import type { AppDispatch, RootState } from '../../store';
 import { fetchUsers } from '../Users/action';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
-import {
-  Box,
-  Paper,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  CircularProgress,
-  IconButton,
-  Tooltip,
-  Switch,
-  FormControlLabel,
-  Button,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField
-} from '@mui/material';
+import { Box, Paper, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, CircularProgress, IconButton, Tooltip, Switch, FormControlLabel, Button, Chip, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import TextField from '../../components/TextField';
 import { MdAdd as AddIcon, MdDelete as DeleteIcon, MdEdit as EditIcon, MdSearch as SearchIcon, MdRefresh as RefreshIcon } from 'react-icons/md';
 import request from '../../services/request';
 import dayjs from 'dayjs';

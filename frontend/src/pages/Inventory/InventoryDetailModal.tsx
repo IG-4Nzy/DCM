@@ -2,26 +2,8 @@
 import React, { useState } from 'react';
 import dayjs from 'dayjs';
 import Modal from '../../components/Modal';
-import { 
-  Box, 
-  Typography, 
-  TextField, 
-  Divider, 
-  Paper, 
-  MenuItem, 
-  Select, 
-  FormControl, 
-  InputLabel,
-  IconButton,
-  Tooltip,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Avatar,
-  Tabs,
-  Tab
-} from '@mui/material';
+import { Box, Typography, Divider, Paper, MenuItem, Select, FormControl, InputLabel, IconButton, Tooltip, List, ListItem, ListItemAvatar, ListItemText, Avatar, Tabs, Tab } from '@mui/material';
+import TextField from '../../components/TextField';
 import { 
   MdAdd as AddIcon, 
   MdRemove as SubtractIcon, 

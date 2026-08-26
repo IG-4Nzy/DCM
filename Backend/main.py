@@ -527,19 +527,110 @@ app = FastAPI(
     version="1.0.0"
 )
 
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "font-src 'self' data:; "
+        "img-src 'self' data: blob:; "
+        "media-src 'self' data: blob:; "
+        "connect-src 'self' https: wss: http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:* http://10.* http://192.168.*; "
+        "form-action 'self'; "
+        "frame-ancestors 'self'; "
+        "base-uri 'self'; "
+        "require-trusted-types-for 'script'; "
+        "trusted-types *;"
+    )
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Cross-Origin-Embedder-Policy"] = "credentialless"
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+    response.headers["Server"] = "Webserver"
+    if "X-Powered-By" in response.headers:
+        del response.headers["X-Powered-By"]
+    return response
+
+@app.middleware("http")
+async def csrf_origin_validator(request: Request, call_next):
+    if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
+        origin = request.headers.get("Origin")
+        referer = request.headers.get("Referer")
+        
+        import re
+        pattern = r"^https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$"
+        
+        # Check Origin
+        if origin:
+            if not re.match(pattern, origin):
+                from fastapi.responses import JSONResponse
+                return JSONResponse(status_code=403, content={"detail": "Origin not allowed"})
+        # Check Referer (fallback if Origin is not present)
+        elif referer:
+            ref_origin = re.match(r"^(https?://[^/]+)", referer)
+            if ref_origin:
+                ref_origin_str = ref_origin.group(1)
+                if not re.match(pattern, ref_origin_str):
+                    from fastapi.responses import JSONResponse
+                    return JSONResponse(status_code=403, content={"detail": "Referer not allowed"})
+                
+    return await call_next(request)
+
 app.add_middleware(AuditLogMiddleware)
 
 import os
 
-# Allow CORS for frontend
+# Allow CORS for frontend (strictly limited to local/intranet origins)
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=".*",
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["Date"],
 )
+
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    # Sanitize validation errors to prevent reflecting raw user input in JSON
+    errors = []
+    for error in exc.errors():
+        errors.append({
+            "loc": [str(loc) for loc in error.get("loc", [])],
+            "msg": error.get("msg"),
+            "type": error.get("type")
+        })
+    return JSONResponse(
+        status_code=422,
+        content={"detail": errors}
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    # Return generic internal server error to prevent path/stack trace disclosure
+    if isinstance(exc, StarletteHTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail}
+        )
+    # Log the error internally
+    import traceback
+    with open("error.log", "a") as f:
+        f.write(f"Unhandled exception: {exc}\n{traceback.format_exc()}\n")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error"}
+    )
 
 app.include_router(items_router, tags=["items"], prefix="/items")
 app.include_router(auth_router, tags=["auth"], prefix="/api/auth")

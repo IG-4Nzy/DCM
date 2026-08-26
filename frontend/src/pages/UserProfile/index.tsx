@@ -12,8 +12,7 @@ import {
     MdSave as SaveIcon,
     MdClose as CancelIcon,
 } from "react-icons/md";
-import Switch from "@mui/material/Switch";
-import FormControlLabel from "@mui/material/FormControlLabel";
+
 import TextField from "../../components/TextField";
 import Dropdown from "../../components/Dropdown";
 import { useToast } from "../../contexts/ToastContext";
@@ -37,7 +36,6 @@ interface UserProfileData {
     passNumber?: string;
     dateOfJoin: string;
     department: string;
-    stickyNoteEnabled?: boolean;
 }
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
@@ -67,7 +65,6 @@ const UserProfile: React.FC = () => {
         bloodGroup: "",
         address: "",
         passNumber: "",
-        stickyNoteEnabled: false,
     });
 
     const fetchProfile = async () => {
@@ -83,7 +80,6 @@ const UserProfile: React.FC = () => {
                 bloodGroup: res.data.bloodGroup || "",
                 address: res.data.address || "",
                 passNumber: res.data.passNumber || "",
-                stickyNoteEnabled: res.data.stickyNoteEnabled || false,
             });
         } catch (err: any) {
             showToast(
@@ -109,21 +105,79 @@ const UserProfile: React.FC = () => {
                 bloodGroup: profile.bloodGroup || "",
                 address: profile.address || "",
                 passNumber: profile.passNumber || "",
-                stickyNoteEnabled: profile.stickyNoteEnabled || false,
             });
         }
         setEditing(false);
     };
 
+    const validateName = (v: string, label: string) => {
+        if (!v) return "";
+        if (!/^[a-zA-Z0-9_.\s]+$/.test(v)) return `${label} must contain alphanumeric characters, spaces, dots, or underscores only`;
+        if (v.length > 20) return `${label} must be maximum 20 characters`;
+        return "";
+    };
+
+    const validateMobile = (v: string) => {
+        if (!v) return "";
+        if (!/^[0-9,]+$/.test(v)) return "Mobile number must contain numbers and commas only";
+        return "";
+    };
+
+    const validatePassNumber = (v: string) => {
+        if (!v) return "";
+        if (!/^[a-zA-Z0-9]+$/.test(v)) return "Pass number must contain alphanumeric characters only";
+        if (v.length > 20) return "Pass number must be maximum 20 characters";
+        return "";
+    };
+
+    const firstNameErr = validateName(form.firstName, "First name");
+    const lastNameErr = validateName(form.lastName, "Last name");
+    const mobileErr = validateMobile(form.mobile);
+    const passNumberErr = validatePassNumber(form.passNumber);
+
+    const hasFormErrors = !!firstNameErr || !!lastNameErr || !!mobileErr || !!passNumberErr;
+
     const handleSave = async () => {
+        // Validation checks
+        if (hasFormErrors) {
+            showToast("Please fix the validation errors before saving.", "error");
+            return;
+        }
+        if (form.firstName && !/^[a-zA-Z0-9_.\s]+$/.test(form.firstName)) {
+            showToast("First name must contain alphanumeric characters, spaces, dots, or underscores only", "error");
+            return;
+        }
+        if (form.firstName && form.firstName.length > 20) {
+            showToast("First name must be maximum 20 characters", "error");
+            return;
+        }
+        if (form.lastName && !/^[a-zA-Z0-9_.\s]+$/.test(form.lastName)) {
+            showToast("Last name must contain alphanumeric characters, spaces, dots, or underscores only", "error");
+            return;
+        }
+        if (form.lastName && form.lastName.length > 20) {
+            showToast("Last name must be maximum 20 characters", "error");
+            return;
+        }
+        if (form.mobile && !/^[0-9,]+$/.test(form.mobile)) {
+            showToast("Mobile number must contain numbers and commas only", "error");
+            return;
+        }
+        if (form.passNumber && !/^[a-zA-Z0-9]+$/.test(form.passNumber)) {
+            showToast("Pass number must contain alphanumeric characters only", "error");
+            return;
+        }
+        if (form.passNumber && form.passNumber.length > 20) {
+            showToast("Pass number must be maximum 20 characters", "error");
+            return;
+        }
+
         try {
             setSaving(true);
             const payload: any = {};
             Object.entries(form).forEach(([k, v]) => {
                 if (v !== undefined && v !== null && v !== "") {
                     payload[k] = v;
-                } else if (k === 'stickyNoteEnabled') {
-                    payload[k] = v; // Allow boolean false
                 }
             });
             const res = await request.put("/api/auth/me", payload);
@@ -153,6 +207,10 @@ const UserProfile: React.FC = () => {
         }
         if (passwordForm.newPassword.length < 6) {
             showToast("Password must be at least 6 characters long", "error");
+            return;
+        }
+        if (passwordForm.newPassword.length > 16) {
+            showToast("Password must be maximum 16 characters long", "error");
             return;
         }
         try {
@@ -255,7 +313,7 @@ const UserProfile: React.FC = () => {
                                         size="small"
                                         startIcon={<SaveIcon />}
                                         onClick={handleSave}
-                                        disabled={saving}
+                                        disabled={saving || hasFormErrors}
                                         sx={{
                                             borderRadius: "8px",
                                             textTransform: "none",
@@ -290,12 +348,16 @@ const UserProfile: React.FC = () => {
                                 onChange={(e) =>
                                     setForm({ ...form, firstName: e.target.value })
                                 }
+                                error={!!firstNameErr}
+                                helperText={firstNameErr}
                                 className={styles.field}
                             />
                             <TextField
                                 label="Last Name"
                                 value={form.lastName}
                                 onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                                error={!!lastNameErr}
+                                helperText={lastNameErr}
                                 className={styles.field}
                             />
                             <TextField
@@ -303,6 +365,9 @@ const UserProfile: React.FC = () => {
                                 value={form.passNumber}
                                 onChange={(e) => setForm({ ...form, passNumber: e.target.value })}
                                 className={styles.field}
+                                error={!!passNumberErr}
+                                helperText={passNumberErr}
+                                inputProps={{ maxLength: 20 }}
                             />
                         </Box>
                     ) : (
@@ -323,6 +388,8 @@ const UserProfile: React.FC = () => {
                                 label="Mobile"
                                 value={form.mobile}
                                 onChange={(e) => setForm({ ...form, mobile: e.target.value })}
+                                error={!!mobileErr}
+                                helperText={mobileErr}
                                 className={styles.field}
                             />
                         </Box>
@@ -347,29 +414,6 @@ const UserProfile: React.FC = () => {
                     </Box>
                 </Paper>
 
-                {/* Preferences */}
-                <Paper className={styles.card} elevation={0}>
-                    <label className={styles.sectionTitle}>Preferences</label>
-                    <Box className={styles.infoGrid}>
-                        {editing ? (
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={form.stickyNoteEnabled}
-                                        onChange={(e) => setForm({ ...form, stickyNoteEnabled: e.target.checked })}
-                                        color="primary"
-                                    />
-                                }
-                                label="Enable Floating Sticky Note"
-                            />
-                        ) : (
-                            <InfoRow 
-                                label="Floating Sticky Note" 
-                                value={profile.stickyNoteEnabled ? "Enabled" : "Disabled"} 
-                            />
-                        )}
-                    </Box>
-                </Paper>
 
                 {/* Security - Change Password */}
                 <Paper className={styles.card} elevation={0}>

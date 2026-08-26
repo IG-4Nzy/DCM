@@ -25,14 +25,21 @@ const DatePicker: React.FC<DatePickerProps> = ({
       label={label}
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      InputLabelProps={{ shrink: true }}
+      {...(props as any)}
       slotProps={{
         inputLabel: {
           shrink: true,
+          ...props.slotProps?.inputLabel,
+          ...props.InputLabelProps,
         },
         htmlInput: {
           min: minDate,
           max: maxDate,
+          ...props.slotProps?.htmlInput,
+          ...props.inputProps,
         },
+        ...props.slotProps,
       }}
       sx={{
         '& input[type="date"]::-webkit-calendar-picker-indicator': {
@@ -40,7 +47,6 @@ const DatePicker: React.FC<DatePickerProps> = ({
         },
         ...props.sx
       }}
-      {...(props as any)}
     />
   );
 };

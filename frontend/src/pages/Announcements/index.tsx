@@ -1,30 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Paper,
-  Typography,
-  TextField,
-  Button,
-  IconButton,
-  Tooltip,
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl
-} from '@mui/material';
+import { Box, Paper, Typography, Button, IconButton, Tooltip, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
+import TextField from '../../components/TextField';
 import {
   MdAdd as AddIcon,
   MdDelete as DeleteIcon,

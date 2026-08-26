@@ -5,6 +5,7 @@ import { fetchUsers, createUser, updateUser, deleteUser, fetchAllRolesForDropdow
 
 const initialState: UsersState = {
   users: [],
+  adminUsers: [],
   availableRoles: [],
   availableDepartments: [],
   totalCount: 0,
@@ -24,8 +25,13 @@ const usersSlice = createSlice({
     });
     builder.addCase(fetchUsers.fulfilled, (state, action) => {
       state.loading = false;
-      state.users = action.payload.data;
-      state.totalCount = action.payload.total;
+      const isPaginated = action.meta.arg?.pagination !== false;
+      if (isPaginated) {
+        state.adminUsers = action.payload.data;
+        state.totalCount = action.payload.total;
+      } else {
+        state.users = action.payload.data;
+      }
     });
     builder.addCase(fetchUsers.rejected, (state, action) => {
       state.loading = false;
@@ -84,6 +90,10 @@ const usersSlice = createSlice({
       if (index !== -1) {
         state.users[index] = action.payload;
       }
+      const adminIndex = state.adminUsers.findIndex((u) => u.id === action.payload.id);
+      if (adminIndex !== -1) {
+        state.adminUsers[adminIndex] = action.payload;
+      }
     });
     builder.addCase(updateUser.rejected, (state, action) => {
       state.loading = false;
@@ -95,8 +105,10 @@ const usersSlice = createSlice({
       state.loading = true;
       state.error = null;
     });
-    builder.addCase(deleteUser.fulfilled, (state) => {
+    builder.addCase(deleteUser.fulfilled, (state, action) => {
       state.loading = false;
+      state.users = state.users.filter((u) => u.id !== action.payload);
+      state.adminUsers = state.adminUsers.filter((u) => u.id !== action.payload);
     });
     builder.addCase(deleteUser.rejected, (state, action) => {
       state.loading = false;

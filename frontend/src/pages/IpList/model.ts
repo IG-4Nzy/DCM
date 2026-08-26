@@ -1,4 +1,3 @@
-// @ts-nocheck
 export interface IpListModel {
     id: string;
     _id?: string;

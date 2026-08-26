@@ -1,16 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Paper, 
-  Typography, 
-  TextField, 
-  IconButton, 
-  Tooltip, 
-  CircularProgress,
-  Chip,
-  Collapse
-} from '@mui/material';
+import { Box, Paper, Typography, IconButton, Tooltip, CircularProgress, Chip, Collapse } from '@mui/material';
+import TextField from '../../components/TextField';
 import { MdRefresh as RefreshIcon, MdSearch as SearchIcon, MdChevronRight as ExpandIcon, MdExpandMore as CollapseIcon } from 'react-icons/md';
 import request from '../../services/request';
 import dayjs from 'dayjs';
