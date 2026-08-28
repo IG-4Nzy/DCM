@@ -276,13 +276,27 @@ const ServerPingMonitoring: React.FC = () => {
   };
   const validateIpAddress = (v: string) => {
     if (!v) return "";
+    const hasPort = v.includes(':');
+    const ipPart = hasPort ? v.split(':')[0] : v;
+    const portPart = hasPort ? v.split(':')[1] : "";
+
     const ipv4Regex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
-    if (!ipv4Regex.test(v)) return "Must be a valid IPv4 address";
-    const parts = v.split('.');
+    if (!ipv4Regex.test(ipPart)) return "Must be a valid IPv4 address";
+    const parts = ipPart.split('.');
     for (const part of parts) {
       const num = parseInt(part, 10);
       if (isNaN(num) || num < 0 || num > 255) {
         return "Must be a valid IPv4 address (octets 0-255)";
+      }
+    }
+
+    if (hasPort) {
+      if (serverForm.monitoringType !== 'port' && serverForm.monitoringType !== 'both') {
+        return "Port suffix is only allowed for port or both monitoring types";
+      }
+      const portNum = parseInt(portPart, 10);
+      if (isNaN(portNum) || portNum < 1 || portNum > 65535 || String(portNum) !== portPart) {
+        return "Port must be an integer between 1 and 65535";
       }
     }
     return "";

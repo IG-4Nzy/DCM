@@ -43,11 +43,22 @@ class MonitoredServerCreate(BaseModel):
     @classmethod
     def validate_ip(cls, v: str) -> str:
         import re
-        if not re.match(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$', v):
+        has_port = ":" in v
+        ip_part = v.split(":", 1)[0] if has_port else v
+        port_part = v.split(":", 1)[1] if has_port else ""
+
+        if not re.match(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$', ip_part):
             raise ValueError("Must be a valid IPv4 address")
-        for part in v.split('.'):
+        for part in ip_part.split('.'):
             if not (0 <= int(part) <= 255):
                 raise ValueError("Must be a valid IPv4 address (octets 0-255)")
+        
+        if has_port:
+            if not port_part.isdigit():
+                raise ValueError("Port suffix must be a valid integer")
+            port_val = int(port_part)
+            if not (1 <= port_val <= 65535):
+                raise ValueError("Port must be between 1 and 65535")
         return v
 
     @field_validator('interval')
@@ -106,11 +117,22 @@ class MonitoredServerUpdate(BaseModel):
     def validate_ip(cls, v: Optional[str]) -> Optional[str]:
         if v is not None:
             import re
-            if not re.match(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$', v):
+            has_port = ":" in v
+            ip_part = v.split(":", 1)[0] if has_port else v
+            port_part = v.split(":", 1)[1] if has_port else ""
+
+            if not re.match(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$', ip_part):
                 raise ValueError("Must be a valid IPv4 address")
-            for part in v.split('.'):
+            for part in ip_part.split('.'):
                 if not (0 <= int(part) <= 255):
                     raise ValueError("Must be a valid IPv4 address (octets 0-255)")
+            
+            if has_port:
+                if not port_part.isdigit():
+                    raise ValueError("Port suffix must be a valid integer")
+                port_val = int(port_part)
+                if not (1 <= port_val <= 65535):
+                    raise ValueError("Port must be between 1 and 65535")
         return v
 
     @field_validator('interval')
@@ -348,17 +370,26 @@ class ServerPingScheduler:
                 durations.append(p_dur)
 
             # 2. TCP Port checks
-            if mon_type in ("port", "both") and ports:
-                port_failures = 0
-                for port in ports:
-                    pt_ok, pt_dur = await exec_tcp_port(clean_ip, port, timeout)
-                    ports_status_map[str(port)] = "UP" if pt_ok else "DOWN"
-                    durations.append(pt_dur)
-                    if not pt_ok:
-                        port_failures += 1
-                
-                if ports and port_failures == len(ports):
-                    curr_ports_ok = False
+            if mon_type in ("port", "both"):
+                ip_ports = list(ports)
+                if ":" in ip:
+                    parts = ip.rsplit(":", 1)
+                    if parts[-1].isdigit():
+                        p_from_ip = int(parts[-1])
+                        if p_from_ip not in ip_ports:
+                            ip_ports.append(p_from_ip)
+
+                if ip_ports:
+                    port_failures = 0
+                    for port in ip_ports:
+                        pt_ok, pt_dur = await exec_tcp_port(clean_ip, port, timeout)
+                        ports_status_map[str(port)] = "UP" if pt_ok else "DOWN"
+                        durations.append(pt_dur)
+                        if not pt_ok:
+                            port_failures += 1
+                    
+                    if port_failures == len(ip_ports):
+                        curr_ports_ok = False
             
             # 3. Heartbeat checks
             if mon_type == "heartbeat":
