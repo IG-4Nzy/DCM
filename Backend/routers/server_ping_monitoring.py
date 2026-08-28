@@ -945,10 +945,10 @@ async def get_current_user_url_compatible(
             headers={"WWW-Authenticate": "Bearer"},
         )
         
-    from auth_utils import SECRET_KEY, ALGORITHM
+    from auth_utils import SECRET_KEY, ALGORITHM, secure_decode_jwt
     import jwt
     try:
-        payload = jwt.decode(token_str, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = secure_decode_jwt(token_str, SECRET_KEY, ALGORITHM)
         username = payload.get("sub")
         if not username:
             raise HTTPException(status_code=401, detail="Invalid token payload")

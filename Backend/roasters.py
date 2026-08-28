@@ -589,57 +589,67 @@ async def reconcile_roster_leaves(department: str, now_local: datetime):
     
     for roster in roasters:
         roster_date = roster["date"]
-        assignees = list(roster.get("assignees", []))
         changed_roster = False
-        
-        for username in assignees:
-            att = await attendance_col.find_one({
-                "username": username,
-                "date": roster_date
-            })
-            did_login = False
-            if att and att.get("firstLogin"):
-                did_login = True
-                
-            if not did_login:
-                roster["assignees"] = [u for u in roster["assignees"] if u != username]
-                changed_roster = True
-                
-                leave_roster = await roasters_collection.find_one({
-                    "date": roster_date,
-                    "shift": "Leave",
-                    "department": department
+        new_assignees_list = []
+        for raw_assignee in roster.get("assignees", []):
+            if not raw_assignee:
+                new_assignees_list.append("")
+                continue
+            parts = [p.strip() for p in raw_assignee.split(",") if p.strip()]
+            valid_parts = []
+            for username in parts:
+                att = await attendance_col.find_one({
+                    "username": username,
+                    "date": roster_date
                 })
-                
-                if leave_roster:
-                    leave_assignees = list(leave_roster.get("assignees", []))
-                    if username not in leave_assignees:
-                        leave_assignees.append(username)
-                        await roasters_collection.update_one(
-                            {"_id": leave_roster["_id"]},
-                            {"$set": {
-                                "assignees": leave_assignees,
-                                "updatedAt": datetime.now(timezone.utc).isoformat()
-                            }}
-                        )
+                did_login = False
+                if att and att.get("firstLogin"):
+                    did_login = True
+                    
+                if did_login:
+                    valid_parts.append(username)
                 else:
-                    new_leave_roster = {
+                    changed_roster = True
+                    leave_roster = await roasters_collection.find_one({
                         "date": roster_date,
                         "shift": "Leave",
-                        "department": department,
-                        "assignees": [username],
-                        "notes": "Auto-marked Leave (No login)",
-                        "createdBy": "system",
-                        "updatedAt": datetime.now(timezone.utc).isoformat(),
-                        "updatedByFullName": "System Auto-Reconciliation"
-                    }
-                    await roasters_collection.insert_one(new_leave_roster)
+                        "department": department
+                    })
+                    
+                    if leave_roster:
+                        leave_assignees = list(leave_roster.get("assignees", []))
+                        flat_leaves = []
+                        for la in leave_assignees:
+                            if la:
+                                flat_leaves.extend([p.strip() for p in la.split(",") if p.strip()])
+                        if username not in flat_leaves:
+                            leave_assignees.append(username)
+                            await roasters_collection.update_one(
+                                {"_id": leave_roster["_id"]},
+                                {"$set": {
+                                    "assignees": leave_assignees,
+                                    "updatedAt": datetime.now(timezone.utc).isoformat()
+                                }}
+                            )
+                    else:
+                        new_leave_roster = {
+                            "date": roster_date,
+                            "shift": "Leave",
+                            "department": department,
+                            "assignees": [username],
+                            "notes": "Auto-marked Leave (No login)",
+                            "createdBy": "system",
+                            "updatedAt": datetime.now(timezone.utc).isoformat(),
+                            "updatedByFullName": "System Auto-Reconciliation"
+                        }
+                        await roasters_collection.insert_one(new_leave_roster)
+            new_assignees_list.append(", ".join(valid_parts))
         
         if changed_roster:
             await roasters_collection.update_one(
                 {"_id": roster["_id"]},
                 {"$set": {
-                    "assignees": roster["assignees"],
+                    "assignees": new_assignees_list,
                     "updatedAt": datetime.now(timezone.utc).isoformat()
                 }}
             )
@@ -760,16 +770,22 @@ async def get_duty_summary(
     week_days = {}   # username -> set of dates
 
     for roster in month_rosters:
-        for assignee in roster.get("assignees", []):
-            if assignee not in month_days:
-                month_days[assignee] = set()
-            month_days[assignee].add(roster["date"])
+        for raw_assignee in roster.get("assignees", []):
+            if raw_assignee:
+                parts = [p.strip() for p in raw_assignee.split(",") if p.strip()]
+                for assignee in parts:
+                    if assignee not in month_days:
+                        month_days[assignee] = set()
+                    month_days[assignee].add(roster["date"])
 
     for roster in week_rosters:
-        for assignee in roster.get("assignees", []):
-            if assignee not in week_days:
-                week_days[assignee] = set()
-            week_days[assignee].add(roster["date"])
+        for raw_assignee in roster.get("assignees", []):
+            if raw_assignee:
+                parts = [p.strip() for p in raw_assignee.split(",") if p.strip()]
+                for assignee in parts:
+                    if assignee not in week_days:
+                        week_days[assignee] = set()
+                    week_days[assignee].add(roster["date"])
 
     # Get all users of this department with the tracked role
     users_collection = db.get_collection("users")
@@ -796,14 +812,17 @@ async def get_duty_summary(
 
     for roster in month_rosters:
         r_date = roster["date"]
-        for assignee in roster.get("assignees", []):
-            if assignee in staff_weeks:
-                dt = datetime.strptime(r_date, "%Y-%m-%d").date()
-                for w in weeks_list:
-                    ws = datetime.strptime(w["start"], "%Y-%m-%d").date()
-                    we = datetime.strptime(w["end"], "%Y-%m-%d").date()
-                    if ws <= dt <= we:
-                        staff_weeks[assignee][w["label"]].add(r_date)
+        for raw_assignee in roster.get("assignees", []):
+            if raw_assignee:
+                parts = [p.strip() for p in raw_assignee.split(",") if p.strip()]
+                for assignee in parts:
+                    if assignee in staff_weeks:
+                        dt = datetime.strptime(r_date, "%Y-%m-%d").date()
+                        for w in weeks_list:
+                            ws = datetime.strptime(w["start"], "%Y-%m-%d").date()
+                            we = datetime.strptime(w["end"], "%Y-%m-%d").date()
+                            if ws <= dt <= we:
+                                staff_weeks[assignee][w["label"]].add(r_date)
 
     summary = []
     for staff in sorted(all_staff):
@@ -967,7 +986,11 @@ async def generate_roster_pdf_bytes(department: str, week_start_date: str, roste
             slots_html = ""
             for i in range(num_slots):
                 username = assignees[i] if i < len(assignees) else None
-                display_name = user_names.get(username, username) if username else "-"
+                if username:
+                    parts = [p.strip() for p in username.split(",") if p.strip()]
+                    display_name = ", ".join([user_names.get(u, u) for u in parts])
+                else:
+                    display_name = "-"
                 slots_html += f"<div class='slot-label'>{display_name}</div>"
                 
             row_html += f"<td><div class='slots-container'>{slots_html}</div></td>"
@@ -1260,7 +1283,9 @@ async def send_roster_email(
             
     all_usernames = set()
     for r in rosters:
-        all_usernames.update(r.get("assignees", []))
+        for u in r.get("assignees", []):
+            if u:
+                all_usernames.update([p.strip() for p in u.split(",") if p.strip()])
     
     users_col = db.get_collection("users")
     user_docs = await users_col.find({"username": {"$in": list(all_usernames)}}).to_list(length=None)
@@ -1280,7 +1305,11 @@ async def send_roster_email(
         rows_html += f"<tr><td style='border: 1px solid #cbd5e1; padding: 10px; font-weight: bold; background-color: #f8fafc; text-align: left; white-space: nowrap;'>{shift_label}</td>"
         for d in week_dates:
             assignees = roster_map.get((d, shift), [])
-            names = [user_names.get(u, u) for u in assignees]
+            names = []
+            for u in assignees:
+                if u:
+                    parts = [p.strip() for p in u.split(",") if p.strip()]
+                    names.extend([user_names.get(part, part) for part in parts])
             names_str = ", ".join(names) if names else "<span style='color: #94a3b8; font-style: italic;'>Unassigned</span>"
             notes = notes_map.get((d, shift))
             notes_html = f"<div style='font-size: 11px; color: #64748b; margin-top: 4px; font-style: italic;'>Note: {notes}</div>" if notes else ""

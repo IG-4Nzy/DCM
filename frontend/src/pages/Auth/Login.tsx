@@ -16,9 +16,24 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [birthdayWish, setBirthdayWish] = useState<{ open: boolean; name: string }>({ open: false, name: '' });
   const [restrictedLoginData, setRestrictedLoginData] = useState<any>(null);
+  const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
   const dispatch = useDispatch<any>();
   const navigate = useNavigate();
   const { showToast } = useToast();
+
+  useEffect(() => {
+    if (cooldownSeconds === null || cooldownSeconds <= 0) return;
+    const timer = setInterval(() => {
+      setCooldownSeconds(prev => {
+        if (prev === null || prev <= 1) {
+          clearInterval(timer);
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownSeconds]);
 
   const [deployEnv, setDeployEnv] = useState<string>(() => {
     const raw = (import.meta.env.VITE_DEPLOY_ENV || '').toLowerCase().trim();
@@ -61,8 +76,13 @@ const Login: React.FC = () => {
       }
     } else if (loginApi.rejected.match(result)) {
       const data = result.payload as any;
-      if (data && data.detail && typeof data.detail === 'object' && data.detail.restricted_token) {
-        setRestrictedLoginData(data.detail);
+      if (data && data.detail && typeof data.detail === 'object') {
+        if (data.detail.restricted_token) {
+          setRestrictedLoginData(data.detail);
+        }
+        if (data.detail.remaining_seconds !== undefined) {
+          setCooldownSeconds(data.detail.remaining_seconds);
+        }
       }
     }
   };
@@ -232,15 +252,34 @@ const Login: React.FC = () => {
               }}
             />
 
+            {cooldownSeconds !== null && cooldownSeconds > 0 && (
+              <Box
+                sx={{
+                  mt: 2,
+                  p: 1.5,
+                  borderRadius: 2,
+                  bgcolor: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                  color: '#dc2626',
+                  textAlign: 'center',
+                  fontWeight: 600,
+                  fontSize: '0.875rem'
+                }}
+              >
+                Too many failed attempts. Try again in {Math.floor(cooldownSeconds / 60)}m {cooldownSeconds % 60}s.
+              </Box>
+            )}
+
             <Button
               fullWidth
               type="submit"
               variant="contained"
               color="primary"
               size="large"
+              disabled={cooldownSeconds !== null && cooldownSeconds > 0}
               sx={{ mt: 3, borderRadius: 2, paddingY: 1.5 }}
             >
-              Log In
+              {cooldownSeconds !== null && cooldownSeconds > 0 ? 'Locked Out' : 'Log In'}
             </Button>
           </form>
         </Paper>

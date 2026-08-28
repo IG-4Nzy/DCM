@@ -336,7 +336,12 @@ const RoasterPage: React.FC = () => {
       weekDates.forEach((dateStr) => {
         shiftNames.forEach((shift) => {
           const key = `${dateStr}_${shift}`;
-          if (rosterData[key]?.assignees?.includes(username)) {
+          const assigneesList = rosterData[key]?.assignees || [];
+          const hasUser = assigneesList.some(a => {
+            if (!a) return false;
+            return a.split(',').map(p => p.trim()).includes(username);
+          });
+          if (hasUser) {
             weekDatesAssigned.add(dateStr);
           }
         });
@@ -349,7 +354,12 @@ const RoasterPage: React.FC = () => {
       weekDatesInCycle.forEach((dateStr) => {
         shiftNames.forEach((shift) => {
           const key = `${dateStr}_${shift}`;
-          if (savedRosterData[key]?.assignees?.includes(username)) {
+          const assigneesList = savedRosterData[key]?.assignees || [];
+          const hasUser = assigneesList.some(a => {
+            if (!a) return false;
+            return a.split(',').map(p => p.trim()).includes(username);
+          });
+          if (hasUser) {
             savedCycleDates.add(dateStr);
           }
         });
@@ -360,7 +370,12 @@ const RoasterPage: React.FC = () => {
       weekDatesInCycle.forEach((dateStr) => {
         shiftNames.forEach((shift) => {
           const key = `${dateStr}_${shift}`;
-          if (rosterData[key]?.assignees?.includes(username)) {
+          const assigneesList = rosterData[key]?.assignees || [];
+          const hasUser = assigneesList.some(a => {
+            if (!a) return false;
+            return a.split(',').map(p => p.trim()).includes(username);
+          });
+          if (hasUser) {
             currentCycleDates.add(dateStr);
           }
         });
@@ -415,12 +430,38 @@ const RoasterPage: React.FC = () => {
   };
 
   const getUserDisplayName = (username: string) => {
-    const user = users.find((u) => u.username === username);
-    if (user) {
-      const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
-      return fullName ? fullName : username;
-    }
-    return username;
+    if (!username) return '';
+    return username.split(',').map(part => {
+      const trimmed = part.trim();
+      const user = users.find((u) => u.username === trimmed);
+      if (user) {
+        const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+        return fullName ? fullName : trimmed;
+      }
+      return trimmed;
+    }).join(', ');
+  };
+
+  const resolveUsernameOrDisplayName = (input: string) => {
+    if (!input) return '';
+    return input.split(',').map(part => {
+      const trimmed = part.trim();
+      if (!trimmed) return '';
+      // Check if it's already a valid username (case-insensitive)
+      const userByUsername = users.find(u => u.username.toLowerCase() === trimmed.toLowerCase());
+      if (userByUsername) {
+        return userByUsername.username;
+      }
+      // Check if it matches a full name (case-insensitive)
+      const userByFullName = users.find(u => {
+        const fullName = `${u.firstName || ''} ${u.lastName || ''}`.trim();
+        return fullName.toLowerCase() === trimmed.toLowerCase();
+      });
+      if (userByFullName) {
+        return userByFullName.username;
+      }
+      return trimmed;
+    }).filter(Boolean).join(', ');
   };
 
   const handleCopyPreviousRoster = async () => {
@@ -1071,7 +1112,10 @@ const RoasterPage: React.FC = () => {
                     const assignees = rosterData[key]?.assignees || [];
                     const otherShiftsAssignees = uniqueShifts
                       .filter((s) => s !== shiftName)
-                      .flatMap((s) => rosterData[`${dateStr}_${s}`]?.assignees || []);
+                      .flatMap((s) => {
+                        const raw = rosterData[`${dateStr}_${s}`]?.assignees || [];
+                        return raw.flatMap(u => (u || '').split(',').map(p => p.trim()).filter(Boolean));
+                      });
 
                     const isLeave = shiftName === "Leave";
                     const historyChange = historyChangesMap[key];
@@ -1216,11 +1260,14 @@ const RoasterPage: React.FC = () => {
                           );
 
                           if (isEditMode && (isSuperuser || !dayjs(dateStr).isBefore(getServerTime().startOf("isoWeek"), "day"))) {
-                            const sameShiftOtherSlots = assignees.filter((_, idx) => idx !== slotIdx);
+                            const sameShiftOtherSlots = assignees
+                              .filter((_, idx) => idx !== slotIdx)
+                              .flatMap(u => (u || '').split(',').map(p => p.trim()).filter(Boolean));
                             const excludedUsernames = [...otherShiftsAssignees, ...sameShiftOtherSlots];
                             return (
                               <label key={slotIdx}>
                                 <Autocomplete
+                                  freeSolo
                                   size="small"
                                   options={users
                                     .filter((u) => {
@@ -1235,9 +1282,25 @@ const RoasterPage: React.FC = () => {
                                   }
                                   getOptionLabel={(option) => getUserDisplayName(option)}
                                   value={username || null}
-                                  onChange={(e, val) => {
+                                  onBlur={(e) => {
+                                    const val = e.target.value;
+                                    const resolvedVal = resolveUsernameOrDisplayName(val || "");
                                     const newAssignees = [...assignees];
-                                    newAssignees[slotIdx] = val || "";
+                                    if (newAssignees[slotIdx] !== resolvedVal) {
+                                      newAssignees[slotIdx] = resolvedVal;
+                                      setRosterDataByWeek((prev) => ({
+                                        ...prev,
+                                        [currentWeekKey]: {
+                                          ...(prev[currentWeekKey] || {}),
+                                          [key]: { ...(prev[currentWeekKey]?.[key] || {}), assignees: newAssignees }
+                                        }
+                                      }));
+                                    }
+                                  }}
+                                  onChange={(e, val) => {
+                                    const resolvedVal = resolveUsernameOrDisplayName(val || "");
+                                    const newAssignees = [...assignees];
+                                    newAssignees[slotIdx] = resolvedVal;
                                     setRosterDataByWeek((prev) => ({
                                       ...prev,
                                       [currentWeekKey]: {

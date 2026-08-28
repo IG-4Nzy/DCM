@@ -53,7 +53,7 @@ from starlette.requests import Request
 from database import db
 from datetime import datetime, timezone
 import jwt
-from auth_utils import SECRET_KEY, ALGORITHM
+from auth_utils import SECRET_KEY, ALGORITHM, secure_decode_jwt
 
 # Initialize structured logging
 from services.vcenter.logging_config import setup_logging
@@ -493,7 +493,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
             try:
-                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                payload = secure_decode_jwt(token, SECRET_KEY, ALGORITHM)
                 username = payload.get("sub", "anonymous")
             except Exception:
                 pass
@@ -528,6 +528,79 @@ app = FastAPI(
 )
 
 @app.middleware("http")
+async def validate_query_params(request: Request, call_next):
+    # Check limit parameter in query params
+    limit_str = request.query_params.get("limit")
+    if limit_str is not None:
+        try:
+            limit_val = int(limit_str)
+            if limit_val > 1000:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": "Limit parameter cannot exceed 1000"}
+                )
+            if limit_val < 1:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": "Limit parameter must be at least 1"}
+                )
+        except ValueError:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Limit parameter must be a valid integer"}
+            )
+            
+    # Check skip parameter in query params
+    skip_str = request.query_params.get("skip")
+    if skip_str is not None:
+        try:
+            skip_val = int(skip_str)
+            if skip_val < 0:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": "Skip parameter cannot be negative"}
+                )
+            if skip_val > 1000000:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": "Skip parameter is too large"}
+                )
+        except ValueError:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Skip parameter must be a valid integer"}
+            )
+
+    # Check sort/sortBy parameter
+    sort_by_str = request.query_params.get("sortBy") or request.query_params.get("sort_by")
+    if sort_by_str is not None:
+        import re
+        if not re.match(r"^[a-zA-Z0-9._-]+$", sort_by_str):
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Invalid sort field format"}
+            )
+
+    # Check sort order parameter
+    order_str = request.query_params.get("order") or request.query_params.get("sortOrder") or request.query_params.get("direction")
+    if order_str is not None:
+        if order_str.lower() not in ("asc", "desc", "1", "-1"):
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Invalid sort order"}
+            )
+
+    return await call_next(request)
+
+@app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["Content-Security-Policy"] = (
@@ -537,7 +610,7 @@ async def add_security_headers(request: Request, call_next):
         "font-src 'self' data:; "
         "img-src 'self' data: blob:; "
         "media-src 'self' data: blob:; "
-        "connect-src 'self' https: wss: http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:* http://10.* http://192.168.*; "
+        "connect-src 'self' https: wss:; "
         "form-action 'self'; "
         "frame-ancestors 'self'; "
         "base-uri 'self'; "
@@ -548,7 +621,7 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Cross-Origin-Embedder-Policy"] = "credentialless"
+    response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
     response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
     response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"

@@ -95,35 +95,41 @@ export const validateRoster = (
       }
 
       colRows.forEach((row, rIdx) => {
-        const username = assignees[rIdx];
-        if (username) {
-          let actualShift = row.mappedShift?.replace(/\s+/g, '-');
-          if (!actualShift || actualShift === 'None') {
-            actualShift = (colShift === 'Shift-3' && rIdx === 1) ? 'Shift-4' : colShift;
-          } else if (colShift === 'Shift-3' && rIdx === 1 && (actualShift === 'Shift-3' || actualShift === 'Shift3')) {
-            // Default second row of Shift 3 is Shift 4
-            actualShift = 'Shift-4';
-          }
-          if (!userShifts[username]) {
-            userShifts[username] = [];
-          }
-          userShifts[username].push({ actualShift, colShift, rowName: row.name, rIdx });
+        const rawUsername = assignees[rIdx];
+        if (rawUsername) {
+          const parts = rawUsername.split(',').map(p => p.trim()).filter(Boolean);
+          parts.forEach((username) => {
+            let actualShift = row.mappedShift?.replace(/\s+/g, '-');
+            if (!actualShift || actualShift === 'None') {
+              actualShift = (colShift === 'Shift-3' && rIdx === 1) ? 'Shift-4' : colShift;
+            } else if (colShift === 'Shift-3' && rIdx === 1 && (actualShift === 'Shift-3' || actualShift === 'Shift3')) {
+              // Default second row of Shift 3 is Shift 4
+              actualShift = 'Shift-4';
+            }
+            if (!userShifts[username]) {
+              userShifts[username] = [];
+            }
+            userShifts[username].push({ actualShift, colShift, rowName: row.name, rIdx });
+          });
         }
       });
     });
 
     // Also include Leave column assignees
     const leaveAssignees = rosterData[`${date}_Leave`]?.assignees || [];
-    leaveAssignees.forEach((username) => {
-      if (username) {
-        if (!userShifts[username]) {
-          userShifts[username] = [];
-        }
-        userShifts[username].push({
-          actualShift: 'Leave',
-          colShift: 'Leave',
-          rowName: 'Leave',
-          rIdx: 0
+    leaveAssignees.forEach((rawUsername) => {
+      if (rawUsername) {
+        const parts = rawUsername.split(',').map(p => p.trim()).filter(Boolean);
+        parts.forEach((username) => {
+          if (!userShifts[username]) {
+            userShifts[username] = [];
+          }
+          userShifts[username].push({
+            actualShift: 'Leave',
+            colShift: 'Leave',
+            rowName: 'Leave',
+            rIdx: 0
+          });
         });
       }
     });

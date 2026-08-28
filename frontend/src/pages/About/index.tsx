@@ -205,7 +205,7 @@ const About: React.FC = () => {
             </Box>
           </Box>
 
-          <Box className={styles.actionButtons}>
+          {/* <Box className={styles.actionButtons}>
             {canViewBugs && (
               <Button
                 className={`${styles.btn} ${styles.btnSecondary}`}
@@ -224,11 +224,11 @@ const About: React.FC = () => {
                 Modify Settings
               </Button>
             )}
-          </Box>
+          </Box> */}
         </Box>
 
         {/* Quick Stats Grid */}
-        <Box className={styles.statsGrid}>
+        {/* <Box className={styles.statsGrid}>
           <Box className={styles.statCard}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <MdVerifiedUser size={18} color="#475569" />
@@ -257,10 +257,10 @@ const About: React.FC = () => {
             </Box>
             <span className={styles.statValue}>Live (Healthy)</span>
           </Box>
-        </Box>
+        </Box> */}
 
         {/* Changelog Timeline Section */}
-        <Box className={styles.changelogSection}>
+        {/* <Box className={styles.changelogSection}>
           <Typography className={styles.sectionHeader}>
             <MdStars size={24} /> What's New & System Updates
           </Typography>
@@ -283,10 +283,10 @@ const About: React.FC = () => {
               <Typography color="text.secondary" sx={{ py: 2 }}>No features listed for this build.</Typography>
             )}
           </Box>
-        </Box>
+        </Box> */}
 
         {/* Feedback Section */}
-        <Box className={styles.feedbackSection}>
+        {/* <Box className={styles.feedbackSection}>
           <Box className={styles.feedbackContent}>
             <h2>Encountered an Issue?</h2>
             <p>
@@ -300,7 +300,7 @@ const About: React.FC = () => {
           >
             File Bug Report
           </Button>
-        </Box>
+        </Box> */}
 
       </Box>
 
