@@ -88,7 +88,9 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   const [backupName, setBackupName] = useState('');
   const [backupNode, setBackupNode] = useState('');
   const [backupStorage, setBackupStorage] = useState('');
+  const [backupDatastore, setBackupDatastore] = useState('');
   const [datastore, setDatastore] = useState('');
+  const [datastores, setDatastores] = useState<any[]>([]);
   const [backupError, setBackupError] = useState(false);
   const [addedToMonitoring, setAddedToMonitoring] = useState(false);
 
@@ -97,6 +99,11 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   useEffect(() => {
     if (isOpen && requestId) {
       dispatch(fetchUsers({ pagination: false }));
+
+      // Fetch datastores
+      apiClient.get('/api/datastores/', { params: { pagination: false } })
+        .then(res => setDatastores(res.data.data || []))
+        .catch(err => console.error('Failed to load datastores', err));
 
       setLoadingLogs(true);
       fetchRequestLogs(requestId)
@@ -129,6 +136,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       setBackupName(request.details?.backupName || '');
       setBackupNode(request.details?.backupNode || '');
       setBackupStorage(request.details?.backupStorage || '');
+      setBackupDatastore(request.details?.backupDatastore || '');
       setDatastore(request.details?.datastore || '');
       setBackupError(false);
       setAddedToMonitoring(!!request.details?.addedToMonitoring);
@@ -149,7 +157,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       setExitTimeError(false);
       setKeptItemsOnExit(!!request.details?.keptItemsOnExit);
 
-      if (request.status?.toLowerCase() === 'cluster deciding' || request.status?.toLowerCase().includes('cluster')) {
+      if (request.status?.toLowerCase() === 'cluster deciding' || request.status?.toLowerCase().includes('cluster') || request.status?.toLowerCase().includes('backup')) {
         fetchClusters({ pagination: false }).then(res => {
           setClusters(res.data || []);
         }).catch(() => {
@@ -249,6 +257,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
           backupName: backupName.trim(),
           backupNode: backupNode.trim(),
           backupStorage: backupStorage.trim(),
+          backupDatastore: backupDatastore.trim(),
           datastore: datastore.trim()
         };
       } else if (isClusterDeciding) {
@@ -676,6 +685,10 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                       <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.backupStorage || '-'}</Typography>
                     </Grid>
                     <Grid size={{xs: 12, sm: 6}}   >
+                      <Typography variant="caption" color="textSecondary">Backup Datastore</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.backupDatastore || '-'}</Typography>
+                    </Grid>
+                    <Grid size={{xs: 12, sm: 6}}   >
                       <Typography variant="caption" color="textSecondary">Datastore</Typography>
                       <Typography variant="body2" sx={{ fontWeight: 500 }}>{request.details?.datastore || '-'}</Typography>
                     </Grid>
@@ -907,12 +920,31 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                         </Select>
                       </FormControl>
                       <FormControl fullWidth required sx={{ bgcolor: '#fff' }}>
+                        <InputLabel>Backup Datastore</InputLabel>
+                        <Select
+                          value={backupDatastore}
+                          label="Backup Datastore"
+                          onChange={(e) => setBackupDatastore(e.target.value)}
+                        >
+                          {datastores.map((ds: any) => (
+                            <MenuItem key={ds.id || ds._id} value={ds.name || ds.datastoreName}>
+                              {`${ds.name || ds.datastoreName || ds.id}${ds.capacity ? ` (${ds.freeSpace || ''} free)` : ''}`}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FormControl fullWidth required sx={{ bgcolor: '#fff' }}>
                         <InputLabel>Datastore</InputLabel>
                         <Select
                           value={datastore}
                           label="Datastore"
                           onChange={(e) => setDatastore(e.target.value)}
                         >
+                          {datastores.map((ds: any) => (
+                            <MenuItem key={ds.id || ds._id} value={ds.name || ds.datastoreName}>
+                              {`${ds.name || ds.datastoreName || ds.id}${ds.capacity ? ` (${ds.freeSpace || ''} free)` : ''}`}
+                            </MenuItem>
+                          ))}
                         </Select>
                       </FormControl>
                     </Box>

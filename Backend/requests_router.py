@@ -485,6 +485,7 @@ async def add_vm_details_on_completion(existing_request: dict, username: str):
                 "backupName": details.get("backupName") or "",
                 "backupNode": details.get("backupNode") or "",
                 "backupStorage": details.get("backupStorage") or "",
+                "backupDatastore": details.get("backupDatastore") or "",
                 "datastore": details.get("datastore") or "",
                 "addedToMonitoring": bool(details.get("addedToMonitoring")),
                 "createdBy": username or "system",

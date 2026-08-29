@@ -54,6 +54,7 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
   const [clustersList, setClustersList] = useState<any[]>([]);
   const [nodesList, setNodesList] = useState<any[]>([]);
   const [vmsList, setVmsList] = useState<any[]>([]);
+  const [datastoresList, setDatastoresList] = useState<any[]>([]);
 
   const currentRequestType = editingRequest ? (editingRequest.requestType || editingRequest.category || '') : requestType;
 
@@ -73,6 +74,11 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
       request.get('/api/vm-details/', { params: { pagination: false, admin: username } })
         .then(res => setVmsList(res.data.data || []))
         .catch(err => console.error('Failed to load VMs for request', err));
+
+      // Fetch datastores for dropdown
+      request.get('/api/datastores/', { params: { pagination: false } })
+        .then(res => setDatastoresList(res.data.data || []))
+        .catch(err => console.error('Failed to load datastores for request', err));
     }
   }, [isModalOpen, dispatch, username]);
 
@@ -924,6 +930,21 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                       </Select>
                     </FormControl>
                     <FormControl fullWidth required sx={{ mt: 1 }}>
+                      <InputLabel>Backup Datastore</InputLabel>
+                      <Select
+                        value={details.backupDatastore || ''}
+                        label="Backup Datastore"
+                        onChange={(e) => handleDetailChange('backupDatastore', e.target.value)}
+                        MenuProps={SELECT_MENU_PROPS}
+                      >
+                        {datastoresList.map((ds: any) => (
+                          <MenuItem key={ds.id || ds._id} value={ds.name || ds.datastoreName}>
+                            {`${ds.name || ds.datastoreName || ds.id}${ds.capacity ? ` (${ds.freeSpace || ''} free)` : ''}`}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <FormControl fullWidth required sx={{ mt: 1 }}>
                       <InputLabel>Datastore</InputLabel>
                       <Select
                         value={details.datastore || ''}
@@ -931,6 +952,11 @@ const RequestFormModal: React.FC<RequestFormModalProps> = ({
                         onChange={(e) => handleDetailChange('datastore', e.target.value)}
                         MenuProps={SELECT_MENU_PROPS}
                       >
+                        {datastoresList.map((ds: any) => (
+                          <MenuItem key={ds.id || ds._id} value={ds.name || ds.datastoreName}>
+                            {`${ds.name || ds.datastoreName || ds.id}${ds.capacity ? ` (${ds.freeSpace || ''} free)` : ''}`}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                     

@@ -2032,6 +2032,7 @@ class VMDetailsModel(BaseModel):
     backupName: Optional[str] = ""
     backupNode: Optional[str] = ""
     backupStorage: Optional[str] = ""
+    backupDatastore: Optional[str] = ""
     datastore: Optional[str] = ""
     addedToMonitoring: Optional[bool] = False
     adminName: Optional[str] = None
@@ -2067,6 +2068,7 @@ class CreateVMDetailsModel(BaseModel):
     backupName: Optional[str] = ""
     backupNode: Optional[str] = ""
     backupStorage: Optional[str] = ""
+    backupDatastore: Optional[str] = ""
     datastore: Optional[str] = ""
     addedToMonitoring: Optional[bool] = False
     adminName: Optional[str] = None
@@ -2192,6 +2194,7 @@ class UpdateVMDetailsModel(BaseModel):
     backupName: Optional[str] = None
     backupNode: Optional[str] = None
     backupStorage: Optional[str] = None
+    backupDatastore: Optional[str] = None
     datastore: Optional[str] = None
     addedToMonitoring: Optional[bool] = None
     adminName: Optional[str] = None

@@ -20,6 +20,7 @@ export interface VMDetailsData {
     backupName?: string;
     backupNode?: string;
     backupStorage?: string;
+    backupDatastore?: string;
     datastore?: string;
     addedToMonitoring?: boolean;
     adminName?: string;
@@ -50,6 +51,7 @@ export interface CreateVMDetailsPayload {
     backupName?: string;
     backupNode?: string;
     backupStorage?: string;
+    backupDatastore?: string;
     datastore?: string;
     addedToMonitoring?: boolean;
     adminName?: string;

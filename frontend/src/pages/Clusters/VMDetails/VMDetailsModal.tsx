@@ -127,6 +127,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     backupName: editingItem.backupName || '',
                     backupNode: editingItem.backupNode || '',
                     backupStorage: editingItem.backupStorage || '',
+                    backupDatastore: editingItem.backupDatastore || '',
                     datastore: editingItem.datastore || '',
                     adminName: editingItem.adminName || '',
                     adminContact: editingItem.adminContact || '',
@@ -154,6 +155,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                     backupName: '',
                     backupNode: '',
                     backupStorage: '',
+                    backupDatastore: '',
                     datastore: '',
                     adminName: '',
                     adminContact: '',
@@ -374,6 +376,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
             if (formData.backupName !== norm(editingItem.backupName)) changedData.backupName = formData.backupName;
             if (formData.backupNode !== norm(editingItem.backupNode)) changedData.backupNode = formData.backupNode;
             if (formData.backupStorage !== norm(editingItem.backupStorage)) changedData.backupStorage = formData.backupStorage;
+            if (formData.backupDatastore !== norm(editingItem.backupDatastore)) changedData.backupDatastore = formData.backupDatastore;
             if (formData.datastore !== norm(editingItem.datastore)) changedData.datastore = formData.datastore;
             if (formData.adminName !== norm(editingItem.adminName)) changedData.adminName = formData.adminName;
             if (formData.adminContact !== norm(editingItem.adminContact)) changedData.adminContact = formData.adminContact;
@@ -537,14 +540,14 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
                         })}
                     />
                     <Dropdown
-                        label="Datastore"
+                        label="Backup Datastore"
                         size="small"
                         fullWidth
                         searchable
                         clearable
                         disabled={isRestrictedAdmin}
-                        value={formData.datastore}
-                        onChange={(val) => handleChange('datastore', val)}
+                        value={formData.backupDatastore}
+                        onChange={(val) => handleChange('backupDatastore', val)}
                         options={datastores.map(d => ({ label: `${d.name} (${d.type} - ${d.capacity})`, value: d.name }))}
                     />
                     <Dropdown

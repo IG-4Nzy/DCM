@@ -203,6 +203,11 @@ const VMHistoryModal: React.FC<VMHistoryModalProps> = ({ open, onClose, vm }) =>
                   <DetailItem icon={MdStorage} label="Datastore" value={vm.datastore} />
                 </Grid>
                 )}
+                {vm.backupDatastore && (
+                <Grid item xs={12} sm={6}>
+                  <DetailItem icon={MdStorage} label="Backup Datastore" value={vm.backupDatastore} />
+                </Grid>
+                )}
                 {vm.hdd && (
                 <Grid item xs={4}>
                   <DetailItem icon={MdStorage} label="HDD" value={vm.hdd} color="#ed6c02" />
