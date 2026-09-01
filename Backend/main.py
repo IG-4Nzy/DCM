@@ -527,6 +527,21 @@ app = FastAPI(
     version="1.0.0"
 )
 
+KNOWN_COLLECTION_ROUTES = {
+    "/api/users", "/api/roles", "/api/departments", "/api/works", "/api/work-logs",
+    "/api/observations", "/api/inventory", "/api/server-racks", "/api/server-models",
+    "/api/nodes", "/api/node-details", "/api/clusters", "/api/cluster-types",
+    "/api/hypervisors", "/api/gpus", "/api/ad-details", "/api/vcenter-details",
+    "/api/vm-details", "/api/physical-servers", "/api/datastores", "/api/requests",
+    "/api/request-routings", "/api/attendance", "/api/logs", "/api/documentations",
+    "/api/bms-checklists", "/api/bms-checklist-config", "/api/cluster-checklists",
+    "/api/cluster-checklist-config", "/api/morning-checklists", "/api/morning-checklist-config",
+    "/api/periodic-activities", "/api/announcements", "/api/phone-directory",
+    "/api/operation-logs", "/api/ip-list", "/api/dashboard", "/api/notifications",
+    "/api/server-ping-monitoring", "/api/salary", "/api/about", "/api/infrastructure-history",
+    "/api/mail-config", "/api/roasters", "/api/items"
+}
+
 class APIRewriteMiddleware:
     def __init__(self, app):
         self.app = app
@@ -534,9 +549,14 @@ class APIRewriteMiddleware:
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http":
             path = scope.get("path", "")
-            if not path.startswith("/api/") and not path.startswith("/uploads") and path not in ["/", "/docs", "/redoc", "/openapi.json"]:
-                scope["path"] = f"/api{path}"
-                scope["raw_path"] = f"/api{path}".encode("utf-8")
+            if not path.startswith("/api") and not path.startswith("/uploads") and path not in ["/", "/docs", "/redoc", "/openapi.json"]:
+                path = f"/api{path}"
+
+            if path in KNOWN_COLLECTION_ROUTES:
+                path = f"{path}/"
+
+            scope["path"] = path
+            scope["raw_path"] = path.encode("utf-8")
         await self.app(scope, receive, send)
 
 app.add_middleware(APIRewriteMiddleware)
