@@ -527,6 +527,20 @@ app = FastAPI(
     version="1.0.0"
 )
 
+class APIRewriteMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            path = scope.get("path", "")
+            if not path.startswith("/api/") and not path.startswith("/uploads") and path not in ["/", "/docs", "/redoc", "/openapi.json"]:
+                scope["path"] = f"/api{path}"
+                scope["raw_path"] = f"/api{path}".encode("utf-8")
+        await self.app(scope, receive, send)
+
+app.add_middleware(APIRewriteMiddleware)
+
 @app.middleware("http")
 async def validate_query_params(request: Request, call_next):
     # Check limit parameter in query params
@@ -610,7 +624,7 @@ async def add_security_headers(request: Request, call_next):
         "font-src 'self' data:; "
         "img-src 'self' data: blob:; "
         "media-src 'self' data: blob:; "
-        "connect-src 'self' https: wss:; "
+        "connect-src 'self' http: https: ws: wss:; "
         "form-action 'self'; "
         "frame-ancestors 'self'; "
         "base-uri 'self'; "
@@ -637,7 +651,7 @@ async def csrf_origin_validator(request: Request, call_next):
         referer = request.headers.get("Referer")
         
         import re
-        pattern = r"^https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$"
+        pattern = r"^https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|dcms\.vssc\.dos\.gov\.in)(:\d+)?$"
         
         # Check Origin
         if origin:
@@ -659,10 +673,10 @@ app.add_middleware(AuditLogMiddleware)
 
 import os
 
-# Allow CORS for frontend (strictly limited to local/intranet origins)
+# Allow CORS for frontend (strictly limited to local/intranet origins and dcms.vssc.dos.gov.in)
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$",
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|dcms\.vssc\.dos\.gov\.in)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -705,55 +719,61 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": "Internal Server Error"}
     )
 
+def mount_api_router(router, tag, path_name):
+    app.include_router(router, tags=[tag], prefix=f"/api/{path_name}")
+    app.include_router(router, tags=[tag], prefix=f"/{path_name}")
+
 app.include_router(items_router, tags=["items"], prefix="/items")
-app.include_router(auth_router, tags=["auth"], prefix="/api/auth")
-app.include_router(users_router, tags=["users"], prefix="/api/users")
-app.include_router(roles_router, tags=["roles"], prefix="/api/roles")
-app.include_router(works_router, tags=["works"], prefix="/api/works")
-app.include_router(departments_router, tags=["departments"], prefix="/api/departments")
-app.include_router(roasters_router, tags=["roasters"], prefix="/api/roasters")
-app.include_router(observations_router, tags=["observations"], prefix="/api/observations")
-app.include_router(inventory_router, tags=["inventory"], prefix="/api/inventory")
-app.include_router(cluster_types_router, tags=["cluster_types"], prefix="/api/cluster-types")
-app.include_router(hypervisors_router, tags=["hypervisors"], prefix="/api/hypervisors")
-app.include_router(nodes_router, tags=["nodes"], prefix="/api/nodes")
-app.include_router(server_racks_router, tags=["server_racks"], prefix="/api/server-racks")
-app.include_router(server_models_router, tags=["server_models"], prefix="/api/server-models")
-app.include_router(gpus_router, tags=["gpus"], prefix="/api/gpus")
-app.include_router(node_details_router, tags=["node_details"], prefix="/api/node-details")
-app.include_router(clusters_router, tags=["clusters"], prefix="/api/clusters")
-app.include_router(ad_details_router, tags=["ad_details"], prefix="/api/ad-details")
-app.include_router(vcenter_details_router, tags=["vcenter_details"], prefix="/api/vcenter-details")
-app.include_router(vm_details_router, tags=["vm_details"], prefix="/api/vm-details")
-app.include_router(physical_servers_router, tags=["physical_servers"], prefix="/api/physical-servers")
-app.include_router(datastores_router, tags=["datastores"], prefix="/api/datastores")
-app.include_router(requests_router, tags=["requests"], prefix="/api/requests")
-app.include_router(request_routings_router, tags=["request_routings"], prefix="/api/request-routings")
-app.include_router(attendance_router, tags=["attendance"], prefix="/api/attendance")
-app.include_router(audit_logs_router, tags=["audit_logs"], prefix="/api/logs")
-app.include_router(documentations_router, tags=["documentations"], prefix="/api/documentations")
-app.include_router(bms_checklists_router, tags=["bms_checklists"], prefix="/api/bms-checklists")
-app.include_router(bms_checklist_config_router, tags=["bms_checklist_config"], prefix="/api/bms-checklist-config")
-app.include_router(cluster_checklists_router, tags=["cluster_checklists"], prefix="/api/cluster-checklists")
-app.include_router(cluster_checklist_config_router, tags=["cluster_checklist_config"], prefix="/api/cluster-checklist-config")
-app.include_router(morning_checklists_router, tags=["morning_checklists"], prefix="/api/morning-checklists")
-app.include_router(morning_checklist_config_router, tags=["morning_checklist_config"], prefix="/api/morning-checklist-config")
-app.include_router(periodic_activities_router, tags=["periodic_activities"], prefix="/api/periodic-activities")
-app.include_router(announcements_router, tags=["announcements"], prefix="/api/announcements")
-app.include_router(phone_directory_router, tags=["phone_directory"], prefix="/api/phone-directory")
-app.include_router(operation_logs_router, tags=["operation_logs"], prefix="/api/operation-logs")
-app.include_router(ip_list_router, tags=["ip-list"], prefix="/api/ip-list")
-app.include_router(dashboard_router, tags=["dashboard"], prefix="/api/dashboard")
-app.include_router(notifications_router, tags=["notifications"], prefix="/api/notifications")
-app.include_router(server_ping_monitoring_router, tags=["server_ping_monitoring"], prefix="/api/server-ping-monitoring")
-app.include_router(salary_router, tags=["salary"], prefix="/api/salary")
-app.include_router(about_router, tags=["about"], prefix="/api/about")
-app.include_router(infrastructure_history_router, tags=["infrastructure_history"], prefix="/api/infrastructure-history")
-app.include_router(mail_config_router, tags=["mail_config"], prefix="/api/mail-config")
-app.include_router(work_logs_router, tags=["work_logs"], prefix="/api/work-logs")
+app.include_router(items_router, tags=["items"], prefix="/api/items")
+
+mount_api_router(auth_router, "auth", "auth")
+mount_api_router(users_router, "users", "users")
+mount_api_router(roles_router, "roles", "roles")
+mount_api_router(works_router, "works", "works")
+mount_api_router(departments_router, "departments", "departments")
+mount_api_router(roasters_router, "roasters", "roasters")
+mount_api_router(observations_router, "observations", "observations")
+mount_api_router(inventory_router, "inventory", "inventory")
+mount_api_router(cluster_types_router, "cluster_types", "cluster-types")
+mount_api_router(hypervisors_router, "hypervisors", "hypervisors")
+mount_api_router(nodes_router, "nodes", "nodes")
+mount_api_router(server_racks_router, "server_racks", "server-racks")
+mount_api_router(server_models_router, "server_models", "server-models")
+mount_api_router(gpus_router, "gpus", "gpus")
+mount_api_router(node_details_router, "node_details", "node-details")
+mount_api_router(clusters_router, "clusters", "clusters")
+mount_api_router(ad_details_router, "ad_details", "ad-details")
+mount_api_router(vcenter_details_router, "vcenter_details", "vcenter-details")
+mount_api_router(vm_details_router, "vm_details", "vm-details")
+mount_api_router(physical_servers_router, "physical_servers", "physical-servers")
+mount_api_router(datastores_router, "datastores", "datastores")
+mount_api_router(requests_router, "requests", "requests")
+mount_api_router(request_routings_router, "request_routings", "request-routings")
+mount_api_router(attendance_router, "attendance", "attendance")
+mount_api_router(audit_logs_router, "audit_logs", "logs")
+mount_api_router(documentations_router, "documentations", "documentations")
+mount_api_router(bms_checklists_router, "bms_checklists", "bms-checklists")
+mount_api_router(bms_checklist_config_router, "bms_checklist_config", "bms-checklist-config")
+mount_api_router(cluster_checklists_router, "cluster_checklists", "cluster-checklists")
+mount_api_router(cluster_checklist_config_router, "cluster_checklist_config", "cluster-checklist-config")
+mount_api_router(morning_checklists_router, "morning_checklists", "morning-checklists")
+mount_api_router(morning_checklist_config_router, "morning_checklist_config", "morning-checklist-config")
+mount_api_router(periodic_activities_router, "periodic_activities", "periodic-activities")
+mount_api_router(announcements_router, "announcements", "announcements")
+mount_api_router(phone_directory_router, "phone_directory", "phone-directory")
+mount_api_router(operation_logs_router, "operation_logs", "operation-logs")
+mount_api_router(ip_list_router, "ip-list", "ip-list")
+mount_api_router(dashboard_router, "dashboard", "dashboard")
+mount_api_router(notifications_router, "notifications", "notifications")
+mount_api_router(server_ping_monitoring_router, "server_ping_monitoring", "server-ping-monitoring")
+mount_api_router(salary_router, "salary", "salary")
+mount_api_router(about_router, "about", "about")
+mount_api_router(infrastructure_history_router, "infrastructure_history", "infrastructure-history")
+mount_api_router(mail_config_router, "mail_config", "mail-config")
+mount_api_router(work_logs_router, "work_logs", "work-logs")
 
 # Mount the new split telemetry monitor endpoints under same prefix for backwards compatibility
-app.include_router(vcenter_monitor_router, tags=["vcenter_telemetry"], prefix="/api/vcenter-details")
+mount_api_router(vcenter_monitor_router, "vcenter_telemetry", "vcenter-details")
 
 import os
 os.makedirs("uploads/works", exist_ok=True)
@@ -766,6 +786,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 async def root():
     return {"message": "Welcome to the DCM API"}
 
+@app.get("/config", tags=["config"])
 @app.get("/api/config", tags=["config"])
 async def get_app_config():
     deploy_val = os.getenv("deploy", os.getenv("DEPLOY", os.getenv("DEPLOY_ENV", "prod"))).lower().strip()

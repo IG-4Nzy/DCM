@@ -563,6 +563,15 @@ const Racks = () => {
                     setSelectedNodeForView(null);
                 }}
                 node={selectedNodeForView}
+                adminName={
+                    selectedNodeForView
+                        ? Array.isArray(selectedNodeForView.admin)
+                            ? selectedNodeForView.admin
+                                .map((a: string) => usersMap[a] || a)
+                                .join(", ")
+                            : usersMap[selectedNodeForView.admin] || selectedNodeForView.admin
+                        : undefined
+                }
             />
         </Box>
     );

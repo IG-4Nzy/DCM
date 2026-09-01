@@ -3,7 +3,16 @@ import axios from 'axios';
 import { getItemFromLocalstorage } from '../helpers/utils';
 import { LOCAL_STORAGE_PARAMETERS } from '../helpers/constants';
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'; // Configurable via Docker -e VITE_API_BASE_URL
+const getApiBaseUrl = () => {
+  let url = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').trim();
+  url = url.replace(/\/+$/, '');
+  if (url.endsWith('/api')) {
+    url = url.substring(0, url.length - 4);
+  }
+  return url;
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 
 const request = axios.create({
   baseURL: API_BASE_URL,
