@@ -524,23 +524,9 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
 app = FastAPI(
     title="DCM Backend",
     description="FastAPI backend with MongoDB for DCM project",
-    version="1.0.0"
+    version="1.0.0",
+    redirect_slashes=False
 )
-
-KNOWN_COLLECTION_ROUTES = {
-    "/api/users", "/api/roles", "/api/departments", "/api/works", "/api/work-logs",
-    "/api/observations", "/api/inventory", "/api/server-racks", "/api/server-models",
-    "/api/nodes", "/api/node-details", "/api/clusters", "/api/cluster-types",
-    "/api/hypervisors", "/api/gpus", "/api/ad-details", "/api/vcenter-details",
-    "/api/vm-details", "/api/physical-servers", "/api/datastores", "/api/requests",
-    "/api/request-routings", "/api/attendance", "/api/logs", "/api/documentations",
-    "/api/bms-checklists", "/api/bms-checklist-config", "/api/cluster-checklists",
-    "/api/cluster-checklist-config", "/api/morning-checklists", "/api/morning-checklist-config",
-    "/api/periodic-activities", "/api/announcements", "/api/phone-directory",
-    "/api/operation-logs", "/api/ip-list", "/api/dashboard", "/api/notifications",
-    "/api/server-ping-monitoring", "/api/salary", "/api/about", "/api/infrastructure-history",
-    "/api/mail-config", "/api/roasters", "/api/items"
-}
 
 class APIRewriteMiddleware:
     def __init__(self, app):
@@ -549,11 +535,17 @@ class APIRewriteMiddleware:
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http":
             path = scope.get("path", "")
+            # Prepend /api if not already prefixed
             if not path.startswith("/api") and not path.startswith("/uploads") and path not in ["/", "/docs", "/redoc", "/openapi.json"]:
                 path = f"/api{path}"
 
-            if path in KNOWN_COLLECTION_ROUTES:
-                path = f"{path}/"
+            # If the path does not end with a slash and has no file extension or sub-path query/ID extension, append '/' for collection endpoints
+            # Starlette routes defined as @router.get("/") match /api/<name>/
+            if path.startswith("/api/") and not path.endswith("/"):
+                # Check if it's a base endpoint (e.g. /api/users, /api/roles) without further segments or extensions
+                segments = path[len("/api/"):].split("/")
+                if len(segments) == 1 and "." not in segments[0]:
+                    path = f"{path}/"
 
             scope["path"] = path
             scope["raw_path"] = path.encode("utf-8")
@@ -740,8 +732,9 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 def mount_api_router(router, tag, path_name):
-    app.include_router(router, tags=[tag], prefix=f"/api/{path_name}")
-    app.include_router(router, tags=[tag], prefix=f"/{path_name}")
+    clean = path_name.strip("/")
+    app.include_router(router, tags=[tag], prefix=f"/api/{clean}")
+    app.include_router(router, tags=[tag], prefix=f"/{clean}")
 
 app.include_router(items_router, tags=["items"], prefix="/items")
 app.include_router(items_router, tags=["items"], prefix="/api/items")

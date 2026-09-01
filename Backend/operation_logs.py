@@ -31,7 +31,7 @@ def serialize_doc(doc: dict) -> dict:
     doc["_id"] = str(doc["_id"])
     return doc
 
-@router.post("", response_description="Create operation log", response_model=OperationLogModel, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_privilege("Create Log"))])
+@router.post("/", response_description="Create operation log", response_model=OperationLogModel, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_privilege("Create Log"))])
 async def create_log(
     payload: OperationLogModel = Body(...),
     current_user: dict = Depends(get_current_user)
@@ -46,7 +46,7 @@ async def create_log(
     created = await collection.find_one({"_id": result.inserted_id})
     return serialize_doc(created)
 
-@router.get("", response_description="List operation logs", response_model=PaginatedOperationLogsModel, dependencies=[Depends(require_privilege("View Logs"))])
+@router.get("/", response_description="List operation logs", response_model=PaginatedOperationLogsModel, dependencies=[Depends(require_privilege("View Logs"))])
 async def list_logs(
     pagination: bool = Query(True),
     skip: int = Query(0, ge=0),

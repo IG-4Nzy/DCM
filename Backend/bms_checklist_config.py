@@ -22,7 +22,7 @@ class BMSChecklistConfigModel(BaseModel):
 
 
 @router.get(
-    "",
+    "/",
     response_description="Get BMS checklist template configuration",
     dependencies=[Depends(require_any_privilege(["View Configurations", "Edit BMS Checklist Field", "View BMS Checklist", "Create BMS Checklist", "Update BMS Checklist"]))],
 )
@@ -43,7 +43,7 @@ async def get_config(
 
 
 @router.post(
-    "",
+    "/",
     response_description="Save BMS checklist template configuration",
     dependencies=[Depends(require_privilege("Edit BMS Checklist Field"))],
 )

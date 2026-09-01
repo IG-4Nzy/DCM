@@ -128,7 +128,7 @@ def serialize_doc(doc: dict) -> dict:
 # API Endpoints
 # ----------------------------------------------------------------------
 
-@router.post("", response_description="Create phone directory entry", response_model=PhoneDirectoryModel, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_privilege("Create Phone Directory"))])
+@router.post("/", response_description="Create phone directory entry", response_model=PhoneDirectoryModel, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_privilege("Create Phone Directory"))])
 async def create_phone_entry(
     payload: PhoneDirectoryModel = Body(...),
     current_user: dict = Depends(get_current_user)
@@ -151,7 +151,7 @@ async def create_phone_entry(
     created_item = await collection.find_one({"_id": new_item.inserted_id})
     return serialize_doc(created_item)
 
-@router.get("", response_description="List phone directory entries", dependencies=[Depends(require_privilege("View Phone Directory"))])
+@router.get("/", response_description="List phone directory entries", dependencies=[Depends(require_privilege("View Phone Directory"))])
 async def list_phone_entries(
     skip: int = 0,
     limit: int = 10,
