@@ -75,13 +75,14 @@ const Login: React.FC = () => {
         navigateToDashboard();
       }
     } else if (loginApi.rejected.match(result)) {
-      const data = result.payload as any;
-      if (data && data.detail && typeof data.detail === 'object') {
-        if (data.detail.restricted_token) {
-          setRestrictedLoginData(data.detail);
+      const payload = (result.payload || result.error) as any;
+      const detail = payload?.detail || payload;
+      if (detail && typeof detail === 'object') {
+        if (detail.restricted_token) {
+          setRestrictedLoginData(detail);
         }
-        if (data.detail.remaining_seconds !== undefined) {
-          setCooldownSeconds(data.detail.remaining_seconds);
+        if (detail.remaining_seconds !== undefined) {
+          setCooldownSeconds(detail.remaining_seconds);
         }
       }
     }

@@ -33,6 +33,14 @@ router = APIRouter()
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 480 # Token valid for 8 hours
 
+DEFAULT_LATE_PRIVILEGES = [
+    "View BMS Checklist", "Update BMS Checklist",
+    "View Cluster Checklist", "Update Cluster Checklist",
+    "View Morning Checklist", "Update Morning Checklist",
+    "View Work Log", "Create Work Log",
+    "View Periodic Activity", "Update Periodic Activity"
+]
+
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -326,7 +334,11 @@ async def login(credentials: LoginRequest, request: Request):
                             r_obj = await roles_collection.find_one({"name": r_id})
                         if r_obj:
                             late_login_privs.update(r_obj.get("lateLoginPrivileges", []))
+                    if not late_login_privs:
+                        late_login_privs = set(DEFAULT_LATE_PRIVILEGES)
                     restricted_privileges = [p for p in privileges if p in late_login_privs]
+                    if not restricted_privileges:
+                        restricted_privileges = list(set(DEFAULT_LATE_PRIVILEGES).intersection(set(privileges))) or DEFAULT_LATE_PRIVILEGES
                     restricted_token = create_access_token(
                         data={
                             "sub": user["username"],
@@ -401,7 +413,11 @@ async def login(credentials: LoginRequest, request: Request):
                                 r_obj = await roles_collection.find_one({"name": r_id})
                             if r_obj:
                                 late_login_privs.update(r_obj.get("lateLoginPrivileges", []))
+                        if not late_login_privs:
+                            late_login_privs = set(DEFAULT_LATE_PRIVILEGES)
                         restricted_privileges = [p for p in privileges if p in late_login_privs]
+                        if not restricted_privileges:
+                            restricted_privileges = list(set(DEFAULT_LATE_PRIVILEGES).intersection(set(privileges))) or DEFAULT_LATE_PRIVILEGES
                         restricted_token = create_access_token(
                             data={
                                 "sub": user["username"],
@@ -445,7 +461,7 @@ async def login(credentials: LoginRequest, request: Request):
                             }
                         )
                     else:
-                        # Create an approved late attendance record and allow login
+                        # Late login restriction is OFF — log as Approved late and allow login
                         await attendance_collection.insert_one({
                             "username": user["username"],
                             "department": user_dept,

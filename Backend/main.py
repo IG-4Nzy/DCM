@@ -541,7 +541,7 @@ class APIRewriteMiddleware:
 
             # If the path does not end with a slash and has no file extension or sub-path query/ID extension, append '/' for collection endpoints
             # Starlette routes defined as @router.get("/") match /api/<name>/
-            if path.startswith("/api/") and not path.endswith("/"):
+            if path.startswith("/api/") and not path.endswith("/") and path not in ["/api/config", "/api/health"]:
                 # Check if it's a base endpoint (e.g. /api/users, /api/roles) without further segments or extensions
                 segments = path[len("/api/"):].split("/")
                 if len(segments) == 1 and "." not in segments[0]:
