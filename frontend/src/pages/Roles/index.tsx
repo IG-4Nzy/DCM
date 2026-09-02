@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Paper, Tooltip, IconButton} from '@mui/material';
+import { Box, Paper, Tooltip, IconButton } from '@mui/material';
 import { MdAdd as AddIcon, MdEdit as EditIcon, MdDelete as DeleteIcon } from 'react-icons/md';
 import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';
@@ -160,13 +160,13 @@ const Roles: React.FC = () => {
       sortable: false,
       render: (row) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ 
-            backgroundColor: '#e3f2fd', 
-            color: '#1976d2', 
-            borderRadius: '12px', 
-            padding: '2px 8px', 
-            fontSize: '0.75rem', 
-            fontWeight: 'bold' 
+          <Box sx={{
+            backgroundColor: '#e3f2fd',
+            color: '#1976d2',
+            borderRadius: '12px',
+            padding: '2px 8px',
+            fontSize: '0.75rem',
+            fontWeight: 'bold'
           }}>
             {row.usersCount || 0} Users
           </Box>

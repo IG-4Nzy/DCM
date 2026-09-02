@@ -13,6 +13,9 @@ import Table, { type Column } from '../../components/Table';
 import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';
 import ObservationFormModal from './ObservationFormModal';
+import WorkDetailModal from '../Work/WorkDetailModal';
+import { updateWork } from '../Work/action';
+import request from '../../services/request';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -87,6 +90,59 @@ const ObservationList: React.FC = () => {
       department_filter: departmentFilter || undefined
     }));
   }, [dispatch, page, rowsPerPage, statusFilter, dateFilter, categoryFilter, departmentFilter, searchQuery]);
+
+  const [viewingWork, setViewingWork] = useState<any>(null);
+  const [isWorkDetailModalOpen, setIsWorkDetailModalOpen] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const obsIdParam = params.get('obsId');
+    if (obsIdParam) {
+      setSearchQuery(obsIdParam);
+      request.get(`/api/observations/${obsIdParam}`)
+        .then((res) => {
+          if (res.data) {
+            handleOpenModal(res.data, false);
+          }
+        })
+        .catch(() => {});
+    }
+
+    const handleOpenObsEvent = async (e: CustomEvent) => {
+      const obsTarget = e.detail?.obsId;
+      if (!obsTarget) return;
+      setSearchQuery(obsTarget);
+      try {
+        const res = await request.get(`/api/observations/${obsTarget}`);
+        if (res.data) {
+          handleOpenModal(res.data, false);
+        }
+      } catch (err) {
+        console.error('Failed to open observation', err);
+      }
+    };
+
+    const handleOpenWorkEvent = async (e: CustomEvent) => {
+      const targetId = e.detail?.workId;
+      if (!targetId) return;
+      try {
+        const res = await request.get(`/api/works/${targetId}`);
+        if (res.data) {
+          setViewingWork(res.data);
+          setIsWorkDetailModalOpen(true);
+        }
+      } catch (err) {
+        console.error('Failed to open work ticket', err);
+      }
+    };
+
+    window.addEventListener('openObservationModal', handleOpenObsEvent as EventListener);
+    window.addEventListener('openWorkDetailModal', handleOpenWorkEvent as EventListener);
+    return () => {
+      window.removeEventListener('openObservationModal', handleOpenObsEvent as EventListener);
+      window.removeEventListener('openWorkDetailModal', handleOpenWorkEvent as EventListener);
+    };
+  }, [setSearchQuery]);
 
   const currentObs = observations.find((o: any) => (o._id || o.id) === (editingObs?._id || editingObs?.id)) || editingObs;
 
@@ -523,6 +579,24 @@ const ObservationList: React.FC = () => {
         statusOptions={statusOptions}
         categories={categories}
         handleSubmit={handleSubmit}
+      />
+
+      <WorkDetailModal
+        isOpen={isWorkDetailModalOpen}
+        onClose={() => {
+          setIsWorkDetailModalOpen(false);
+          setViewingWork(null);
+        }}
+        work={viewingWork}
+        users={users}
+        onUpdate={async (payload, silent) => {
+          if (viewingWork) {
+            await dispatch(updateWork({ id: viewingWork.id || viewingWork._id, data: payload }));
+            const res = await request.get(`/api/works/${viewingWork.id || viewingWork._id}`);
+            if (res.data) setViewingWork(res.data);
+          }
+        }}
+        onTransfer={async () => {}}
       />
     </Box>
   );

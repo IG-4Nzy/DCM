@@ -307,6 +307,37 @@ const Works: React.FC = () => {
     setIsDetailModalOpen(true);
   };
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const workIdParam = params.get('workId');
+    if (workIdParam) {
+      setSearchQuery(workIdParam);
+      request.get(`/api/works/${workIdParam}`)
+        .then((res) => {
+          if (res.data) {
+            handleOpenDetailModal(res.data);
+          }
+        })
+        .catch(() => {});
+    }
+
+    const handleOpenWorkEvent = async (e: CustomEvent) => {
+      const targetId = e.detail?.workId;
+      if (!targetId) return;
+      setSearchQuery(targetId);
+      try {
+        const res = await request.get(`/api/works/${targetId}`);
+        if (res.data) {
+          handleOpenDetailModal(res.data);
+        }
+      } catch (err) {
+        console.error('Failed to open work ticket', err);
+      }
+    };
+    window.addEventListener('openWorkDetailModal', handleOpenWorkEvent as EventListener);
+    return () => window.removeEventListener('openWorkDetailModal', handleOpenWorkEvent as EventListener);
+  }, [setSearchQuery]);
+
   const handleCloseDetailModal = () => {
     setIsDetailModalOpen(false);
     setViewingWork(null);

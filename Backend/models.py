@@ -758,6 +758,7 @@ class ObservationModel(BaseModel):
     isIncident: Optional[bool] = False
     repeatCount: Optional[int] = 0
     repeatedDetails: Optional[dict] = None
+    mappedWorks: Optional[List[dict]] = None
     lastStatusUpdatedOn: Optional[str] = None
 
     @field_validator('comments', mode='before')

@@ -129,6 +129,29 @@ async def enrich_observation(obs: dict):
             obs["repeatedDetails"] = None
     else:
         obs["repeatedDetails"] = None
+
+    # Fetch mapped works referencing this observation
+    works_col = db.get_collection("works")
+    custom_obs_id = obs.get("observationId")
+    or_clause = [{"description": {"$regex": f"#{obs_id}", "$options": "i"}}, {"comments.text": {"$regex": f"#{obs_id}", "$options": "i"}}]
+    if custom_obs_id:
+        or_clause.extend([{"description": {"$regex": f"#{custom_obs_id}", "$options": "i"}}, {"comments.text": {"$regex": f"#{custom_obs_id}", "$options": "i"}}])
+    
+    matching_works = await works_col.find({"$or": or_clause}).to_list(length=None)
+    if matching_works:
+        obs["mappedWorks"] = [
+            {
+                "id": str(w["_id"]),
+                "workId": w.get("workId", ""),
+                "workName": w.get("workName", ""),
+                "status": w.get("status", "Pending"),
+                "priority": w.get("priority", "Medium")
+            }
+            for w in matching_works
+        ]
+    else:
+        obs["mappedWorks"] = []
+
     return obs
 
 @router.post("/upload", response_description="Upload attachments", dependencies=[Depends(get_current_user)])
@@ -332,10 +355,11 @@ async def create_observation(
 
 @router.get("/{id}", response_description="Get a single observation", response_model=ObservationModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["View Observations", "View All Department Observations"]))])
 async def show_observation(id: str):
-    if not ObjectId.is_valid(id):
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+    if ObjectId.is_valid(id):
+        obs = await obs_collection.find_one({"_id": ObjectId(id)})
+    else:
+        obs = await obs_collection.find_one({"observationId": id})
         
-    obs = await obs_collection.find_one({"_id": ObjectId(id)})
     if obs is None:
         raise HTTPException(status_code=404, detail=f"Observation {id} not found")
 

@@ -351,10 +351,10 @@ const RoleFormModal = ({
                                     <Grid container spacing={1.5}>
                                         {filteredGroupPrivs.map((priv) => (
                                             <Grid size={{ xs: 12, sm: 6 }} key={priv}>
-                                                <Box sx={{ 
-                                                    display: 'flex', 
-                                                    alignItems: 'center', 
-                                                    justifyContent: 'space-between', 
+                                                <Box sx={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
                                                     width: '100%',
                                                     borderRadius: '4px',
                                                     '&:hover': { background: '#f1f5f9' }

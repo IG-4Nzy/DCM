@@ -365,10 +365,11 @@ async def create_work(work: CreateWorkModel = Body(...), current_user: dict = De
 
 @router.get("/{id}", response_description="Get a single work", response_model=WorkModel, response_model_by_alias=False)
 async def show_work(id: str, current_user: dict = Depends(get_current_user)):
-    if not ObjectId.is_valid(id):
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+    query = {"$or": [{"workId": id}]}
+    if ObjectId.is_valid(id):
+        query["$or"].append({"_id": ObjectId(id)})
         
-    work = await works_collection.find_one({"_id": ObjectId(id)})
+    work = await works_collection.find_one(query)
     if work is None:
         raise HTTPException(status_code=404, detail=f"Work {id} not found")
         

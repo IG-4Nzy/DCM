@@ -34,6 +34,7 @@ import { hasPrivilege } from "../../../helpers/authUtils";
 import { PRIVILEGES } from "../../../helpers/privileges";
 import { useConfirm } from "../../../contexts/ConfirmContext";
 import { getServerTime } from "../../../helpers/time";
+import { ROUTE_CONSTANTS } from "../../../router/constant";
 import styles from "./index.module.scss";
 
 interface PropType {
@@ -62,6 +63,34 @@ const WorkDetailModal = ({
   const [transferReason, setTransferReason] = useState("");
   const [commentFile, setCommentFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showCommentHashMenu, setShowCommentHashMenu] = useState(false);
+  const [commentHashSearch, setCommentHashSearch] = useState("");
+  const [allObservations, setAllObservations] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShowCommentHashMenu(false);
+      request.get("/api/observations/?pagination=false")
+        .then((res) => {
+          if (res.data?.data) {
+            setAllObservations(res.data.data);
+          } else if (Array.isArray(res.data)) {
+            setAllObservations(res.data);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen]);
+
+  const commentObsSuggestions = React.useMemo(() => {
+    if (!commentHashSearch) return allObservations.slice(0, 10);
+    const query = commentHashSearch.toLowerCase();
+    return allObservations.filter((obs: any) => 
+      (obs.observationId && obs.observationId.toLowerCase().includes(query)) ||
+      (obs.description && obs.description.toLowerCase().includes(query)) ||
+      (obs.category && obs.category.toLowerCase().includes(query))
+    ).slice(0, 10);
+  }, [allObservations, commentHashSearch]);
   const openMenu = Boolean(anchorEl);
   const currentUser =
     useSelector(
@@ -574,7 +603,37 @@ const WorkDetailModal = ({
                   work.attachments && work.attachments.length > 0 ? "1rem" : 0,
               }}
             >
-              {work.description}
+              {(() => {
+                const text = work.description || "";
+                const regex = /(#(?:OBS-\d{4}-\d{4}|[a-fA-F0-9]{24}))/g;
+                const parts = text.split(regex);
+                return parts.map((part, i) => {
+                  if (part.match(regex)) {
+                    const obsId = part.substring(1);
+                    return (
+                      <Chip
+                        key={i}
+                        label={part}
+                        size="small"
+                        color="secondary"
+                        onClick={() => {
+                          onClose();
+                          window.location.href = `${ROUTE_CONSTANTS.OBSERVATIONS}?obsId=${encodeURIComponent(obsId)}`;
+                        }}
+                        sx={{
+                          mx: 0.5,
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          borderRadius: '6px',
+                          fontSize: '0.8rem',
+                          height: '22px'
+                        }}
+                      />
+                    );
+                  }
+                  return part;
+                });
+              })()}
             </div>
 
             {work.attachments && work.attachments.length > 0 && (
@@ -666,7 +725,39 @@ const WorkDetailModal = ({
                           )}
                         </span>
                       </div>
-                      <div className={styles.commentText} style={{ whiteSpace: 'pre-wrap' }}>{comment.text}</div>
+                      <div className={styles.commentText} style={{ whiteSpace: 'pre-wrap' }}>
+                        {(() => {
+                          const text = comment.text || "";
+                          const regex = /(#(?:OBS-\d{4}-\d{4}|[a-fA-F0-9]{24}))/g;
+                          const parts = text.split(regex);
+                          return parts.map((part, i) => {
+                            if (part.match(regex)) {
+                              const obsId = part.substring(1);
+                              return (
+                                <Chip
+                                  key={i}
+                                  label={part}
+                                  size="small"
+                                  color="secondary"
+                                  onClick={() => {
+                                    onClose();
+                                    window.location.href = `${ROUTE_CONSTANTS.OBSERVATIONS}?obsId=${encodeURIComponent(obsId)}`;
+                                  }}
+                                  sx={{
+                                    mx: 0.5,
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    borderRadius: '6px',
+                                    fontSize: '0.75rem',
+                                    height: '20px'
+                                  }}
+                                />
+                              );
+                            }
+                            return part;
+                          });
+                        })()}
+                      </div>
                       {comment.attachment && (
                         <Chip
                           icon={<MdAttachFile />}
@@ -717,23 +808,85 @@ const WorkDetailModal = ({
                 }}
               />
             </IconButton>
-            <TextField
-              fullWidth
-              size="small"
-              multiline
-              maxRows={4}
-              placeholder={isLocked ? "Comments are disabled for completed works" : "Add a comment..."}
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && !isLocked) {
-                  e.preventDefault();
-                  handleAddComment();
-                }
-              }}
-              disabled={isLocked || isUploading}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '20px' } }}
-            />
+            <div style={{ flex: 1, position: 'relative' }}>
+              <TextField
+                fullWidth
+                size="small"
+                multiline
+                maxRows={4}
+                placeholder={isLocked ? "Comments are disabled for completed works" : "Add a comment (type # to tag observation)..."}
+                value={newComment}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNewComment(val);
+                  const match = val.match(/#([a-zA-Z0-9-]*)$/);
+                  if (match) {
+                    setCommentHashSearch(match[1]);
+                    setShowCommentHashMenu(true);
+                  } else {
+                    setShowCommentHashMenu(false);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && !isLocked && !showCommentHashMenu) {
+                    e.preventDefault();
+                    handleAddComment();
+                  }
+                }}
+                disabled={isLocked || isUploading}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '20px' } }}
+              />
+              {showCommentHashMenu && (
+                <Paper
+                  elevation={4}
+                  style={{
+                    position: 'absolute',
+                    bottom: '100%',
+                    left: 0,
+                    right: 0,
+                    zIndex: 1300,
+                    maxHeight: 180,
+                    overflowY: 'auto',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    marginBottom: '4px',
+                    backgroundColor: '#ffffff'
+                  }}
+                >
+                  {commentObsSuggestions.length > 0 ? (
+                    commentObsSuggestions.map((obs: any) => (
+                      <Box
+                        key={obs._id || obs.id}
+                        onClick={() => {
+                          const updated = newComment.replace(/#([a-zA-Z0-9-]*)$/, `#${obs.observationId || obs._id} `);
+                          setNewComment(updated);
+                          setShowCommentHashMenu(false);
+                        }}
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          padding: '6px 12px',
+                          cursor: 'pointer',
+                          '&:hover': { backgroundColor: '#f1f5f9' }
+                        }}
+                      >
+                        <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: '#1976d2' }}>
+                          #{obs.observationId || obs._id} ({obs.category})
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                          {obs.description}
+                        </span>
+                      </Box>
+                    ))
+                  ) : (
+                    <div style={{ padding: '8px 12px', fontSize: '0.85rem', color: '#94a3b8' }}>
+                      No matching observations found
+                    </div>
+                  )}
+                </Paper>
+              )}
+            </div>
             <Button
               variant="contained"
               color="primary"

@@ -12,6 +12,7 @@ import styles from './index.module.scss';
 import request, { API_BASE_URL } from '../../services/request';
 import { getServerTime } from '../../helpers/time';
 import { getTodayString, validators } from '../../helpers/validation';
+import { ROUTE_CONSTANTS } from '../../router/constant';
 
 interface ObservationFormModalProps {
   isModalOpen: boolean;
@@ -272,6 +273,55 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                     </ul>
                   </Box>
                 )}
+              </Box>
+            )}
+            {editingObs?.mappedWorks && editingObs.mappedWorks.length > 0 && (
+              <Box sx={{ mt: 1, mb: 1, p: 2, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0', width: '100%' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#166534', mb: 1 }}>
+                  Linked Work Tickets ({editingObs.mappedWorks.length})
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {editingObs.mappedWorks.map((work: any) => (
+                    <Box 
+                      key={work.id}
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('openWorkDetailModal', { detail: { workId: work.workId || work.id } }));
+                      }}
+                      sx={{
+                        p: 1.5,
+                        bgcolor: '#ffffff',
+                        borderRadius: '8px',
+                        border: '1px solid #dcfce7',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justify: 'space-between',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                          borderColor: '#22c55e'
+                        }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Chip label={work.workId || 'Work'} size="small" color="primary" sx={{ fontWeight: 'bold' }} />
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                          {work.workName}
+                        </Typography>
+                      </Box>
+                      <Chip 
+                        label={work.status} 
+                        size="small" 
+                        variant="outlined" 
+                        sx={{ 
+                          fontWeight: 'bold',
+                          color: work.status === 'Completed' ? '#166534' : '#1e40af',
+                          borderColor: work.status === 'Completed' ? '#bbf7d0' : '#bfdbfe'
+                        }} 
+                      />
+                    </Box>
+                  ))}
+                </Box>
               </Box>
             )}
           </>
