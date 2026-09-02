@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import apiClient from '../../services/request';
+import apiClient, { API_BASE_URL } from '../../services/request';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, Divider, Grid, Chip, FormControl, InputLabel, Select, MenuItem, Checkbox, FormControlLabel } from '@mui/material';
 import TextField from '../../components/TextField';
 import Button from '../../components/Button';
@@ -15,6 +15,7 @@ import type { RootState, AppDispatch } from '../../store';
 import dayjs from 'dayjs';
 import { getServerTime } from '../../helpers/time';
 import { validators } from '../../helpers/validation';
+import { MdPictureAsPdf } from 'react-icons/md';
 
 interface RequestViewModalProps {
   isOpen: boolean;
@@ -94,7 +95,41 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   const [backupError, setBackupError] = useState(false);
   const [addedToMonitoring, setAddedToMonitoring] = useState(false);
 
+  // Stage PDF / Terms Attachment state
+  const [currentStageInfo, setCurrentStageInfo] = useState<any>(null);
+  const [termsAgreed, setTermsAgreed] = useState<boolean>(false);
+  const [termsError, setTermsError] = useState<boolean>(false);
+
+  const openDocument = (url?: string) => {
+    if (!url) return;
+    const fullUrl = url.startsWith('http://') || url.startsWith('https://')
+      ? url
+      : `${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+    window.open(fullUrl, '_blank');
+  };
+
   const requestId = request?.id || request?._id || '';
+
+  useEffect(() => {
+    if (isOpen && request?.requestType && request?.status) {
+      apiClient.get(`/api/requests/stage-info/${encodeURIComponent(request.requestType)}/${encodeURIComponent(request.status)}`)
+        .then(res => {
+          if (res.data?.stage) {
+            setCurrentStageInfo(res.data.stage);
+          } else {
+            setCurrentStageInfo(null);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to fetch stage info:', err);
+          setCurrentStageInfo(null);
+        });
+    } else {
+      setCurrentStageInfo(null);
+    }
+    setTermsAgreed(false);
+    setTermsError(false);
+  }, [isOpen, request]);
 
   useEffect(() => {
     if (isOpen && requestId) {
@@ -245,6 +280,9 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
       if (assignee) {
         payload.selectedAssignee = assignee;
       }
+      if (termsAgreed) {
+        payload.termsAgreed = true;
+      }
       
       if (isIpIssuance) {
         payload.details = { ip: ipAddress.trim() };
@@ -296,6 +334,11 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   const handleAdvance = async () => {
     let hasErr = false;
     const newErrors: Record<string, string> = {};
+
+    if (currentStageInfo?.attachmentUrl && currentStageInfo?.requireTermsAgreement !== false && !termsAgreed) {
+      setTermsError(true);
+      hasErr = true;
+    }
 
     if (isIpIssuance) {
       if (!ipAddress.trim()) {
@@ -482,6 +525,21 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                     <Typography variant="body2" color="textSecondary">-</Typography>
                   )}
                 </Grid>
+                {currentStageInfo?.attachmentUrl && (
+                  <Grid size={{xs: 12}}>
+                    <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>Stage Terms Document</Typography>
+                    <Chip
+                      icon={<MdPictureAsPdf style={{ color: '#d32f2f' }} />}
+                      label={currentStageInfo.attachmentName || 'Stage Terms PDF'}
+                      size="small"
+                      clickable
+                      color="primary"
+                      variant="outlined"
+                      onClick={() => openDocument(currentStageInfo.attachmentUrl)}
+                      sx={{ fontWeight: 600 }}
+                    />
+                  </Grid>
+                )}
                 {request.remarks && (
                   <Grid size={{xs: 12}}  >
                     <Typography variant="caption" color="textSecondary">Last Action Remarks</Typography>
@@ -838,6 +896,53 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                   WORKFLOW ACTION ZONE
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
+
+                {/* Stage Attached PDF Document & Terms Agreement */}
+                {currentStageInfo?.attachmentUrl && (
+                  <Box sx={{ p: 2, bgcolor: '#f0f9ff', borderRadius: '10px', border: '1px solid #bae6fd', mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#0369a1', display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <MdPictureAsPdf style={{ color: '#d32f2f', fontSize: '1.25rem' }} />
+                        Stage Terms & Document ({currentStageInfo.attachmentName || 'Terms_and_Conditions.pdf'})
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<MdPictureAsPdf />}
+                        onClick={() => openDocument(currentStageInfo.attachmentUrl)}
+                        sx={{ bgcolor: '#0284c7', '&:hover': { bgcolor: '#0369a1' } }}
+                      >
+                        View PDF Document
+                      </Button>
+                    </Box>
+                    {(currentStageInfo.requireTermsAgreement !== false) && (
+                      <Box sx={{ mt: 1 }}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={termsAgreed}
+                              onChange={(e) => {
+                                setTermsAgreed(e.target.checked);
+                                if (e.target.checked) setTermsError(false);
+                              }}
+                              color="primary"
+                            />
+                          }
+                          label={
+                            <Typography variant="body2" fontWeight={600} color={termsError ? 'error.main' : 'text.primary'}>
+                              I have read and agree to the terms and conditions in the attached PDF document.
+                            </Typography>
+                          }
+                        />
+                        {termsError && (
+                          <Typography variant="caption" color="error" sx={{ display: 'block', ml: 4, mt: -0.5 }}>
+                            * You must view the terms and check this agreement box to proceed.
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+                  </Box>
+                )}
 
                 <Box sx={{ display: 'flex', gap: 2, flexWrap: { xs: 'wrap', md: 'nowrap' }, mt: 2 }}>
                   {isIpIssuance && (

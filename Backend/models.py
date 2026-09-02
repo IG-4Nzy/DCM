@@ -2535,6 +2535,9 @@ class RequestRoutingStage(BaseModel):
     conditionOperator: Optional[str] = "equals"
     conditionValue: Optional[str] = None
     conditionalAssignments: Optional[List[ConditionalAssignmentRule]] = []
+    attachmentUrl: Optional[str] = None
+    attachmentName: Optional[str] = None
+    requireTermsAgreement: Optional[bool] = False
 
     model_config = ConfigDict(
         extra="allow",

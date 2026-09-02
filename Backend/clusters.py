@@ -88,14 +88,15 @@ async def list_items(
         from search_utils import resolve_search_references
         matched_users, _, _, _ = await resolve_search_references(search)
         escaped_search = re.escape(search.strip())
+        regex_pat = re.compile(escaped_search, re.I)
         or_conds = [
-            {"clusterName": {"$regex": escaped_search, "$options": "i"}},
-            {"ipAddress": {"$regex": escaped_search, "$options": "i"}},
-            {"slNumber": {"$regex": escaped_search, "$options": "i"}},
-            {"networkType": {"$regex": escaped_search, "$options": "i"}},
-            {"remarks": {"$regex": escaped_search, "$options": "i"}},
-            {"createdBy": {"$regex": escaped_search, "$options": "i"}},
-            {"updatedAt": {"$regex": escaped_search, "$options": "i"}},
+            {"clusterName": regex_pat},
+            {"ipAddress": regex_pat},
+            {"slNumber": regex_pat},
+            {"networkType": regex_pat},
+            {"remarks": regex_pat},
+            {"createdBy": regex_pat},
+            {"updatedAt": regex_pat},
         ]
         if matched_users:
             user_strs = [val for val in matched_users if isinstance(val, str)]

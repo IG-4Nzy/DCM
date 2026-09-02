@@ -457,14 +457,24 @@ const Requests: React.FC = () => {
                 const canAdvance = (isAssigned || isSuperuser) && row.status !== 'Completed' && row.status !== 'Rejected';
 
                 return (
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                        {/* {canAdvance && (
-                            <Tooltip title="Advance / Approve Stage">
-                                <IconButton size="small" color="success" onClick={(e) => { e.stopPropagation(); handleAdvance(row.id || row._id || ''); }}>
-                                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>✓</span>
-                                </IconButton>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, alignItems: 'center' }}>
+                        {canAdvance && row.nextStageName && (
+                            <Tooltip title={`Advance to: ${row.nextStageName}`}>
+                                <Chip
+                                    label={row.nextStageName}
+                                    size="small"
+                                    color="success"
+                                    variant="outlined"
+                                    onClick={(e) => { e.stopPropagation(); handleAdvance(row.id || row._id || ''); }}
+                                    sx={{
+                                        cursor: 'pointer',
+                                        fontWeight: 600,
+                                        fontSize: '0.7rem',
+                                        '&:hover': { bgcolor: 'success.main', color: '#fff' }
+                                    }}
+                                />
                             </Tooltip>
-                        )} */}
+                        )}
                         {canEdit && (
                             <Tooltip title="Edit Request">
                                 <IconButton size="small" color="primary" onClick={(e) => { e.stopPropagation(); handleOpenModal(row); }}>

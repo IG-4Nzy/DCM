@@ -793,6 +793,7 @@ import os
 os.makedirs("uploads/works", exist_ok=True)
 os.makedirs("uploads/observations", exist_ok=True)
 os.makedirs("uploads/documentations", exist_ok=True)
+os.makedirs("uploads/request_stages", exist_ok=True)
 os.makedirs("logs", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 

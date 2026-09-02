@@ -40,15 +40,15 @@ async def list_datastores(
         for part in search_parts:
             _, _, _, matched_ips = await resolve_search_references(part)
             
-            search_regex = {"$regex": re.escape(part), "$options": "i"}
+            regex_pat = re.compile(re.escape(part), re.I)
             or_conditions = [
-                {"name": search_regex},
-                {"type": search_regex},
-                {"node": search_regex},
-                {"mountPath": search_regex},
-                {"capacity": search_regex},
-                {"remarks": search_regex},
-                {"createdBy": search_regex},
+                {"name": regex_pat},
+                {"type": regex_pat},
+                {"node": regex_pat},
+                {"mountPath": regex_pat},
+                {"capacity": regex_pat},
+                {"remarks": regex_pat},
+                {"createdBy": regex_pat},
             ]
             
             if matched_ips:
