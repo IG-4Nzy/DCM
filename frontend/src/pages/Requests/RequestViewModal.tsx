@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import apiClient, { API_BASE_URL } from '../../services/request';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, Divider, Grid, Chip, FormControl, InputLabel, Select, MenuItem, Checkbox, FormControlLabel } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, Divider, Grid, Chip, FormControl, InputLabel, Select, MenuItem, Checkbox, FormControlLabel, Autocomplete } from '@mui/material';
 import TextField from '../../components/TextField';
 import Button from '../../components/Button';
 import type { RequestData, RequestLogData } from './model';
@@ -129,11 +129,20 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
     }
     setTermsAgreed(false);
     setTermsError(false);
-  }, [isOpen, request]);
+  }, [isOpen, requestId, request?.requestType, request?.status]);
 
   useEffect(() => {
     if (isOpen && requestId) {
       dispatch(fetchUsers({ pagination: false }));
+
+      // Fetch next stage name upfront for button label
+      apiClient.get(`/api/requests/${requestId}/next-assignees`)
+        .then(res => {
+          if (res.data?.nextStageName) {
+            setNextStageName(res.data.nextStageName);
+          }
+        })
+        .catch(() => {});
 
       // Fetch datastores
       apiClient.get('/api/datastores/', { params: { pagination: false } })
@@ -151,8 +160,27 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
         .finally(() => {
           setLoadingLogs(false);
         });
+    } else {
+      setNextStageName('');
     }
   }, [isOpen, requestId, dispatch]);
+
+  const getAdvanceButtonLabel = () => {
+    if (checkingAssignees || submitting) return 'Processing...';
+
+    const stageLabel = nextStageName
+      ? (nextStageName.toLowerCase() === 'completed' ? 'Complete Request' : `Advance to ${nextStageName}`)
+      : 'Approve';
+
+    if (isIpIssuance) return `Submit IP & ${stageLabel}`;
+    if (isVMCreationStage) return `Confirm Monitoring & ${stageLabel}`;
+    if (isVMBackupStage) return `Submit Backup Details & ${stageLabel}`;
+    if (isClusterDeciding) return `Submit Cluster & ${stageLabel}`;
+    if (isMarkEntryTime) return `Submit Entry Time & ${stageLabel}`;
+    if (isMarkExitTime) return `Submit Exit Time & ${stageLabel}`;
+
+    return stageLabel;
+  };
 
   const hasInitializedRef = React.useRef(false);
 
@@ -295,8 +323,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
           backupName: backupName.trim(),
           backupNode: backupNode.trim(),
           backupStorage: backupStorage.trim(),
-          backupDatastore: backupDatastore.trim(),
-          datastore: datastore.trim()
+          backupDatastore: backupDatastore.trim()
         };
       } else if (isClusterDeciding) {
         payload.details = {
@@ -373,7 +400,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
         setBackupError(true);
         hasErr = true;
       } else {
-        const backupErr = validators.alphanumericGeneral(backupName, 100, 'Backup Name');
+        const backupErr = validators.alphanumericSpacesDotsDashesUnderscores(backupName, 100, 'Backup Name');
         if (backupErr) {
           newErrors.backupName = backupErr;
           hasErr = true;
@@ -983,7 +1010,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                   )}
 
                   {isVMBackupStage && (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1, minWidth: 240 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1, minWidth: 280 }}>
                       <TextField
                         label="Backup Name"
                         variant="outlined"
@@ -1000,58 +1027,74 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                         placeholder="e.g. Daily Backup"
                         sx={{ bgcolor: '#fff' }}
                       />
-                      <FormControl fullWidth required sx={{ bgcolor: '#fff' }}>
-                        <InputLabel>Backup Node</InputLabel>
-                        <Select
-                          value={backupNode}
-                          label="Backup Node"
-                          onChange={(e) => setBackupNode(e.target.value)}
-                        >
-                          {nodes.map((n: any) => (
-                            <MenuItem key={n.id || n._id} value={n.node || n.hostName}>{n.node || n.hostName}</MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                      <FormControl fullWidth required sx={{ bgcolor: '#fff' }}>
-                        <InputLabel>Backup Storage</InputLabel>
-                        <Select
-                          value={backupStorage}
-                          label="Backup Storage"
-                          onChange={(e) => setBackupStorage(e.target.value)}
-                        >
-                          {nodes.filter((n: any) => n.type === 'storage' || n.isStorage).map((n: any) => (
-                            <MenuItem key={n.id || n._id} value={n.node || n.hostName}>{n.node || n.hostName}</MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                      <FormControl fullWidth required sx={{ bgcolor: '#fff' }}>
-                        <InputLabel>Backup Datastore</InputLabel>
-                        <Select
-                          value={backupDatastore}
-                          label="Backup Datastore"
-                          onChange={(e) => setBackupDatastore(e.target.value)}
-                        >
-                          {datastores.map((ds: any) => (
-                            <MenuItem key={ds.id || ds._id} value={ds.name || ds.datastoreName}>
-                              {`${ds.name || ds.datastoreName || ds.id}${ds.capacity ? ` (${ds.freeSpace || ''} free)` : ''}`}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                      <FormControl fullWidth required sx={{ bgcolor: '#fff' }}>
-                        <InputLabel>Datastore</InputLabel>
-                        <Select
-                          value={datastore}
-                          label="Datastore"
-                          onChange={(e) => setDatastore(e.target.value)}
-                        >
-                          {datastores.map((ds: any) => (
-                            <MenuItem key={ds.id || ds._id} value={ds.name || ds.datastoreName}>
-                              {`${ds.name || ds.datastoreName || ds.id}${ds.capacity ? ` (${ds.freeSpace || ''} free)` : ''}`}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+
+                      <Autocomplete
+                        options={nodes}
+                        getOptionLabel={(option: any) => typeof option === 'string' ? option : (option.node || option.hostName || '')}
+                        value={nodes.find((n: any) => (n.node || n.hostName) === backupNode) || backupNode || null}
+                        onChange={(_, newValue: any) => {
+                          if (typeof newValue === 'string') {
+                            setBackupNode(newValue);
+                          } else if (newValue) {
+                            setBackupNode(newValue.node || newValue.hostName || '');
+                          } else {
+                            setBackupNode('');
+                          }
+                        }}
+                        freeSolo
+                        renderInput={(params) => (
+                          <TextField {...params} label="Backup Node" required variant="outlined" placeholder="Search backup node..." />
+                        )}
+                        sx={{ bgcolor: '#fff' }}
+                      />
+
+                      <Autocomplete
+                        options={nodes.filter((n: any) => n.type === 'storage' || n.isStorage).length > 0 ? nodes.filter((n: any) => n.type === 'storage' || n.isStorage) : nodes}
+                        getOptionLabel={(option: any) => typeof option === 'string' ? option : (option.node || option.hostName || '')}
+                        value={nodes.find((n: any) => (n.node || n.hostName) === backupStorage) || backupStorage || null}
+                        onChange={(_, newValue: any) => {
+                          if (typeof newValue === 'string') {
+                            setBackupStorage(newValue);
+                          } else if (newValue) {
+                            setBackupStorage(newValue.node || newValue.hostName || '');
+                          } else {
+                            setBackupStorage('');
+                          }
+                        }}
+                        freeSolo
+                        renderInput={(params) => (
+                          <TextField {...params} label="Backup Storage" required variant="outlined" placeholder="Search backup storage..." />
+                        )}
+                        sx={{ bgcolor: '#fff' }}
+                      />
+
+                      <Autocomplete
+                        options={datastores}
+                        getOptionLabel={(option: any) => typeof option === 'string' ? option : (option.name || option.datastoreName || option.id || '')}
+                        value={datastores.find((ds: any) => (ds.name || ds.datastoreName) === backupDatastore) || backupDatastore || null}
+                        onChange={(_, newValue: any) => {
+                          if (typeof newValue === 'string') {
+                            setBackupDatastore(newValue);
+                          } else if (newValue) {
+                            setBackupDatastore(newValue.name || newValue.datastoreName || '');
+                          } else {
+                            setBackupDatastore('');
+                          }
+                        }}
+                        freeSolo
+                        renderOption={(props, option: any) => (
+                          <Box component="li" {...props} key={option.id || option._id || option.name}>
+                            <Typography variant="body2">
+                              {option.name || option.datastoreName || option.id}
+                              {option.capacity ? ` (${option.freeSpace || ''} free)` : ''}
+                            </Typography>
+                          </Box>
+                        )}
+                        renderInput={(params) => (
+                          <TextField {...params} label="Backup Datastore" required variant="outlined" placeholder="Search backup datastore..." />
+                        )}
+                        sx={{ bgcolor: '#fff' }}
+                      />
                     </Box>
                   )}
 
@@ -1224,7 +1267,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
               color="success"
               disabled={submitting}
             >
-              {checkingAssignees || submitting ? 'Processing...' : (isIpIssuance ? 'Submit IP & Approve' : isVMCreationStage ? 'Submit Monitoring Confirmation & Approve' : isVMBackupStage ? 'Submit Backup Path & Approve' : isClusterDeciding ? 'Submit Cluster & Approve' : isMarkEntryTime ? 'Submit Entry Time' : isMarkExitTime ? 'Submit Exit Time & Approve' : 'Approve')}
+              {getAdvanceButtonLabel()}
             </Button>
           </>
         )}
