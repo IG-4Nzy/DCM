@@ -32,11 +32,13 @@ const MailConfigSettings: React.FC = () => {
     const [dailyChecklistMailEnabled, setDailyChecklistMailEnabled] = useState(true);
     const [bmsChecklistMailEnabled, setBmsChecklistMailEnabled] = useState(true);
     const [accountsMailEnabled, setAccountsMailEnabled] = useState(true);
+    const [incidentMailEnabled, setIncidentMailEnabled] = useState(true);
     const [savedEmailsText, setSavedEmailsText] = useState('');
     const [savedEmailsRosterText, setSavedEmailsRosterText] = useState('');
     const [savedEmailsDailyChecklistText, setSavedEmailsDailyChecklistText] = useState('');
     const [savedEmailsBmsChecklistText, setSavedEmailsBmsChecklistText] = useState('');
     const [savedEmailsAccountsText, setSavedEmailsAccountsText] = useState('');
+    const [savedEmailsIncidentText, setSavedEmailsIncidentText] = useState('');
  
      // Test send email states
      const [testToEmail, setTestToEmail] = useState('');
@@ -60,6 +62,7 @@ const MailConfigSettings: React.FC = () => {
                  setDailyChecklistMailEnabled(res.data.dailyChecklistMailEnabled !== false);
                  setBmsChecklistMailEnabled(res.data.bmsChecklistMailEnabled !== false);
                  setAccountsMailEnabled(res.data.accountsMailEnabled !== false);
+                 setIncidentMailEnabled(res.data.incidentMailEnabled !== false);
                  const saved = res.data.savedEmails || [];
                  setSavedEmailsText(saved.join(', '));
                  const savedRoster = res.data.savedEmailsRoster || [];
@@ -70,6 +73,8 @@ const MailConfigSettings: React.FC = () => {
                  setSavedEmailsBmsChecklistText(savedBms.join(', '));
                  const savedAcc = res.data.savedEmailsAccounts || [];
                  setSavedEmailsAccountsText(savedAcc.join(', '));
+                 const savedInc = res.data.savedEmailsIncident || [];
+                 setSavedEmailsIncidentText(savedInc.join(', '));
              }
          } catch (err: any) {
              showToast(err.response?.data?.detail || 'Failed to load mail configuration', 'error');
@@ -101,7 +106,11 @@ const MailConfigSettings: React.FC = () => {
                  .split(',')
                  .map((e) => e.trim())
                  .filter((e) => e.length > 0);
- 
+             const savedEmailsIncident = savedEmailsIncidentText
+                 .split(',')
+                 .map((e) => e.trim())
+                 .filter((e) => e.length > 0);
+
              await request.put('/api/mail-config/', {
                  host,
                  port: Number(port),
@@ -115,10 +124,12 @@ const MailConfigSettings: React.FC = () => {
                  savedEmailsDailyChecklist,
                  savedEmailsBmsChecklist,
                  savedEmailsAccounts,
+                 savedEmailsIncident,
                  rosterMailEnabled,
                  dailyChecklistMailEnabled,
                  bmsChecklistMailEnabled,
-                 accountsMailEnabled
+                 accountsMailEnabled,
+                 incidentMailEnabled
              });
              showToast('Mail configuration saved successfully!', 'success');
              setIsEditing(false);
@@ -328,6 +339,21 @@ const MailConfigSettings: React.FC = () => {
                         />
                     </Grid>
 
+                    <Grid item xs={12}>
+                        <TextField
+                            label="Saved Default Emails - Incident Notifications (comma-separated)"
+                            fullWidth
+                            multiline
+                            rows={2}
+                            size="small"
+                            value={savedEmailsIncidentText}
+                            onChange={(e) => setSavedEmailsIncidentText(e.target.value)}
+                            disabled={!canUpdate || !isEditing}
+                            placeholder="e.g. incident-alert@vssc.gov.in, admin@vssc.gov.in"
+                            helperText="Pre-configured recipients specifically for sending incident alert emails when an observation is marked as an incident."
+                        />
+                    </Grid>
+
                     <Grid item xs={12} sx={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                         <FormControlLabel
                             control={
@@ -392,6 +418,17 @@ const MailConfigSettings: React.FC = () => {
                                 />
                             }
                             label="Enable Accounts Email Delivery"
+                        />
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={incidentMailEnabled}
+                                    onChange={(e) => setIncidentMailEnabled(e.target.checked)}
+                                    disabled={!canUpdate || !isEditing}
+                                    color="primary"
+                                />
+                            }
+                            label="Enable Incident Email Delivery"
                         />
                     </Grid>
                 </Grid>

@@ -58,7 +58,8 @@ const ObservationList: React.FC = () => {
     status: 'Not Resolved',
     comments: [] as any[],
     isRepeated: false,
-    repeatedFromId: ''
+    repeatedFromId: '',
+    isIncident: false
   };
   const [formData, setFormData] = useState(initialFormData);
   const [showOther, setShowOther] = useState(false);
@@ -100,7 +101,7 @@ const ObservationList: React.FC = () => {
 
   const handleOpenModal = (obs?: any, editMode: boolean = false) => {
     const isResolved = obs?.status === 'Resolved';
-    setIsEditMode(isResolved ? false : editMode);
+    setIsEditMode(isResolved && !isSuperuser ? false : editMode);
     if (obs) {
       setEditingObs(obs);
       setFormData({
@@ -118,7 +119,8 @@ const ObservationList: React.FC = () => {
         status: obs.status,
         comments: obs.comments || [],
         isRepeated: obs.isRepeated || false,
-        repeatedFromId: obs.repeatedFromId || ''
+        repeatedFromId: obs.repeatedFromId || '',
+        isIncident: obs.isIncident || false
       });
       setShowOther(Array.isArray(obs.informedTo) ? obs.informedTo.includes('Other') : obs.informedTo === 'Other');
     } else {
@@ -297,6 +299,14 @@ const ObservationList: React.FC = () => {
       render: (row) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <span>{row.observationId}</span>
+          {row.isIncident ? (
+            <Chip
+              label="Incident"
+              size="small"
+              color="error"
+              sx={{ height: 20, fontSize: '0.7rem', fontWeight: 'bold' }}
+            />
+          ) : null}
           {row.repeatCount && row.repeatCount > 0 ? (
             <Chip
               label={`Repeated (${row.repeatCount})`}
@@ -360,7 +370,7 @@ const ObservationList: React.FC = () => {
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          {hasUpdatePrivilege && row.status !== 'Resolved' && (
+          {hasUpdatePrivilege && (row.status !== 'Resolved' || isSuperuser) && (
             <Tooltip title="Edit Observation">
               <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }} onClick={(e) => { e.stopPropagation(); handleOpenModal(row, true); }}>
                 <EditIcon fontSize="small" />

@@ -1,4 +1,5 @@
 import os
+import asyncio
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, Response, UploadFile, File
 import shutil
 import uuid
@@ -265,6 +266,66 @@ async def create_observation(
 
     from notification_helper import log_page_update
     await log_page_update("observations", department=user_dept, username=current_user.get("sub"))
+
+    # If observation is marked as an incident, trigger automated incident email notification
+    if created_obs.get("isIncident"):
+        try:
+            config_col = db.get_collection("mail_config")
+            config = await config_col.find_one({"_id": "mail_config"}) or {}
+            if config.get("incidentMailEnabled", True):
+                recipient_emails = config.get("savedEmailsIncident") or config.get("savedEmails") or []
+                if recipient_emails:
+                    from mail_utils import send_email
+                    obs_id = created_obs.get("observationId", "N/A")
+                    cat = created_obs.get("category", "General")
+                    desc = created_obs.get("description", "")
+                    obs_date = created_obs.get("observedDate", "")
+                    obs_time = created_obs.get("observedTime", "")
+                    logged_by = created_obs.get("loggedBy", "Unknown")
+                    
+                    subject = f"[INCIDENT ALERT] Observation Incident Logged: {obs_id} - {cat}"
+                    body = (
+                        f"HIGH PRIORITY INCIDENT ALERT\n\n"
+                        f"An observation has been marked as an INCIDENT in DCM.\n\n"
+                        f"Incident ID: {obs_id}\n"
+                        f"Category: {cat}\n"
+                        f"Observed Date & Time: {obs_date} {obs_time}\n"
+                        f"Logged By: {logged_by}\n"
+                        f"Description:\n{desc}\n\n"
+                        f"Please take necessary action immediately."
+                    )
+                    html_body = f"""
+                    <div style="font-family: Arial, sans-serif; padding: 20px; border: 2px solid #d32f2f; border-radius: 8px;">
+                        <h2 style="color: #d32f2f; margin-top: 0;">🚨 HIGH PRIORITY INCIDENT ALERT</h2>
+                        <p>An observation has been marked as an <strong>INCIDENT</strong> in DCM.</p>
+                        <table style="border-collapse: collapse; width: 100%; margin-top: 15px;">
+                            <tr style="background-color: #f8d7da;">
+                                <td style="padding: 10px; border: 1px solid #f5c6cb; font-weight: bold; width: 30%;">Incident ID</td>
+                                <td style="padding: 10px; border: 1px solid #f5c6cb; color: #721c24; font-weight: bold;">{obs_id}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Category</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">{cat}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Observed Date & Time</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">{obs_date} {obs_time}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Logged By</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">{logged_by}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Description</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">{desc}</td>
+                            </tr>
+                        </table>
+                        <p style="margin-top: 20px; color: #555;">Please log into the DCM system to inspect and resolve this incident.</p>
+                    </div>
+                    """
+                    asyncio.create_task(send_email(recipient_emails, subject, body, html_body))
+        except Exception as mail_err:
+            print(f"Failed to trigger incident email notification: {mail_err}")
 
     await enrich_observation(created_obs)
     return created_obs

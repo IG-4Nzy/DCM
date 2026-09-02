@@ -451,6 +451,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             elif "morning-checklists" in parts: collection_name = "morning_checklists"
             elif "periodic-activities" in parts: collection_name = "periodic_activities"
             elif "observations" in parts: collection_name = "observations"
+            elif "ip-list" in parts: collection_name = "ip_list"
             
             from bson import ObjectId
             for p in reversed(parts):

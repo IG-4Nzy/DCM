@@ -755,6 +755,7 @@ class ObservationModel(BaseModel):
     comments: List[dict] = Field(default_factory=list)
     isRepeated: Optional[bool] = False
     repeatedFromId: Optional[str] = None
+    isIncident: Optional[bool] = False
     repeatCount: Optional[int] = 0
     repeatedDetails: Optional[dict] = None
     lastStatusUpdatedOn: Optional[str] = None
@@ -792,6 +793,7 @@ class CreateObservationModel(BaseModel):
     comments: List[dict] = Field(default_factory=list)
     isRepeated: Optional[bool] = False
     repeatedFromId: Optional[str] = None
+    isIncident: Optional[bool] = False
 
     @field_validator('description')
     @classmethod
@@ -812,6 +814,7 @@ class UpdateObservationModel(BaseModel):
     comments: Optional[List[dict]] = None
     isRepeated: Optional[bool] = None
     repeatedFromId: Optional[str] = None
+    isIncident: Optional[bool] = None
 
     @field_validator('description')
     @classmethod

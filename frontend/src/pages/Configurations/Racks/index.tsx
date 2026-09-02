@@ -407,10 +407,6 @@ const Racks = () => {
                         onPageChange={handleChangePage}
                         onRowsPerPageChange={handleChangeRowsPerPage}
                         loading={loading}
-                        onRowClick={(row) => {
-                            localStorage.setItem('Nodes_rackFilter', JSON.stringify(row.serverRack));
-                            window.dispatchEvent(new CustomEvent('changeServerDetailsTab', { detail: 'nodes' }));
-                        }}
                     />
                 </Paper>
             ) : (
