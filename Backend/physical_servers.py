@@ -111,33 +111,47 @@ async def list_items(
         query["clusterId"] = clusterId
     
     if search:
+        search_parts = [p.strip() for p in search.split(",") if p.strip()]
+        if not search_parts:
+            search_parts = [search.strip()]
+            
         from search_utils import resolve_search_references
-        matched_users, matched_clusters, _ = await resolve_search_references(search)
-        escaped_search = re.escape(search.strip())
-        or_conditions = [
-            {"ipAddress": {"$regex": escaped_search, "$options": "i"}},
-            {"applications": {"$regex": escaped_search, "$options": "i"}},
-            {"node": {"$regex": escaped_search, "$options": "i"}},
-            {"ram": {"$regex": escaped_search, "$options": "i"}},
-            {"hdd": {"$regex": escaped_search, "$options": "i"}},
-            {"cpu": {"$regex": escaped_search, "$options": "i"}},
-            {"backupLocation": {"$regex": escaped_search, "$options": "i"}},
-            {"adminName": {"$regex": escaped_search, "$options": "i"}},
-            {"adminContact": {"$regex": escaped_search, "$options": "i"}},
-            {"remarks": {"$regex": escaped_search, "$options": "i"}},
-            {"createdBy": {"$regex": escaped_search, "$options": "i"}},
-            {"createdAt": {"$regex": escaped_search, "$options": "i"}},
-            {"updatedAt": {"$regex": escaped_search, "$options": "i"}},
-        ]
-        if matched_users:
-            or_conditions.append({"admin": {"$in": matched_users}})
-        if matched_clusters:
-            or_conditions.append({"clusterId": {"$in": [str(c) for c in matched_clusters] + matched_clusters}})
+        
+        all_or_conditions = []
+        for part in search_parts:
+            matched_users, matched_clusters, _, matched_ips = await resolve_search_references(part)
+            escaped_search = re.escape(part)
+            regex_pat = re.compile(escaped_search, re.I)
+            
+            or_conditions = [
+                {"ipAddress": regex_pat},
+                {"applications": regex_pat},
+                {"node": regex_pat},
+                {"ram": regex_pat},
+                {"hdd": regex_pat},
+                {"cpu": regex_pat},
+                {"backupLocation": regex_pat},
+                {"adminName": regex_pat},
+                {"adminContact": regex_pat},
+                {"remarks": regex_pat},
+                {"createdBy": regex_pat},
+                {"createdAt": regex_pat},
+                {"updatedAt": regex_pat},
+            ]
+            if matched_users:
+                or_conditions.append({"admin": {"$in": matched_users}})
+            if matched_clusters:
+                or_conditions.append({"clusterId": {"$in": [str(c) for c in matched_clusters] + matched_clusters}})
+            if matched_ips:
+                or_conditions.append({"ipAddress": {"$in": matched_ips}})
+                
+            all_or_conditions.extend(or_conditions)
             
         and_conds = []
         for k, v in list(query.items()):
             and_conds.append({k: v})
-        and_conds.append({"$or": or_conditions})
+        if all_or_conditions:
+            and_conds.append({"$or": all_or_conditions})
         query = {"$and": and_conds}
 
     actual_sort_by = sortBy or sort_by or "createdAt"

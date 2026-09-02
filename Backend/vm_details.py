@@ -293,7 +293,7 @@ async def list_items(
         
         all_or_conditions = []
         for part in search_parts:
-            matched_users, matched_clusters, _ = await resolve_search_references(part)
+            matched_users, matched_clusters, _, matched_ips = await resolve_search_references(part)
             escaped_search = re.escape(part)
             regex_pat = re.compile(escaped_search, re.I)
             
@@ -325,6 +325,9 @@ async def list_items(
                 or_conditions.append({"admin": {"$in": matched_users}})
             if matched_clusters:
                 or_conditions.append({"clusterId": {"$in": [str(c) for c in matched_clusters] + matched_clusters}})
+            if matched_ips:
+                or_conditions.append({"ipAddress": {"$in": matched_ips}})
+                or_conditions.append({"ip": {"$in": matched_ips}})
                 
             all_or_conditions.extend(or_conditions)
             

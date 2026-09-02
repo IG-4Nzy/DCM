@@ -1,0 +1,1 @@
+in visitor logs,if not marked exit time,show them in dashboard

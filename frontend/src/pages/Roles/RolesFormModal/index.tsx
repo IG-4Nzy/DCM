@@ -374,7 +374,7 @@ const RoleFormModal = ({
                                                             flexGrow: 1
                                                         }}
                                                     />
-                                                    {safeFormPrivileges.includes(priv) && (
+                                                    {/* {safeFormPrivileges.includes(priv) && (
                                                         <FormControlLabel
                                                             control={
                                                                 <Checkbox
@@ -387,7 +387,7 @@ const RoleFormModal = ({
                                                             label={<span style={{ fontSize: '0.725rem', fontWeight: 600, color: '#db2777' }}>Late Login</span>}
                                                             sx={{ margin: 0, mr: 1 }}
                                                         />
-                                                    )}
+                                                    )} */}
                                                 </Box>
                                             </Grid>
                                         ))}

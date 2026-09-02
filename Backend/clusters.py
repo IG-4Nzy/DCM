@@ -86,7 +86,7 @@ async def list_items(
     
     if search:
         from search_utils import resolve_search_references
-        matched_users, _, _ = await resolve_search_references(search)
+        matched_users, _, _, _ = await resolve_search_references(search)
         escaped_search = re.escape(search.strip())
         or_conds = [
             {"clusterName": {"$regex": escaped_search, "$options": "i"}},

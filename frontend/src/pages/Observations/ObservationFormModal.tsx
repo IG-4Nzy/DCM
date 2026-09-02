@@ -240,7 +240,7 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                 </Typography>
               </Box>
             )}
-            {(formData.isRepeated || (editingObs?.repeatCount && editingObs.repeatCount > 0)) && (
+            {/* {(formData.isRepeated || (editingObs?.repeatCount && editingObs.repeatCount > 0)) && (
               <Box sx={{ mt: 1, mb: 1, p: 2, bgcolor: '#e3f2fd', borderRadius: 2, border: '1px solid #90caf9', width: '100%' }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#1565c0', mb: 1 }}>
                   Repeated Issue Information
@@ -274,7 +274,7 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                   </Box>
                 )}
               </Box>
-            )}
+            )} */}
             {editingObs?.mappedWorks && editingObs.mappedWorks.length > 0 && (
               <Box sx={{ mt: 1, mb: 1, p: 2, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0', width: '100%' }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#166534', mb: 1 }}>

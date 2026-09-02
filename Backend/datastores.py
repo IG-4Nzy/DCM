@@ -30,9 +30,18 @@ async def list_datastores(
         query["type"] = {"$regex": f"^{re.escape(type)}$", "$options": "i"}
 
     if search:
-        search_regex = {"$regex": re.escape(search), "$options": "i"}
-        search_condition = {
-            "$or": [
+        search_parts = [p.strip() for p in search.split(",") if p.strip()]
+        if not search_parts:
+            search_parts = [search.strip()]
+            
+        from search_utils import resolve_search_references
+        
+        all_or_conditions = []
+        for part in search_parts:
+            _, _, _, matched_ips = await resolve_search_references(part)
+            
+            search_regex = {"$regex": re.escape(part), "$options": "i"}
+            or_conditions = [
                 {"name": search_regex},
                 {"type": search_regex},
                 {"node": search_regex},
@@ -41,11 +50,19 @@ async def list_datastores(
                 {"remarks": search_regex},
                 {"createdBy": search_regex},
             ]
-        }
-        if query:
-            query = {"$and": [query, search_condition]}
-        else:
-            query = search_condition
+            
+            if matched_ips:
+                or_conditions.append({"node": {"$in": matched_ips}})
+                
+            all_or_conditions.extend(or_conditions)
+            
+        if all_or_conditions:
+            search_condition = {"$or": all_or_conditions}
+            
+            if query:
+                query = {"$and": [query, search_condition]}
+            else:
+                query = search_condition
 
     actual_sort_by = sortBy or sort_by or "createdAt"
     sort_order = 1 if order == "asc" else -1
