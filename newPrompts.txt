@@ -1,1 +1,4 @@
 in visitor logs,if not marked exit time,show them in dashboard
+VMS created from request has no VM id,and VM name and admin name in VM list
+in documentations,change document size validation to 50mb
+in request modal,in workflow action zone,dropdowns needs search option

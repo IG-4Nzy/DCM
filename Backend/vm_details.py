@@ -89,6 +89,74 @@ async def sync_node_resources(node_name: str):
             }}
         )
 
+async def fix_missing_vm_fields():
+    """Auto-repair any existing VM details missing vmId, vmName, or adminName."""
+    try:
+        vms_col = db.get_collection("vm_details")
+        users_col = db.get_collection("users")
+        
+        # 1. Fix missing vmId
+        vms_without_id = await vms_col.find({
+            "$or": [
+                {"vmId": None},
+                {"vmId": ""},
+                {"vmId": {"$exists": False}}
+            ]
+        }).to_list(length=None)
+        
+        if vms_without_id:
+            max_vm_id = 0
+            cursor = vms_col.find({"vmId": {"$regex": "^VM-"}}, {"vmId": 1})
+            async for doc in cursor:
+                vid = doc.get("vmId", "")
+                if vid.startswith("VM-"):
+                    try:
+                        num = int(vid.replace("VM-", ""))
+                        max_vm_id = max(max_vm_id, num)
+                    except Exception:
+                        pass
+            
+            for vm_doc in vms_without_id:
+                max_vm_id += 1
+                new_vm_id = f"VM-{max_vm_id}"
+                await vms_col.update_one({"_id": vm_doc["_id"]}, {"$set": {"vmId": new_vm_id}})
+
+        # 2. Fix missing vmName
+        vms_without_name = await vms_col.find({
+            "$or": [
+                {"vmName": None},
+                {"vmName": ""},
+                {"vmName": {"$exists": False}}
+            ]
+        }).to_list(length=None)
+        
+        for vm_doc in vms_without_name:
+            fallback_name = vm_doc.get("applications") or vm_doc.get("vmId") or "VM"
+            await vms_col.update_one({"_id": vm_doc["_id"]}, {"$set": {"vmName": fallback_name}})
+
+        # 3. Fix missing adminName
+        vms_without_admin_name = await vms_col.find({
+            "$or": [
+                {"adminName": None},
+                {"adminName": ""},
+                {"adminName": {"$exists": False}}
+            ]
+        }).to_list(length=None)
+        
+        for vm_doc in vms_without_admin_name:
+            admin_val = vm_doc.get("admin") or vm_doc.get("createdBy")
+            if admin_val and admin_val != "system":
+                user_obj = await users_col.find_one({"username": admin_val})
+                if user_obj:
+                    full_name = f"{user_obj.get('firstName', '')} {user_obj.get('lastName', '')}".strip() or admin_val
+                    await vms_col.update_one({"_id": vm_doc["_id"]}, {"$set": {"adminName": full_name}})
+                else:
+                    await vms_col.update_one({"_id": vm_doc["_id"]}, {"$set": {"adminName": admin_val}})
+            else:
+                await vms_col.update_one({"_id": vm_doc["_id"]}, {"$set": {"adminName": "System Admin"}})
+    except Exception as e:
+        logger.error(f"Error in fix_missing_vm_fields: {e}")
+
 @router.get("/", response_description="List all VM details", response_model=PaginatedVMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details", "VM View", "Create Request", "Update Request", "View Request", "Update VMs (Restricted)"]))])
 async def list_items(
     clusterId: Optional[str] = Query(None, description="The ID of the cluster"),
@@ -106,6 +174,7 @@ async def list_items(
     clusterType: Optional[str] = Query(None, description="Filter by cluster type"),
     current_user: dict = Depends(get_current_user)
 ):
+    await fix_missing_vm_fields()
     if not isinstance(admin, str):
         admin = None
     if not isinstance(clusterId, str):
