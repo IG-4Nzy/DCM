@@ -151,12 +151,33 @@ async def update_attendance_on_request(username: str, user_dept: str, user_roles
     except Exception as e:
         print(f"Error auto-updating attendance on request: {e}")
 
+def secure_decode_jwt(token: str, secret_key: str, algorithm: str) -> dict:
+    parts = token.split(".")
+    if len(parts) != 3:
+        raise jwt.InvalidTokenError("Invalid token format")
+    
+    try:
+        import base64
+        import json
+        header_segment = parts[0]
+        rem = len(header_segment) % 4
+        if rem > 0:
+            header_segment += "=" * (4 - rem)
+        header_data = json.loads(base64.urlsafe_b64decode(header_segment).decode('utf-8'))
+        alg = header_data.get("alg")
+        if not alg or alg.upper() == "NONE" or alg != algorithm:
+            raise jwt.InvalidTokenError("Unsupported algorithm")
+    except Exception:
+        raise jwt.InvalidTokenError("Invalid token header")
+    
+    return jwt.decode(token, secret_key, algorithms=[algorithm])
+
 security = HTTPBearer()
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = secure_decode_jwt(token, SECRET_KEY, ALGORITHM)
         username = payload.get("sub")
         if not username:
             raise HTTPException(

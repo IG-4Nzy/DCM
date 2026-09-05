@@ -88,7 +88,7 @@ def serialize_doc(doc: dict) -> dict:
         doc["services"] = []
     return doc
 
-@router.post("", response_description="Create periodic activity", response_model=PeriodicActivityModel, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_privilege("Create Periodic Activity"))])
+@router.post("/", response_description="Create periodic activity", response_model=PeriodicActivityModel, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_privilege("Create Periodic Activity"))])
 async def create_periodic_activity(
     payload: CreatePeriodicActivityModel = Body(...),
     current_user: dict = Depends(get_current_user)
@@ -161,7 +161,7 @@ async def create_periodic_activity(
     created = await collection.find_one({"_id": inserted_id})
     return serialize_doc(created)
 
-@router.get("", response_description="List periodic activities", response_model=PaginatedPeriodicActivitiesModel, dependencies=[Depends(require_privilege("View Periodic Activity"))])
+@router.get("/", response_description="List periodic activities", response_model=PaginatedPeriodicActivitiesModel, dependencies=[Depends(require_privilege("View Periodic Activity"))])
 async def list_periodic_activities(
     pagination: bool = Query(True),
     skip: int = Query(0, ge=0),

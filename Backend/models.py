@@ -755,8 +755,10 @@ class ObservationModel(BaseModel):
     comments: List[dict] = Field(default_factory=list)
     isRepeated: Optional[bool] = False
     repeatedFromId: Optional[str] = None
+    isIncident: Optional[bool] = False
     repeatCount: Optional[int] = 0
     repeatedDetails: Optional[dict] = None
+    mappedWorks: Optional[List[dict]] = None
     lastStatusUpdatedOn: Optional[str] = None
 
     @field_validator('comments', mode='before')
@@ -792,6 +794,7 @@ class CreateObservationModel(BaseModel):
     comments: List[dict] = Field(default_factory=list)
     isRepeated: Optional[bool] = False
     repeatedFromId: Optional[str] = None
+    isIncident: Optional[bool] = False
 
     @field_validator('description')
     @classmethod
@@ -812,6 +815,7 @@ class UpdateObservationModel(BaseModel):
     comments: Optional[List[dict]] = None
     isRepeated: Optional[bool] = None
     repeatedFromId: Optional[str] = None
+    isIncident: Optional[bool] = None
 
     @field_validator('description')
     @classmethod
@@ -2032,6 +2036,7 @@ class VMDetailsModel(BaseModel):
     backupName: Optional[str] = ""
     backupNode: Optional[str] = ""
     backupStorage: Optional[str] = ""
+    backupDatastore: Optional[str] = ""
     datastore: Optional[str] = ""
     addedToMonitoring: Optional[bool] = False
     adminName: Optional[str] = None
@@ -2067,6 +2072,7 @@ class CreateVMDetailsModel(BaseModel):
     backupName: Optional[str] = ""
     backupNode: Optional[str] = ""
     backupStorage: Optional[str] = ""
+    backupDatastore: Optional[str] = ""
     datastore: Optional[str] = ""
     addedToMonitoring: Optional[bool] = False
     adminName: Optional[str] = None
@@ -2192,6 +2198,7 @@ class UpdateVMDetailsModel(BaseModel):
     backupName: Optional[str] = None
     backupNode: Optional[str] = None
     backupStorage: Optional[str] = None
+    backupDatastore: Optional[str] = None
     datastore: Optional[str] = None
     addedToMonitoring: Optional[bool] = None
     adminName: Optional[str] = None
@@ -2528,6 +2535,9 @@ class RequestRoutingStage(BaseModel):
     conditionOperator: Optional[str] = "equals"
     conditionValue: Optional[str] = None
     conditionalAssignments: Optional[List[ConditionalAssignmentRule]] = []
+    attachmentUrl: Optional[str] = None
+    attachmentName: Optional[str] = None
+    requireTermsAgreement: Optional[bool] = False
 
     model_config = ConfigDict(
         extra="allow",

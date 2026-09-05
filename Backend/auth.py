@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Body
+from fastapi import APIRouter, HTTPException, status, Depends, Body, Request
 from pydantic import BaseModel, field_validator
 from typing import Optional, Union, List
 import bcrypt
@@ -7,10 +7,39 @@ from datetime import datetime, timedelta, timezone
 from database import db, get_local_now
 from auth_utils import get_current_user, SECRET_KEY, ALGORITHM
 from models import check_first_name, check_last_name, check_mobile
+import os
+import time
+import threading
+from collections import defaultdict
+
+MAX_LOGIN_ATTEMPTS = int(os.environ.get("MAX_LOGIN_ATTEMPTS", 5))
+LOCKOUT_DURATION_MINS = int(os.environ.get("LOCKOUT_DURATION", 15))
+LOGIN_RATE_LIMIT = int(os.environ.get("LOGIN_RATE_LIMIT", 30))
+
+DUMMY_HASH = bcrypt.hashpw(b"dummy_password", bcrypt.gensalt())
+ip_requests = defaultdict(list)
+ip_lock = threading.Lock()
+
+def is_ip_rate_limited(ip: str) -> bool:
+    now = time.time()
+    with ip_lock:
+        ip_requests[ip] = [t for t in ip_requests[ip] if now - t < 60]
+        if len(ip_requests[ip]) >= LOGIN_RATE_LIMIT:
+            return True
+        ip_requests[ip].append(now)
+        return False
 
 router = APIRouter()
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 480 # Token valid for 8 hours
+
+DEFAULT_LATE_PRIVILEGES = [
+    "View BMS Checklist", "Update BMS Checklist",
+    "View Cluster Checklist", "Update Cluster Checklist",
+    "View Morning Checklist", "Update Morning Checklist",
+    "View Work Log", "Create Work Log",
+    "View Periodic Activity", "Update Periodic Activity"
+]
 
 class LoginRequest(BaseModel):
     username: str
@@ -83,58 +112,104 @@ def is_birthday_today(dob: Optional[str], today: datetime) -> bool:
     return False
 
 @router.post("/login", response_model=LoginResponse)
-async def login(credentials: LoginRequest):
+async def login(credentials: LoginRequest, request: Request):
+    import re
+    from pymongo import ReturnDocument
+
+    ip = request.client.host if request.client else "127.0.0.1"
+    if is_ip_rate_limited(ip):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many requests from this IP. Please try again later."
+        )
+
     users_collection = db.get_collection("users")
-    user = await users_collection.find_one({"username": credentials.username})
+    
+    generic_error = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid username or password, or account is temporarily locked"
+    )
+
+    # Use case-insensitive lookup to find the user
+    escaped_username = re.escape(credentials.username)
+    user = await users_collection.find_one({"username": {"$regex": f"^{escaped_username}$", "$options": "i"}})
     
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password"
-        )
+        bcrypt.checkpw(credentials.password.encode('utf-8'), DUMMY_HASH)
+        raise generic_error
         
+    username = user["username"] # Use canonical casing from database
     now_utc = datetime.now(timezone.utc)
-    lockout_until_str = user.get("lockout_until")
-    if lockout_until_str:
-        try:
-            lockout_until = datetime.fromisoformat(lockout_until_str.replace("Z", "+00:00"))
-            if now_utc < lockout_until:
-                diff_mins = int((lockout_until - now_utc).total_seconds() / 60) + 1
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Account is locked due to too many failed attempts. Try again in {diff_mins} minutes."
-                )
-        except Exception:
-            pass
+    lockout_until = user.get("lockout_until")
+    lockout_dt = None
+    
+    if lockout_until:
+        if isinstance(lockout_until, str):
+            try:
+                s = lockout_until.replace("Z", "+00:00")
+                lockout_dt = datetime.fromisoformat(s)
+            except Exception:
+                lockout_dt = None
+        elif isinstance(lockout_until, datetime):
+            lockout_dt = lockout_until
             
+        if lockout_dt:
+            # Ensure it is timezone-aware in UTC
+            if lockout_dt.tzinfo is None:
+                lockout_dt = lockout_dt.replace(tzinfo=timezone.utc)
+            else:
+                lockout_dt = lockout_dt.astimezone(timezone.utc)
+                
+            if now_utc < lockout_dt:
+                # Under active lockout: Reject immediately without password check
+                bcrypt.checkpw(credentials.password.encode('utf-8'), DUMMY_HASH)
+                remaining_seconds = int((lockout_dt - now_utc).total_seconds()) + 1
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail={
+                        "message": f"Invalid username or password, or account is temporarily locked. Cooldown remaining: {remaining_seconds} seconds.",
+                        "remaining_seconds": remaining_seconds
+                    }
+                )
+            else:
+                # Lockout expired: Reset state in database and in local user dictionary
+                await users_collection.update_one(
+                    {"username": username},
+                    {"$set": {"failed_login_attempts": 0, "lockout_until": None}}
+                )
+                user["failed_login_attempts"] = 0
+                user["lockout_until"] = None
+                
     is_valid = bcrypt.checkpw(credentials.password.encode('utf-8'), user["password"].encode('utf-8'))
     if not is_valid:
-        failed_attempts = user.get("failed_login_attempts", 0) + 1
-        update_fields = {"failed_login_attempts": failed_attempts}
-        if failed_attempts >= 5:
-            lockout_time = now_utc + timedelta(minutes=15)
-            update_fields["lockout_until"] = lockout_time.isoformat().replace("+00:00", "Z")
+        # Atomic increment of failed attempts
+        updated = await users_collection.find_one_and_update(
+            {"username": username},
+            {"$inc": {"failed_login_attempts": 1}},
+            return_document=ReturnDocument.AFTER
+        )
+        failed_attempts = updated.get("failed_login_attempts", 0) if updated else (user.get("failed_login_attempts", 0) + 1)
+        
+        if failed_attempts >= MAX_LOGIN_ATTEMPTS:
+            lockout_time = now_utc + timedelta(minutes=LOCKOUT_DURATION_MINS)
+            lockout_time_str = lockout_time.isoformat().replace("+00:00", "Z")
             await users_collection.update_one(
-                {"username": credentials.username},
-                {"$set": update_fields}
+                {"username": username},
+                {"$set": {"lockout_until": lockout_time_str}}
             )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Account is locked due to too many failed attempts. Try again in 15 minutes."
-            )
-        else:
-            await users_collection.update_one(
-                {"username": credentials.username},
-                {"$set": update_fields}
-            )
+            remaining_seconds = int((lockout_time - now_utc).total_seconds()) + 1
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid username or password"
+                detail={
+                    "message": f"Invalid username or password, or account is temporarily locked. Cooldown remaining: {remaining_seconds} seconds.",
+                    "remaining_seconds": remaining_seconds
+                }
             )
+        raise generic_error
             
     # Reset lockout counters on successful login
     await users_collection.update_one(
-        {"username": credentials.username},
+        {"username": username},
         {"$set": {"failed_login_attempts": 0, "lockout_until": None}}
     )
         
@@ -172,7 +247,7 @@ async def login(credentials: LoginRequest):
     privileges = list(privileges_set)
     resolved_role = role_names[0] if len(role_names) == 1 else role_names
     
-    is_superuser = user.get("is_superuser", False)
+    is_superuser = user.get("isSuperuser", False) or user.get("is_superuser", False)
     
     import uuid
     is_monitor = user.get("isMonitorUser", False)
@@ -259,7 +334,11 @@ async def login(credentials: LoginRequest):
                             r_obj = await roles_collection.find_one({"name": r_id})
                         if r_obj:
                             late_login_privs.update(r_obj.get("lateLoginPrivileges", []))
+                    if not late_login_privs:
+                        late_login_privs = set(DEFAULT_LATE_PRIVILEGES)
                     restricted_privileges = [p for p in privileges if p in late_login_privs]
+                    if not restricted_privileges:
+                        restricted_privileges = list(set(DEFAULT_LATE_PRIVILEGES).intersection(set(privileges))) or DEFAULT_LATE_PRIVILEGES
                     restricted_token = create_access_token(
                         data={
                             "sub": user["username"],
@@ -334,7 +413,11 @@ async def login(credentials: LoginRequest):
                                 r_obj = await roles_collection.find_one({"name": r_id})
                             if r_obj:
                                 late_login_privs.update(r_obj.get("lateLoginPrivileges", []))
+                        if not late_login_privs:
+                            late_login_privs = set(DEFAULT_LATE_PRIVILEGES)
                         restricted_privileges = [p for p in privileges if p in late_login_privs]
+                        if not restricted_privileges:
+                            restricted_privileges = list(set(DEFAULT_LATE_PRIVILEGES).intersection(set(privileges))) or DEFAULT_LATE_PRIVILEGES
                         restricted_token = create_access_token(
                             data={
                                 "sub": user["username"],
@@ -378,7 +461,7 @@ async def login(credentials: LoginRequest):
                             }
                         )
                     else:
-                        # Create an approved late attendance record and allow login
+                        # Late login restriction is OFF — log as Approved late and allow login
                         await attendance_collection.insert_one({
                             "username": user["username"],
                             "department": user_dept,

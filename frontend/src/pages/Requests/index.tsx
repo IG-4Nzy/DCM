@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Box, Paper, Tooltip, IconButton, Chip, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Tabs, Tab } from '@mui/material';
 import TextField from '../../components/TextField';
@@ -76,6 +76,12 @@ const Requests: React.FC = () => {
     const hasTypeUpdatePrivilege = isSuperuser || hasPrivilege(PRIVILEGES.REQUEST_TYPE_UPDATE);
     const hasTypeDeletePrivilege = isSuperuser || hasPrivilege(PRIVILEGES.REQUEST_TYPE_DELETE);
 
+    const isViewModalOpenRef = useRef(isViewModalOpen);
+    isViewModalOpenRef.current = isViewModalOpen;
+
+    const selectedViewRequestRef = useRef(selectedViewRequest);
+    selectedViewRequestRef.current = selectedViewRequest;
+
     const loadData = useCallback(async (silent = false) => {
         if (!hasViewPrivilege) return;
         try {
@@ -94,11 +100,11 @@ const Requests: React.FC = () => {
             setRequests(res.data);
             setTotalCount(res.total);
             
-            // If the view modal is open, refresh its data too
-            if (isViewModalOpen && selectedViewRequest) {
-                const reqId = selectedViewRequest.id || selectedViewRequest._id;
+            // If the view modal is open, refresh its data safely without triggering infinite loop
+            if (isViewModalOpenRef.current && selectedViewRequestRef.current) {
+                const reqId = selectedViewRequestRef.current.id || selectedViewRequestRef.current._id;
                 const updatedReq = res.data.find((r: RequestData) => (r.id || r._id) === reqId);
-                if (updatedReq) {
+                if (updatedReq && JSON.stringify(updatedReq) !== JSON.stringify(selectedViewRequestRef.current)) {
                     setSelectedViewRequest(updatedReq);
                 }
             }
@@ -107,7 +113,7 @@ const Requests: React.FC = () => {
         } finally {
             if (!silent) setLoading(false);
         }
-    }, [page, rowsPerPage, searchQuery, statusFilter, requestTypeFilter, showToast, hasViewPrivilege, isViewModalOpen, selectedViewRequest]);
+    }, [page, rowsPerPage, searchQuery, statusFilter, requestTypeFilter, showToast, hasViewPrivilege]);
 
     const fetchRequestTypes = useCallback(async () => {
         try {
@@ -457,14 +463,24 @@ const Requests: React.FC = () => {
                 const canAdvance = (isAssigned || isSuperuser) && row.status !== 'Completed' && row.status !== 'Rejected';
 
                 return (
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                        {/* {canAdvance && (
-                            <Tooltip title="Advance / Approve Stage">
-                                <IconButton size="small" color="success" onClick={(e) => { e.stopPropagation(); handleAdvance(row.id || row._id || ''); }}>
-                                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>✓</span>
-                                </IconButton>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, alignItems: 'center' }}>
+                        {canAdvance && row.nextStageName && (
+                            <Tooltip title={`Advance to: ${row.nextStageName}`}>
+                                <Chip
+                                    label={row.nextStageName}
+                                    size="small"
+                                    color="success"
+                                    variant="outlined"
+                                    onClick={(e) => { e.stopPropagation(); handleAdvance(row.id || row._id || ''); }}
+                                    sx={{
+                                        cursor: 'pointer',
+                                        fontWeight: 600,
+                                        fontSize: '0.7rem',
+                                        '&:hover': { bgcolor: 'success.main', color: '#fff' }
+                                    }}
+                                />
                             </Tooltip>
-                        )} */}
+                        )}
                         {canEdit && (
                             <Tooltip title="Edit Request">
                                 <IconButton size="small" color="primary" onClick={(e) => { e.stopPropagation(); handleOpenModal(row); }}>

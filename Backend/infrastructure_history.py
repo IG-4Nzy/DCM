@@ -8,7 +8,7 @@ from bson import ObjectId
 router = APIRouter()
 history_col = db.get_collection("infrastructure_update_history")
 
-@router.get("", response_description="List infrastructure update history", dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details", "VM View", "Nodes View", "Update VMs (Restricted)", "Update Node (Restricted)", "Update Storage (Restricted)", "Update Network Device (Restricted)"]))])
+@router.get("/", response_description="List infrastructure update history", dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details", "VM View", "Nodes View", "Update VMs (Restricted)", "Update Node (Restricted)", "Update Storage (Restricted)", "Update Network Device (Restricted)"]))])
 async def get_all_history(
     pagination: bool = Query(True),
     skip: int = Query(0, ge=0),

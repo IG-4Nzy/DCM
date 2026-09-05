@@ -1,16 +1,16 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Box, MenuItem, FormControl, InputLabel, Select, IconButton, Typography, Divider, ListSubheader, Checkbox, ListItemText } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Box, MenuItem, FormControl, InputLabel, Select, IconButton, Typography, Divider, ListSubheader, Checkbox, ListItemText, FormControlLabel, Chip } from '@mui/material';
 import TextField from '../../../components/TextField';
-import { MdAdd as AddIcon, MdDelete as DeleteIcon, MdArrowUpward, MdArrowDownward } from 'react-icons/md';
+import { MdAdd as AddIcon, MdDelete as DeleteIcon, MdArrowUpward, MdArrowDownward, MdFileUpload, MdPictureAsPdf } from 'react-icons/md';
 import Button from '../../../components/Button';
 import type { RequestRoutingData, RequestRoutingStage } from './model';
 import type { RootState, AppDispatch } from '../../../store';
 import { fetchRoles } from '../../Roles/action';
 import { fetchDepartments } from '../../Departments/action';
 import { fetchUsers } from '../../Users/action';
-import request from '../../../services/request';
+import request, { API_BASE_URL } from '../../../services/request';
 
 
 // Special assignment types
@@ -54,6 +54,35 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
   const [stages, setStages] = useState<RequestRoutingStage[]>([]);
   const [stageErrors, setStageErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingStageIndex, setUploadingStageIndex] = useState<number | null>(null);
+
+  const handleFileUpload = async (stageIdx: number, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    setUploadingStageIndex(stageIdx);
+    try {
+      const res = await request.post('/api/requests/upload-stage-file', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (res.data?.fileUrl) {
+        updateStageFields(stageIdx, {
+          attachmentUrl: res.data.fileUrl,
+          attachmentName: res.data.fileName || file.name,
+          requireTermsAgreement: true,
+        });
+      }
+    } catch (err: any) {
+      console.error('Failed to upload stage document:', err);
+      alert(err.response?.data?.detail || 'Failed to upload stage document');
+    } finally {
+      setUploadingStageIndex(null);
+      event.target.value = '';
+    }
+  };
 
   const fetchRequestTypes = useCallback(async () => {
     try {
@@ -713,6 +742,74 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                       </IconButton>
                     </Box>
                   ))}
+                </Box>
+
+                {/* Stage PDF Terms Attachment Section */}
+                <Box sx={{ width: '100%', pt: 1, borderTop: '1px dashed #cfd8dc', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                    <Typography variant="caption" fontWeight={700} color="text.primary">
+                      📄 Stage Document / Terms & Conditions (PDF):
+                    </Typography>
+                    {stage.attachmentUrl ? (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Chip
+                          icon={<MdPictureAsPdf style={{ color: '#d32f2f' }} />}
+                          label={stage.attachmentName || 'Attached Document.pdf'}
+                          size="small"
+                          component="a"
+                          href={stage.attachmentUrl?.startsWith('http') ? stage.attachmentUrl : `${API_BASE_URL}${stage.attachmentUrl?.startsWith('/') ? '' : '/'}${stage.attachmentUrl}`}
+                          target="_blank"
+                          clickable
+                          color="primary"
+                          variant="outlined"
+                        />
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => updateStageFields(index, { attachmentUrl: '', attachmentName: '', requireTermsAgreement: false })}
+                          title="Remove attachment"
+                          type="button"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    ) : (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        component="label"
+                        startIcon={<MdFileUpload />}
+                        disabled={uploadingStageIndex === index}
+                        type="button"
+                      >
+                        {uploadingStageIndex === index ? 'Uploading...' : 'Attach PDF / Terms'}
+                        <input
+                          type="file"
+                          hidden
+                          accept=".pdf,.doc,.docx"
+                          onChange={(e) => handleFileUpload(index, e)}
+                        />
+                      </Button>
+                    )}
+                  </Box>
+
+                  {stage.attachmentUrl && (
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={stage.requireTermsAgreement !== false}
+                          onChange={(e) => updateStage(index, 'requireTermsAgreement', e.target.checked)}
+                          color="primary"
+                        />
+                      }
+                      label={
+                        <Typography variant="caption" color="text.secondary">
+                          Require assignee to view & agree to terms PDF before advancing stage
+                        </Typography>
+                      }
+                    />
+                  )}
                 </Box>
               </Box>
             ))}

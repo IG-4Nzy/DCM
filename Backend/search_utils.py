@@ -49,5 +49,19 @@ async def resolve_search_references(search: str):
                         matched_node_names.append(ObjectId(node_id))
     except Exception as e:
         print(f"Error resolving clusters for search: {e}")
+
+    matched_ips = []
+    
+    # 3. Resolve IPs from ip_list
+    try:
+        ip_list_col = db.get_collection("ip_list")
+        ip_cursor = ip_list_col.find({}, {"ip": 1, "purpose": 1})
+        async for item in ip_cursor:
+            ip_addr = item.get("ip") or ""
+            purpose = item.get("purpose") or ""
+            if search_lower in ip_addr.lower() or search_lower in purpose.lower():
+                matched_ips.append(ip_addr)
+    except Exception as e:
+        print(f"Error resolving ip list for search: {e}")
         
-    return matched_user_identifiers, matched_cluster_ids, matched_node_names
+    return matched_user_identifiers, matched_cluster_ids, matched_node_names, matched_ips

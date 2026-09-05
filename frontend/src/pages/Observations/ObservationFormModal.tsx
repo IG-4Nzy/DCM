@@ -6,12 +6,13 @@ import { updateObservation } from './action';
 import Modal from '../../components/Modal';
 import TextField from '../../components/TextField';
 import DatePicker from '../../components/DatePicker';
-import { FormControl, InputLabel, MenuItem, Select, Button, Box, IconButton, Tooltip, Typography, Chip, OutlinedInput, FormGroup, FormControlLabel, Checkbox, Avatar, Autocomplete, TextField as MuiTextField } from '@mui/material';
+import { FormControl, InputLabel, MenuItem, Select, Button, Box, IconButton, Tooltip, Typography, Chip, OutlinedInput, FormGroup, FormControlLabel, Checkbox, Avatar, Autocomplete, TextField as MuiTextField, Switch } from '@mui/material';
 import { MdEdit as EditIcon, MdSend, MdAttachFile } from 'react-icons/md';
 import styles from './index.module.scss';
 import request, { API_BASE_URL } from '../../services/request';
 import { getServerTime } from '../../helpers/time';
 import { getTodayString, validators } from '../../helpers/validation';
+import { ROUTE_CONSTANTS } from '../../router/constant';
 
 interface ObservationFormModalProps {
   isModalOpen: boolean;
@@ -92,9 +93,10 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
   const categoryReportsToOptions = selectedCat?.reportsTo 
     ? selectedCat.reportsTo.split(',').map((s: string) => s.trim()).filter(Boolean) 
     : [];
+  const isSuperuser = useSelector((state: RootState) => (state?.auth as any)?.isSuperuser || (state?.auth as any)?.user?.isSuperuser);
   const canEdit = isEditMode;
   const isResolved = editingObs?.status === 'Resolved';
-  const showEditButton = editingObs && !isEditMode && hasUpdatePrivilege && !isResolved;
+  const showEditButton = editingObs && !isEditMode && hasUpdatePrivilege && (!isResolved || isSuperuser);
 
   const handleAddComment = async () => {
     if ((!newComment.trim() && !commentFile) || !editingObs || isUploading) return;
@@ -230,7 +232,15 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
               {formData.status === 'Resolved' && <ViewField label="Remarks" value={formData.remarks} />}
             </div>
             
-            {(formData.isRepeated || (editingObs?.repeatCount && editingObs.repeatCount > 0)) && (
+            {formData.isIncident && (
+              <Box sx={{ mt: 1, mb: 1, p: 1.5, bgcolor: '#ffebee', borderRadius: 2, border: '1px solid #ef9a9a', width: '100%', display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Chip label="🚨 INCIDENT" color="error" size="small" sx={{ fontWeight: 'bold' }} />
+                <Typography variant="body2" color="error.dark" sx={{ fontWeight: 500 }}>
+                  This observation has been marked as a high-priority incident.
+                </Typography>
+              </Box>
+            )}
+            {/* {(formData.isRepeated || (editingObs?.repeatCount && editingObs.repeatCount > 0)) && (
               <Box sx={{ mt: 1, mb: 1, p: 2, bgcolor: '#e3f2fd', borderRadius: 2, border: '1px solid #90caf9', width: '100%' }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#1565c0', mb: 1 }}>
                   Repeated Issue Information
@@ -263,6 +273,55 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                     </ul>
                   </Box>
                 )}
+              </Box>
+            )} */}
+            {editingObs?.mappedWorks && editingObs.mappedWorks.length > 0 && (
+              <Box sx={{ mt: 1, mb: 1, p: 2, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0', width: '100%' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#166534', mb: 1 }}>
+                  Linked Work Tickets ({editingObs.mappedWorks.length})
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {editingObs.mappedWorks.map((work: any) => (
+                    <Box 
+                      key={work.id}
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('openWorkDetailModal', { detail: { workId: work.workId || work.id } }));
+                      }}
+                      sx={{
+                        p: 1.5,
+                        bgcolor: '#ffffff',
+                        borderRadius: '8px',
+                        border: '1px solid #dcfce7',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justify: 'space-between',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                          borderColor: '#22c55e'
+                        }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Chip label={work.workId || 'Work'} size="small" color="primary" sx={{ fontWeight: 'bold' }} />
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                          {work.workName}
+                        </Typography>
+                      </Box>
+                      <Chip 
+                        label={work.status} 
+                        size="small" 
+                        variant="outlined" 
+                        sx={{ 
+                          fontWeight: 'bold',
+                          color: work.status === 'Completed' ? '#166534' : '#1e40af',
+                          borderColor: work.status === 'Completed' ? '#bbf7d0' : '#bfdbfe'
+                        }} 
+                      />
+                    </Box>
+                  ))}
+                </Box>
               </Box>
             )}
           </>
@@ -449,6 +508,44 @@ const ObservationFormModal: React.FC<ObservationFormModalProps> = ({
                 />
               )}
             </div>
+
+            {!editingObs && (
+              <div className={styles.row} style={{ paddingLeft: '8px', paddingRight: '8px' }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1.5, 
+                  p: 1.5, 
+                  borderRadius: 2, 
+                  border: formData.isIncident ? '2px solid #d32f2f' : '1px solid rgba(0,0,0,0.12)', 
+                  bgcolor: formData.isIncident ? '#ffebee' : 'transparent',
+                  transition: 'all 0.2s ease',
+                  width: '100%'
+                }}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={formData.isIncident || false}
+                        onChange={(e) => setFormData({ ...formData, isIncident: e.target.checked })}
+                        color="error"
+                      />
+                    }
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: formData.isIncident ? 'bold' : 'normal', color: formData.isIncident ? '#d32f2f' : 'inherit' }}>
+                          {formData.isIncident ? '🚨 Marked as Incident' : 'Mark as Incident'}
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                  {formData.isIncident && (
+                    <Typography variant="caption" color="error" sx={{ ml: 'auto' }}>
+                      Incident email will be sent on creation
+                    </Typography>
+                  )}
+                </Box>
+              </div>
+            )}
             
             <div className={styles.row} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
               <FormControl component="fieldset" fullWidth sx={{ mt: 1 }}>

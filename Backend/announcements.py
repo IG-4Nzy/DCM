@@ -35,7 +35,7 @@ def serialize_doc(doc: dict) -> dict:
     doc["_id"] = str(doc["_id"])
     return doc
 
-@router.post("", response_description="Create announcement", response_model=AnnouncementModel, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_privilege("Create Announcement"))])
+@router.post("/", response_description="Create announcement", response_model=AnnouncementModel, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_privilege("Create Announcement"))])
 async def create_announcement(
     payload: AnnouncementModel = Body(...),
     current_user: dict = Depends(get_current_user)
@@ -56,7 +56,7 @@ async def create_announcement(
     created = await collection.find_one({"_id": result.inserted_id})
     return serialize_doc(created)
 
-@router.get("", response_description="List announcements", response_model=PaginatedAnnouncementsModel, dependencies=[Depends(require_privilege("View Announcements"))])
+@router.get("/", response_description="List announcements", response_model=PaginatedAnnouncementsModel, dependencies=[Depends(require_privilege("View Announcements"))])
 async def list_announcements(
     pagination: bool = Query(True),
     skip: int = Query(0, ge=0),

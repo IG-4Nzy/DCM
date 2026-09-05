@@ -57,7 +57,7 @@ async def list_items(
     
     if search:
         from search_utils import resolve_search_references
-        matched_users, _, _ = await resolve_search_references(search)
+        matched_users, _, _, _ = await resolve_search_references(search)
         escaped_search = re.escape(search.strip())
         numeric_match = []
         try:
@@ -68,11 +68,12 @@ async def list_items(
             ]
         except ValueError:
             pass
+        regex_pat = re.compile(escaped_search, re.I)
         or_conds = [
-            {"serverRack": {"$regex": escaped_search, "$options": "i"}},
-            {"remarks": {"$regex": escaped_search, "$options": "i"}},
-            {"createdBy": {"$regex": escaped_search, "$options": "i"}},
-            {"updatedAt": {"$regex": escaped_search, "$options": "i"}},
+            {"serverRack": regex_pat},
+            {"remarks": regex_pat},
+            {"createdBy": regex_pat},
+            {"updatedAt": regex_pat},
         ] + numeric_match
         if matched_users:
             user_strs = [val for val in matched_users if isinstance(val, str)]

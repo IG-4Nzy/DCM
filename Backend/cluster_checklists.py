@@ -39,7 +39,7 @@ def serialize_checklist(doc: dict) -> dict:
 
 
 @router.get(
-    "",
+    "/",
     response_description="List Cluster checklists",
     response_model=PaginatedClusterChecklistsModel,
     response_model_by_alias=False,
@@ -79,7 +79,7 @@ async def list_cluster_checklists(
 
 
 @router.post(
-    "",
+    "/",
     response_description="Create Cluster checklist",
     response_model=ClusterChecklistModel,
     status_code=status.HTTP_201_CREATED,

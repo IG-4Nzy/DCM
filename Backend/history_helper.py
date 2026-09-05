@@ -39,6 +39,7 @@ FIELD_NAME_MAP = {
     "backupNode": "Backup Node",
     "backupStorage": "Backup Storage",
     "datastore": "Datastore",
+    "backupDatastore": "Backup Datastore",
     "isNetworkConnected": "Network Connected",
     "isPhysicalServer": "Is Physical Server",
     "isStorage": "Is Storage System",

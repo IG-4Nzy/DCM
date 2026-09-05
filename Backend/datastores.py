@@ -30,22 +30,39 @@ async def list_datastores(
         query["type"] = {"$regex": f"^{re.escape(type)}$", "$options": "i"}
 
     if search:
-        search_regex = {"$regex": re.escape(search), "$options": "i"}
-        search_condition = {
-            "$or": [
-                {"name": search_regex},
-                {"type": search_regex},
-                {"node": search_regex},
-                {"mountPath": search_regex},
-                {"capacity": search_regex},
-                {"remarks": search_regex},
-                {"createdBy": search_regex},
+        search_parts = [p.strip() for p in search.split(",") if p.strip()]
+        if not search_parts:
+            search_parts = [search.strip()]
+            
+        from search_utils import resolve_search_references
+        
+        all_or_conditions = []
+        for part in search_parts:
+            _, _, _, matched_ips = await resolve_search_references(part)
+            
+            regex_pat = re.compile(re.escape(part), re.I)
+            or_conditions = [
+                {"name": regex_pat},
+                {"type": regex_pat},
+                {"node": regex_pat},
+                {"mountPath": regex_pat},
+                {"capacity": regex_pat},
+                {"remarks": regex_pat},
+                {"createdBy": regex_pat},
             ]
-        }
-        if query:
-            query = {"$and": [query, search_condition]}
-        else:
-            query = search_condition
+            
+            if matched_ips:
+                or_conditions.append({"node": {"$in": matched_ips}})
+                
+            all_or_conditions.extend(or_conditions)
+            
+        if all_or_conditions:
+            search_condition = {"$or": all_or_conditions}
+            
+            if query:
+                query = {"$and": [query, search_condition]}
+            else:
+                query = search_condition
 
     actual_sort_by = sortBy or sort_by or "createdAt"
     sort_order = 1 if order == "asc" else -1

@@ -39,7 +39,7 @@ def serialize_checklist(doc: dict) -> dict:
 
 
 @router.get(
-    "",
+    "/",
     response_description="List BMS checklists",
     response_model=PaginatedBMSChecklistsModel,
     response_model_by_alias=False,
@@ -79,7 +79,7 @@ async def list_bms_checklists(
 
 
 @router.post(
-    "",
+    "/",
     response_description="Create BMS checklist",
     response_model=BMSChecklistModel,
     status_code=status.HTTP_201_CREATED,

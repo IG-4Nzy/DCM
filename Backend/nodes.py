@@ -328,27 +328,30 @@ async def list_items(
     
     if search:
         from search_utils import resolve_search_references
-        matched_users, matched_clusters, matched_nodes_from_clusters = await resolve_search_references(search)
+        matched_users, matched_clusters, matched_nodes_from_clusters, matched_ips = await resolve_search_references(search)
         escaped_search = re.escape(search.strip())
+        regex_pat = re.compile(escaped_search, re.I)
         or_conds = [
-            {"node": {"$regex": escaped_search, "$options": "i"}},
-            {"nodeId": {"$regex": escaped_search, "$options": "i"}},
-            {"ipAddress": {"$regex": escaped_search, "$options": "i"}},
-            {"ip": {"$regex": escaped_search, "$options": "i"}},
-            {"managementIp": {"$regex": escaped_search, "$options": "i"}},
-            {"custodian": {"$regex": escaped_search, "$options": "i"}},
-            {"assetNumber": {"$regex": escaped_search, "$options": "i"}},
-            {"serialNumber": {"$regex": escaped_search, "$options": "i"}},
-            {"serverModel": {"$regex": escaped_search, "$options": "i"}},
-            {"rack": {"$regex": escaped_search, "$options": "i"}},
-            {"rackPosition": {"$regex": escaped_search, "$options": "i"}},
-            {"remarks": {"$regex": escaped_search, "$options": "i"}}
+            {"node": regex_pat},
+            {"nodeId": regex_pat},
+            {"ipAddress": regex_pat},
+            {"ip": regex_pat},
+            {"managementIp": regex_pat},
+            {"custodian": regex_pat},
+            {"assetNumber": regex_pat},
+            {"serialNumber": regex_pat},
+            {"serverModel": regex_pat},
+            {"rack": regex_pat},
+            {"rackPosition": regex_pat},
+            {"remarks": regex_pat}
         ]
         if matched_users:
             or_conds.append({"admin": {"$in": matched_users}})
         if matched_clusters:
             or_conds.append({"clusterId": {"$in": [str(c) for c in matched_clusters] + matched_clusters}})
             or_conds.append({"_id": {"$in": matched_nodes_from_clusters}})
+        if matched_ips:
+            or_conds.append({"ip": {"$in": matched_ips}})
         and_conditions.append({"$or": or_conds})
 
     query = {"$and": and_conditions} if len(and_conditions) > 1 else (and_conditions[0] if and_conditions else {})
@@ -406,24 +409,27 @@ async def list_items(
             
         if search:
             from search_utils import resolve_search_references
-            matched_users, matched_clusters, _ = await resolve_search_references(search)
+            matched_users, matched_clusters, _, matched_ips = await resolve_search_references(search)
             escaped_search = re.escape(search.strip())
+            regex_pat = re.compile(escaped_search, re.I)
             ps_or = [
-                {"node": {"$regex": escaped_search, "$options": "i"}},
-                {"ipAddress": {"$regex": escaped_search, "$options": "i"}},
-                {"applications": {"$regex": escaped_search, "$options": "i"}},
-                {"ram": {"$regex": escaped_search, "$options": "i"}},
-                {"hdd": {"$regex": escaped_search, "$options": "i"}},
-                {"cpu": {"$regex": escaped_search, "$options": "i"}},
-                {"backupLocation": {"$regex": escaped_search, "$options": "i"}},
-                {"remarks": {"$regex": escaped_search, "$options": "i"}},
-                {"adminName": {"$regex": escaped_search, "$options": "i"}},
-                {"adminContact": {"$regex": escaped_search, "$options": "i"}}
+                {"node": regex_pat},
+                {"ipAddress": regex_pat},
+                {"applications": regex_pat},
+                {"ram": regex_pat},
+                {"hdd": regex_pat},
+                {"cpu": regex_pat},
+                {"backupLocation": regex_pat},
+                {"remarks": regex_pat},
+                {"adminName": regex_pat},
+                {"adminContact": regex_pat}
             ]
             if matched_users:
                 ps_or.append({"admin": {"$in": matched_users}})
             if matched_clusters:
                 ps_or.append({"clusterId": {"$in": [str(c) for c in matched_clusters] + matched_clusters}})
+            if matched_ips:
+                ps_or.append({"ipAddress": {"$in": matched_ips}})
             physical_and.append({"$or": ps_or})
             
         physical_query = {"$and": physical_and} if len(physical_and) > 1 else (physical_and[0] if physical_and else {})

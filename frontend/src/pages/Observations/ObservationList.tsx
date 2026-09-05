@@ -13,6 +13,9 @@ import Table, { type Column } from '../../components/Table';
 import Button from '../../components/Button';
 import SearchBar from '../../components/SearchBar';
 import ObservationFormModal from './ObservationFormModal';
+import WorkDetailModal from '../Work/WorkDetailModal';
+import { updateWork } from '../Work/action';
+import request from '../../services/request';
 import { hasPrivilege } from '../../helpers/authUtils';
 import { PRIVILEGES } from '../../helpers/privileges';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -58,7 +61,8 @@ const ObservationList: React.FC = () => {
     status: 'Not Resolved',
     comments: [] as any[],
     isRepeated: false,
-    repeatedFromId: ''
+    repeatedFromId: '',
+    isIncident: false
   };
   const [formData, setFormData] = useState(initialFormData);
   const [showOther, setShowOther] = useState(false);
@@ -87,6 +91,59 @@ const ObservationList: React.FC = () => {
     }));
   }, [dispatch, page, rowsPerPage, statusFilter, dateFilter, categoryFilter, departmentFilter, searchQuery]);
 
+  const [viewingWork, setViewingWork] = useState<any>(null);
+  const [isWorkDetailModalOpen, setIsWorkDetailModalOpen] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const obsIdParam = params.get('obsId');
+    if (obsIdParam) {
+      setSearchQuery(obsIdParam);
+      request.get(`/api/observations/${obsIdParam}`)
+        .then((res) => {
+          if (res.data) {
+            handleOpenModal(res.data, false);
+          }
+        })
+        .catch(() => {});
+    }
+
+    const handleOpenObsEvent = async (e: CustomEvent) => {
+      const obsTarget = e.detail?.obsId;
+      if (!obsTarget) return;
+      setSearchQuery(obsTarget);
+      try {
+        const res = await request.get(`/api/observations/${obsTarget}`);
+        if (res.data) {
+          handleOpenModal(res.data, false);
+        }
+      } catch (err) {
+        console.error('Failed to open observation', err);
+      }
+    };
+
+    const handleOpenWorkEvent = async (e: CustomEvent) => {
+      const targetId = e.detail?.workId;
+      if (!targetId) return;
+      try {
+        const res = await request.get(`/api/works/${targetId}`);
+        if (res.data) {
+          setViewingWork(res.data);
+          setIsWorkDetailModalOpen(true);
+        }
+      } catch (err) {
+        console.error('Failed to open work ticket', err);
+      }
+    };
+
+    window.addEventListener('openObservationModal', handleOpenObsEvent as EventListener);
+    window.addEventListener('openWorkDetailModal', handleOpenWorkEvent as EventListener);
+    return () => {
+      window.removeEventListener('openObservationModal', handleOpenObsEvent as EventListener);
+      window.removeEventListener('openWorkDetailModal', handleOpenWorkEvent as EventListener);
+    };
+  }, [setSearchQuery]);
+
   const currentObs = observations.find((o: any) => (o._id || o.id) === (editingObs?._id || editingObs?.id)) || editingObs;
 
   useEffect(() => {
@@ -100,7 +157,7 @@ const ObservationList: React.FC = () => {
 
   const handleOpenModal = (obs?: any, editMode: boolean = false) => {
     const isResolved = obs?.status === 'Resolved';
-    setIsEditMode(isResolved ? false : editMode);
+    setIsEditMode(isResolved && !isSuperuser ? false : editMode);
     if (obs) {
       setEditingObs(obs);
       setFormData({
@@ -118,7 +175,8 @@ const ObservationList: React.FC = () => {
         status: obs.status,
         comments: obs.comments || [],
         isRepeated: obs.isRepeated || false,
-        repeatedFromId: obs.repeatedFromId || ''
+        repeatedFromId: obs.repeatedFromId || '',
+        isIncident: obs.isIncident || false
       });
       setShowOther(Array.isArray(obs.informedTo) ? obs.informedTo.includes('Other') : obs.informedTo === 'Other');
     } else {
@@ -297,6 +355,14 @@ const ObservationList: React.FC = () => {
       render: (row) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <span>{row.observationId}</span>
+          {row.isIncident ? (
+            <Chip
+              label="Incident"
+              size="small"
+              color="error"
+              sx={{ height: 20, fontSize: '0.7rem', fontWeight: 'bold' }}
+            />
+          ) : null}
           {row.repeatCount && row.repeatCount > 0 ? (
             <Chip
               label={`Repeated (${row.repeatCount})`}
@@ -360,7 +426,7 @@ const ObservationList: React.FC = () => {
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          {hasUpdatePrivilege && row.status !== 'Resolved' && (
+          {hasUpdatePrivilege && (row.status !== 'Resolved' || isSuperuser) && (
             <Tooltip title="Edit Observation">
               <IconButton size="small" color="primary" sx={{ backgroundColor: 'rgba(25, 118, 210, 0.04)' }} onClick={(e) => { e.stopPropagation(); handleOpenModal(row, true); }}>
                 <EditIcon fontSize="small" />
@@ -513,6 +579,24 @@ const ObservationList: React.FC = () => {
         statusOptions={statusOptions}
         categories={categories}
         handleSubmit={handleSubmit}
+      />
+
+      <WorkDetailModal
+        isOpen={isWorkDetailModalOpen}
+        onClose={() => {
+          setIsWorkDetailModalOpen(false);
+          setViewingWork(null);
+        }}
+        work={viewingWork}
+        users={users}
+        onUpdate={async (payload, silent) => {
+          if (viewingWork) {
+            await dispatch(updateWork({ id: viewingWork.id || viewingWork._id, data: payload }));
+            const res = await request.get(`/api/works/${viewingWork.id || viewingWork._id}`);
+            if (res.data) setViewingWork(res.data);
+          }
+        }}
+        onTransfer={async () => {}}
       />
     </Box>
   );

@@ -37,7 +37,7 @@ def serialize_doc(doc: dict) -> dict:
 
 
 @router.get(
-    "",
+    "/",
     response_description="List morning checklist config fields",
     response_model=PaginatedFieldsModel,
     response_model_by_alias=False,
@@ -68,7 +68,7 @@ async def list_fields(
 
 
 @router.post(
-    "",
+    "/",
     response_description="Create morning checklist config field",
     response_model=MorningChecklistFieldModel,
     status_code=status.HTTP_201_CREATED,

@@ -19,10 +19,11 @@ export const loginApi = createAsyncThunk(
       return response.data;
     } catch (err: any) {
       if (err.response && err.response.data && err.response.data.detail) {
-        if (typeof err.response.data.detail === 'string') {
-          showToast(err.response.data.detail, 'error');
-        } else if (err.response.data.detail.message) {
-          showToast(err.response.data.detail.message, 'error');
+        const detail = err.response.data.detail;
+        if (typeof detail === 'string') {
+          showToast(detail, 'error');
+        } else if (detail.message && !detail.restricted_token) {
+          showToast(detail.message, 'error');
         }
       } else {
         showToast('An error occurred during login.', 'error');

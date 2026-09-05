@@ -119,12 +119,12 @@ export const SIDEBAR_OPTIONS = [
         route: ROUTE_CONSTANTS.DOCUMENTATIONS,
         privileges: [PRIVILEGES.DOCUMENTATION_VIEW]
     },
-    {
-        label: wordings.auditLogs,
-        icon: Icons.TerminalIcon,
-        route: ROUTE_CONSTANTS.AUDIT_LOGS,
-        privileges: [PRIVILEGES.AUDIT_LOGS_VIEW]
-    },
+    // {
+    //     label: wordings.auditLogs,
+    //     icon: Icons.TerminalIcon,
+    //     route: ROUTE_CONSTANTS.AUDIT_LOGS,
+    //     privileges: [PRIVILEGES.AUDIT_LOGS_VIEW]
+    // },
     {
         label: wordings.dailyActivities,
         icon: Icons.DailyActivitiesIcon,

@@ -47,7 +47,7 @@ export const validators = {
   // Alphanumeric, spaces, commas, hyphens, dots, and colons
   alphanumericGeneral: (val: string, maxLen?: number, label = "Field") => {
     if (!val) return "";
-    if (!/^[a-zA-Z0-9\s,.:-]+$/.test(val)) return `${label} must contain alphanumeric characters, spaces, commas, periods, colons, or dashes only`;
+    if (!/^[a-zA-Z0-9\s,.:_-]+$/.test(val)) return `${label} must contain alphanumeric characters, spaces, commas, periods, colons, underscores, or dashes only`;
     if (maxLen && val.length > maxLen) return `${label} must be maximum ${maxLen} characters`;
     return "";
   },

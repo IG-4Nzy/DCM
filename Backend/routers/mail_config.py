@@ -21,10 +21,12 @@ class MailConfigSchema(BaseModel):
     savedEmailsDailyChecklist: Optional[List[str]] = Field(default=[], description="List of default emails for daily/cluster checklist")
     savedEmailsBmsChecklist: Optional[List[str]] = Field(default=[], description="List of default emails for BMS checklist")
     savedEmailsAccounts: Optional[List[str]] = Field(default=[], description="List of default emails for accounts/salary")
+    savedEmailsIncident: Optional[List[str]] = Field(default=[], description="List of default emails for incidents")
     rosterMailEnabled: Optional[bool] = Field(default=True, description="Enable roster mail send feature")
     dailyChecklistMailEnabled: Optional[bool] = Field(default=True, description="Enable daily/cluster checklist mail send feature")
     bmsChecklistMailEnabled: Optional[bool] = Field(default=True, description="Enable BMS checklist mail send feature")
     accountsMailEnabled: Optional[bool] = Field(default=True, description="Enable accounts/salary mail send feature")
+    incidentMailEnabled: Optional[bool] = Field(default=True, description="Enable incident mail send feature")
 
 class TestMailSchema(BaseModel):
     toEmail: str = Field(..., description="Recipient email address")
@@ -51,10 +53,12 @@ async def get_mail_config():
             "savedEmailsDailyChecklist": [],
             "savedEmailsBmsChecklist": [],
             "savedEmailsAccounts": [],
+            "savedEmailsIncident": [],
             "rosterMailEnabled": True,
             "dailyChecklistMailEnabled": True,
             "bmsChecklistMailEnabled": True,
-            "accountsMailEnabled": True
+            "accountsMailEnabled": True,
+            "incidentMailEnabled": True
         }
         await config_col.insert_one(config)
     
@@ -69,6 +73,8 @@ async def get_mail_config():
         config["savedEmailsBmsChecklist"] = []
     if "savedEmailsAccounts" not in config:
         config["savedEmailsAccounts"] = []
+    if "savedEmailsIncident" not in config:
+        config["savedEmailsIncident"] = []
     if "rosterMailEnabled" not in config:
         config["rosterMailEnabled"] = True
     if "dailyChecklistMailEnabled" not in config:
@@ -77,6 +83,8 @@ async def get_mail_config():
         config["bmsChecklistMailEnabled"] = True
     if "accountsMailEnabled" not in config:
         config["accountsMailEnabled"] = True
+    if "incidentMailEnabled" not in config:
+        config["incidentMailEnabled"] = True
     return config
 
 @router.put("/", response_description="Update Mail Configuration", dependencies=[Depends(require_privilege("Mail Config Update"))])
@@ -96,10 +104,12 @@ async def update_mail_config(payload: MailConfigSchema):
         "savedEmailsDailyChecklist": payload.savedEmailsDailyChecklist or [],
         "savedEmailsBmsChecklist": payload.savedEmailsBmsChecklist or [],
         "savedEmailsAccounts": payload.savedEmailsAccounts or [],
+        "savedEmailsIncident": payload.savedEmailsIncident or [],
         "rosterMailEnabled": payload.rosterMailEnabled if payload.rosterMailEnabled is not None else True,
         "dailyChecklistMailEnabled": payload.dailyChecklistMailEnabled if payload.dailyChecklistMailEnabled is not None else True,
         "bmsChecklistMailEnabled": payload.bmsChecklistMailEnabled if payload.bmsChecklistMailEnabled is not None else True,
-        "accountsMailEnabled": payload.accountsMailEnabled if payload.accountsMailEnabled is not None else True
+        "accountsMailEnabled": payload.accountsMailEnabled if payload.accountsMailEnabled is not None else True,
+        "incidentMailEnabled": payload.incidentMailEnabled if payload.incidentMailEnabled is not None else True
     }
     
     await config_col.update_one(
@@ -160,6 +170,10 @@ async def get_saved_emails(
             return val
     elif module == "accounts" or module == "salary":
         val = config.get("savedEmailsAccounts")
+        if val is not None and len(val) > 0:
+            return val
+    elif module == "incident" or module == "observation_incident":
+        val = config.get("savedEmailsIncident")
         if val is not None and len(val) > 0:
             return val
 

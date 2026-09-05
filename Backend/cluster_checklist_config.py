@@ -22,7 +22,7 @@ class ClusterChecklistConfigModel(BaseModel):
 
 
 @router.get(
-    "",
+    "/",
     response_description="Get Cluster checklist template configuration",
     dependencies=[Depends(require_any_privilege(["View Configurations", "Edit Cluster Checklist Field", "View Cluster Checklist", "Create Cluster Checklist", "Update Cluster Checklist"]))],
 )
@@ -43,7 +43,7 @@ async def get_config(
 
 
 @router.post(
-    "",
+    "/",
     response_description="Save Cluster checklist template configuration",
     dependencies=[Depends(require_privilege("Edit Cluster Checklist Field"))],
 )

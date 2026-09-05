@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException, status, Body, Query, Depends
+from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, UploadFile, File
+import re
+import os
 from auth_utils import require_privilege, get_current_user
 from fastapi.responses import JSONResponse
 from typing import Optional, List, Dict, Any
@@ -472,10 +474,50 @@ async def add_vm_details_on_completion(existing_request: dict, username: str):
                 if cluster_obj:
                     cluster_id = str(cluster_obj.get("_id") or "")
 
+            vms_col = db.get_collection("vm_details")
+
+            # Auto-generate vmId if missing
+            vm_id_val = details.get("vmId") or ""
+            if not vm_id_val:
+                max_vm_id = 0
+                cursor = vms_col.find({"vmId": {"$regex": "^VM-"}}, {"vmId": 1})
+                async for doc in cursor:
+                    vid = doc.get("vmId", "")
+                    if vid.startswith("VM-"):
+                        try:
+                            num = int(vid.replace("VM-", ""))
+                            max_vm_id = max(max_vm_id, num)
+                        except Exception:
+                            pass
+                vm_id_val = f"VM-{max_vm_id + 1}"
+
+            # Determine vmName
+            vm_name_val = details.get("vmName") or details.get("applications") or f"VM_{details.get('ip', '').replace('.', '_')}"
+
+            # Determine Requester / Admin details
+            requester_username = existing_request.get("createdBy") or username or "system"
+            admin_name_val = ""
+            admin_contact_val = details.get("adminContact") or existing_request.get("contactNo") or ""
+
+            if requester_username and requester_username != "system":
+                users_col = db.get_collection("users")
+                user_obj = await users_col.find_one({"username": requester_username})
+                if user_obj:
+                    first_name = user_obj.get("firstName", "")
+                    last_name = user_obj.get("lastName", "")
+                    admin_name_val = f"{first_name} {last_name}".strip() or requester_username
+                    if not admin_contact_val:
+                        admin_contact_val = user_obj.get("phone") or user_obj.get("mobile") or ""
+
+            if not admin_name_val:
+                admin_name_val = existing_request.get("requesterName") or existing_request.get("userName") or requester_username or "System Admin"
+
             vm_data = {
+                "vmId": vm_id_val,
+                "vmName": vm_name_val,
                 "clusterId": cluster_id,
                 "ipAddress": details.get("ip") or "",
-                "applications": details.get("vmName") or details.get("applications") or "Web Server",
+                "applications": details.get("applications") or details.get("vmName") or "Web Server",
                 "node": details.get("node") or "Unknown Host",
                 "osAndExpiry": details.get("osVersion") or "Ubuntu Server 22.04 LTS",
                 "hdd": str(details.get("hdd") or "120"),
@@ -485,18 +527,23 @@ async def add_vm_details_on_completion(existing_request: dict, username: str):
                 "backupName": details.get("backupName") or "",
                 "backupNode": details.get("backupNode") or "",
                 "backupStorage": details.get("backupStorage") or "",
+                "backupDatastore": details.get("backupDatastore") or "",
                 "datastore": details.get("datastore") or "",
                 "addedToMonitoring": bool(details.get("addedToMonitoring")),
-                "createdBy": username or "system",
+                "admin": requester_username,
+                "adminName": admin_name_val,
+                "adminContact": admin_contact_val,
+                "createdBy": username or requester_username or "system",
                 "createdAt": datetime.now(timezone.utc).isoformat(),
                 "updatedAt": datetime.now(timezone.utc).isoformat()
             }
 
-            vms_col = db.get_collection("vm_details")
             # Avoid duplicate VM entries
             existing_vm = await vms_col.find_one({
-                "applications": vm_data["applications"], 
-                "clusterId": vm_data["clusterId"]
+                "$or": [
+                    {"vmName": vm_data["vmName"], "clusterId": vm_data["clusterId"]},
+                    {"applications": vm_data["applications"], "clusterId": vm_data["clusterId"]}
+                ]
             })
             if not existing_vm:
                 await vms_col.insert_one(vm_data)
@@ -647,6 +694,29 @@ async def list_items(
             item["currentAssignedUsersFullName"] = [user_map.get(u, u) for u in cau]
         else:
             item["currentAssignedUsersFullName"] = []
+
+    # Compute nextStageName for each request
+    routing_cache = {}
+    for item in items:
+        if item.get("status") in ("Completed", "Rejected"):
+            item["nextStageName"] = ""
+            continue
+        req_type = item.get("requestType") or item.get("category", "")
+        if req_type not in routing_cache:
+            routing_cache[req_type] = await get_routing_for_type(req_type)
+        routing = routing_cache[req_type]
+        if not routing or not routing.get("stages"):
+            item["nextStageName"] = "Completed"
+            continue
+        sorted_stages = sorted(routing["stages"], key=lambda s: s.get("order", 0))
+        applicable = get_applicable_stages(sorted_stages, item)
+        curr_status = item.get("status", "")
+        current_idx = next((i for i, s in enumerate(applicable) if s.get("stageName") == curr_status), item.get("currentStageIndex", 0))
+        next_idx = current_idx + 1
+        if next_idx >= len(applicable):
+            item["nextStageName"] = "Completed"
+        else:
+            item["nextStageName"] = applicable[next_idx].get("stageName", "")
 
     return {"data": items, "total": total}
 
@@ -819,6 +889,45 @@ async def get_request_logs(id: str, current_user: dict = Depends(get_current_use
     for log in logs:
         log["_id"] = str(log["_id"])
     return logs
+
+
+@router.post("/upload-stage-file", response_description="Upload PDF attachment for a request stage")
+async def upload_stage_file(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    if not file.filename.lower().endswith((".pdf", ".doc", ".docx", ".png", ".jpg", ".jpeg")):
+        raise HTTPException(status_code=400, detail="Only PDF and standard document files are allowed")
+    
+    base_dir = "uploads/request_stages"
+    os.makedirs(base_dir, exist_ok=True)
+    
+    timestamp = int(datetime.now().timestamp())
+    clean_filename = re.sub(r'[^\w\.-]', '_', file.filename)
+    unique_name = f"{timestamp}_{clean_filename}"
+    file_path = os.path.join(base_dir, unique_name)
+    
+    with open(file_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+        
+    return {
+        "fileUrl": f"/uploads/request_stages/{unique_name}",
+        "fileName": file.filename
+    }
+
+
+@router.get("/stage-info/{request_type}/{stage_name}", response_description="Get stage info including attachments")
+async def get_stage_info(request_type: str, stage_name: str, current_user: dict = Depends(get_current_user)):
+    routing = await get_routing_for_type(request_type)
+    if not routing or not routing.get("stages"):
+        return {"stage": None}
+    
+    for s in routing["stages"]:
+        if s.get("stageName") == stage_name:
+            return {"stage": s}
+            
+    return {"stage": None}
 
 
 @router.get("/stages/{request_type}", response_description="Get stages for a request type", dependencies=[Depends(require_privilege("View Request"))])
@@ -1120,10 +1229,11 @@ async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), c
         # Log advance action
         new_status = updated.get("status")
         remarks = payload.get("remarks") if payload else None
+        terms_note = " (Agreed stage terms & conditions)" if payload and payload.get("termsAgreed") else ""
         await log_request_action(
             request_id=id,
             action=f"Advanced ({new_status})",
-            details=f"Request advanced from stage '{old_status}' to '{new_status}'",
+            details=f"Request advanced from stage '{old_status}' to '{new_status}'{terms_note}",
             username=username,
             remarks=remarks
         )

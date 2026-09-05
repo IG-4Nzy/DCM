@@ -13,6 +13,9 @@ export interface RequestRoutingStage {
     assignmentType?: string;
     assignedTo?: string | string[];
   }>;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  requireTermsAgreement?: boolean;
 }
 
 export interface RequestRoutingData {

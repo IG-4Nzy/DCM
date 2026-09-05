@@ -132,7 +132,7 @@ async def save_templates(templates: List[TemplateModel]):
         await db["salary_templates"].insert_many(docs)
     return {"message": "Templates saved"}
 
-@router.get("", response_model=List[SalaryMonthModel], dependencies=[Depends(require_any_privilege(["View Salary Calculation", "Calculate Salary", "Update Salary Calculation"]))])
+@router.get("/", response_model=List[SalaryMonthModel], dependencies=[Depends(require_any_privilege(["View Salary Calculation", "Calculate Salary", "Update Salary Calculation"]))])
 async def get_all_salary():
     cursor = db["salary_data"].find({})
     res = []

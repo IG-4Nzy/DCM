@@ -119,7 +119,7 @@ const Documentations: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const err = validators.fileSize(file, 5, 'File');
+      const err = validators.fileSize(file, 50, 'File');
       if (err) {
         setFileError(err);
         setSelectedFile(null);

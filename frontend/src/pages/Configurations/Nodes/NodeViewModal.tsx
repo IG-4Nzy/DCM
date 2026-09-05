@@ -1,10 +1,11 @@
 // @ts-nocheck
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, Divider, Grid } from '@mui/material';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../../store';
 import Button from '../../../components/Button';
 import { type NodeData } from './model';
+import request from '../../../services/request';
 
 interface NodeViewModalProps {
     open: boolean;
@@ -15,6 +16,33 @@ interface NodeViewModalProps {
 
 const NodeViewModal: React.FC<NodeViewModalProps> = ({ open, onClose, node, adminName }) => {
     const { isSuperuser } = useSelector((state: RootState) => state.auth);
+    const [usersMap, setUsersMap] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        if (open && !adminName) {
+            request.get('/api/users/', { params: { pagination: false } })
+                .then((res) => {
+                    const map: Record<string, string> = {};
+                    const list = res.data?.data || [];
+                    list.forEach((u: any) => {
+                        const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+                        const displayName = fullName || u.username;
+                        if (u._id) map[u._id] = displayName;
+                        if (u.id) map[u.id] = displayName;
+                        if (u.username) map[u.username] = displayName;
+                    });
+                    setUsersMap(map);
+                })
+                .catch(() => {});
+        }
+    }, [open, adminName]);
+
+    const resolvedAdminName = useMemo(() => {
+        if (adminName) return adminName;
+        if (!node || !node.admin) return '-';
+        const adminArr = Array.isArray(node.admin) ? node.admin : [node.admin];
+        return adminArr.map((a: string) => usersMap[a] || a).join(", ") || '-';
+    }, [adminName, node, usersMap]);
 
     if (!node) return null;
 
@@ -51,7 +79,7 @@ const NodeViewModal: React.FC<NodeViewModalProps> = ({ open, onClose, node, admi
                                   </Grid>
                                   <Grid size={{xs: 12, sm: 6}}   >
                                       <Typography variant="caption" color="textSecondary">Created By</Typography>
-                                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.createdBy || '-'}</Typography>
+                                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{usersMap[node.createdBy] || node.createdBy || '-'}</Typography>
                                   </Grid>
                                   <Grid size={{xs: 12, sm: 6}}   >
                                       <Typography variant="caption" color="textSecondary">Created At</Typography>
@@ -61,7 +89,7 @@ const NodeViewModal: React.FC<NodeViewModalProps> = ({ open, onClose, node, admi
                                   </Grid>
                                   <Grid size={{xs: 12, sm: 6}}   >
                                       <Typography variant="caption" color="textSecondary">Updated By</Typography>
-                                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{node.updatedBy || '-'}</Typography>
+                                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{usersMap[node.updatedBy] || node.updatedBy || '-'}</Typography>
                                   </Grid>
                                   <Grid size={{xs: 12, sm: 6}}   >
                                       <Typography variant="caption" color="textSecondary">Last Updated</Typography>
@@ -107,7 +135,7 @@ const NodeViewModal: React.FC<NodeViewModalProps> = ({ open, onClose, node, admi
                                 </Grid>
                                 <Grid size={{xs: 12, sm: 6}}   >
                                     <Typography variant="caption" color="textSecondary">Admin</Typography>
-                                    <Typography variant="body2">{adminName || node.admin || '-'}</Typography>
+                                    <Typography variant="body2">{resolvedAdminName}</Typography>
                                 </Grid>
                                 <Grid size={{xs: 12, sm: 6}}   >
                                     <Typography variant="caption" color="textSecondary">Asset Number</Typography>

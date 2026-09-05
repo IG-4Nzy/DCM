@@ -14,6 +14,8 @@ export interface RequestData {
   updatedAt?: string;
   currentStageIndex?: number;
   currentAssignedUsers?: string[];
+  currentAssignedUsersFullName?: string[];
+  nextStageName?: string;
   // Legacy fields
   name?: string;
   division?: string;

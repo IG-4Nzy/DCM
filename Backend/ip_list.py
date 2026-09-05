@@ -60,7 +60,7 @@ def serialize_doc(doc: dict) -> dict:
     doc["_id"] = str(doc["_id"])
     return doc
 
-@router.post("", response_description="Create IP", response_model=IpListModel, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_privilege("Create IP List"))])
+@router.post("/", response_description="Create IP", response_model=IpListModel, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_privilege("Create IP List"))])
 async def create_ip(
     payload: IpListModel = Body(...),
     current_user: dict = Depends(get_current_user)
@@ -74,7 +74,7 @@ async def create_ip(
     created = await collection.find_one({"_id": result.inserted_id})
     return serialize_doc(created)
 
-@router.get("", response_description="List IPs", response_model=PaginatedIpListModel, dependencies=[Depends(require_privilege("View IP List"))])
+@router.get("/", response_description="List IPs", response_model=PaginatedIpListModel, dependencies=[Depends(require_privilege("View IP List"))])
 async def list_ips(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1),
