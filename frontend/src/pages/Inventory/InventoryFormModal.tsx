@@ -30,6 +30,7 @@ const InventoryFormModal: React.FC<PropType> = ({
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(getLocalDatetime());
   const [isReturnable, setIsReturnable] = useState(false);
+  const [isAsset, setIsAsset] = useState(false);
   const [almiraNumber, setAlmiraNumber] = useState('');
   const [rackNumber, setRackNumber] = useState('');
 
@@ -41,6 +42,7 @@ const InventoryFormModal: React.FC<PropType> = ({
         setDescription(editingItem.description || '');
         setDate(editingItem.lastUpdatedDate ? editingItem.lastUpdatedDate.slice(0, 16) : getLocalDatetime());
         setIsReturnable(!!editingItem.isReturnable);
+        setIsAsset(!!editingItem?.isAsset);
         setAlmiraNumber(editingItem.almiraNumber || '');
         setRackNumber(editingItem.rackNumber || '');
       } else {
@@ -48,6 +50,7 @@ const InventoryFormModal: React.FC<PropType> = ({
         setQuantity(1);
         setDescription('');
         setDate(getLocalDatetime());
+        setIsAsset(false);
         setIsReturnable(false);
         setAlmiraNumber('');
         setRackNumber('');
@@ -104,7 +107,7 @@ const InventoryFormModal: React.FC<PropType> = ({
 
   const handleSubmit = () => {
     if (isFormInvalid) return;
-    onSubmit({ itemName, quantity, description, date, isReturnable, almiraNumber, rackNumber });
+    onSubmit({ itemName, quantity, description, date, isReturnable, isAsset, almiraNumber, rackNumber });
     handleCloseModal();
   };
 
