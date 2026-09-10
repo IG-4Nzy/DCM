@@ -2,3 +2,19 @@ in visitor logs,if not marked exit time,show them in dashboard
 VMS created from request has no VM id,and VM name and admin name in VM list
 in documentations,change document size validation to 50mb
 in request modal,in workflow action zone,dropdowns needs search option
+
+
+take vcenter vm list and map them to the vm list for updating power and network status
+
+give copy from previous month option in salary calculation
+
+create assets tab inside inventory for managing assets
+
+give option to download vm list,node list,etc as excel sheets
+
+inside request configuration,add option to include ip field in rules ,(if ip is there or null )
+
+in request configuration,give option to configure mail send (when reached a stage,send mail to configured mail) - should show options - email to the requester,email to the assignee, and option to add custom email
+
+add vcenter validation when a vm is created,check that vm exists on vcenter and allow to change the status only if there is VM exists in the vcenter (validate with the vm name in vcenter and the name given on request)
+

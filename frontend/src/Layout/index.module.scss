@@ -1,0 +1,15 @@
+.layout {
+  display: flex;
+
+  &--badge {
+    border-radius: 8px;
+    padding: 3px;
+    display: flex;
+    gap: 8px;
+    padding-left: center;
+    justify-content: center;
+    place-items: center;
+    color: #000;
+    font-weight: 500;
+  }
+}
