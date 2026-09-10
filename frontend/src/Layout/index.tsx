@@ -424,11 +424,11 @@ const Layout: React.FC = () => {
             </Box>
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               <div className={styles["layout--badge"]}>
-                <Icons.WorksIcon size={18} color="#ff0000" />
+                <Icons.WorksIcon size={18} color="#ff0000" title={"Pending works"}/>
                 {data?.pendingWorks?.length || 0}
               </div>
               <div className={styles["layout--badge"]}>
-                <Icons.RequestsIcon size={18} color="#ff0000" />
+                <Icons.RequestsIcon size={18} color="#ff0000" title={"Pending requests"}/>
                 {data?.pendingRequests?.length || 0}
               </div>
 
