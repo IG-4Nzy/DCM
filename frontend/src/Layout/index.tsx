@@ -142,6 +142,15 @@ const Layout: React.FC = () => {
 
   const todayStr = useMemo(() => dayjs().format("YYYY-MM-DD"), []);
 
+    const canViewWorks =
+      isSuperuser ||
+      hasPrivilege(PRIVILEGES.WORK_VIEW) ||
+      hasPrivilege(PRIVILEGES.WORK_VIEW_ALL_DEPARTMENTS) ||
+      hasPrivilege(PRIVILEGES.WORK_VIEW_ASSIGNED);
+
+    const canViewRequests = isSuperuser || hasPrivilege(PRIVILEGES.REQUEST_VIEW);
+    
+
   const fetchDashboardData = () => {
     dispatch(fetchDashboardSummary(todayStr));
   };
@@ -423,14 +432,14 @@ const Layout: React.FC = () => {
               )}
             </Box>
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <div className={styles["layout--badge"]}>
+              {canViewWorks && <div className={styles["layout--badge"]}>
                 <Icons.WorksIcon size={18} color="#ff0000" title={"Pending works"}/>
                 {data?.pendingWorks?.length || 0}
-              </div>
-              <div className={styles["layout--badge"]}>
+              </div>}
+              {canViewRequests && <div className={styles["layout--badge"]}>
                 <Icons.RequestsIcon size={18} color="#ff0000" title={"Pending requests"}/>
                 {data?.pendingRequests?.length || 0}
-              </div>
+              </div>}
 
               <Box
                 sx={{
