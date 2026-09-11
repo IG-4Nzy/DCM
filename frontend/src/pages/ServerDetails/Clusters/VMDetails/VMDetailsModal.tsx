@@ -1,18 +1,18 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
 import { Box, Typography, Checkbox, FormControlLabel } from '@mui/material';
-import Modal from '../../../components/Modal';
-import TextField from '../../../components/TextField';
-import Dropdown from '../../../components/Dropdown';
-import Button from '../../../components/Button';
+import Modal from '../../../../components/Modal';
+import TextField from '../../../../components/TextField';
+import Dropdown from '../../../../components/Dropdown';
+import Button from '../../../../components/Button';
 import { fetchAllNodes } from './action';
 import { fetchClusters } from '../action';
-import request from '../../../services/request';
+import request from '../../../../services/request';
 import { useSelector } from 'react-redux';
-import { type RootState } from '../../../store';
-import { hasPrivilege } from '../../../helpers/authUtils';
-import { PRIVILEGES } from '../../../helpers/privileges';
-import { validators } from '../../../helpers/validation';
+import { type RootState } from '../../../../store';
+import { hasPrivilege } from '../../../../helpers/authUtils';
+import { PRIVILEGES } from '../../../../helpers/privileges';
+import { validators } from '../../../../helpers/validation';
 import styles from './modal.module.scss';
 
 interface VMDetailsModalProps {

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import request from '../../../services/request';
+import request from '../../../../services/request';
 
 export const fetchVMDetails = async (params: any) => {
     const response = await request.get('/api/vm-details', { params });

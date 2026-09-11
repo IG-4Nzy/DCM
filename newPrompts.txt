@@ -6,8 +6,6 @@ in request modal,in workflow action zone,dropdowns needs search option
 
 take vcenter vm list and map them to the vm list for updating power and network status
 
-create assets tab inside inventory for managing assets
-
 give option to download vm list,node list,etc as excel sheets
 
 inside request configuration,add option to include ip field in rules ,(if ip is there or null )

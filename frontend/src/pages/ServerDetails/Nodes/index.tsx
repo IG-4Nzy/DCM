@@ -33,7 +33,7 @@ import { hasPrivilege } from "../../../helpers/authUtils";
 import { PRIVILEGES } from "../../../helpers/privileges";
 import { useTableState } from "../../../hooks/useTableState";
 import { fetchNodes, createNode, updateNode, deleteNode } from "./action";
-import { fetchClusters } from "../../Clusters/action";
+import { fetchClusters } from "../Clusters/action";
 import { type NodeData } from "./model";
 import NodeModal from "./NodeModal";
 import NodeViewModal from "./NodeViewModal";

@@ -6,7 +6,7 @@ import TextField from '../../components/TextField';
 import Button from '../../components/Button';
 import type { RequestData, RequestLogData } from './model';
 import { fetchUsers } from '../Users/action';
-import { fetchClusters } from '../Clusters/action';
+import { fetchClusters } from '../ServerDetails/Clusters/action';
 import { fetchNodes } from '../ServerMonitoring/action';
 import { fetchInventory } from '../Inventory/action';
 import { fetchRequestLogs } from './action';

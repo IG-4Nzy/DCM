@@ -1,5 +1,5 @@
 // @ts-nocheck
-import request from '../../../services/request';
+import request from '../../../../services/request';
 import { type NodeDetailsData, type CreateNodeDetailsPayload, type UpdateNodeDetailsPayload } from './model';
 
 const ENDPOINT = '/api/node-details';

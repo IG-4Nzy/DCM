@@ -1,16 +1,16 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Divider } from '@mui/material';
-import Modal from '../../../components/Modal';
-import TextField from '../../../components/TextField';
-import Button from '../../../components/Button';
-import Dropdown from '../../../components/Dropdown';
+import Modal from '../../../../components/Modal';
+import TextField from '../../../../components/TextField';
+import Button from '../../../../components/Button';
+import Dropdown from '../../../../components/Dropdown';
 import { type NodeDetailsData, type CreateNodeDetailsPayload } from './model';
-import request from '../../../services/request';
+import request from '../../../../services/request';
 import { useSelector } from 'react-redux';
-import { type RootState } from '../../../store';
-import { hasPrivilege } from '../../../helpers/authUtils';
-import { PRIVILEGES } from '../../../helpers/privileges';
+import { type RootState } from '../../../../store';
+import { hasPrivilege } from '../../../../helpers/authUtils';
+import { PRIVILEGES } from '../../../../helpers/privileges';
 import styles from './modal.module.scss';
 
 interface NodeDetailsModalProps {

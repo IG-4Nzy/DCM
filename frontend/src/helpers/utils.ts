@@ -26,3 +26,8 @@ export const clearLocalstorage = () => {
 export const isAuthenticated = () => {
     return !!getItemFromLocalstorage(LOCAL_STORAGE_PARAMETERS.TOKEN);
 };
+
+export const csvEscape = (value: unknown) => {
+    const text = Array.isArray(value) ? value.join(', ') : String(value ?? '');
+    return `"${text.replace(/"/g, '""')}"`;
+};

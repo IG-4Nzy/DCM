@@ -1,5 +1,5 @@
 // @ts-nocheck
-import request from '../../services/request';
+import request from '../../../services/request';
 import { type FetchClustersParams, type CreateClusterPayload, type UpdateClusterPayload } from './model';
 
 export const fetchClusters = async (params: FetchClustersParams) => {

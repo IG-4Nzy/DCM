@@ -8,7 +8,7 @@ import Dropdown from '../../../components/Dropdown';
 import Button from '../../../components/Button';
 import { type NodeData, type CreateNodePayload, type UpdateNodePayload } from './model';
 import { fetchServerRacks } from '../Racks/action';
-import { fetchServerModels, createServerModel } from '../ServerModels/action';
+import { fetchServerModels, createServerModel } from '../../Configurations/ServerModels/action';
 import request from '../../../services/request';
 import { useSelector } from 'react-redux';
 import { type RootState } from '../../../store';

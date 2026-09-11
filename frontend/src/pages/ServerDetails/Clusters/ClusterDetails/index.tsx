@@ -3,12 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { Box, Paper, IconButton } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MdArrowBack as BackIcon } from 'react-icons/md';
-import SliderTabSelector, { type TabItem } from '../../../components/SliderTabSelector';
+import SliderTabSelector, { type TabItem } from '../../../../components/SliderTabSelector';
 import ADDetails from '../ADDetails';
 import VCenterDetails from '../VCenterDetails';
 import VMDetails from '../VMDetails';
 import NodeDetails from '../NodeDetails';
-import PhysicalServers from '../../ServerDetails/PhysicalServers';
+import PhysicalServers from '../../PhysicalServers';
 import styles from './index.module.scss';
 
 const tabs: TabItem[] = [

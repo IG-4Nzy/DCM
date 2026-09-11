@@ -16,7 +16,7 @@ const Roaster = lazy(() => import("../pages/Roaster"));
 const Observations = lazy(() => import("../pages/Observations"));
 const Inventory = lazy(() => import("../pages/Inventory"));
 const Configurations = lazy(() => import("../pages/Configurations"));
-const ClusterDetails = lazy(() => import("../pages/Clusters/ClusterDetails"));
+const ClusterDetails = lazy(() => import("../pages/ServerDetails/Clusters/ClusterDetails"));
 const Requests = lazy(() => import("../pages/Requests"));
 const Search = lazy(() => import("../pages/Search"));
 const ServerMonitoringCombined = lazy(() => import("../pages/ServerMonitoringCombined"));

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Box } from '@mui/material';
-import Modal from '../../../components/Modal';
-import TextField from '../../../components/TextField';
-import Dropdown from '../../../components/Dropdown';
-import Button from '../../../components/Button';
-import { validators } from '../../../helpers/validation';
+import Modal from '../../../../components/Modal';
+import TextField from '../../../../components/TextField';
+import Dropdown from '../../../../components/Dropdown';
+import Button from '../../../../components/Button';
+import { validators } from '../../../../helpers/validation';
 import { type ClusterData, type CreateClusterPayload, type UpdateClusterPayload } from '../model';
-import { fetchClusterTypes } from '../../Configurations/ClusterTypes/action';
-import request from '../../../services/request';
+import { fetchClusterTypes } from '../../../Configurations/ClusterTypes/action';
+import request from '../../../../services/request';
 import styles from "./index.module.scss";
 
 interface ClusterModalProps {

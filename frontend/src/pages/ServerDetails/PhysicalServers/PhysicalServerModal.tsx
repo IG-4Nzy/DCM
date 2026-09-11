@@ -6,7 +6,7 @@ import TextField from '../../../components/TextField';
 import Dropdown from '../../../components/Dropdown';
 import Button from '../../../components/Button';
 import { fetchAllNodes } from './action';
-import { fetchClusters } from '../../Clusters/action';
+import { fetchClusters } from '../Clusters/action';
 import request from '../../../services/request';
 import { validators } from '../../../helpers/validation';
 import styles from './modal.module.scss';

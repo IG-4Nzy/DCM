@@ -23,7 +23,8 @@ import {
   MdAssignment as LogsIcon,
   MdStorage as RacksIcon,
   MdLan as IpListIcon,
-  MdInfo as InfoIcon
+  MdInfo as InfoIcon,
+  MdDownload as DownloadIcon,
 } from "react-icons/md";
 
 import { IoIosUnlock as RolesIcon } from "react-icons/io";
@@ -77,5 +78,6 @@ export const Icons = {
   LogsIcon,
   RacksIcon,
   IpListIcon,
-  InfoIcon
+  InfoIcon,
+  DownloadIcon
 };

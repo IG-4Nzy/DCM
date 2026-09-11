@@ -1,37 +1,31 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { Box } from '@mui/material';
-import Modal from '../../../components/Modal';
-import TextField from '../../../components/TextField';
-import Dropdown from '../../../components/Dropdown';
-import Button from '../../../components/Button';
-import { type VCenterDetailsData, type CreateVCenterDetailsPayload, type UpdateVCenterDetailsPayload } from './model';
+import Modal from '../../../../components/Modal';
+import TextField from '../../../../components/TextField';
+import Button from '../../../../components/Button';
+import { type ADDetailsData, type CreateADDetailsPayload, type UpdateADDetailsPayload } from './model';
 import styles from './modal.module.scss';
 
-interface VCenterDetailsModalProps {
+interface ADDetailsModalProps {
     open: boolean;
     onClose: () => void;
     onSubmit: (data: any) => void;
-    editingItem: VCenterDetailsData | null;
+    editingItem: ADDetailsData | null;
     clusterId: string;
 }
 
-const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose, onSubmit, editingItem, clusterId }) => {
-    const [formData, setFormData] = useState<CreateVCenterDetailsPayload>({
+const ADDetailsModal: React.FC<ADDetailsModalProps> = ({ open, onClose, onSubmit, editingItem, clusterId }) => {
+    const [formData, setFormData] = useState<CreateADDetailsPayload>({
         clusterId: clusterId,
         ipAddress: '',
         name: '',
         hdd: '',
         ram: '',
         cpuCores: '',
-        vcenterVersion: '',
-        vcenterType: '',
-        licenceExpiry: '',
-        ha: '',
-        drs: '',
-        storage: '',
-        portGroups: '',
-        vmImageBackupLocation: ''
+        osVersion: '',
+        osType: '',
+        licenceExpiry: ''
     });
 
     useEffect(() => {
@@ -44,14 +38,9 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
                     hdd: editingItem.hdd || '',
                     ram: editingItem.ram || '',
                     cpuCores: editingItem.cpuCores || '',
-                    vcenterVersion: editingItem.vcenterVersion || '',
-                    vcenterType: editingItem.vcenterType || '',
-                    licenceExpiry: editingItem.licenceExpiry || '',
-                    ha: editingItem.ha || '',
-                    drs: editingItem.drs || '',
-                    storage: editingItem.storage || '',
-                    portGroups: editingItem.portGroups || '',
-                    vmImageBackupLocation: editingItem.vmImageBackupLocation || ''
+                    osVersion: editingItem.osVersion || '',
+                    osType: editingItem.osType || '',
+                    licenceExpiry: editingItem.licenceExpiry || ''
                 });
             } else {
                 setFormData({
@@ -61,20 +50,15 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
                     hdd: '',
                     ram: '',
                     cpuCores: '',
-                    vcenterVersion: '',
-                    vcenterType: '',
-                    licenceExpiry: '',
-                    ha: '',
-                    drs: '',
-                    storage: '',
-                    portGroups: '',
-                    vmImageBackupLocation: ''
+                    osVersion: '',
+                    osType: '',
+                    licenceExpiry: ''
                 });
             }
         }
     }, [open, editingItem, clusterId]);
 
-    const handleChange = (field: keyof CreateVCenterDetailsPayload, value: string) => {
+    const handleChange = (field: keyof CreateADDetailsPayload, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
@@ -82,20 +66,15 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
         e.preventDefault();
         
         if (editingItem) {
-            const changedData: UpdateVCenterDetailsPayload = {};
+            const changedData: UpdateADDetailsPayload = {};
             if (formData.ipAddress !== editingItem.ipAddress) changedData.ipAddress = formData.ipAddress;
             if (formData.name !== editingItem.name) changedData.name = formData.name;
             if (formData.hdd !== editingItem.hdd) changedData.hdd = formData.hdd;
             if (formData.ram !== editingItem.ram) changedData.ram = formData.ram;
             if (formData.cpuCores !== editingItem.cpuCores) changedData.cpuCores = formData.cpuCores;
-            if (formData.vcenterVersion !== editingItem.vcenterVersion) changedData.vcenterVersion = formData.vcenterVersion;
-            if (formData.vcenterType !== editingItem.vcenterType) changedData.vcenterType = formData.vcenterType;
+            if (formData.osVersion !== editingItem.osVersion) changedData.osVersion = formData.osVersion;
+            if (formData.osType !== editingItem.osType) changedData.osType = formData.osType;
             if (formData.licenceExpiry !== editingItem.licenceExpiry) changedData.licenceExpiry = formData.licenceExpiry;
-            if (formData.ha !== editingItem.ha) changedData.ha = formData.ha;
-            if (formData.drs !== editingItem.drs) changedData.drs = formData.drs;
-            if (formData.storage !== editingItem.storage) changedData.storage = formData.storage;
-            if (formData.portGroups !== editingItem.portGroups) changedData.portGroups = formData.portGroups;
-            if (formData.vmImageBackupLocation !== editingItem.vmImageBackupLocation) changedData.vmImageBackupLocation = formData.vmImageBackupLocation;
             onSubmit(changedData);
         } else {
             onSubmit(formData);
@@ -106,7 +85,7 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
         <Modal
             open={open}
             handleClose={onClose}
-            title={editingItem ? 'Edit vCenter Details' : 'Add vCenter Details'}
+            title={editingItem ? 'Edit AD Details' : 'Add AD Details'}
         >
             <form onSubmit={handleSubmit}>
                 <Box className={styles.formGrid}>
@@ -151,19 +130,19 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
                         required 
                     />
                     <TextField 
-                        label="vCenter Version" 
+                        label="OS Version" 
                         size="small"
                         className={styles.formGrid__field}
-                        value={formData.vcenterVersion} 
-                        onChange={(e) => handleChange('vcenterVersion', e.target.value)} 
+                        value={formData.osVersion} 
+                        onChange={(e) => handleChange('osVersion', e.target.value)} 
                         required 
                     />
                     <TextField 
-                        label="vCenter Type" 
+                        label="OS Type" 
                         size="small"
                         className={styles.formGrid__field}
-                        value={formData.vcenterType} 
-                        onChange={(e) => handleChange('vcenterType', e.target.value)} 
+                        value={formData.osType} 
+                        onChange={(e) => handleChange('osType', e.target.value)} 
                         required 
                     />
                     <TextField 
@@ -172,48 +151,6 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
                         className={styles.formGrid__field}
                         value={formData.licenceExpiry} 
                         onChange={(e) => handleChange('licenceExpiry', e.target.value)} 
-                        required 
-                    />
-                    <Dropdown 
-                        label="HA" 
-                        size="small"
-                        fullWidth
-                        value={formData.ha} 
-                        onChange={(val) => handleChange('ha', val)} 
-                        options={[{label: 'ON', value: 'ON'}, {label: 'OFF', value: 'OFF'}]}
-                        required 
-                    />
-                    <Dropdown 
-                        label="DRS" 
-                        size="small"
-                        fullWidth
-                        value={formData.drs} 
-                        onChange={(val) => handleChange('drs', val)} 
-                        options={[{label: 'ON', value: 'ON'}, {label: 'OFF', value: 'OFF'}]}
-                        required 
-                    />
-                    <TextField 
-                        label="Storage" 
-                        size="small"
-                        className={styles.formGrid__field}
-                        value={formData.storage} 
-                        onChange={(e) => handleChange('storage', e.target.value)} 
-                        required 
-                    />
-                    <TextField 
-                        label="Port Groups" 
-                        size="small"
-                        className={styles.formGrid__field}
-                        value={formData.portGroups} 
-                        onChange={(e) => handleChange('portGroups', e.target.value)} 
-                        required 
-                    />
-                    <TextField 
-                        label="VM Image Backup Location" 
-                        size="small"
-                        className={styles.formGrid__field}
-                        value={formData.vmImageBackupLocation} 
-                        onChange={(e) => handleChange('vmImageBackupLocation', e.target.value)} 
                         required 
                     />
                 </Box>
@@ -226,4 +163,4 @@ const VCenterDetailsModal: React.FC<VCenterDetailsModalProps> = ({ open, onClose
     );
 };
 
-export default VCenterDetailsModal;
+export default ADDetailsModal;

@@ -18,6 +18,8 @@ import { type ServerRackData } from './model';
 import ServerRackModal from './ServerRackModal';
 import NodeViewModal from '../Nodes/NodeViewModal';
 import request from '../../../services/request';
+import { generateAndDownloadCSV, TAB_CONSTANTS } from '../utils';
+import { Icons } from '../../../helpers/icons';
 
 type Order = 'asc' | 'desc';
 
@@ -244,6 +246,10 @@ const Racks = () => {
         setPage(0);
     };
 
+    const handleRacksDownload = () => {
+        generateAndDownloadCSV({data,tab:TAB_CONSTANTS.RACKS});
+    }
+
     const columns: Column<ServerRackData>[] = [
         { id: 'serverRack', label: 'Server Rack Name', sortable: true },
         { 
@@ -374,7 +380,11 @@ const Racks = () => {
                         </ToggleButton>
                     </ToggleButtonGroup>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}> 
+                    
+                    <Button variant="outlined" startIcon={<Icons.DownloadIcon />} onClick={handleRacksDownload}>
+                        Download
+                    </Button>
                     <SearchBar
                         value={searchQuery}
                         onChange={setSearchQuery}

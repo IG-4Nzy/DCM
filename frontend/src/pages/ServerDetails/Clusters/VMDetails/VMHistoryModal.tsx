@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { Box, Grid, Typography, Divider, Chip, CircularProgress, Paper } from '@mui/material';
-import Modal from '../../../components/Modal';
+import Modal from '../../../../components/Modal';
 import { fetchVMHistory } from './action';
 import { 
   MdComputer, 

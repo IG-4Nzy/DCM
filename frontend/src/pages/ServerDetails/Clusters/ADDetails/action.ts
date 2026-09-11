@@ -1,5 +1,5 @@
 // @ts-nocheck
-import request from '../../../services/request';
+import request from '../../../../services/request';
 import { type FetchADDetailsParams, type CreateADDetailsPayload, type UpdateADDetailsPayload } from './model';
 
 export const fetchADDetails = async (params: FetchADDetailsParams) => {

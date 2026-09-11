@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, Divider, Grid, LinearProgress } from '@mui/material';
-import Button from '../../../components/Button';
+import Button from '../../../../components/Button';
 import { type NodeDetailsData } from './model';
 
 interface NodeDetailsViewModalProps {
