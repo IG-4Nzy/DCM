@@ -64,6 +64,7 @@ async def list_inventory(
     order: str = Query("desc"),
     search: Optional[str] = None,
     isReturnable: Optional[bool] = Query(None),
+    isAsset:Optional[bool] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
     query = {}
@@ -84,6 +85,12 @@ async def list_inventory(
             query["isReturnable"] = True
         else:
             query["isReturnable"] = {"$ne": True}
+
+    if isAsset is not None:
+        if isAsset:
+            query["isAsset"] = True
+        else:
+            query["isAsset"] = {"$ne": True}
 
     if search:
         terms = search.strip().split()
@@ -152,6 +159,7 @@ async def create_inventory(item: CreateInventoryModel = Body(...), current_user:
         "lastUpdatedBy": username,
         "history": [history_entry],
         "isReturnable": item.isReturnable or False,
+        "isAsset": item.isAsset or False,
         "currentHolders": [],
         "almiraNumber": item.almiraNumber,
         "rackNumber": item.rackNumber
@@ -216,20 +224,6 @@ async def update_inventory(id: str, update_data: UpdateInventoryModel = Body(...
         "user": username,
         "givenTo": update_data.givenTo
     }
-    
-    update_result = await inventory_collection.update_one(
-        {"_id": ObjectId(id)},
-        {
-            "$set": {
-                "quantity": new_quantity,
-                "lastUpdatedDate": update_data.date,
-                "lastUpdatedBy": username
-            },
-            "$push": {
-                "history": history_entry
-            }
-        }
-    )
 
     updated_inv = await inventory_collection.find_one({"_id": ObjectId(id)})
     updated_inv = await resolve_departments(updated_inv)
@@ -275,6 +269,7 @@ async def edit_inventory_item(id: str, edit_data: EditInventoryModel = Body(...)
         "quantity": edit_data.quantity,
         "description": edit_data.description,
         "isReturnable": edit_data.isReturnable,
+        "isAsset": edit_data.isAsset,
         "almiraNumber": edit_data.almiraNumber,
         "rackNumber": edit_data.rackNumber,
         "lastUpdatedDate": current_time,

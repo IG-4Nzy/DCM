@@ -871,6 +871,7 @@ class CreateInventoryModel(BaseModel):
     description: Optional[str] = None
     date: str
     isReturnable: Optional[bool] = False
+    isAsset: Optional[bool] = False
     almiraNumber: Optional[str] = None
     rackNumber: Optional[str] = None
 
@@ -910,6 +911,7 @@ class EditInventoryModel(BaseModel):
     quantity: int
     description: Optional[str] = ""
     isReturnable: Optional[bool] = False
+    isAsset: Optional[bool] = False
     almiraNumber: Optional[str] = ""
     rackNumber: Optional[str] = ""
 

@@ -184,9 +184,22 @@ const InventoryFormModal: React.FC<PropType> = ({
             color="primary"
           />
         }
-        label="Returnable Item"
+        label="Mark as Returnable Item"
         style={{ marginBottom: '1rem', display: 'block' }}
       />
+
+       <FormControlLabel
+        control={
+          <Checkbox
+            checked={isAsset}
+            onChange={(e) => setIsAsset(e.target.checked)}
+            color="primary"
+          />
+        }
+        label="Mark as Asset"
+        style={{ marginBottom: '1rem', display: 'block' }}
+      />
+
 
       <TextField
         label="Description"
