@@ -189,10 +189,6 @@ const PhysicalServers = ({ clusterId = "" }: PhysicalServersProps) => {
     }
   };
 
-    const handleCsvDownload = () => {
-          generateAndDownloadCSV({data,tab:TAB_CONSTANTS.PHYSICAL_SERVERS});
-      }
-
   return (
     <Box className={styles.container}>
       <Box className={styles.container__header}>
