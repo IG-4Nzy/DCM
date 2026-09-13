@@ -10,7 +10,6 @@ from models import (
     PaginatedRequestRoutingsModel,
 )
 from bson import ObjectId
-from datetime import datetime, timezone
 
 router = APIRouter()
 collection = db.get_collection("request_routings")
@@ -30,7 +29,6 @@ async def list_items(
     sortBy: Optional[str] = Query(None),
     sort_by: Optional[str] = Query(None),
     order: str = Query("asc"),
-    current_user: dict = Depends(get_current_user),
 ):
     query = {}
     if search:
@@ -60,7 +58,6 @@ async def list_items(
 )
 async def create_item(
     payload: CreateRequestRoutingModel = Body(...),
-    current_user: dict = Depends(get_current_user),
 ):
     # Prevent duplicates
     existing = await collection.find_one({"requestType": payload.requestType})
@@ -85,7 +82,6 @@ async def create_item(
 async def update_item(
     id: str,
     payload: UpdateRequestRoutingModel = Body(...),
-    current_user: dict = Depends(get_current_user),
 ):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")
@@ -111,7 +107,7 @@ async def update_item(
 
 @router.delete("/{id}", response_description="Delete a request routing")
 async def delete_item(
-    id: str, current_user: dict = Depends(get_current_user)
+    id: str
 ):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="Invalid ID format")

@@ -232,6 +232,36 @@ def is_stage_applicable(stage: dict, request_doc: dict) -> bool:
     c_operator = stage.get("conditionOperator", "equals")
     details = request_doc.get("details") if isinstance(request_doc.get("details"), dict) else {}
 
+    
+    if c_field == "ip":
+
+        raw_ip = details.get("ip")
+
+        ip_is_empty = (
+            raw_ip is None
+            or str(raw_ip).strip() == ""
+        )
+
+        expected = str(c_val).strip().lower()
+
+        print(
+            f"[STAGE CONDITION] "
+            f"field={c_field}, "
+            f"raw_ip={raw_ip!r}, "
+            f"ip_is_empty={ip_is_empty}, "
+            f"expected={expected}"
+        )
+
+        if expected == "false":
+            # IP is Empty
+            return ip_is_empty
+
+        elif expected == "true":
+            # IP is Not Empty
+            return not ip_is_empty
+
+        return False
+    
     raw_val = None
     if c_field in details and details[c_field] is not None:
         raw_val = details[c_field]
@@ -239,6 +269,23 @@ def is_stage_applicable(stage: dict, request_doc: dict) -> bool:
         raw_val = request_doc[c_field]
 
     if raw_val is None or str(raw_val).strip() == "":
+        
+        if c_field == "ip":
+            ip_is_empty = (
+                raw_val is None
+                or str(raw_val).strip() == ""
+            )
+
+            expected = str(c_val).strip().lower()
+
+            if expected == "false":
+                # IP is Empty
+                return ip_is_empty
+
+            if expected == "true":
+                # IP is Not Empty
+                return not ip_is_empty
+
         # Default fallback for networkType if unspecified
         if c_field == "networkType":
             raw_val = "Internet"

@@ -1,22 +1,50 @@
 // @ts-nocheck
-import React, { useState, useEffect, useCallback } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Box, MenuItem, FormControl, InputLabel, Select, IconButton, Typography, Divider, ListSubheader, Checkbox, ListItemText, FormControlLabel, Chip } from '@mui/material';
-import TextField from '../../../components/TextField';
-import { MdAdd as AddIcon, MdDelete as DeleteIcon, MdArrowUpward, MdArrowDownward, MdFileUpload, MdPictureAsPdf } from 'react-icons/md';
-import Button from '../../../components/Button';
-import type { RequestRoutingData, RequestRoutingStage } from './model';
-import type { RootState, AppDispatch } from '../../../store';
-import { fetchRoles } from '../../Roles/action';
-import { fetchDepartments } from '../../Departments/action';
-import { fetchUsers } from '../../Users/action';
-import request, { API_BASE_URL } from '../../../services/request';
-
+import React, { useState, useEffect, useCallback } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Box,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
+  IconButton,
+  Typography,
+  Divider,
+  ListSubheader,
+  Checkbox,
+  ListItemText,
+  FormControlLabel,
+  Chip,
+} from "@mui/material";
+import TextField from "../../../components/TextField";
+import {
+  MdAdd as AddIcon,
+  MdDelete as DeleteIcon,
+  MdArrowUpward,
+  MdArrowDownward,
+  MdFileUpload,
+  MdPictureAsPdf,
+} from "react-icons/md";
+import Button from "../../../components/Button";
+import type { RequestRoutingData, RequestRoutingStage } from "./model";
+import type { RootState, AppDispatch } from "../../../store";
+import { fetchRoles } from "../../Roles/action";
+import { fetchDepartments } from "../../Departments/action";
+import { fetchUsers } from "../../Users/action";
+import request, { API_BASE_URL } from "../../../services/request";
 
 // Special assignment types
 const SPECIAL_ASSIGNEES = [
-  { value: 'Requester', label: 'Requester', type: 'special' },
-  { value: 'RequesterDeptHead', label: 'Department Head of Requester', type: 'special' },
+  { value: "Requester", label: "Requester", type: "special" },
+  {
+    value: "RequesterDeptHead",
+    label: "Department Head of Requester",
+    type: "special",
+  },
 ];
 
 const SELECT_MENU_PROPS = {
@@ -41,33 +69,44 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const roles = useSelector((state: RootState) => state.roles?.roles || []);
-  const departments = useSelector((state: RootState) => state.departments?.departments || []);
+  const departments = useSelector(
+    (state: RootState) => state.departments?.departments || [],
+  );
   const users = useSelector((state: RootState) => state.users?.users || []);
 
   const [requestTypes, setRequestTypes] = useState<string[]>([
-    'VM Creation',
-    'DC Entry',
-    'Hardware Issuance',
-    'Hardware Replacement'
+    "VM Creation",
+    "DC Entry",
+    "Hardware Issuance",
+    "Hardware Replacement",
   ]);
-  const [requestType, setRequestType] = useState('');
+  const [requestType, setRequestType] = useState("");
   const [stages, setStages] = useState<RequestRoutingStage[]>([]);
   const [stageErrors, setStageErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [uploadingStageIndex, setUploadingStageIndex] = useState<number | null>(null);
+  const [uploadingStageIndex, setUploadingStageIndex] = useState<number | null>(
+    null,
+  );
 
-  const handleFileUpload = async (stageIdx: number, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (
+    stageIdx: number,
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     setUploadingStageIndex(stageIdx);
     try {
-      const res = await request.post('/api/requests/upload-stage-file', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const res = await request.post(
+        "/api/requests/upload-stage-file",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
       if (res.data?.fileUrl) {
         updateStageFields(stageIdx, {
           attachmentUrl: res.data.fileUrl,
@@ -76,29 +115,38 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
         });
       }
     } catch (err: any) {
-      console.error('Failed to upload stage document:', err);
-      alert(err.response?.data?.detail || 'Failed to upload stage document');
+      console.error("Failed to upload stage document:", err);
+      alert(err.response?.data?.detail || "Failed to upload stage document");
     } finally {
       setUploadingStageIndex(null);
-      event.target.value = '';
+      event.target.value = "";
     }
   };
 
   const fetchRequestTypes = useCallback(async () => {
     try {
-      const res = await request.get('/api/requests/types');
+      const res = await request.get("/api/requests/types");
       if (res.data && Array.isArray(res.data)) {
         setRequestTypes(res.data.map((t: any) => t.name));
       }
     } catch (err) {
-      console.error('Failed to fetch request types:', err);
+      console.error("Failed to fetch request types:", err);
     }
   }, []);
 
   useEffect(() => {
     if (open) {
       fetchRequestTypes();
-      dispatch(fetchRoles({ skip: 0, limit: 1000, sortBy: 'name', order: 'asc', search: '', pagination: false }));
+      dispatch(
+        fetchRoles({
+          skip: 0,
+          limit: 1000,
+          sortBy: "name",
+          order: "asc",
+          search: "",
+          pagination: false,
+        }),
+      );
       dispatch(fetchDepartments({ skip: 0, limit: 1000 }));
       dispatch(fetchUsers({ skip: 0, limit: 1000, pagination: false }));
     }
@@ -108,17 +156,25 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
     if (editingItem) {
       setRequestType(editingItem.requestType);
       setStages(editingItem.stages || []);
-      setStageErrors((editingItem.stages || []).map(() => ''));
+      setStageErrors((editingItem.stages || []).map(() => ""));
     } else {
-      setRequestType(requestTypes[0] || 'VM Creation');
+      setRequestType(requestTypes[0] || "VM Creation");
       setStages([]);
       setStageErrors([]);
     }
   }, [editingItem, open]);
 
   const addStage = () => {
-    setStages([...stages, { stageName: '', order: stages.length + 1, assignmentType: 'Role', assignedTo: '' }]);
-    setStageErrors([...stageErrors, '']);
+    setStages([
+      ...stages,
+      {
+        stageName: "",
+        order: stages.length + 1,
+        assignmentType: "Role",
+        assignedTo: "",
+      },
+    ]);
+    setStageErrors([...stageErrors, ""]);
   };
 
   const removeStage = (index: number) => {
@@ -157,7 +213,11 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
     setStageErrors(updatedErrs);
   };
 
-  const updateStage = (index: number, field: keyof RequestRoutingStage, value: any) => {
+  const updateStage = (
+    index: number,
+    field: keyof RequestRoutingStage,
+    value: any,
+  ) => {
     setStages((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
@@ -165,12 +225,15 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
     });
     setStageErrors((prev) => {
       const updated = [...prev];
-      updated[index] = '';
+      updated[index] = "";
       return updated;
     });
   };
 
-  const updateStageFields = (index: number, fields: Partial<RequestRoutingStage>) => {
+  const updateStageFields = (
+    index: number,
+    fields: Partial<RequestRoutingStage>,
+  ) => {
     setStages((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], ...fields };
@@ -179,10 +242,14 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
   };
 
   const handleAssigneeChange = (index: number, values: string[] | string) => {
-    const vals = Array.isArray(values) ? values : (values ? [values] : []);
+    const vals = Array.isArray(values) ? values : values ? [values] : [];
     setStages((prev) => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], assignmentType: 'Mixed', assignedTo: vals };
+      updated[index] = {
+        ...updated[index],
+        assignmentType: "Mixed",
+        assignedTo: vals,
+      };
       return updated;
     });
   };
@@ -195,46 +262,67 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
         ...updated[stageIndex],
         conditionalAssignments: [
           ...currentRules,
-          { conditionField: 'networkType', conditionValue: 'Intranet', assignmentType: 'Mixed', assignedTo: [] }
-        ]
+          {
+            conditionField: "networkType",
+            conditionValue: "Intranet",
+            assignmentType: "Mixed",
+            assignedTo: [],
+          },
+        ],
       };
       return updated;
     });
   };
 
-  const removeConditionalAssignment = (stageIndex: number, ruleIndex: number) => {
+  const removeConditionalAssignment = (
+    stageIndex: number,
+    ruleIndex: number,
+  ) => {
     setStages((prev) => {
       const updated = [...prev];
       const currentRules = updated[stageIndex]?.conditionalAssignments || [];
       updated[stageIndex] = {
         ...updated[stageIndex],
-        conditionalAssignments: currentRules.filter((_, i) => i !== ruleIndex)
+        conditionalAssignments: currentRules.filter((_, i) => i !== ruleIndex),
       };
       return updated;
     });
   };
 
-  const updateConditionalAssignment = (stageIndex: number, ruleIndex: number, field: string, value: any) => {
+  const updateConditionalAssignment = (
+    stageIndex: number,
+    ruleIndex: number,
+    field: string,
+    value: any,
+  ) => {
     setStages((prev) => {
       const updated = [...prev];
-      const currentRules = [...(updated[stageIndex]?.conditionalAssignments || [])];
+      const currentRules = [
+        ...(updated[stageIndex]?.conditionalAssignments || []),
+      ];
       currentRules[ruleIndex] = { ...currentRules[ruleIndex], [field]: value };
       updated[stageIndex] = {
         ...updated[stageIndex],
-        conditionalAssignments: currentRules
+        conditionalAssignments: currentRules,
       };
       return updated;
     });
   };
 
-  const updateConditionalAssignmentFields = (stageIndex: number, ruleIndex: number, fields: Record<string, any>) => {
+  const updateConditionalAssignmentFields = (
+    stageIndex: number,
+    ruleIndex: number,
+    fields: Record<string, any>,
+  ) => {
     setStages((prev) => {
       const updated = [...prev];
-      const currentRules = [...(updated[stageIndex]?.conditionalAssignments || [])];
+      const currentRules = [
+        ...(updated[stageIndex]?.conditionalAssignments || []),
+      ];
       currentRules[ruleIndex] = { ...currentRules[ruleIndex], ...fields };
       updated[stageIndex] = {
         ...updated[stageIndex],
-        conditionalAssignments: currentRules
+        conditionalAssignments: currentRules,
       };
       return updated;
     });
@@ -244,27 +332,38 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
     let items: string[] = [];
     if (Array.isArray(rule.assignedTo)) {
       items = rule.assignedTo;
-    } else if (typeof rule.assignedTo === 'string' && rule.assignedTo) {
+    } else if (typeof rule.assignedTo === "string" && rule.assignedTo) {
       items = [rule.assignedTo];
     } else {
       return [];
     }
-    return items.map((item) => normalizeAssigneeValue(item, rule as any)).filter(Boolean);
+    return items
+      .map((item) => normalizeAssigneeValue(item, rule as any))
+      .filter(Boolean);
   };
 
-  const normalizeAssigneeValue = (val: string, stage: RequestRoutingStage): string => {
-    if (!val) return '';
-    if (val === 'Requester' || val === 'RequesterDeptHead') return val;
-    if (val.startsWith('Role:') || val.startsWith('DeptStaffs:') || val.startsWith('SpecificUser:')) {
+  const normalizeAssigneeValue = (
+    val: string,
+    stage: RequestRoutingStage,
+  ): string => {
+    if (!val) return "";
+    if (val === "Requester" || val === "RequesterDeptHead") return val;
+    if (
+      val.startsWith("Role:") ||
+      val.startsWith("DeptStaffs:") ||
+      val.startsWith("SpecificUser:")
+    ) {
       return val;
     }
     if (roles && roles.some((r: any) => r.name === val)) return `Role:${val}`;
-    if (departments && departments.some((d: any) => d.name === val)) return `DeptStaffs:${val}`;
-    if (users && users.some((u: any) => u.username === val)) return `SpecificUser:${val}`;
+    if (departments && departments.some((d: any) => d.name === val))
+      return `DeptStaffs:${val}`;
+    if (users && users.some((u: any) => u.username === val))
+      return `SpecificUser:${val}`;
 
-    if (stage.assignmentType === 'Role') return `Role:${val}`;
-    if (stage.assignmentType === 'DeptStaffs') return `DeptStaffs:${val}`;
-    if (stage.assignmentType === 'SpecificUser') return `SpecificUser:${val}`;
+    if (stage.assignmentType === "Role") return `Role:${val}`;
+    if (stage.assignmentType === "DeptStaffs") return `DeptStaffs:${val}`;
+    if (stage.assignmentType === "SpecificUser") return `SpecificUser:${val}`;
     return val;
   };
 
@@ -273,83 +372,122 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
     let items: string[] = [];
     if (Array.isArray(stage.assignedTo)) {
       items = stage.assignedTo;
-    } else if (typeof stage.assignedTo === 'string' && stage.assignedTo) {
+    } else if (typeof stage.assignedTo === "string" && stage.assignedTo) {
       items = [stage.assignedTo];
-    } else if (stage.assignmentType === 'Requester') {
-      return ['Requester'];
-    } else if (stage.assignmentType === 'RequesterDeptHead') {
-      return ['RequesterDeptHead'];
+    } else if (stage.assignmentType === "Requester") {
+      return ["Requester"];
+    } else if (stage.assignmentType === "RequesterDeptHead") {
+      return ["RequesterDeptHead"];
     } else {
       return [];
     }
 
-    return items.map((item) => normalizeAssigneeValue(item, stage)).filter(Boolean);
+    return items
+      .map((item) => normalizeAssigneeValue(item, stage))
+      .filter(Boolean);
   };
 
   const formatAssigneeLabel = (val: string): string => {
-    if (val === 'Requester') return '🔄 Requester';
-    if (val === 'RequesterDeptHead') return '🔄 Department Head of Requester';
-    if (val.startsWith('Role:')) return `⚙️ ${val.replace('Role:', '')}`;
-    if (val.startsWith('DeptStaffs:')) return `👥 ${val.replace('DeptStaffs:', '')} Staffs`;
-    if (val.startsWith('SpecificUser:')) return `👤 ${val.replace('SpecificUser:', '')}`;
+    if (val === "Requester") return "🔄 Requester";
+    if (val === "RequesterDeptHead") return "🔄 Department Head of Requester";
+    if (val.startsWith("Role:")) return `⚙️ ${val.replace("Role:", "")}`;
+    if (val.startsWith("DeptStaffs:"))
+      return `👥 ${val.replace("DeptStaffs:", "")} Staffs`;
+    if (val.startsWith("SpecificUser:"))
+      return `👤 ${val.replace("SpecificUser:", "")}`;
     return val;
   };
 
   const renderAssigneeSelectOptions = (stage: RequestRoutingStage) => {
     const selectedValues = getAssigneeValue(stage);
-    return (
-      [
-        <ListSubheader key="hdr-auto" sx={{ fontWeight: 700, color: 'primary.main', backgroundColor: 'background.paper' }}>
-          Auto Assignment
-        </ListSubheader>,
-        ...SPECIAL_ASSIGNEES.map((sa) => (
-          <MenuItem key={sa.value} value={sa.value} sx={{ pl: 2 }}>
-            <Checkbox size="small" checked={selectedValues.indexOf(sa.value) > -1} />
-            <ListItemText primary={`🔄 ${sa.label}`} />
+    return [
+      <ListSubheader
+        key="hdr-auto"
+        sx={{
+          fontWeight: 700,
+          color: "primary.main",
+          backgroundColor: "background.paper",
+        }}
+      >
+        Auto Assignment
+      </ListSubheader>,
+      ...SPECIAL_ASSIGNEES.map((sa) => (
+        <MenuItem key={sa.value} value={sa.value} sx={{ pl: 2 }}>
+          <Checkbox
+            size="small"
+            checked={selectedValues.indexOf(sa.value) > -1}
+          />
+          <ListItemText primary={`🔄 ${sa.label}`} />
+        </MenuItem>
+      )),
+
+      <ListSubheader
+        key="hdr-dept"
+        sx={{
+          fontWeight: 700,
+          color: "secondary.main",
+          backgroundColor: "background.paper",
+        }}
+      >
+        Department - Staffs
+      </ListSubheader>,
+      ...departments.map((dept: any) => {
+        const val = `DeptStaffs:${dept.name}`;
+        return (
+          <MenuItem
+            key={`dept-${dept.id || dept._id}`}
+            value={val}
+            sx={{ pl: 2 }}
+          >
+            <Checkbox size="small" checked={selectedValues.indexOf(val) > -1} />
+            <ListItemText primary={`👥 ${dept.name} - Staffs`} />
           </MenuItem>
-        )),
+        );
+      }),
 
-        <ListSubheader key="hdr-dept" sx={{ fontWeight: 700, color: 'secondary.main', backgroundColor: 'background.paper' }}>
-          Department - Staffs
-        </ListSubheader>,
-        ...departments.map((dept: any) => {
-          const val = `DeptStaffs:${dept.name}`;
-          return (
-            <MenuItem key={`dept-${dept.id || dept._id}`} value={val} sx={{ pl: 2 }}>
-              <Checkbox size="small" checked={selectedValues.indexOf(val) > -1} />
-              <ListItemText primary={`👥 ${dept.name} - Staffs`} />
-            </MenuItem>
-          );
-        }),
+      <ListSubheader
+        key="hdr-role"
+        sx={{
+          fontWeight: 700,
+          color: "info.main",
+          backgroundColor: "background.paper",
+        }}
+      >
+        Specific Role
+      </ListSubheader>,
+      ...roles.map((role: any) => {
+        const val = `Role:${role.name}`;
+        return (
+          <MenuItem key={role.id || role._id} value={val} sx={{ pl: 2 }}>
+            <Checkbox size="small" checked={selectedValues.indexOf(val) > -1} />
+            <ListItemText primary={`⚙️ ${role.name}`} />
+          </MenuItem>
+        );
+      }),
 
-        <ListSubheader key="hdr-role" sx={{ fontWeight: 700, color: 'info.main', backgroundColor: 'background.paper' }}>
-          Specific Role
-        </ListSubheader>,
-        ...roles.map((role: any) => {
-          const val = `Role:${role.name}`;
-          return (
-            <MenuItem key={role.id || role._id} value={val} sx={{ pl: 2 }}>
-              <Checkbox size="small" checked={selectedValues.indexOf(val) > -1} />
-              <ListItemText primary={`⚙️ ${role.name}`} />
-            </MenuItem>
-          );
-        }),
-
-        <ListSubheader key="hdr-users" sx={{ fontWeight: 700, color: 'success.main', backgroundColor: 'background.paper' }}>
-          Specific Users
-        </ListSubheader>,
-        ...(users || []).map((user: any) => {
-          const val = `SpecificUser:${user.username}`;
-          const displayName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username;
-          return (
-            <MenuItem key={user.id || user._id} value={val} sx={{ pl: 2 }}>
-              <Checkbox size="small" checked={selectedValues.indexOf(val) > -1} />
-              <ListItemText primary={`👤 ${displayName} (${user.username})`} />
-            </MenuItem>
-          );
-        })
-      ]
-    );
+      <ListSubheader
+        key="hdr-users"
+        sx={{
+          fontWeight: 700,
+          color: "success.main",
+          backgroundColor: "background.paper",
+        }}
+      >
+        Specific Users
+      </ListSubheader>,
+      ...(users || []).map((user: any) => {
+        const val = `SpecificUser:${user.username}`;
+        const displayName =
+          `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+          user.username;
+        return (
+          <MenuItem key={user.id || user._id} value={val} sx={{ pl: 2 }}>
+            <Checkbox size="small" checked={selectedValues.indexOf(val) > -1} />
+            <ListItemText primary={`👤 ${displayName} (${user.username})`} />
+          </MenuItem>
+        );
+      }),
+    ];
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -358,13 +496,15 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
     let hasError = false;
     const newErrors = stages.map((stage) => {
       if (!stage.stageName) return "Status Name is required";
-      if (!/^[a-zA-Z\s]+$/.test(stage.stageName)) return "Status Name must contain alphabets and spaces only";
-      if (stage.stageName.length > 20) return "Status Name must be maximum 20 characters";
+      if (!/^[a-zA-Z\s]+$/.test(stage.stageName))
+        return "Status Name must contain alphabets and spaces only";
+      if (stage.stageName.length > 20)
+        return "Status Name must be maximum 20 characters";
       return "";
     });
 
     setStageErrors(newErrors);
-    if (newErrors.some(err => err !== "")) {
+    if (newErrors.some((err) => err !== "")) {
       return;
     }
 
@@ -385,10 +525,12 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{ color: '#333' }}>{editingItem ? 'Edit Request Routing' : 'Create Request Routing'}</DialogTitle>
+      <DialogTitle sx={{ color: "#333" }}>
+        {editingItem ? "Edit Request Routing" : "Create Request Routing"}
+      </DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent dividers>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
             <FormControl fullWidth required>
               <InputLabel>Request Type</InputLabel>
               <Select
@@ -408,7 +550,13 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
 
             <Divider />
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
               <Typography variant="subtitle1" fontWeight={600}>
                 Statuses / Stages
               </Typography>
@@ -424,8 +572,13 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
             </Box>
 
             {stages.length === 0 && (
-              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                No statuses added yet. Click "Add Status" to define the workflow stages.
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ textAlign: "center", py: 2 }}
+              >
+                No statuses added yet. Click "Add Status" to define the workflow
+                stages.
               </Typography>
             )}
 
@@ -433,29 +586,58 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
               <Box
                 key={index}
                 sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
+                  display: "flex",
+                  flexDirection: "column",
                   gap: 1.5,
                   p: 1.5,
                   borderRadius: 1,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  backgroundColor: 'action.hover',
+                  border: "1px solid",
+                  borderColor: "divider",
+                  backgroundColor: "action.hover",
                 }}
               >
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <IconButton size="small" disabled={index === 0} onClick={() => moveStageUp(index)} type="button" sx={{ padding: '2px' }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    gap: 2,
+                    alignItems: "center",
+                    width: "100%",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                    }}
+                  >
+                    <IconButton
+                      size="small"
+                      disabled={index === 0}
+                      onClick={() => moveStageUp(index)}
+                      type="button"
+                      sx={{ padding: "2px" }}
+                    >
                       <MdArrowUpward fontSize="small" />
                     </IconButton>
                     <Typography
                       variant="body2"
                       fontWeight={700}
-                      sx={{ textAlign: 'center', color: 'primary.main', my: 0.5 }}
+                      sx={{
+                        textAlign: "center",
+                        color: "primary.main",
+                        my: 0.5,
+                      }}
                     >
                       {index + 1}
                     </Typography>
-                    <IconButton size="small" disabled={index === stages.length - 1} onClick={() => moveStageDown(index)} type="button" sx={{ padding: '2px' }}>
+                    <IconButton
+                      size="small"
+                      disabled={index === stages.length - 1}
+                      onClick={() => moveStageDown(index)}
+                      type="button"
+                      sx={{ padding: "2px" }}
+                    >
                       <MdArrowDownward fontSize="small" />
                     </IconButton>
                   </Box>
@@ -465,7 +647,9 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                     size="small"
                     required
                     value={stage.stageName}
-                    onChange={(e) => updateStage(index, 'stageName', e.target.value)}
+                    onChange={(e) =>
+                      updateStage(index, "stageName", e.target.value)
+                    }
                     sx={{ flex: 1 }}
                     error={!!stageErrors[index]}
                     helperText={stageErrors[index]}
@@ -477,8 +661,14 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                       multiple
                       value={getAssigneeValue(stage)}
                       label="Default Assignee"
-                      onChange={(e) => handleAssigneeChange(index, e.target.value as string[])}
-                      renderValue={(selected) => (selected as string[]).map(formatAssigneeLabel).join(', ')}
+                      onChange={(e) =>
+                        handleAssigneeChange(index, e.target.value as string[])
+                      }
+                      renderValue={(selected) =>
+                        (selected as string[])
+                          .map(formatAssigneeLabel)
+                          .join(", ")
+                      }
                       MenuProps={SELECT_MENU_PROPS}
                     >
                       {renderAssigneeSelectOptions(stage)}
@@ -496,22 +686,40 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                 </Box>
 
                 {/* Stage Execution Condition Section */}
-                <Box sx={{ width: '100%', pt: 1, borderTop: '1px dashed #cfd8dc', display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Typography variant="caption" fontWeight={700} color="secondary.main" sx={{ minWidth: 130 }}>
+                <Box
+                  sx={{
+                    width: "100%",
+                    pt: 1,
+                    borderTop: "1px dashed #cfd8dc",
+                    display: "flex",
+                    gap: 1.5,
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    fontWeight={700}
+                    color="secondary.main"
+                    sx={{ minWidth: 130 }}
+                  >
                     ⚡ Run Stage Only If:
                   </Typography>
                   <FormControl size="small" sx={{ minWidth: 180 }}>
                     <InputLabel>Condition Field</InputLabel>
                     <Select
-                      value={stage.conditionField || ''}
+                      value={stage.conditionField || ""}
                       label="Condition Field"
                       onChange={(e) => {
                         const newField = e.target.value;
-                        let val = '';
-                        if (newField === 'networkType') val = 'Internet';
-                        else if (newField === 'firstInternetDeployment') val = 'true';
-                        else if (newField === 'operationType') val = 'Migration';
-                        else if (newField === 'requestType') val = 'VM Creation';
+                        let val = "";
+                        if (newField === "networkType") val = "Internet";
+                        else if (newField === "firstInternetDeployment")
+                          val = "true";
+                        else if (newField === "operationType")
+                          val = "Migration";
+                        else if (newField === "requestType")
+                          val = "VM Creation";
 
                         updateStageFields(index, {
                           conditionField: newField,
@@ -521,11 +729,20 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                       MenuProps={SELECT_MENU_PROPS}
                     >
                       <MenuItem value="">Always Run (No Condition)</MenuItem>
-                      <MenuItem value="networkType">Network Type (networkType)</MenuItem>
-                      <MenuItem value="firstInternetDeployment">First Internet Deployment (firstInternetDeployment)</MenuItem>
-                      <MenuItem value="operationType">Operation Type (operationType)</MenuItem>
-                      <MenuItem value="requestType">Request Type (requestType)</MenuItem>
+                      <MenuItem value="networkType">
+                        Network Type (networkType)
+                      </MenuItem>
+                      <MenuItem value="firstInternetDeployment">
+                        First Internet Deployment (firstInternetDeployment)
+                      </MenuItem>
+                      <MenuItem value="operationType">
+                        Operation Type (operationType)
+                      </MenuItem>
+                      <MenuItem value="requestType">
+                        Request Type (requestType)
+                      </MenuItem>
                       <MenuItem value="purpose">Purpose (purpose)</MenuItem>
+                      <MenuItem value="ip">IP Address</MenuItem>
                     </Select>
                   </FormControl>
 
@@ -534,42 +751,72 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                       <FormControl size="small" sx={{ minWidth: 120 }}>
                         <InputLabel>Operator</InputLabel>
                         <Select
-                          value={stage.conditionOperator || 'equals'}
+                          value={stage.conditionOperator || "equals"}
                           label="Operator"
-                          onChange={(e) => updateStage(index, 'conditionOperator', e.target.value)}
+                          onChange={(e) =>
+                            updateStage(
+                              index,
+                              "conditionOperator",
+                              e.target.value,
+                            )
+                          }
                           MenuProps={SELECT_MENU_PROPS}
                         >
                           <MenuItem value="equals">Equals (==)</MenuItem>
-                          <MenuItem value="not_equals">Not Equals (!=)</MenuItem>
+                          <MenuItem value="not_equals">
+                            Not Equals (!=)
+                          </MenuItem>
                         </Select>
                       </FormControl>
-                      
+
                       {(() => {
-                        const optionsMap: Record<string, { value: string; label: string }[]> = {
+                        const optionsMap: Record<
+                          string,
+                          { value: string; label: string }[]
+                        > = {
                           networkType: [
-                            { value: 'Internet', label: 'Internet' },
-                            { value: 'Intranet', label: 'Intranet' },
+                            { value: "Internet", label: "Internet" },
+                            { value: "Intranet", label: "Intranet" },
                           ],
                           firstInternetDeployment: [
-                            { value: 'true', label: 'True (First Internet Deployment)' },
-                            { value: 'false', label: 'False (Direct Intranet)' },
+                            {
+                              value: "true",
+                              label: "True (First Internet Deployment)",
+                            },
+                            {
+                              value: "false",
+                              label: "False (Direct Intranet)",
+                            },
                           ],
                           operationType: [
-                            { value: 'Migration', label: 'Migration' },
-                            { value: 'Clone', label: 'Clone' },
-                            { value: 'Snapshot', label: 'Snapshot' },
-                            { value: 'Template', label: 'Template' },
-                            { value: 'Backup', label: 'Backup' },
-                            { value: 'Resource Upgrade', label: 'Resource Upgrade' },
-                            { value: 'Delete VM', label: 'Delete VM' },
-                            { value: 'Others', label: 'Others' },
+                            { value: "Migration", label: "Migration" },
+                            { value: "Clone", label: "Clone" },
+                            { value: "Snapshot", label: "Snapshot" },
+                            { value: "Template", label: "Template" },
+                            { value: "Backup", label: "Backup" },
+                            {
+                              value: "Resource Upgrade",
+                              label: "Resource Upgrade",
+                            },
+                            { value: "Delete VM", label: "Delete VM" },
+                            { value: "Others", label: "Others" },
                           ],
                           requestType: [
-                            { value: 'VM Creation', label: 'VM Creation' },
-                            { value: 'VM Management', label: 'VM Management' },
-                            { value: 'DC Entry', label: 'DC Entry' },
-                            { value: 'Hardware Issuance', label: 'Hardware Issuance' },
-                            { value: 'Hardware Replacement', label: 'Hardware Replacement' },
+                            { value: "VM Creation", label: "VM Creation" },
+                            { value: "VM Management", label: "VM Management" },
+                            { value: "DC Entry", label: "DC Entry" },
+                            {
+                              value: "Hardware Issuance",
+                              label: "Hardware Issuance",
+                            },
+                            {
+                              value: "Hardware Replacement",
+                              label: "Hardware Replacement",
+                            },
+                          ],
+                          ip: [
+                            { value: "false", label: "IP is Empty" },
+                            { value: "true", label: "IP is Not Empty" },
                           ],
                         };
 
@@ -579,9 +826,15 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                             <FormControl size="small" sx={{ minWidth: 180 }}>
                               <InputLabel>Expected Value</InputLabel>
                               <Select
-                                value={stage.conditionValue || ''}
+                                value={stage.conditionValue || ""}
                                 label="Expected Value"
-                                onChange={(e) => updateStage(index, 'conditionValue', e.target.value)}
+                                onChange={(e) =>
+                                  updateStage(
+                                    index,
+                                    "conditionValue",
+                                    e.target.value,
+                                  )
+                                }
                                 MenuProps={SELECT_MENU_PROPS}
                               >
                                 {fieldOptions.map((opt) => (
@@ -598,8 +851,14 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                               label="Expected Value"
                               size="small"
                               placeholder="Enter expected value..."
-                              value={stage.conditionValue || ''}
-                              onChange={(e) => updateStage(index, 'conditionValue', e.target.value)}
+                              value={stage.conditionValue || ""}
+                              onChange={(e) =>
+                                updateStage(
+                                  index,
+                                  "conditionValue",
+                                  e.target.value,
+                                )
+                              }
                               sx={{ width: 180 }}
                             />
                           );
@@ -610,10 +869,30 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                 </Box>
 
                 {/* Conditional Status Assignment Section */}
-                <Box sx={{ width: '100%', pt: 1, borderTop: '1px dashed #cfd8dc', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="caption" fontWeight={700} color="primary.main">
-                      🔀 Conditional Status Assignments (Override Assignee based on condition):
+                <Box
+                  sx={{
+                    width: "100%",
+                    pt: 1,
+                    borderTop: "1px dashed #cfd8dc",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      fontWeight={700}
+                      color="primary.main"
+                    >
+                      🔀 Conditional Status Assignments (Override Assignee based
+                      on condition):
                     </Typography>
                     <Button
                       variant="text"
@@ -621,26 +900,41 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                       startIcon={<AddIcon />}
                       onClick={() => addConditionalAssignment(index)}
                       type="button"
-                      sx={{ fontSize: '0.75rem', py: 0 }}
+                      sx={{ fontSize: "0.75rem", py: 0 }}
                     >
                       Add Rule
                     </Button>
                   </Box>
 
                   {(stage.conditionalAssignments || []).map((rule, ruleIdx) => (
-                    <Box key={ruleIdx} sx={{ display: 'flex', gap: 1.5, alignItems: 'center', backgroundColor: '#f8fafc', p: 1, borderRadius: 1, border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
+                    <Box
+                      key={ruleIdx}
+                      sx={{
+                        display: "flex",
+                        gap: 1.5,
+                        alignItems: "center",
+                        backgroundColor: "#f8fafc",
+                        p: 1,
+                        borderRadius: 1,
+                        border: "1px solid #e2e8f0",
+                        flexWrap: "wrap",
+                      }}
+                    >
                       <FormControl size="small" sx={{ minWidth: 160 }}>
                         <InputLabel>If Field</InputLabel>
                         <Select
-                          value={rule.conditionField || ''}
+                          value={rule.conditionField || ""}
                           label="If Field"
                           onChange={(e) => {
                             const newField = e.target.value;
-                            let val = '';
-                            if (newField === 'networkType') val = 'Internet';
-                            else if (newField === 'firstInternetDeployment') val = 'true';
-                            else if (newField === 'operationType') val = 'Migration';
-                            else if (newField === 'requestType') val = 'VM Creation';
+                            let val = "";
+                            if (newField === "networkType") val = "Internet";
+                            else if (newField === "firstInternetDeployment")
+                              val = "true";
+                            else if (newField === "operationType")
+                              val = "Migration";
+                            else if (newField === "requestType")
+                              val = "VM Creation";
 
                             updateConditionalAssignmentFields(index, ruleIdx, {
                               conditionField: newField,
@@ -649,40 +943,66 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                           }}
                           MenuProps={SELECT_MENU_PROPS}
                         >
-                          <MenuItem value="networkType">Network Type (networkType)</MenuItem>
-                          <MenuItem value="firstInternetDeployment">First Internet Deployment (firstInternetDeployment)</MenuItem>
-                          <MenuItem value="operationType">Operation Type (operationType)</MenuItem>
-                          <MenuItem value="requestType">Request Type (requestType)</MenuItem>
+                          <MenuItem value="networkType">
+                            Network Type (networkType)
+                          </MenuItem>
+                          <MenuItem value="firstInternetDeployment">
+                            First Internet Deployment (firstInternetDeployment)
+                          </MenuItem>
+                          <MenuItem value="operationType">
+                            Operation Type (operationType)
+                          </MenuItem>
+                          <MenuItem value="requestType">
+                            Request Type (requestType)
+                          </MenuItem>
                           <MenuItem value="purpose">Purpose (purpose)</MenuItem>
                         </Select>
                       </FormControl>
 
                       {(() => {
-                        const optionsMap: Record<string, { value: string; label: string }[]> = {
+                        const optionsMap: Record<
+                          string,
+                          { value: string; label: string }[]
+                        > = {
                           networkType: [
-                            { value: 'Internet', label: 'Internet' },
-                            { value: 'Intranet', label: 'Intranet' },
+                            { value: "Internet", label: "Internet" },
+                            { value: "Intranet", label: "Intranet" },
                           ],
                           firstInternetDeployment: [
-                            { value: 'true', label: 'True (First Internet Deployment)' },
-                            { value: 'false', label: 'False (Direct Intranet)' },
+                            {
+                              value: "true",
+                              label: "True (First Internet Deployment)",
+                            },
+                            {
+                              value: "false",
+                              label: "False (Direct Intranet)",
+                            },
                           ],
                           operationType: [
-                            { value: 'Migration', label: 'Migration' },
-                            { value: 'Clone', label: 'Clone' },
-                            { value: 'Snapshot', label: 'Snapshot' },
-                            { value: 'Template', label: 'Template' },
-                            { value: 'Backup', label: 'Backup' },
-                            { value: 'Resource Upgrade', label: 'Resource Upgrade' },
-                            { value: 'Delete VM', label: 'Delete VM' },
-                            { value: 'Others', label: 'Others' },
+                            { value: "Migration", label: "Migration" },
+                            { value: "Clone", label: "Clone" },
+                            { value: "Snapshot", label: "Snapshot" },
+                            { value: "Template", label: "Template" },
+                            { value: "Backup", label: "Backup" },
+                            {
+                              value: "Resource Upgrade",
+                              label: "Resource Upgrade",
+                            },
+                            { value: "Delete VM", label: "Delete VM" },
+                            { value: "Others", label: "Others" },
                           ],
                           requestType: [
-                            { value: 'VM Creation', label: 'VM Creation' },
-                            { value: 'VM Management', label: 'VM Management' },
-                            { value: 'DC Entry', label: 'DC Entry' },
-                            { value: 'Hardware Issuance', label: 'Hardware Issuance' },
-                            { value: 'Hardware Replacement', label: 'Hardware Replacement' },
+                            { value: "VM Creation", label: "VM Creation" },
+                            { value: "VM Management", label: "VM Management" },
+                            { value: "DC Entry", label: "DC Entry" },
+                            {
+                              value: "Hardware Issuance",
+                              label: "Hardware Issuance",
+                            },
+                            {
+                              value: "Hardware Replacement",
+                              label: "Hardware Replacement",
+                            },
                           ],
                         };
 
@@ -692,9 +1012,16 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                             <FormControl size="small" sx={{ minWidth: 160 }}>
                               <InputLabel>Equals Value</InputLabel>
                               <Select
-                                value={rule.conditionValue || ''}
+                                value={rule.conditionValue || ""}
                                 label="Equals Value"
-                                onChange={(e) => updateConditionalAssignment(index, ruleIdx, 'conditionValue', e.target.value)}
+                                onChange={(e) =>
+                                  updateConditionalAssignment(
+                                    index,
+                                    ruleIdx,
+                                    "conditionValue",
+                                    e.target.value,
+                                  )
+                                }
                                 MenuProps={SELECT_MENU_PROPS}
                               >
                                 {fieldOptions.map((opt) => (
@@ -711,8 +1038,15 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                               label="Equals Value"
                               size="small"
                               placeholder="Enter value..."
-                              value={rule.conditionValue || ''}
-                              onChange={(e) => updateConditionalAssignment(index, ruleIdx, 'conditionValue', e.target.value)}
+                              value={rule.conditionValue || ""}
+                              onChange={(e) =>
+                                updateConditionalAssignment(
+                                  index,
+                                  ruleIdx,
+                                  "conditionValue",
+                                  e.target.value,
+                                )
+                              }
                               sx={{ width: 160 }}
                             />
                           );
@@ -726,18 +1060,40 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                           value={getRuleAssigneeValue(rule)}
                           label="Assign To"
                           onChange={(e) => {
-                            const vals = Array.isArray(e.target.value) ? e.target.value : [e.target.value];
-                            updateConditionalAssignment(index, ruleIdx, 'assignedTo', vals);
-                            updateConditionalAssignment(index, ruleIdx, 'assignmentType', 'Mixed');
+                            const vals = Array.isArray(e.target.value)
+                              ? e.target.value
+                              : [e.target.value];
+                            updateConditionalAssignment(
+                              index,
+                              ruleIdx,
+                              "assignedTo",
+                              vals,
+                            );
+                            updateConditionalAssignment(
+                              index,
+                              ruleIdx,
+                              "assignmentType",
+                              "Mixed",
+                            );
                           }}
-                          renderValue={(selected) => (selected as string[]).map(formatAssigneeLabel).join(', ')}
+                          renderValue={(selected) =>
+                            (selected as string[])
+                              .map(formatAssigneeLabel)
+                              .join(", ")
+                          }
                           MenuProps={SELECT_MENU_PROPS}
                         >
                           {renderAssigneeSelectOptions(rule as any)}
                         </Select>
                       </FormControl>
 
-                      <IconButton size="small" color="error" onClick={() => removeConditionalAssignment(index, ruleIdx)}>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() =>
+                          removeConditionalAssignment(index, ruleIdx)
+                        }
+                      >
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Box>
@@ -745,19 +1101,48 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                 </Box>
 
                 {/* Stage PDF Terms Attachment Section */}
-                <Box sx={{ width: '100%', pt: 1, borderTop: '1px dashed #cfd8dc', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-                    <Typography variant="caption" fontWeight={700} color="text.primary">
+                <Box
+                  sx={{
+                    width: "100%",
+                    pt: 1,
+                    borderTop: "1px dashed #cfd8dc",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      flexWrap: "wrap",
+                      gap: 1,
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      fontWeight={700}
+                      color="text.primary"
+                    >
                       📄 Stage Document / Terms & Conditions (PDF):
                     </Typography>
                     {stage.attachmentUrl ? (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
                         <Chip
-                          icon={<MdPictureAsPdf style={{ color: '#d32f2f' }} />}
-                          label={stage.attachmentName || 'Attached Document.pdf'}
+                          icon={<MdPictureAsPdf style={{ color: "#d32f2f" }} />}
+                          label={
+                            stage.attachmentName || "Attached Document.pdf"
+                          }
                           size="small"
                           component="a"
-                          href={stage.attachmentUrl?.startsWith('http') ? stage.attachmentUrl : `${API_BASE_URL}${stage.attachmentUrl?.startsWith('/') ? '' : '/'}${stage.attachmentUrl}`}
+                          href={
+                            stage.attachmentUrl?.startsWith("http")
+                              ? stage.attachmentUrl
+                              : `${API_BASE_URL}${stage.attachmentUrl?.startsWith("/") ? "" : "/"}${stage.attachmentUrl}`
+                          }
                           target="_blank"
                           clickable
                           color="primary"
@@ -766,7 +1151,13 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                         <IconButton
                           size="small"
                           color="error"
-                          onClick={() => updateStageFields(index, { attachmentUrl: '', attachmentName: '', requireTermsAgreement: false })}
+                          onClick={() =>
+                            updateStageFields(index, {
+                              attachmentUrl: "",
+                              attachmentName: "",
+                              requireTermsAgreement: false,
+                            })
+                          }
                           title="Remove attachment"
                           type="button"
                         >
@@ -782,7 +1173,9 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                         disabled={uploadingStageIndex === index}
                         type="button"
                       >
-                        {uploadingStageIndex === index ? 'Uploading...' : 'Attach PDF / Terms'}
+                        {uploadingStageIndex === index
+                          ? "Uploading..."
+                          : "Attach PDF / Terms"}
                         <input
                           type="file"
                           hidden
@@ -799,13 +1192,20 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                         <Checkbox
                           size="small"
                           checked={stage.requireTermsAgreement !== false}
-                          onChange={(e) => updateStage(index, 'requireTermsAgreement', e.target.checked)}
+                          onChange={(e) =>
+                            updateStage(
+                              index,
+                              "requireTermsAgreement",
+                              e.target.checked,
+                            )
+                          }
                           color="primary"
                         />
                       }
                       label={
                         <Typography variant="caption" color="text.secondary">
-                          Require assignee to view & agree to terms PDF before advancing stage
+                          Require assignee to view & agree to terms PDF before
+                          advancing stage
                         </Typography>
                       }
                     />
@@ -819,8 +1219,13 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
           <Button onClick={onClose} variant="text" color="inherit">
             Cancel
           </Button>
-          <Button type="submit" variant="contained" color="primary" disabled={submitting}>
-            {submitting ? 'Saving...' : 'Save'}
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            disabled={submitting}
+          >
+            {submitting ? "Saving..." : "Save"}
           </Button>
         </DialogActions>
       </form>
