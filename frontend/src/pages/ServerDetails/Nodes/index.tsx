@@ -40,11 +40,22 @@ import NodeViewModal from "./NodeViewModal";
 import { Icons } from "../../../helpers/icons";
 
 import request from "../../../services/request";
+import { generateAndDownloadCSV, SUB_TAB_MAPPING, TAB_CONSTANTS } from "../utils";
 
 type Order = "asc" | "desc";
 
-const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashboardAdminFilter?: string; nodeTypeFilter?: string; storagePrefix?: string }) => {
-  const { isSuperuser, username } = useSelector((state: RootState) => state.auth);
+const Nodes = ({
+  dashboardAdminFilter,
+  nodeTypeFilter,
+  storagePrefix,
+}: {
+  dashboardAdminFilter?: string;
+  nodeTypeFilter?: string;
+  storagePrefix?: string;
+}) => {
+  const { isSuperuser, username } = useSelector(
+    (state: RootState) => state.auth,
+  );
   const [data, setData] = useState<NodeData[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -56,26 +67,39 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
   const [racksList, setRacksList] = useState<string[]>([]);
   const [monitoredIps, setMonitoredIps] = useState<Set<string>>(new Set());
 
-  const [isUpdateHistoryModalOpen, setIsUpdateHistoryModalOpen] = useState(false);
-  const [selectedUpdateHistoryItem, setSelectedUpdateHistoryItem] = useState<{ id: string; name: string; typeLabel: string } | null>(null);
+  const [isUpdateHistoryModalOpen, setIsUpdateHistoryModalOpen] =
+    useState(false);
+  const [selectedUpdateHistoryItem, setSelectedUpdateHistoryItem] = useState<{
+    id: string;
+    name: string;
+    typeLabel: string;
+  } | null>(null);
 
   const handleOpenUpdateHistory = (row: NodeData) => {
     const isStorage = row.isStorage;
     const isAppliance = row.isAppliance;
     const isPhysical = row.isPhysicalServer;
-    const typeLabel = isStorage ? "Storage Device" : (isAppliance ? "Network Device" : (isPhysical ? "Physical Server" : "Node"));
-    
+    const typeLabel = isStorage
+      ? "Storage Device"
+      : isAppliance
+        ? "Network Device"
+        : isPhysical
+          ? "Physical Server"
+          : "Node";
+
     setSelectedUpdateHistoryItem({
-      id: row.id || row._id || '',
-      name: row.node || row.ip || 'Device',
-      typeLabel: typeLabel
+      id: row.id || row._id || "",
+      name: row.node || row.ip || "Device",
+      typeLabel: typeLabel,
     });
     setIsUpdateHistoryModalOpen(true);
   };
 
   const fetchMonitoredIps = useCallback(async () => {
     try {
-      const res = await request.get('/api/server-ping-monitoring/', { params: { limit: 1000 } });
+      const res = await request.get("/api/server-ping-monitoring/", {
+        params: { limit: 1000 },
+      });
       const ips = new Set((res.data?.data || []).map((s: any) => s.ipAddress));
       setMonitoredIps(ips);
     } catch (err) {
@@ -186,7 +210,6 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
   const { showToast } = useToast();
   const { confirm } = useConfirm();
 
-
   const hasCreate =
     isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
   const hasUpdate =
@@ -199,7 +222,10 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
     isSuperuser || hasPrivilege(PRIVILEGES.SERVER_DETAILS_CREATE);
 
   const prefix = storagePrefix || "all";
-  const [searchQuery, setSearchQuery] = useTableState(`Nodes_${prefix}_search`, "");
+  const [searchQuery, setSearchQuery] = useTableState(
+    `Nodes_${prefix}_search`,
+    "",
+  );
   const [clusterFilter, setClusterFilter] = useTableState(
     `Nodes_${prefix}_clusterFilter`,
     "",
@@ -208,21 +234,48 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
     `Nodes_${prefix}_serverModelFilter`,
     "",
   );
-  const [adminFilter, setAdminFilter] = useTableState(`Nodes_${prefix}_adminFilter`, dashboardAdminFilter || "");
-  const [rackFilter, setRackFilter] = useTableState(`Nodes_${prefix}_rackFilter`, "");
+  const [adminFilter, setAdminFilter] = useTableState(
+    `Nodes_${prefix}_adminFilter`,
+    dashboardAdminFilter || "",
+  );
+  const [rackFilter, setRackFilter] = useTableState(
+    `Nodes_${prefix}_rackFilter`,
+    "",
+  );
   const [osFilter, setOsFilter] = useTableState(`Nodes_${prefix}_osFilter`, "");
-  const [custodianFilter, setCustodianFilter] = useTableState(`Nodes_${prefix}_custodianFilter`, "");
-  const [gpuFilter, setGpuFilter] = useTableState(`Nodes_${prefix}_gpuFilter`, "");
-  const [deviceTypeFilter, setDeviceTypeFilter] = useTableState(`Nodes_${prefix}_deviceTypeFilter`, "");
-  const [networkTypeFilter, setNetworkTypeFilter] = useTableState(`Nodes_${prefix}_networkTypeFilter`, "");
+  const [custodianFilter, setCustodianFilter] = useTableState(
+    `Nodes_${prefix}_custodianFilter`,
+    "",
+  );
+  const [gpuFilter, setGpuFilter] = useTableState(
+    `Nodes_${prefix}_gpuFilter`,
+    "",
+  );
+  const [deviceTypeFilter, setDeviceTypeFilter] = useTableState(
+    `Nodes_${prefix}_deviceTypeFilter`,
+    "",
+  );
+  const [networkTypeFilter, setNetworkTypeFilter] = useTableState(
+    `Nodes_${prefix}_networkTypeFilter`,
+    "",
+  );
   const [osList, setOsList] = useState<string[]>([]);
   const [custodiansList, setCustodiansList] = useState<string[]>([]);
   const [gpusList, setGpusList] = useState<string[]>([]);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [page, setPage] = useTableState(`Nodes_${prefix}_page`, 0);
-  const [rowsPerPage, setRowsPerPage] = useTableState(`Nodes_${prefix}_rowsPerPage`, 5);
-  const [order, setOrder] = useTableState<Order>(`Nodes_${prefix}_order`, "asc");
-  const [orderBy, setOrderBy] = useTableState<string>(`Nodes_${prefix}_orderBy`, "nodeId");
+  const [rowsPerPage, setRowsPerPage] = useTableState(
+    `Nodes_${prefix}_rowsPerPage`,
+    5,
+  );
+  const [order, setOrder] = useTableState<Order>(
+    `Nodes_${prefix}_order`,
+    "asc",
+  );
+  const [orderBy, setOrderBy] = useTableState<string>(
+    `Nodes_${prefix}_orderBy`,
+    "nodeId",
+  );
 
   // Reset page when dashboard filter changes
   useEffect(() => {
@@ -240,10 +293,12 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
     }
   }, [nodeTypeFilter]);
 
-
   // Build unique OS, Custodian, and GPU lists for filter dropdowns
   useEffect(() => {
-    fetchNodes({ pagination: false, nodeTypeFilter: nodeTypeFilter || undefined })
+    fetchNodes({
+      pagination: false,
+      nodeTypeFilter: nodeTypeFilter || undefined,
+    })
       .then((res) => {
         const osSet = new Set<string>();
         const custSet = new Set<string>();
@@ -255,7 +310,9 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
         });
         setOsList(Array.from(osSet).sort());
         setCustodiansList(Array.from(custSet).sort());
-        setGpusList((prev) => Array.from(new Set([...prev, ...Array.from(gpuSet)])).sort());
+        setGpusList((prev) =>
+          Array.from(new Set([...prev, ...Array.from(gpuSet)])).sort(),
+        );
       })
       .catch(() => {});
   }, [nodeTypeFilter]);
@@ -354,7 +411,9 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
       if (typeof detail === "string") {
         errorMsg = detail;
       } else if (Array.isArray(detail) && detail[0]?.msg) {
-        const fieldName = detail[0]?.loc ? detail[0].loc[detail[0].loc.length - 1] : "";
+        const fieldName = detail[0]?.loc
+          ? detail[0].loc[detail[0].loc.length - 1]
+          : "";
         errorMsg = fieldName ? `${fieldName}: ${detail[0].msg}` : detail[0].msg;
       }
       showToast(errorMsg, "error");
@@ -363,12 +422,15 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
 
   const handleAddToMonitoring = async (item: NodeData) => {
     if (!item.ip) {
-      showToast("This server does not have an IP address configured. Edit the node to set an IP first.", "warning");
+      showToast(
+        "This server does not have an IP address configured. Edit the node to set an IP first.",
+        "warning",
+      );
       return;
     }
     const isConfirmed = await confirm(
       `Are you sure you want to add ${item.node || "this node"} (${item.ip}) to Ping Monitoring?`,
-      "Add to Monitoring"
+      "Add to Monitoring",
     );
     if (isConfirmed) {
       try {
@@ -376,7 +438,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
         const primaryAdminId = adminArr[0] || "";
         const adminDisplayName = usersMap[primaryAdminId] || "";
 
-        await request.post('/api/server-ping-monitoring/', {
+        await request.post("/api/server-ping-monitoring/", {
           name: item.node || "Unnamed Node",
           ipAddress: item.ip,
           adminName: adminDisplayName || "Admin",
@@ -385,9 +447,9 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
           timeout: 5,
           retryCount: 3,
           ports: [],
-          isEnabled: true
+          isEnabled: true,
         });
-        setMonitoredIps(prev => {
+        setMonitoredIps((prev) => {
           const next = new Set(prev);
           next.add(item.ip);
           return next;
@@ -396,7 +458,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
       } catch (e: any) {
         showToast(
           e?.response?.data?.detail || "Failed to add node to monitoring",
-          "error"
+          "error",
         );
       }
     }
@@ -466,31 +528,46 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
       render: (row) => {
         const cid = row.clusterId || "";
         if (!cid) return "-";
-        const found = clusters.find((c) => c.id === cid || c._id === cid || (c.clusterName && c.clusterName.toLowerCase() === cid.toLowerCase()));
+        const found = clusters.find(
+          (c) =>
+            c.id === cid ||
+            c._id === cid ||
+            (c.clusterName &&
+              c.clusterName.toLowerCase() === cid.toLowerCase()),
+        );
         const cName = found ? found.clusterName : cid;
-        const cTypeStr = `${found?.clusterType || ''} ${found?.clusterName || ''} ${cid}`.toLowerCase();
-        
+        const cTypeStr =
+          `${found?.clusterType || ""} ${found?.clusterName || ""} ${cid}`.toLowerCase();
+
         let icon = null;
-        if (cTypeStr.includes('proxmox') || cTypeStr.includes('pve') || cTypeStr.includes('kvm')) {
+        if (
+          cTypeStr.includes("proxmox") ||
+          cTypeStr.includes("pve") ||
+          cTypeStr.includes("kvm")
+        ) {
           icon = (
             <Tooltip title="Proxmox" arrow placement="top">
-              <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                <Icons.ProxmoxIcon style={{ color: '#e64a19', fontSize: '22px', flexShrink: 0 }} />
+              <span style={{ display: "inline-flex", alignItems: "center" }}>
+                <Icons.ProxmoxIcon
+                  style={{ color: "#e64a19", fontSize: "22px", flexShrink: 0 }}
+                />
               </span>
             </Tooltip>
           );
         } else {
           icon = (
             <Tooltip title="VMware" arrow placement="top">
-              <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                <Icons.VmwareIcon style={{ color: '#607d8b', fontSize: '22px', flexShrink: 0 }} />
+              <span style={{ display: "inline-flex", alignItems: "center" }}>
+                <Icons.VmwareIcon
+                  style={{ color: "#607d8b", fontSize: "22px", flexShrink: 0 }}
+                />
               </span>
             </Tooltip>
           );
         }
 
         return (
-          <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: "inline-flex", alignItems: "center", gap: 1 }}>
             {icon}
             <span>{cName}</span>
           </Box>
@@ -502,7 +579,8 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
       id: "isAppliance",
       label: "Type",
       sortable: true,
-      render: (row) => (row.isStorage ? "Storage" : row.isAppliance ? "Appliance" : "Node"),
+      render: (row) =>
+        row.isStorage ? "Storage" : row.isAppliance ? "Appliance" : "Node",
     },
     {
       id: "ip",
@@ -556,7 +634,11 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
                   <IconButton
                     size="small"
                     disabled
-                    sx={{ color: '#2e7d32', backgroundColor: 'rgba(46, 125, 50, 0.08)', '&.Mui-disabled': { color: '#2e7d32' } }}
+                    sx={{
+                      color: "#2e7d32",
+                      backgroundColor: "rgba(46, 125, 50, 0.08)",
+                      "&.Mui-disabled": { color: "#2e7d32" },
+                    }}
                   >
                     <MonitorIcon fontSize="small" />
                   </IconButton>
@@ -577,50 +659,50 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
                 </IconButton>
               </Tooltip>
             )}
-          {hasUpdate && (
-            <Tooltip title="Edit">
+            {hasUpdate && (
+              <Tooltip title="Edit">
+                <IconButton
+                  size="small"
+                  color="primary"
+                  sx={{ backgroundColor: "rgba(25, 118, 210, 0.04)" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenModal(row);
+                  }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            <Tooltip title="Update History">
               <IconButton
                 size="small"
-                color="primary"
-                sx={{ backgroundColor: "rgba(25, 118, 210, 0.04)" }}
+                color="secondary"
+                sx={{ backgroundColor: "rgba(156, 39, 176, 0.04)" }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleOpenModal(row);
+                  handleOpenUpdateHistory(row);
                 }}
               >
-                <EditIcon fontSize="small" />
+                <UpdateHistoryIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-          )}
-          <Tooltip title="Update History">
-            <IconButton
-              size="small"
-              color="secondary"
-              sx={{ backgroundColor: "rgba(156, 39, 176, 0.04)" }}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenUpdateHistory(row);
-              }}
-            >
-              <UpdateHistoryIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          {hasDelete && (
-            <Tooltip title="Delete">
-              <IconButton
-                size="small"
-                color="error"
-                sx={{ backgroundColor: "rgba(211, 47, 47, 0.04)" }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(row);
-                }}
-              >
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Box>
+            {hasDelete && (
+              <Tooltip title="Delete">
+                <IconButton
+                  size="small"
+                  color="error"
+                  sx={{ backgroundColor: "rgba(211, 47, 47, 0.04)" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(row);
+                  }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
         );
       },
     });
@@ -633,23 +715,24 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
   };
 
   const hasDeptView = hasPrivilege("view_department_devices");
-  const hasViewAll = isSuperuser || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
+  const hasViewAll =
+    isSuperuser || hasPrivilege(PRIVILEGES.VIEW_ALL_SERVER_DETAILS);
 
-  const currentUserDoc = allUsers.find(u => u.username === username);
+  const currentUserDoc = allUsers.find((u) => u.username === username);
   const currentUserDept = currentUserDoc?.department || "";
 
   const deptAdminsList = allUsers
-    .filter(u => u.department === currentUserDept)
-    .map(u => ({
-      label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
-      value: u.username
+    .filter((u) => u.department === currentUserDept)
+    .map((u) => ({
+      label: `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username,
+      value: u.username,
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
   const filteredAdmins = allUsers
-    .map(u => ({
-      label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
-      value: u.username
+    .map((u) => ({
+      label: `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username,
+      value: u.username,
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
@@ -659,19 +742,19 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
         { label: "Me & Unassigned", value: "my_unassigned" },
         { label: "Unassigned", value: "unassigned" },
         { label: "Other", value: "other" },
-        ...filteredAdmins
+        ...filteredAdmins,
       ]
     : hasDeptView
       ? [
           { label: "All Dept Admins", value: "" },
           { label: "Me & Unassigned", value: "my_unassigned" },
           { label: "Unassigned", value: "unassigned" },
-          ...deptAdminsList
+          ...deptAdminsList,
         ]
       : [
           { label: "Me & Unassigned", value: "my_unassigned" },
           { label: "Assigned to Me", value: "assigned" },
-          { label: "Unassigned", value: "unassigned" }
+          { label: "Unassigned", value: "unassigned" },
         ];
 
   const activeFilterCount = [
@@ -699,8 +782,90 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
     setPage(0);
   };
 
+  const handleCsvDownload = () => {
+    const mappedData = data.map((row: NodeData) => {
+      // Resolve cluster ID/object
+      const clusterValue =
+        typeof row.clusterId === "object" && row.clusterId !== null
+          ? row.clusterId._id || row.clusterId.id
+          : row.clusterId;
+
+      const foundCluster = clusters.find(
+        (c: any) =>
+          c.id === clusterValue ||
+          c._id === clusterValue ||
+          c.vcenterClusterId === clusterValue ||
+          (c.clusterName &&
+            c.clusterName.toLowerCase() ===
+              String(clusterValue || "").toLowerCase()),
+      );
+
+      // Resolve admin(s)
+      const adminArray = Array.isArray(row.admin)
+        ? row.admin
+        : row.admin
+          ? [row.admin]
+          : [];
+
+      const mappedAdmins = adminArray
+        .map((admin: any) => {
+          if (typeof admin === "object" && admin !== null) {
+            const adminId = admin._id || admin.id || admin.username;
+
+            return (
+              [admin.firstName, admin.lastName]
+                .filter(Boolean)
+                .join(" ")
+                .trim() ||
+              usersMap[adminId] ||
+              admin.username ||
+              adminId ||
+              ""
+            );
+          }
+
+          return usersMap[admin] || admin || "";
+        })
+        .filter(Boolean)
+        .join(", ");
+
+      // Keep the ORIGINAL key names
+      return {
+        ...row,
+
+        // Replace object/ID with display value
+        clusterId: foundCluster?.clusterName || clusterValue || "-",
+
+        // Keep node as its original key name
+        node:
+          typeof row.node === "object" && row.node !== null
+            ? row.node.node ||
+              row.node.hostName ||
+              row.node.name ||
+              row.node.ip ||
+              "-"
+            : row.node || "-",
+
+        // Replace admin IDs with names
+        admin: mappedAdmins || "-",
+      };
+    });
+    generateAndDownloadCSV({
+      data: mappedData,
+      tab: SUB_TAB_MAPPING[nodeTypeFilter],
+    });
+  };
+
   return (
-    <Box sx={{ mt: 2, flexGrow: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <Box
+      sx={{
+        mt: 2,
+        flexGrow: 1,
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}
+    >
       <Box
         sx={{
           display: "flex",
@@ -720,19 +885,28 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
             flexWrap: "wrap",
           }}
         >
+          <Button
+            variant="outlined"
+            startIcon={<Icons.DownloadIcon />}
+            onClick={handleCsvDownload}
+          >
+            Download
+          </Button>
+
           <SearchBar
             value={searchQuery}
             onChange={setSearchQuery}
             placeholder="Search nodes..."
           />
+
           <Button
             variant={activeFilterCount > 0 ? "contained" : "outlined"}
             color="primary"
             startIcon={<FilterListIcon size={20} />}
             onClick={() => setIsFilterDrawerOpen(true)}
-            sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600 }}
+            sx={{ borderRadius: "8px", textTransform: "none", fontWeight: 600 }}
           >
-            Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
+            Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ""}
           </Button>
           {hasCreate && (
             <Button
@@ -803,7 +977,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
             }}
             options={[
               { label: "All Clusters", value: "" },
-              ...clusters.map((c) => ({ label: c.clusterName, value: c.id }))
+              ...clusters.map((c) => ({ label: c.clusterName, value: c.id })),
             ]}
           />
 
@@ -819,7 +993,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
             }}
             options={[
               { label: "All Racks", value: "" },
-              ...racksList.map((r) => ({ label: r, value: r }))
+              ...racksList.map((r) => ({ label: r, value: r })),
             ]}
           />
         </FilterGroup>
@@ -837,7 +1011,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
             }}
             options={[
               { label: "All Models", value: "" },
-              ...serverModelsList.map((m) => ({ label: m, value: m }))
+              ...serverModelsList.map((m) => ({ label: m, value: m })),
             ]}
           />
 
@@ -853,7 +1027,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
             }}
             options={[
               { label: "All OS", value: "" },
-              ...osList.map((o) => ({ label: o, value: o }))
+              ...osList.map((o) => ({ label: o, value: o })),
             ]}
           />
 
@@ -869,7 +1043,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
             }}
             options={[
               { label: "All GPUs", value: "" },
-              ...gpusList.map((g) => ({ label: g, value: g }))
+              ...gpusList.map((g) => ({ label: g, value: g })),
             ]}
           />
         </FilterGroup>
@@ -880,7 +1054,11 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
             size="small"
             searchable
             clearable
-            value={!(hasViewAll || hasDeptView) && adminFilter === "" ? "my_unassigned" : adminFilter}
+            value={
+              !(hasViewAll || hasDeptView) && adminFilter === ""
+                ? "my_unassigned"
+                : adminFilter
+            }
             onChange={(val) => {
               setAdminFilter(val);
               setPage(0);
@@ -900,7 +1078,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
             }}
             options={[
               { label: "All Custodians", value: "" },
-              ...custodiansList.map((c) => ({ label: c, value: c }))
+              ...custodiansList.map((c) => ({ label: c, value: c })),
             ]}
           />
         </FilterGroup>
@@ -916,7 +1094,7 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
           flexGrow: 1,
           display: "flex",
           flexDirection: "column",
-          overflow: "hidden"
+          overflow: "hidden",
         }}
       >
         <Table
@@ -961,9 +1139,9 @@ const Nodes = ({ dashboardAdminFilter, nodeTypeFilter, storagePrefix }: { dashbo
       <InfrastructureUpdateHistoryModal
         open={isUpdateHistoryModalOpen}
         onClose={() => setIsUpdateHistoryModalOpen(false)}
-        entityId={selectedUpdateHistoryItem?.id || ''}
-        entityName={selectedUpdateHistoryItem?.name || ''}
-        entityTypeLabel={selectedUpdateHistoryItem?.typeLabel || 'Device'}
+        entityId={selectedUpdateHistoryItem?.id || ""}
+        entityName={selectedUpdateHistoryItem?.name || ""}
+        entityTypeLabel={selectedUpdateHistoryItem?.typeLabel || "Device"}
       />
     </Box>
   );

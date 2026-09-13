@@ -10,7 +10,13 @@ export const TAB_CONSTANTS = {
   NETWORK_DEVICES: "network_devices",
 } as const;
 
-type Tab = typeof TAB_CONSTANTS[keyof typeof TAB_CONSTANTS];
+export const SUB_TAB_MAPPING = {
+  storage: TAB_CONSTANTS.STORAGE_DEVICES,
+  physical: TAB_CONSTANTS.PHYSICAL_SERVERS,
+  appliance: TAB_CONSTANTS.NETWORK_DEVICES,
+} as const;
+
+type Tab = (typeof TAB_CONSTANTS)[keyof typeof TAB_CONSTANTS];
 
 interface Proptype {
   data: any[];
@@ -45,13 +51,7 @@ const HeadersMap: Record<Tab, string[]> = {
     "Admin",
   ],
 
-  [TAB_CONSTANTS.VMS]: [
-    "VM Name",
-    "Cluster",
-    "IP Address",
-    "Node",
-    "Admin",
-  ],
+  [TAB_CONSTANTS.VMS]: ["VM Name", "Cluster", "IP Address", "Node", "Admin"],
 
   [TAB_CONSTANTS.PHYSICAL_SERVERS]: [
     "Node",
@@ -108,13 +108,7 @@ const FieldsMap: Record<Tab, string[]> = {
     "admin",
   ],
 
-  [TAB_CONSTANTS.VMS]: [
-    "vmName",
-    "clusterId",
-    "ipAddress",
-    "node",
-    "admin",
-  ],
+  [TAB_CONSTANTS.VMS]: ["vmName", "clusterId", "ipAddress", "node", "admin"],
 
   [TAB_CONSTANTS.PHYSICAL_SERVERS]: [
     "physicalServerName",
@@ -125,7 +119,7 @@ const FieldsMap: Record<Tab, string[]> = {
     "admin",
   ],
 
-    [TAB_CONSTANTS.STORAGE_DEVICES]: [
+  [TAB_CONSTANTS.STORAGE_DEVICES]: [
     "node",
     "ip",
     "serverModel",
@@ -164,11 +158,7 @@ const formatCSVValue = (value: any): string => {
   return String(value);
 };
 
-export const generateAndDownloadCSV = async ({
-  data = [],
-  tab,
-}: Proptype) => {
-
+export const generateAndDownloadCSV = async ({ data = [], tab }: Proptype) => {
   if (!tab) {
     console.error("CSV export failed: tab is undefined");
     return;
@@ -196,12 +186,7 @@ export const generateAndDownloadCSV = async ({
       .join(",");
   });
 
-  const csv = [
-    headers.map(csvEscape).join(","),
-    ...rows,
-  ].join("\n");
-
-  console.log("Generated CSV:", csv);
+  const csv = [headers.map(csvEscape).join(","), ...rows].join("\n");
 
   const blob = new Blob([csv], {
     type: "text/csv;charset=utf-8;",
@@ -212,10 +197,16 @@ export const generateAndDownloadCSV = async ({
   const link = document.createElement("a");
 
   link.href = url;
-  link.download = `${tab}-${new Date()
-    .toISOString()
-    .slice(0, 10)}.csv`;
+  const now = new Date();
 
+  const timestamp = now
+    .toISOString()
+    .replace("T", "_")
+    .replace(/:/g, "-")
+    .slice(0, 19);
+
+  link.download = `${tab}-${timestamp}.csv`;
+  
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
