@@ -223,16 +223,30 @@ async def get_routing_for_type(request_type: str):
 
 
 def is_stage_applicable(stage: dict, request_doc: dict) -> bool:
-    """Check whether a stage condition matches the request doc details."""
+    """Check whether a stage condition matches the request document."""
+
     c_field = stage.get("conditionField")
     c_val = stage.get("conditionValue")
+
+    # No condition configured
     if not c_field or c_val is None or str(c_val).strip() == "":
-        return True  # No condition set, so stage is always applicable
+        return True
 
-    c_operator = stage.get("conditionOperator", "equals")
-    details = request_doc.get("details") if isinstance(request_doc.get("details"), dict) else {}
+    c_operator = stage.get("conditionOperator", "equals").strip().lower()
 
-    
+    details = (
+        request_doc.get("details")
+        if isinstance(request_doc.get("details"), dict)
+        else {}
+    )
+
+    # ============================================================
+    # SPECIAL CASE: IP
+    #
+    # conditionValue:
+    #   "true"  -> IP is NOT empty
+    #   "false" -> IP is EMPTY
+    # ============================================================
     if c_field == "ip":
 
         raw_ip = details.get("ip")
@@ -244,49 +258,40 @@ def is_stage_applicable(stage: dict, request_doc: dict) -> bool:
 
         expected = str(c_val).strip().lower()
 
-        print(
-            f"[STAGE CONDITION] "
-            f"field={c_field}, "
-            f"raw_ip={raw_ip!r}, "
-            f"ip_is_empty={ip_is_empty}, "
-            f"expected={expected}"
-        )
+        # First determine what the normal condition result is
+        if expected == "true":
+            # IP is NOT empty
+            result = not ip_is_empty
 
-        if expected == "false":
-            # IP is Empty
-            return ip_is_empty
+        elif expected == "false":
+            # IP IS empty
+            result = ip_is_empty
 
-        elif expected == "true":
-            # IP is Not Empty
-            return not ip_is_empty
+        else:
+            return False
 
-        return False
-    
+        # Apply operator
+        if c_operator == "not_equals":
+            result = not result
+
+        return result
+
+    # ============================================================
+    # NORMAL CONDITIONS
+    # ============================================================
+
     raw_val = None
+
     if c_field in details and details[c_field] is not None:
         raw_val = details[c_field]
+
     elif c_field in request_doc and request_doc[c_field] is not None:
         raw_val = request_doc[c_field]
 
+    # Empty value handling
     if raw_val is None or str(raw_val).strip() == "":
-        
-        if c_field == "ip":
-            ip_is_empty = (
-                raw_val is None
-                or str(raw_val).strip() == ""
-            )
 
-            expected = str(c_val).strip().lower()
-
-            if expected == "false":
-                # IP is Empty
-                return ip_is_empty
-
-            if expected == "true":
-                # IP is Not Empty
-                return not ip_is_empty
-
-        # Default fallback for networkType if unspecified
+        # Existing fallback behavior
         if c_field == "networkType":
             raw_val = "Internet"
         else:
@@ -295,10 +300,17 @@ def is_stage_applicable(stage: dict, request_doc: dict) -> bool:
     actual_val = str(raw_val).strip().lower()
     expected_val = str(c_val).strip().lower()
 
+    # ============================================================
+    # NORMAL OPERATOR
+    # ============================================================
+
     if c_operator == "not_equals":
-        return actual_val != expected_val
-    else:  # equals
-        return actual_val == expected_val
+        result = actual_val != expected_val
+    else:
+        # equals
+        result = actual_val == expected_val
+
+    return result
 
 
 def get_applicable_stages(stages: List[dict], request_doc: dict) -> List[dict]:
