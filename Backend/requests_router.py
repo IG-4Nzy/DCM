@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Body, Query, Depends, UploadFile, File
+import asyncio
 import re
 import os
 from auth_utils import require_privilege, get_current_user
@@ -143,6 +144,204 @@ async def log_request_action(request_id: str, action: str, details: str, usernam
         await logs_col.insert_one(log_entry)
     except Exception as e:
         print(f"Failed to write request history log: {e}")
+
+
+async def send_stage_email_notification(
+    stage: dict,
+    request_doc: dict,
+    action_type: str = "Stage Reached",
+    actor_username: Optional[str] = None,
+    remarks: Optional[str] = None
+):
+    """Sends email notifications to requester, assignee, and custom recipients when a request reaches a stage."""
+    try:
+        if not stage or not isinstance(stage, dict):
+            return
+
+        send_email_flag = stage.get("sendEmail", False)
+        if not send_email_flag:
+            return
+
+        email_to_requester = stage.get("emailToRequester", False)
+        email_to_assignee = stage.get("emailToAssignee", False)
+        custom_emails = stage.get("customEmails") or []
+
+        # If no recipient options configured, exit
+        if not (email_to_requester or email_to_assignee or custom_emails):
+            return
+
+        recipients = []
+
+        # 1. Email to Requester
+        if email_to_requester:
+            requester = request_doc.get("createdBy") or ""
+            if requester:
+                user = await users_collection.find_one({"username": requester})
+                req_email = None
+                if user and user.get("email"):
+                    req_email = str(user["email"]).strip()
+                elif user and user.get("mail"):
+                    req_email = str(user["mail"]).strip()
+                elif "@" in requester:
+                    req_email = requester.strip()
+                else:
+                    details = request_doc.get("details") or {}
+                    if isinstance(details, dict) and details.get("email"):
+                        req_email = str(details["email"]).strip()
+                    elif isinstance(details, dict) and details.get("requesterEmail"):
+                        req_email = str(details["requesterEmail"]).strip()
+                    elif user and user.get("username"):
+                        req_email = f"{user.get('username')}@vssc.gov.in"
+                    else:
+                        req_email = f"{requester}@vssc.gov.in"
+
+                if req_email and "@" in req_email and req_email not in recipients:
+                    recipients.append(req_email)
+
+        # 2. Email to Assignee(s)
+        if email_to_assignee:
+            assigned_users = request_doc.get("currentAssignedUsers") or []
+            if not assigned_users and stage.get("assignedTo"):
+                assigned_to_raw = stage.get("assignedTo")
+                if isinstance(assigned_to_raw, list):
+                    assigned_users = assigned_to_raw
+                elif isinstance(assigned_to_raw, str):
+                    assigned_users = [assigned_to_raw]
+
+            for assignee in assigned_users:
+                assignee_str = str(assignee).strip()
+                if not assignee_str:
+                    continue
+                if assignee_str.startswith("SpecificUser:"):
+                    assignee_str = assignee_str.replace("SpecificUser:", "").strip()
+                elif assignee_str.startswith("Role:") or assignee_str.startswith("DeptStaffs:"):
+                    continue
+
+                user = await users_collection.find_one({"username": assignee_str})
+                assignee_email = None
+                if user and user.get("email"):
+                    assignee_email = str(user["email"]).strip()
+                elif user and user.get("mail"):
+                    assignee_email = str(user["mail"]).strip()
+                elif "@" in assignee_str:
+                    assignee_email = assignee_str
+                elif user and user.get("username"):
+                    assignee_email = f"{user.get('username')}@vssc.gov.in"
+                elif assignee_str.replace("_", "").isalnum():
+                    assignee_email = f"{assignee_str}@vssc.gov.in"
+
+                if assignee_email and "@" in assignee_email and assignee_email not in recipients:
+                    recipients.append(assignee_email)
+
+        # 3. Custom Emails
+        if custom_emails:
+            if isinstance(custom_emails, str):
+                custom_list = [c.strip() for c in custom_emails.split(",") if c.strip()]
+            else:
+                custom_list = [str(c).strip() for c in custom_emails if c and str(c).strip()]
+
+            for ce in custom_list:
+                if "@" in ce and ce not in recipients:
+                    recipients.append(ce)
+
+        if not recipients:
+            print(f"[Stage Mail] No valid recipients resolved for stage '{stage.get('stageName')}' in request {request_doc.get('requestId')}")
+            return
+
+        request_id = request_doc.get("requestId") or str(request_doc.get("_id", "N/A"))
+        stage_name = stage.get("stageName") or request_doc.get("status") or "Current Stage"
+        request_type = request_doc.get("requestType") or request_doc.get("category") or "Request"
+        requester_name = request_doc.get("createdBy") or "Unknown"
+        assigned_display = ", ".join(request_doc.get("currentAssignedUsers") or []) or "None"
+        formatted_time = datetime.now().strftime("%d-%b-%Y %I:%M %p")
+        display_remarks = remarks or request_doc.get("remarks") or "None"
+        description = request_doc.get("description") or "-"
+
+        subject = f"[DCM Request Alert] {request_id} ({request_type}) - Stage: {stage_name}"
+
+        body = (
+            f"DCM REQUEST NOTIFICATION\n"
+            f"========================\n\n"
+            f"Request ID   : {request_id}\n"
+            f"Request Type : {request_type}\n"
+            f"Current Stage: {stage_name}\n"
+            f"Action       : {action_type} by {actor_username or 'System'}\n"
+            f"Requester    : {requester_name}\n"
+            f"Assigned To  : {assigned_display}\n"
+            f"Date & Time  : {formatted_time}\n"
+            f"Description  : {description}\n"
+            f"Remarks      : {display_remarks}\n\n"
+            f"Please log into the Datacentre Management (DCM) portal to view and process this request.\n"
+        )
+
+        actor_str = f"by {actor_username}" if actor_username else ""
+        html_body = f"""
+        <div style="font-family: Arial, -apple-system, BlinkMacSystemFont, sans-serif; max-width: 620px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+            <div style="background-color: #1e3a8a; padding: 20px 24px; color: #ffffff;">
+                <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">DCM Request Notification</h2>
+                <p style="margin: 6px 0 0 0; font-size: 14px; opacity: 0.9;">Request has reached stage: <strong>{stage_name}</strong></p>
+            </div>
+            
+            <div style="padding: 24px;">
+                <div style="margin-bottom: 20px;">
+                    <span style="display: inline-block; background-color: #eff6ff; color: #1d4ed8; padding: 6px 14px; border-radius: 9999px; font-weight: 700; font-size: 13px; border: 1px solid #bfdbfe;">
+                        {request_id} • {request_type}
+                    </span>
+                    <span style="display: inline-block; margin-left: 8px; background-color: #f0fdf4; color: #15803d; padding: 6px 14px; border-radius: 9999px; font-weight: 700; font-size: 13px; border: 1px solid #bbf7d0;">
+                        Stage: {stage_name}
+                    </span>
+                </div>
+
+                <table style="border-collapse: collapse; width: 100%; font-size: 14px; margin-bottom: 20px;">
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 10px 8px; font-weight: 600; color: #64748b; width: 35%;">Action</td>
+                        <td style="padding: 10px 8px; color: #0f172a;">{action_type} {actor_str}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 10px 8px; font-weight: 600; color: #64748b;">Requester</td>
+                        <td style="padding: 10px 8px; color: #0f172a; font-weight: 600;">{requester_name}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 10px 8px; font-weight: 600; color: #64748b;">Assigned To</td>
+                        <td style="padding: 10px 8px; color: #0f172a;">{assigned_display}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 10px 8px; font-weight: 600; color: #64748b;">Date & Time</td>
+                        <td style="padding: 10px 8px; color: #0f172a;">{formatted_time}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 10px 8px; font-weight: 600; color: #64748b;">Description</td>
+                        <td style="padding: 10px 8px; color: #0f172a;">{description}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px 8px; font-weight: 600; color: #64748b;">Remarks</td>
+                        <td style="padding: 10px 8px; color: #0f172a;">{display_remarks}</td>
+                    </tr>
+                </table>
+
+                <div style="background-color: #f8fafc; padding: 14px 16px; border-radius: 6px; border-left: 4px solid #3b82f6; margin-top: 10px;">
+                    <p style="margin: 0; font-size: 13px; color: #475569;">
+                        Please log into the DCM Portal to review, approve, or advance this request.
+                    </p>
+                </div>
+            </div>
+
+            <div style="background-color: #f8fafc; padding: 12px 24px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #94a3b8;">
+                Datacentre Management System (DCM) • Automated Stage Notification
+            </div>
+        </div>
+        """
+
+        from mail_utils import send_email
+        asyncio.create_task(send_email(
+            to_emails=recipients,
+            subject=subject,
+            body=body,
+            html_body=html_body
+        ))
+        print(f"[Stage Mail] Dispatched email for request {request_id} at stage '{stage_name}' to {recipients}")
+    except Exception as e:
+        print(f"[Stage Mail] Error dispatching stage email: {e}")
 
 
 async def add_visitor_log_on_completion(existing_request: dict, username: str):
@@ -992,6 +1191,13 @@ async def create_item(
         await log_page_update("requests", username=requester)
         if created.get("requestType") == "DC Entry":
             await log_page_update("visitor-logs", username=requester)
+        if routing and routing.get("stages") and 'first_stage' in locals() and first_stage:
+            await send_stage_email_notification(
+                stage=first_stage,
+                request_doc=created,
+                action_type="Created",
+                actor_username=requester
+            )
     return created
 
 
@@ -1047,6 +1253,7 @@ async def update_item(id: str, payload: UpdateRequestModel = Body(...), current_
             if new_status in stage_names:
                 new_index = stage_names.index(new_status)
                 item_dict["currentStageIndex"] = new_index
+                target_stage = stages[new_index]
 
                 # Resolve assignees for the new stage
                 requester = existing.get("createdBy", "")
@@ -1056,6 +1263,7 @@ async def update_item(id: str, payload: UpdateRequestModel = Body(...), current_
                 # Terminal status
                 item_dict["currentAssignedUsers"] = []
                 item_dict["currentStageIndex"] = len(stages)
+                target_stage = next((s for s in stages if s.get("stageName") == new_status), None)
 
     update_result = await collection.update_one(
         {"_id": ObjectId(id)}, {"$set": item_dict}
@@ -1087,6 +1295,14 @@ async def update_item(id: str, payload: UpdateRequestModel = Body(...), current_
         await log_page_update("requests", username=username)
         if updated.get("requestType") == "DC Entry":
             await log_page_update("visitor-logs", username=username)
+        if status_changed and 'target_stage' in locals() and target_stage:
+            await send_stage_email_notification(
+                stage=target_stage,
+                request_doc=updated,
+                action_type="Status Changed",
+                actor_username=username,
+                remarks=payload.remarks
+            )
     return updated
 
 
@@ -1241,6 +1457,24 @@ async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), c
         await log_page_update("requests", username=username)
         if updated.get("requestType") == "DC Entry":
             await log_page_update("visitor-logs", username=username)
+        if next_index < len(stages):
+            await send_stage_email_notification(
+                stage=stages[next_index],
+                request_doc=updated,
+                action_type="Advanced",
+                actor_username=username,
+                remarks=remarks
+            )
+        else:
+            completed_stage = next((s for s in stages if s.get("stageName") == "Completed"), None)
+            if completed_stage:
+                await send_stage_email_notification(
+                    stage=completed_stage,
+                    request_doc=updated,
+                    action_type="Completed",
+                    actor_username=username,
+                    remarks=remarks
+                )
     return updated
 
 
@@ -1319,6 +1553,13 @@ async def backward_stage(
         await log_page_update("requests", username=username)
         if updated.get("requestType") == "DC Entry":
             await log_page_update("visitor-logs", username=username)
+        await send_stage_email_notification(
+            stage=prev_stage,
+            request_doc=updated,
+            action_type="Sent Back",
+            actor_username=username,
+            remarks=reason
+        )
             
     return updated
 

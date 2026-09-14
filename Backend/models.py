@@ -64,6 +64,7 @@ class UserModel(BaseModel):
     lastActive: Optional[str] = None
     isMonitorUser: Optional[bool] = None
     activated: Optional[bool] = Field(default=True)
+    email: Optional[str] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -237,6 +238,7 @@ class CreateUserModel(BaseModel):
     lastActive: Optional[str] = None
     isMonitorUser: Optional[bool] = None
     activated: bool = Field(default=False)
+    email: Optional[str] = None
 
     @field_validator('username')
     @classmethod
@@ -297,6 +299,7 @@ class UpdateUserModel(BaseModel):
     lastActive: Optional[str] = None
     isMonitorUser: Optional[bool] = None
     activated: Optional[bool] = None
+    email: Optional[str] = None
 
     @field_validator('username')
     @classmethod
@@ -2540,6 +2543,10 @@ class RequestRoutingStage(BaseModel):
     attachmentUrl: Optional[str] = None
     attachmentName: Optional[str] = None
     requireTermsAgreement: Optional[bool] = False
+    sendEmail: Optional[bool] = False
+    emailToRequester: Optional[bool] = False
+    emailToAssignee: Optional[bool] = False
+    customEmails: Optional[List[str]] = []
 
     model_config = ConfigDict(
         extra="allow",

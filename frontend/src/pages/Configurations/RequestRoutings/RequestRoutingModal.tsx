@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Box, MenuItem, FormControl, InputLabel, Select, IconButton, Typography, Divider, ListSubheader, Checkbox, ListItemText, FormControlLabel, Chip } from '@mui/material';
 import TextField from '../../../components/TextField';
-import { MdAdd as AddIcon, MdDelete as DeleteIcon, MdArrowUpward, MdArrowDownward, MdFileUpload, MdPictureAsPdf } from 'react-icons/md';
+import { MdAdd as AddIcon, MdDelete as DeleteIcon, MdArrowUpward, MdArrowDownward, MdFileUpload, MdPictureAsPdf, MdEmail } from 'react-icons/md';
 import Button from '../../../components/Button';
 import type { RequestRoutingData, RequestRoutingStage } from './model';
 import type { RootState, AppDispatch } from '../../../store';
@@ -55,6 +55,8 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
   const [stageErrors, setStageErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingStageIndex, setUploadingStageIndex] = useState<number | null>(null);
+  const [customEmailInputs, setCustomEmailInputs] = useState<{ [stageIndex: number]: string }>({});
+  const [customEmailErrors, setCustomEmailErrors] = useState<{ [stageIndex: number]: string }>({});
 
   const handleFileUpload = async (stageIdx: number, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -107,17 +109,39 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
   useEffect(() => {
     if (editingItem) {
       setRequestType(editingItem.requestType);
-      setStages(editingItem.stages || []);
+      setStages(
+        (editingItem.stages || []).map((s) => ({
+          ...s,
+          sendEmail: !!s.sendEmail,
+          emailToRequester: !!s.emailToRequester,
+          emailToAssignee: !!s.emailToAssignee,
+          customEmails: Array.isArray(s.customEmails) ? s.customEmails : [],
+        }))
+      );
       setStageErrors((editingItem.stages || []).map(() => ''));
     } else {
       setRequestType(requestTypes[0] || 'VM Creation');
       setStages([]);
       setStageErrors([]);
     }
+    setCustomEmailInputs({});
+    setCustomEmailErrors({});
   }, [editingItem, open]);
 
   const addStage = () => {
-    setStages([...stages, { stageName: '', order: stages.length + 1, assignmentType: 'Role', assignedTo: '' }]);
+    setStages([
+      ...stages,
+      {
+        stageName: '',
+        order: stages.length + 1,
+        assignmentType: 'Role',
+        assignedTo: '',
+        sendEmail: false,
+        emailToRequester: false,
+        emailToAssignee: false,
+        customEmails: [],
+      }
+    ]);
     setStageErrors([...stageErrors, '']);
   };
 
@@ -125,6 +149,54 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
     const updated = stages.filter((_, i) => i !== index);
     setStages(updated.map((s, i) => ({ ...s, order: i + 1 })));
     setStageErrors(stageErrors.filter((_, i) => i !== index));
+    setCustomEmailInputs({});
+    setCustomEmailErrors({});
+  };
+
+  const handleAddCustomEmail = (stageIndex: number) => {
+    const rawVal = customEmailInputs[stageIndex] || '';
+    if (!rawVal.trim()) return;
+
+    const emailsToAdd = rawVal
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean);
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalidEmail = emailsToAdd.find((e) => !emailRegex.test(e));
+    if (invalidEmail) {
+      setCustomEmailErrors((prev) => ({
+        ...prev,
+        [stageIndex]: `"${invalidEmail}" is not a valid email address`,
+      }));
+      return;
+    }
+
+    setStages((prev) => {
+      const updated = [...prev];
+      const existingEmails = updated[stageIndex]?.customEmails || [];
+      const newUnique = emailsToAdd.filter((e) => !existingEmails.includes(e));
+      updated[stageIndex] = {
+        ...updated[stageIndex],
+        customEmails: [...existingEmails, ...newUnique],
+      };
+      return updated;
+    });
+
+    setCustomEmailInputs((prev) => ({ ...prev, [stageIndex]: '' }));
+    setCustomEmailErrors((prev) => ({ ...prev, [stageIndex]: '' }));
+  };
+
+  const handleRemoveCustomEmail = (stageIndex: number, emailIndex: number) => {
+    setStages((prev) => {
+      const updated = [...prev];
+      const existingEmails = updated[stageIndex]?.customEmails || [];
+      updated[stageIndex] = {
+        ...updated[stageIndex],
+        customEmails: existingEmails.filter((_, i) => i !== emailIndex),
+      };
+      return updated;
+    });
   };
 
   const moveStageUp = (index: number) => {
@@ -372,7 +444,14 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
     try {
       const payload: any = {
         requestType,
-        stages: stages.map((s, i) => ({ ...s, order: i + 1 })),
+        stages: stages.map((s, i) => ({
+          ...s,
+          order: i + 1,
+          sendEmail: !!s.sendEmail,
+          emailToRequester: !!s.emailToRequester,
+          emailToAssignee: !!s.emailToAssignee,
+          customEmails: Array.isArray(s.customEmails) ? s.customEmails.filter(Boolean) : [],
+        })),
       };
       if (editingItem) {
         payload.id = editingItem.id || editingItem._id;
@@ -809,6 +888,114 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                         </Typography>
                       }
                     />
+                  )}
+                </Box>
+
+                {/* Stage Mail Notification Section */}
+                <Box sx={{ width: '100%', pt: 1, borderTop: '1px dashed #cfd8dc', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={!!stage.sendEmail}
+                          onChange={(e) => updateStage(index, 'sendEmail', e.target.checked)}
+                          color="primary"
+                        />
+                      }
+                      label={
+                        <Typography variant="caption" fontWeight={700} color="primary.main" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <MdEmail fontSize="1rem" /> Configure Mail Send (When request reaches this stage)
+                        </Typography>
+                      }
+                      sx={{ m: 0 }}
+                    />
+                  </Box>
+
+                  {stage.sendEmail && (
+                    <Box sx={{ pl: 3.5, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                      {/* Recipient Options: Requester & Assignee */}
+                      <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              size="small"
+                              checked={!!stage.emailToRequester}
+                              onChange={(e) => updateStage(index, 'emailToRequester', e.target.checked)}
+                              color="primary"
+                            />
+                          }
+                          label={<Typography variant="body2" sx={{ fontSize: '0.85rem' }}>Email to Requester</Typography>}
+                        />
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              size="small"
+                              checked={!!stage.emailToAssignee}
+                              onChange={(e) => updateStage(index, 'emailToAssignee', e.target.checked)}
+                              color="primary"
+                            />
+                          }
+                          label={<Typography variant="body2" sx={{ fontSize: '0.85rem' }}>Email to Assignee</Typography>}
+                        />
+                      </Box>
+
+                      {/* Option to Add Custom Email */}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                        <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                          Custom Email Recipients:
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                          <TextField
+                            size="small"
+                            placeholder="Enter email (e.g. alert@vssc.gov.in)..."
+                            value={customEmailInputs[index] || ''}
+                            onChange={(e) => {
+                              setCustomEmailInputs((prev) => ({ ...prev, [index]: e.target.value }));
+                              if (customEmailErrors[index]) {
+                                setCustomEmailErrors((prev) => ({ ...prev, [index]: '' }));
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddCustomEmail(index);
+                              }
+                            }}
+                            error={!!customEmailErrors[index]}
+                            helperText={customEmailErrors[index]}
+                            sx={{ minWidth: 260, flex: 1, maxWidth: 400 }}
+                          />
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<AddIcon />}
+                            onClick={() => handleAddCustomEmail(index)}
+                            type="button"
+                            sx={{ height: 38 }}
+                          >
+                            Add Email
+                          </Button>
+                        </Box>
+
+                        {/* Display Added Custom Email Chips */}
+                        {stage.customEmails && stage.customEmails.length > 0 && (
+                          <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mt: 0.5 }}>
+                            {stage.customEmails.map((email, emailIdx) => (
+                              <Chip
+                                key={emailIdx}
+                                label={email}
+                                size="small"
+                                onDelete={() => handleRemoveCustomEmail(index, emailIdx)}
+                                color="primary"
+                                variant="outlined"
+                                sx={{ fontSize: '0.75rem' }}
+                              />
+                            ))}
+                          </Box>
+                        )}
+                      </Box>
+                    </Box>
                   )}
                 </Box>
               </Box>

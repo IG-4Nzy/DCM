@@ -131,15 +131,27 @@ const RequestRoutings = () => {
             sortable: false,
             render: (row) => (
                 <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                    {(row.stages || []).map((stage, i) => (
-                        <Chip
-                            key={i}
-                            label={`${i + 1}. ${stage.stageName}`}
-                            size="small"
-                            variant="outlined"
-                            color="primary"
-                        />
-                    ))}
+                    {(row.stages || []).map((stage, i) => {
+                        const hasMail = !!stage.sendEmail && (!!stage.emailToRequester || !!stage.emailToAssignee || (stage.customEmails && stage.customEmails.length > 0));
+                        let mailTooltip = '';
+                        if (hasMail) {
+                            const parts = [];
+                            if (stage.emailToRequester) parts.push('Requester');
+                            if (stage.emailToAssignee) parts.push('Assignee');
+                            if (stage.customEmails && stage.customEmails.length > 0) parts.push(`${stage.customEmails.length} custom email(s)`);
+                            mailTooltip = `📧 Mail notification to: ${parts.join(', ') || 'Configured recipients'}`;
+                        }
+                        return (
+                            <Tooltip key={i} title={mailTooltip || ''} arrow={!!hasMail}>
+                                <Chip
+                                    label={`${i + 1}. ${stage.stageName}${hasMail ? ' ✉️' : ''}`}
+                                    size="small"
+                                    variant="outlined"
+                                    color="primary"
+                                />
+                            </Tooltip>
+                        );
+                    })}
                     {(!row.stages || row.stages.length === 0) && '-'}
                 </Box>
             ),

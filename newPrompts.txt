@@ -1,8 +1,4 @@
 take vcenter vm list and map them to the vm list for updating power and network status
 
-inside request configuration,add option to include ip field in rules ,(if ip is there or null )
-
-in request configuration,give option to configure mail send (when reached a stage,send mail to configured mail) - should show options - email to the requester,email to the assignee, and option to add custom email
-
 add vcenter validation when a vm is created,check that vm exists on vcenter and allow to change the status only if there is VM exists in the vcenter (validate with the vm name in vcenter and the name given on request)
 

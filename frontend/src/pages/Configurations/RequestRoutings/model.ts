@@ -16,6 +16,10 @@ export interface RequestRoutingStage {
   attachmentUrl?: string;
   attachmentName?: string;
   requireTermsAgreement?: boolean;
+  sendEmail?: boolean;
+  emailToRequester?: boolean;
+  emailToAssignee?: boolean;
+  customEmails?: string[];
 }
 
 export interface RequestRoutingData {
