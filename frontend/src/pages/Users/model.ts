@@ -8,6 +8,7 @@ export interface UserData {
   lastName?: string;
   dob?: string;
   mobile?: string;
+  email?: string;
   bloodGroup?: string;
   address?: string;
   dateOfJoin?: string;
@@ -30,6 +31,7 @@ export interface CreateUserPayload {
   lastName?: string;
   dob?: string;
   mobile?: string;
+  email?: string;
   bloodGroup?: string;
   address?: string;
   dateOfJoin?: string;
@@ -49,6 +51,7 @@ export interface UpdateUserPayload {
   lastName?: string;
   dob?: string;
   mobile?: string;
+  email?: string;
   bloodGroup?: string;
   address?: string;
   dateOfJoin?: string;

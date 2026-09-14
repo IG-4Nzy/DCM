@@ -32,6 +32,7 @@ import {
   MdWarning as WarningIcon,
   MdCameraAlt as SnapshotIcon,
   MdHistory as UpdateHistoryIcon,
+  MdSync as SyncIcon,
 } from "react-icons/md";
 import InfrastructureUpdateHistoryModal from "../../../../components/InfrastructureUpdateHistoryModal";
 import { FilterDrawer, FilterGroup } from "../../../../components/FilterDrawer";
@@ -51,6 +52,7 @@ import {
   updateVMDetails,
   deleteVMDetails,
   fetchAllNodes,
+  syncVcenterVMStatus,
 } from "./action";
 import { fetchClusters } from "../action";
 import { useTableState } from "../../../../hooks/useTableState";
@@ -151,6 +153,7 @@ const VMDetails = ({
 
   const [vcenters, setVcenters] = useState<any[]>([]);
   const [isImporting, setIsImporting] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
   const [allUsers, setAllUsers] = useState<any[]>([]);
 
@@ -212,6 +215,28 @@ const VMDetails = ({
       } finally {
         setIsImporting(false);
       }
+    }
+  };
+
+  const handleSyncStatus = async () => {
+    setIsSyncing(true);
+    try {
+      const result = await syncVcenterVMStatus();
+      showToast(
+        result?.message || `Sync complete: ${result?.updatedCount || 0} VMs updated.`,
+        "success",
+      );
+      loadData();
+    } catch (err: any) {
+      const detail =
+        err?.response?.data?.detail ||
+        err?.response?.data?.message ||
+        (err?.code === "ECONNABORTED"
+          ? "Request timed out. The sync is taking longer than expected."
+          : "Failed to sync VM status from vCenter");
+      showToast(detail, "error");
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -599,6 +624,23 @@ const VMDetails = ({
               onClick={handleBulkImportVcenter}
             >
               {isImporting ? "Importing VMs..." : "Import All VMs from vCenter"}
+            </Button>
+          )}
+          {vcenters.length > 0 && (
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={
+                <SyncIcon
+                  style={{
+                    animation: isSyncing ? "spin 1s linear infinite" : "none",
+                  }}
+                />
+              }
+              disabled={isSyncing}
+              onClick={handleSyncStatus}
+            >
+              {isSyncing ? "Syncing..." : "Sync Status"}
             </Button>
           )}
           {hasCreate && (

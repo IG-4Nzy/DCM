@@ -850,9 +850,10 @@ const Nodes = ({
         admin: mappedAdmins || "-",
       };
     });
+    const exportTab = SUB_TAB_MAPPING[deviceTypeFilter as keyof typeof SUB_TAB_MAPPING] || TAB_CONSTANTS.NODES;
     generateAndDownloadCSV({
       data: mappedData,
-      tab: SUB_TAB_MAPPING[nodeTypeFilter],
+      tab: exportTab,
     });
   };
 

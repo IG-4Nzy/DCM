@@ -862,6 +862,7 @@ class InventoryModel(BaseModel):
     currentHolders: List[HolderModel] = []
     almiraNumber: Optional[str] = None
     rackNumber: Optional[str] = None
+    isAsset: Optional[bool] = False
 
     model_config = ConfigDict(
         populate_by_name=True,

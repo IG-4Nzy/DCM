@@ -31,6 +31,7 @@ interface UserProfileData {
     lastName: string;
     dob: string;
     mobile: string;
+    email?: string;
     bloodGroup: string;
     address: string;
     passNumber?: string;
@@ -62,6 +63,7 @@ const UserProfile: React.FC = () => {
         lastName: "",
         dob: "",
         mobile: "",
+        email: "",
         bloodGroup: "",
         address: "",
         passNumber: "",
@@ -77,6 +79,7 @@ const UserProfile: React.FC = () => {
                 lastName: res.data.lastName || "",
                 dob: res.data.dob || "",
                 mobile: res.data.mobile || "",
+                email: res.data.email || "",
                 bloodGroup: res.data.bloodGroup || "",
                 address: res.data.address || "",
                 passNumber: res.data.passNumber || "",
@@ -102,6 +105,7 @@ const UserProfile: React.FC = () => {
                 lastName: profile.lastName || "",
                 dob: profile.dob || "",
                 mobile: profile.mobile || "",
+                email: profile.email || "",
                 bloodGroup: profile.bloodGroup || "",
                 address: profile.address || "",
                 passNumber: profile.passNumber || "",
@@ -123,6 +127,13 @@ const UserProfile: React.FC = () => {
         return "";
     };
 
+    const validateEmail = (v: string) => {
+        if (!v || !v.trim()) return "";
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(v.trim())) return "Please enter a valid email address";
+        return "";
+    };
+
     const validatePassNumber = (v: string) => {
         if (!v) return "";
         if (!/^[a-zA-Z0-9]+$/.test(v)) return "Pass number must contain alphanumeric characters only";
@@ -133,9 +144,10 @@ const UserProfile: React.FC = () => {
     const firstNameErr = validateName(form.firstName, "First name");
     const lastNameErr = validateName(form.lastName, "Last name");
     const mobileErr = validateMobile(form.mobile);
+    const emailErr = validateEmail(form.email);
     const passNumberErr = validatePassNumber(form.passNumber);
 
-    const hasFormErrors = !!firstNameErr || !!lastNameErr || !!mobileErr || !!passNumberErr;
+    const hasFormErrors = !!firstNameErr || !!lastNameErr || !!mobileErr || !!emailErr || !!passNumberErr;
 
     const handleSave = async () => {
         // Validation checks
@@ -392,10 +404,20 @@ const UserProfile: React.FC = () => {
                                 helperText={mobileErr}
                                 className={styles.field}
                             />
+                            <TextField
+                                label="Email Address (Optional)"
+                                type="email"
+                                value={form.email}
+                                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                                error={!!emailErr}
+                                helperText={emailErr}
+                                className={styles.field}
+                            />
                         </Box>
                     ) : (
                         <Box className={styles.infoGrid}>
                             <InfoRow label="Mobile" value={profile.mobile} />
+                            <InfoRow label="Email Address" value={profile.email || ""} />
                         </Box>
                     )}
                 </Paper>

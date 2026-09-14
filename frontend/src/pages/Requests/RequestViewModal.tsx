@@ -1162,49 +1162,52 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
                   {isClusterDeciding && (
                     <>
                       <Box sx={{ flex: 1, minWidth: 200 }}>
-                        <FormControl fullWidth required error={clusterError}>
-                          <InputLabel>Choose Cluster</InputLabel>
-                          <Select
-                            value={selectedCluster}
-                            label="Choose Cluster"
-                            onChange={(e) => {
-                              setSelectedCluster(e.target.value as string);
-                              if (e.target.value) setClusterError(false);
-                            }}
-                            sx={{ bgcolor: '#fff' }}
-                            MenuProps={{ disablePortal: false }}
-                          >
-                            {clusters.map((c: any) => (
-                              <MenuItem key={c.id || c._id} value={c.clusterName}>
-                                {c.clusterName} (IP: {c.ipAddress})
-                              </MenuItem>
-                            ))}
-                          </Select>
-                          {clusterError && <Typography variant="caption" color="error">You must choose a cluster to advance.</Typography>}
-                        </FormControl>
+                        <Autocomplete
+                          options={clusters}
+                          getOptionLabel={(c: any) => c.clusterName ? `${c.clusterName} ${c.ipAddress ? `(IP: ${c.ipAddress})` : ''}` : ''}
+                          value={clusters.find((c: any) => c.clusterName === selectedCluster) || null}
+                          onChange={(_, newValue: any) => {
+                            setSelectedCluster(newValue ? newValue.clusterName : '');
+                            if (newValue) setClusterError(false);
+                          }}
+                          renderInput={(params) => (
+                            <TextField 
+                              {...params} 
+                              label="Choose Cluster" 
+                              required 
+                              error={clusterError} 
+                              helperText={clusterError ? "You must choose a cluster to advance." : ""} 
+                              variant="outlined" 
+                              placeholder="Search cluster..." 
+                            />
+                          )}
+                          sx={{ bgcolor: '#fff' }}
+                        />
                       </Box>
 
                       <Box sx={{ flex: 1, minWidth: 200 }}>
-                        <FormControl fullWidth required error={nodeError} disabled={!selectedCluster}>
-                          <InputLabel>Choose Node</InputLabel>
-                          <Select
-                            value={selectedNode}
-                            label="Choose Node"
-                            onChange={(e) => {
-                              setSelectedNode(e.target.value as string);
-                              if (e.target.value) setNodeError(false);
-                            }}
-                            sx={{ bgcolor: '#fff' }}
-                            MenuProps={{ disablePortal: true }}
-                          >
-                            {filteredNodes.map((n: any) => (
-                              <MenuItem key={n.id || n._id} value={n.hostName}>
-                                {n.hostName} {n.ipAddress ? `(${n.ipAddress})` : ''}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                          {nodeError && <Typography variant="caption" color="error">You must choose a node to advance.</Typography>}
-                        </FormControl>
+                        <Autocomplete
+                          options={filteredNodes}
+                          disabled={!selectedCluster}
+                          getOptionLabel={(n: any) => n.hostName ? `${n.hostName} ${n.ipAddress ? `(IP: ${n.ipAddress})` : ''}` : ''}
+                          value={filteredNodes.find((n: any) => n.hostName === selectedNode) || null}
+                          onChange={(_, newValue: any) => {
+                            setSelectedNode(newValue ? newValue.hostName : '');
+                            if (newValue) setNodeError(false);
+                          }}
+                          renderInput={(params) => (
+                            <TextField 
+                              {...params} 
+                              label="Choose Node" 
+                              required 
+                              error={nodeError} 
+                              helperText={nodeError ? "You must choose a node to advance." : ""} 
+                              variant="outlined" 
+                              placeholder="Search node..." 
+                            />
+                          )}
+                          sx={{ bgcolor: '#fff' }}
+                        />
                       </Box>
                     </>
                   )}

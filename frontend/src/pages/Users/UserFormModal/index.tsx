@@ -39,6 +39,8 @@ interface PropType {
     setFormDob: (v: string) => void;
     formMobile: string;
     setFormMobile: (v: string) => void;
+    formEmail?: string;
+    setFormEmail?: (v: string) => void;
     formBloodGroup: string;
     setFormBloodGroup: (v: string) => void;
     formAddress: string;
@@ -89,6 +91,7 @@ const UserFormModal = ({
     formLastName, setFormLastName,
     formDob, setFormDob,
     formMobile, setFormMobile,
+    formEmail = "", setFormEmail,
     formBloodGroup, setFormBloodGroup,
     formAddress, setFormAddress,
     formDateOfJoin, setFormDateOfJoin,
@@ -131,6 +134,13 @@ const UserFormModal = ({
         return "";
     };
 
+    const validateEmail = (v: string) => {
+        if (!v || !v.trim()) return "";
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(v.trim())) return "Please enter a valid email address";
+        return "";
+    };
+
     const validatePassNumber = (v: string) => {
         if (!v) return "";
         if (!/^[a-zA-Z0-9]+$/.test(v)) return "Pass number must contain alphanumeric characters only";
@@ -151,10 +161,11 @@ const UserFormModal = ({
     const firstNameErr = validateName(formFirstName, "First name");
     const lastNameErr = validateName(formLastName, "Last name");
     const mobileErr = validateMobile(formMobile);
+    const emailErr = validateEmail(formEmail);
     const passNumberErr = validatePassNumber(formPassNumber);
     const dateOfJoinErr = validateDateOfJoin(formDateOfJoin);
 
-    const hasFormErrors = !!usernameErr || !!passwordErr || !!firstNameErr || !!lastNameErr || !!mobileErr || !!passNumberErr || !!dateOfJoinErr;
+    const hasFormErrors = !!usernameErr || !!passwordErr || !!firstNameErr || !!lastNameErr || !!mobileErr || !!emailErr || !!passNumberErr || !!dateOfJoinErr;
 
     const getLocalDateString = () => {
         const d = new Date();
@@ -274,6 +285,7 @@ const UserFormModal = ({
                                 <ViewField label="Last Name" value={formLastName} />
 
                                 <ViewField label="Mobile Number" value={formMobile} />
+                                <ViewField label="Email Address" value={formEmail} />
                             </div>
                         </div>
 
@@ -415,6 +427,15 @@ const UserFormModal = ({
                                     onChange={(e) => setFormMobile(e.target.value)}
                                     error={!!mobileErr}
                                     helperText={mobileErr}
+                                />
+                                <TextField
+                                    fullWidth
+                                    label="Email Address (Optional)"
+                                    type="email"
+                                    value={formEmail}
+                                    onChange={(e) => setFormEmail && setFormEmail(e.target.value)}
+                                    error={!!emailErr}
+                                    helperText={emailErr}
                                 />
                             </div>
                         </div>

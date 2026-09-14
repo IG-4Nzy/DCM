@@ -142,6 +142,10 @@ class VCenterTelemetryScheduler:
             # Pull metrics (every 30s-60s)
             metrics = await vcenter_metrics_service.get_live_metrics(ip, session_id)
             
+            # Invalidate cached VM list so we always get fresh power states
+            from services.vcenter.cache import global_cache
+            await global_cache.invalidate_pattern(f"vcenter:{ip}:vms:")
+
             # Pull clusters, hosts and VMs
             clusters = await vcenter_inventory_service.get_clusters(ip, session_id)
             hosts = await vcenter_inventory_service.get_hosts(ip, session_id, cluster_id=None)
@@ -434,6 +438,14 @@ class VCenterTelemetryScheduler:
                 {"$set": snapshot},
                 upsert=True
             )
+
+            # Sync VM power & network status to DCM vm_details
+            try:
+                from vm_details import sync_vms_from_vcenter_by_ip
+                sync_result = await sync_vms_from_vcenter_by_ip()
+                logger.debug(f"Background VM status sync: {sync_result.get('message', '')}")
+            except Exception as sync_err:
+                logger.warning(f"Background VM status sync failed during telemetry: {sync_err}")
 
         except Exception as e:
             logger.error(f"Failed scheduled telemetry sync for vCenter {ip}: {e}")

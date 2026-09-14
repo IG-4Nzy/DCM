@@ -31,3 +31,8 @@ export const fetchVMHistory = async (id: string) => {
     return response.data;
 };
 
+export const syncVcenterVMStatus = async () => {
+    const response = await request.post('/api/vm-details/sync-vcenter-status', {}, { timeout: 120000 });
+    return response.data;
+};
+

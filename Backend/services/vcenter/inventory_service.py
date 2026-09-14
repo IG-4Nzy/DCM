@@ -408,6 +408,117 @@ class VCenterInventoryService:
             revalidate_ttl=60.0
         )
 
+    async def get_vm_network_connected(self, ip_address: str, session_id: str, vm_id: str, power_state: str) -> bool:
+        """Check if a VM's network adapter is connected. Returns False if powered off."""
+        if not power_state or power_state.upper() not in ("POWERED_ON", "POWEREDON", "RUNNING", "ON"):
+            return False
+
+        client = vcenter_http_client.get_client()
+        headers = {"vmware-api-session-id": session_id}
+
+        async def fetch():
+            # Try checking ethernet hardware adapters
+            endpoints = [
+                f"/api/vcenter/vm/{vm_id}/hardware/ethernet",
+                f"/rest/vcenter/vm/{vm_id}/hardware/ethernet"
+            ]
+            for endpoint in endpoints:
+                try:
+                    res = await client.get(f"https://{ip_address}{endpoint}", headers=headers)
+                    if res.status_code == 200:
+                        data = res.json()
+                        adapters = data.get("value", data) if isinstance(data, dict) else data
+                        if isinstance(adapters, list):
+                            for adapter in adapters:
+                                nic = adapter.get("value", adapter) if isinstance(adapter, dict) else adapter
+                                if isinstance(nic, dict):
+                                    state = str(nic.get("state") or nic.get("connection_state") or "").upper()
+                                    if state == "CONNECTED":
+                                        return True
+                                    start_connected = nic.get("start_connected", False)
+                                    if start_connected:
+                                        return True
+                except Exception as e:
+                    logger.debug(f"Failed ethernet check on {endpoint} for {vm_id}: {e}")
+
+            # Fallback: if VM has a guest IP, consider network connected
+            try:
+                guest_ip = await self.get_vm_guest_ip(ip_address, session_id, vm_id)
+                if guest_ip and guest_ip not in ("0.0.0.0", "127.0.0.1"):
+                    return True
+            except Exception:
+                pass
+
+            return False
+
+        key = f"vcenter:{ip_address}:vm:{vm_id}:net_connected"
+        return await global_cache.get_or_fetch(
+            key,
+            lambda: vcenter_rate_limiter.execute_request(ip_address, fetch),
+            ttl=120.0,
+            revalidate_ttl=60.0
+        )
+
+    async def get_all_cluster_vms(self, ip_address: str, session_id: str) -> List[Dict[str, Any]]:
+        """
+        Enumerate all VMs across all clusters from a vCenter concurrently.
+        Returns a list of dicts with: vm_id, name, power_state, guest_ip, is_network_connected
+        """
+        result = []
+        try:
+            # Get all VMs in a single API call (no cluster filter = all VMs)
+            all_vms = await self.get_vms(ip_address, session_id, cluster_id=None)
+            if not all_vms:
+                return result
+
+            sem = asyncio.Semaphore(25)
+
+            async def process_single_vm(vm: Dict[str, Any]) -> Dict[str, Any]:
+                vm_id = vm.get("vm") or vm.get("id") or ""
+                vm_name = vm.get("name") or ""
+                power_state = str(vm.get("power_state") or vm.get("powerState") or "").upper()
+                is_on = power_state in ("POWERED_ON", "POWEREDON", "RUNNING", "ON")
+
+                # Fast-path: check if IP is in the summary payload
+                guest_ip = vm.get("ip_address") or vm.get("ipAddress") or vm.get("guest_ip") or vm.get("ip")
+                
+                # If missing and VM is powered on, fetch guest IP
+                if not guest_ip and vm_id and is_on:
+                    async with sem:
+                        try:
+                            guest_ip = await self.get_vm_guest_ip(ip_address, session_id, str(vm_id))
+                        except Exception as e:
+                            logger.debug(f"Failed guest IP lookup for {vm_id}: {e}")
+
+                # Determine network connection status
+                is_net_connected = False
+                if is_on:
+                    if guest_ip and guest_ip not in ("0.0.0.0", "127.0.0.1"):
+                        is_net_connected = True
+                    elif vm_id:
+                        async with sem:
+                            try:
+                                is_net_connected = await self.get_vm_network_connected(
+                                    ip_address, session_id, str(vm_id), power_state
+                                )
+                            except Exception as e:
+                                logger.debug(f"Failed network check for {vm_id}: {e}")
+
+                return {
+                    "vm_id": str(vm_id),
+                    "name": vm_name,
+                    "power_state": "on" if is_on else "off",
+                    "guest_ip": guest_ip,
+                    "is_network_connected": is_net_connected
+                }
+
+            # Process all VMs concurrently
+            result = await asyncio.gather(*(process_single_vm(vm) for vm in all_vms))
+        except Exception as e:
+            logger.error(f"Failed to get all cluster VMs from {ip_address}: {e}")
+
+        return [r for r in result if r]
+
     async def find_vm_by_ip(self, ip_address: str, session_id: str, target_vm_ip: str) -> Optional[Dict[str, Any]]:
         if not target_vm_ip or target_vm_ip in ("--", "N/A"):
             return None

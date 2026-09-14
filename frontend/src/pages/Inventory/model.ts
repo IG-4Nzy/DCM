@@ -29,4 +29,5 @@ export interface InventoryData {
   currentHolders?: HolderData[];
   almiraNumber?: string;
   rackNumber?: string;
+  isAsset?: boolean;
 }

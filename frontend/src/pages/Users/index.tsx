@@ -90,6 +90,7 @@ const Users: React.FC = () => {
   const [formLastName, setFormLastName] = useState("");
   const [formDob, setFormDob] = useState("");
   const [formMobile, setFormMobile] = useState("");
+  const [formEmail, setFormEmail] = useState("");
   const [formBloodGroup, setFormBloodGroup] = useState("");
   const [formAddress, setFormAddress] = useState("");
   const [formDateOfJoin, setFormDateOfJoin] = useState("");
@@ -196,6 +197,7 @@ const Users: React.FC = () => {
       setFormLastName(user.lastName || "");
       setFormDob(user.dob || "");
       setFormMobile(user.mobile || "");
+      setFormEmail(user.email || "");
       setFormBloodGroup(user.bloodGroup || "");
       setFormAddress(user.address || "");
       setFormDateOfJoin(user.dateOfJoin || "");
@@ -215,6 +217,7 @@ const Users: React.FC = () => {
       setFormLastName("");
       setFormDob("");
       setFormMobile("");
+      setFormEmail("");
       setFormBloodGroup("");
       setFormAddress("");
       setFormDateOfJoin("");
@@ -303,6 +306,7 @@ const Users: React.FC = () => {
           lastName: formLastName,
           dob: formDob,
           mobile: formMobile,
+          email: formEmail ? formEmail.trim() : "",
           bloodGroup: formBloodGroup,
           address: formAddress,
           dateOfJoin: formDateOfJoin,
@@ -327,6 +331,7 @@ const Users: React.FC = () => {
               lastName: formLastName,
               dob: formDob,
               mobile: formMobile,
+              email: formEmail ? formEmail.trim() : "",
               bloodGroup: formBloodGroup,
               address: formAddress,
               dateOfJoin: formDateOfJoin,
@@ -641,6 +646,8 @@ const Users: React.FC = () => {
         setFormDob={setFormDob}
         formMobile={formMobile}
         setFormMobile={setFormMobile}
+        formEmail={formEmail}
+        setFormEmail={setFormEmail}
         formBloodGroup={formBloodGroup}
         setFormBloodGroup={setFormBloodGroup}
         formAddress={formAddress}

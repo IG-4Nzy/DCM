@@ -63,6 +63,7 @@ class UpdateProfileModel(BaseModel):
     bloodGroup: Optional[str] = None
     address: Optional[str] = None
     passNumber: Optional[str] = None
+    email: Optional[str] = None
     stickyNoteEnabled: Optional[bool] = None
     stickyNoteContent: Optional[str] = None
     stickyNotePositionX: Optional[int] = None
@@ -671,6 +672,7 @@ async def get_my_profile(current_user: dict = Depends(get_current_user)):
         "passNumber": user.get("passNumber", ""),
         "dateOfJoin": user.get("dateOfJoin", ""),
         "department": dept_val,
+        "email": user.get("email", ""),
         "stickyNoteEnabled": user.get("stickyNoteEnabled", False),
         "stickyNoteContent": user.get("stickyNoteContent", ""),
         "stickyNotePositionX": user.get("stickyNotePositionX", 100),

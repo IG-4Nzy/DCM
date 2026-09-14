@@ -75,6 +75,16 @@ class InMemoryTTLCache:
             # Silently log/ignore background revalidation errors to avoid crashing the request
             pass
 
+    async def invalidate(self, key: str) -> None:
+        """Remove a specific cache entry."""
+        self._cache.pop(key, None)
+
+    async def invalidate_pattern(self, prefix: str) -> None:
+        """Remove all cache entries whose key starts with the given prefix."""
+        keys_to_remove = [k for k in self._cache if k.startswith(prefix)]
+        for k in keys_to_remove:
+            self._cache.pop(k, None)
+
     async def clear(self) -> None:
         async with self._global_lock:
             self._cache.clear()
