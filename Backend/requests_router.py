@@ -425,10 +425,14 @@ def is_stage_applicable(stage: dict, request_doc: dict) -> bool:
     """Check whether a stage condition matches the request doc details."""
     c_field = stage.get("conditionField")
     c_val = stage.get("conditionValue")
-    if not c_field or c_val is None or str(c_val).strip() == "":
+    c_operator = stage.get("conditionOperator", "equals")
+
+    if not c_field:
         return True  # No condition set, so stage is always applicable
 
-    c_operator = stage.get("conditionOperator", "equals")
+    if c_operator not in ["is_empty", "is_not_empty"] and (c_val is None or str(c_val).strip() == ""):
+        return True
+
     details = request_doc.get("details") if isinstance(request_doc.get("details"), dict) else {}
 
     raw_val = None
@@ -436,6 +440,11 @@ def is_stage_applicable(stage: dict, request_doc: dict) -> bool:
         raw_val = details[c_field]
     elif c_field in request_doc and request_doc[c_field] is not None:
         raw_val = request_doc[c_field]
+
+    if c_operator == "is_empty":
+        return raw_val is None or str(raw_val).strip() == ""
+    elif c_operator == "is_not_empty":
+        return raw_val is not None and str(raw_val).strip() != ""
 
     if raw_val is None or str(raw_val).strip() == "":
         # Default fallback for networkType if unspecified

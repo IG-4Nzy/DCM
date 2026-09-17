@@ -605,6 +605,7 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                       <MenuItem value="operationType">Operation Type (operationType)</MenuItem>
                       <MenuItem value="requestType">Request Type (requestType)</MenuItem>
                       <MenuItem value="purpose">Purpose (purpose)</MenuItem>
+                      <MenuItem value="ip">IP Address (ip)</MenuItem>
                     </Select>
                   </FormControl>
 
@@ -620,10 +621,15 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                         >
                           <MenuItem value="equals">Equals (==)</MenuItem>
                           <MenuItem value="not_equals">Not Equals (!=)</MenuItem>
+                          <MenuItem value="is_empty">Is Empty</MenuItem>
+                          <MenuItem value="is_not_empty">Is Not Empty</MenuItem>
                         </Select>
                       </FormControl>
                       
                       {(() => {
+                        if (stage.conditionOperator === 'is_empty' || stage.conditionOperator === 'is_not_empty') {
+                          return null;
+                        }
                         const optionsMap: Record<string, { value: string; label: string }[]> = {
                           networkType: [
                             { value: 'Internet', label: 'Internet' },
@@ -733,10 +739,29 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
                           <MenuItem value="operationType">Operation Type (operationType)</MenuItem>
                           <MenuItem value="requestType">Request Type (requestType)</MenuItem>
                           <MenuItem value="purpose">Purpose (purpose)</MenuItem>
+                          <MenuItem value="ip">IP Address (ip)</MenuItem>
+                        </Select>
+                      </FormControl>
+
+                      <FormControl size="small" sx={{ minWidth: 120 }}>
+                        <InputLabel>Operator</InputLabel>
+                        <Select
+                          value={rule.conditionOperator || 'equals'}
+                          label="Operator"
+                          onChange={(e) => updateConditionalAssignment(index, ruleIdx, 'conditionOperator', e.target.value)}
+                          MenuProps={SELECT_MENU_PROPS}
+                        >
+                          <MenuItem value="equals">Equals (==)</MenuItem>
+                          <MenuItem value="not_equals">Not Equals (!=)</MenuItem>
+                          <MenuItem value="is_empty">Is Empty</MenuItem>
+                          <MenuItem value="is_not_empty">Is Not Empty</MenuItem>
                         </Select>
                       </FormControl>
 
                       {(() => {
+                        if (rule.conditionOperator === 'is_empty' || rule.conditionOperator === 'is_not_empty') {
+                          return null;
+                        }
                         const optionsMap: Record<string, { value: string; label: string }[]> = {
                           networkType: [
                             { value: 'Internet', label: 'Internet' },
