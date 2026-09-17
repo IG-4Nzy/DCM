@@ -904,211 +904,644 @@ async def import_vcenter_vms(
         logger.error(f"Unexpected error in import_vcenter_vms: {e}")
         raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
 
-
+@router.post("/sync-vcenter-status", dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details"]))])
 async def sync_vms_from_vcenter_by_ip():
     """
-    Fetch all VMs from all registered vCenters, map them to DCM vm_details
-    by IP address AND by VM name/ID, and update powerStatus and isNetworkConnected/networkStatus.
-    Supports powered-off VMs without guest IP addresses by falling back to name matching.
-    Uses high-speed snapshot reading and MongoDB bulk_write to handle >800 VMs in <1 second.
+    Synchronize DCM vm_details with VM power/network information
+    from vCenter telemetry.
+
+    Matching priority:
+      1. VM IP address
+      2. VM name
+      3. VM ID
+
+    Supports powered-off VMs where guest IP is unavailable.
+
+    Expected telemetry format:
+
+    {
+        "vcenterId": "abc123def456ghi789jkl",
+        "vms": [
+            {
+                "id": "vm-001",
+                "name": "Dummy_VM_01",
+                "ipAddress": "192.168.1.101",
+                "status": "Running"
+            }
+        ]
+    }
     """
+
     from services.vcenter.session_manager import vcenter_session_manager
     from services.vcenter.inventory_service import vcenter_inventory_service
     from pymongo import UpdateOne
+    import asyncio
 
     vcenters_col = db.get_collection("vcenter_details")
     snap_col = db.get_collection("vcenter_telemetry")
     vms_col = db.get_collection("vm_details")
 
-    vcenters = await vcenters_col.find({}).to_list(length=None)
-    if not vcenters:
-        return {"matchedCount": 0, "updatedCount": 0, "message": "No vCenter appliances configured"}
+    # ---------------------------------------------------------
+    # 1. Get all registered vCenters
+    # ---------------------------------------------------------
 
-    # Build mappings: IP → entry, Name → entry
-    vcenter_ip_map = {}    # ip_address → entry
-    vcenter_name_map = {}  # lower_vm_name → entry
+    vcenters = await vcenters_col.find({}).to_list(length=None)
+
+    if not vcenters:
+        return {
+            "matchedCount": 0,
+            "updatedCount": 0,
+            "message": "No vCenter appliances configured"
+        }
+
+    # ---------------------------------------------------------
+    # 2. Build global VM maps
+    # ---------------------------------------------------------
+
+    vcenter_ip_map = {}
+    vcenter_name_map = {}
+    vcenter_id_map = {}
+
+    total_telemetry_vms = 0
+
+    # ---------------------------------------------------------
+    # Helper
+    # ---------------------------------------------------------
+
+    def normalize(value):
+        if value is None:
+            return ""
+
+        return str(value).strip().lower()
+
+    def is_valid_ip(ip):
+        if not ip:
+            return False
+
+        ip = str(ip).strip()
+
+        return ip not in (
+            "0.0.0.0",
+            "127.0.0.1",
+            "::",
+            "::1",
+            "none",
+            "null",
+            ""
+        )
+
+    def get_power_state(status):
+        status = str(status or "").strip().lower()
+
+        if status in ("running", "powered_on", "poweredon", "on"):
+            return "on"
+
+        return "off"
+
+    def get_network_status(vm):
+        """
+        Telemetry sample doesn't contain is_network_connected.
+
+        If explicit network information exists, use it.
+        Otherwise:
+          - Running VM + valid IP => Connected
+          - Running VM without IP => Disconnected
+          - Powered off => Disconnected
+        """
+
+        explicit_network = vm.get("is_network_connected")
+
+        if explicit_network is not None:
+            return bool(explicit_network)
+
+        explicit_network = vm.get("isNetworkConnected")
+
+        if explicit_network is not None:
+            return bool(explicit_network)
+
+        ip = str(vm.get("ipAddress") or "").strip()
+
+        status = get_power_state(
+            vm.get("status")
+            or vm.get("power_state")
+            or vm.get("powerState")
+        )
+
+        if status == "on" and is_valid_ip(ip):
+            return True
+
+        return False
+
+    # ---------------------------------------------------------
+    # 3. Process every vCenter
+    # ---------------------------------------------------------
 
     for vc in vcenters:
+
         vc_ip = vc.get("ipAddress")
         vc_user = vc.get("username")
         vc_pass = vc.get("password")
-        vc_id_str = str(vc.get("_id"))
 
-        used_live = False
+        # Important:
+        # Your telemetry uses a vcenterId like:
+        # abc123def456ghi789jkl
+        #
+        # Try all possible IDs.
+        vc_mongo_id = vc.get("_id")
+        vc_application_id = vc.get("vcenterId")
+        vc_id = vc.get("id")
 
-        # First try loading from local telemetry snapshot for instant speed
+        possible_vcenter_ids = []
+
+        for value in (
+            vc_application_id,
+            vc_id,
+            vc_mongo_id
+        ):
+            if value is not None:
+                value = str(value)
+
+                if value not in possible_vcenter_ids:
+                    possible_vcenter_ids.append(value)
+
+        telemetry_loaded = False
+
+        # -----------------------------------------------------
+        # 3A. Read local telemetry snapshot
+        # -----------------------------------------------------
+
         try:
-            snap = await snap_col.find_one({"vcenterId": vc_id_str})
-            if snap and snap.get("vms"):
-                telem_vms = snap.get("vms", [])
+
+            snap = None
+
+            # Try every possible vCenter ID.
+            for candidate_id in possible_vcenter_ids:
+
+                snap = await snap_col.find_one({
+                    "vcenterId": candidate_id
+                })
+
+                if snap:
+                    logger.info(
+                        f"Found telemetry snapshot for vCenter "
+                        f"{vc_ip or candidate_id} using vcenterId={candidate_id}"
+                    )
+                    break
+
+            # -------------------------------------------------
+            # Also try telemetry by IP if vcenterId didn't match
+            # -------------------------------------------------
+
+            if not snap and vc_ip:
+                snap = await snap_col.find_one({
+                    "ipAddress": vc_ip
+                })
+
+            # -------------------------------------------------
+            # Process telemetry
+            # -------------------------------------------------
+
+            if snap:
+
+                telem_vms = snap.get("vms") or []
+
                 for tvm in telem_vms:
-                    t_ip = str(tvm.get("ipAddress") or "").strip()
-                    t_name = str(tvm.get("name") or tvm.get("vmName") or tvm.get("id") or "").strip()
-                    t_status = str(tvm.get("status", "")).lower()
-                    is_on = t_status in ("running", "on")
+
+                    vm_id = normalize(
+                        tvm.get("id")
+                        or tvm.get("vmId")
+                    )
+
+                    vm_name = normalize(
+                        tvm.get("name")
+                        or tvm.get("vmName")
+                    )
+
+                    vm_ip = str(
+                        tvm.get("ipAddress")
+                        or tvm.get("guest_ip")
+                        or tvm.get("guestIp")
+                        or ""
+                    ).strip()
+
+                    power_state = get_power_state(
+                        tvm.get("status")
+                        or tvm.get("power_state")
+                        or tvm.get("powerState")
+                    )
+
+                    network_connected = get_network_status(tvm)
 
                     entry = {
-                        "power_state": "on" if is_on else "off",
-                        "is_network_connected": is_on,
-                        "guest_ip": t_ip if (t_ip and t_ip not in ("0.0.0.0", "127.0.0.1")) else None,
-                        "name": t_name
+                        "id": vm_id,
+                        "raw_id": tvm.get("id") or tvm.get("vmId"),
+                        "name": vm_name,
+                        "guest_ip": vm_ip if is_valid_ip(vm_ip) else None,
+                        "power_state": power_state,
+                        "is_network_connected": network_connected,
+                        "network_status": (
+                            "Connected"
+                            if network_connected
+                            else "Disconnected"
+                        ),
+                        "node": tvm.get("node"),
+                        "cpu": tvm.get("cpu"),
+                        "ram": tvm.get("ram"),
+                        "hdd": tvm.get("hdd"),
+                        "osAndExpiry": tvm.get("osAndExpiry"),
+                        "applications": tvm.get("applications")
                     }
 
-                    if t_ip and t_ip not in ("0.0.0.0", "127.0.0.1"):
-                        vcenter_ip_map[t_ip] = entry
-                    if t_name:
-                        vcenter_name_map[t_name.lower()] = entry
+                    # -----------------------------------------
+                    # IP mapping
+                    # -----------------------------------------
 
-                used_live = True
-                logger.info(f"Sync status: loaded {len(telem_vms)} VMs from local telemetry snapshot for vCenter {vc_ip or vc_id_str}")
+                    if is_valid_ip(vm_ip):
+                        vcenter_ip_map[vm_ip] = entry
+
+                    # -----------------------------------------
+                    # Name mapping
+                    # -----------------------------------------
+
+                    if vm_name:
+                        vcenter_name_map[vm_name] = entry
+
+                    # -----------------------------------------
+                    # VM ID mapping
+                    # -----------------------------------------
+
+                    if vm_id:
+                        vcenter_id_map[vm_id] = entry
+
+                total_telemetry_vms += len(telem_vms)
+                telemetry_loaded = True
+
+                logger.info(
+                    f"Loaded {len(telem_vms)} VMs from telemetry "
+                    f"for vCenter {vc_ip or vc_mongo_id}"
+                )
+
         except Exception as e:
-            logger.warning(f"Telemetry snapshot check error for vCenter {vc_id_str}: {e}")
 
-        # If no snapshot or missing entries, query live API with a strict timeout limit
-        if not used_live and vc_ip and vc_user and vc_pass:
+            logger.warning(
+                f"Telemetry snapshot error for vCenter "
+                f"{vc_ip or vc_mongo_id}: {e}"
+            )
+
+        # -----------------------------------------------------
+        # 3B. If telemetry unavailable, use live vCenter API
+        # -----------------------------------------------------
+
+        if not telemetry_loaded and vc_ip and vc_user and vc_pass:
+
             try:
-                # Invalidate cached VM data so we get fresh power states
+
                 from services.vcenter.cache import global_cache
-                await global_cache.invalidate_pattern(f"vcenter:{vc_ip}:vms:")
+
+                await global_cache.invalidate_pattern(
+                    f"vcenter:{vc_ip}:vms:"
+                )
 
                 session_id = await asyncio.wait_for(
-                    vcenter_session_manager.get_session(vc_ip, vc_user, vc_pass),
+                    vcenter_session_manager.get_session(
+                        vc_ip,
+                        vc_user,
+                        vc_pass
+                    ),
                     timeout=3.0
                 )
+
                 if session_id:
+
                     all_vms = await asyncio.wait_for(
-                        vcenter_inventory_service.get_all_cluster_vms(vc_ip, session_id),
+                        vcenter_inventory_service.get_all_cluster_vms(
+                            vc_ip,
+                            session_id
+                        ),
                         timeout=5.0
                     )
+
                     for vm_info in all_vms:
-                        guest_ip = str(vm_info.get("guest_ip") or "").strip()
-                        vm_name = str(vm_info.get("name") or "").strip()
-                        power_state = str(vm_info.get("power_state", "")).lower()
-                        is_on = power_state in ("on", "running", "powered_on", "poweredon")
+
+                        vm_id = normalize(
+                            vm_info.get("id")
+                            or vm_info.get("vm_id")
+                            or vm_info.get("vmId")
+                        )
+
+                        vm_name = normalize(
+                            vm_info.get("name")
+                            or vm_info.get("vmName")
+                        )
+
+                        guest_ip = str(
+                            vm_info.get("guest_ip")
+                            or vm_info.get("guestIp")
+                            or vm_info.get("ipAddress")
+                            or ""
+                        ).strip()
+
+                        power_state = get_power_state(
+                            vm_info.get("power_state")
+                            or vm_info.get("powerState")
+                            or vm_info.get("status")
+                        )
+
+                        explicit_network = vm_info.get(
+                            "is_network_connected"
+                        )
+
+                        if explicit_network is None:
+                            explicit_network = (
+                                vm_info.get("isNetworkConnected")
+                            )
+
+                        if explicit_network is None:
+                            network_connected = (
+                                power_state == "on"
+                                and is_valid_ip(guest_ip)
+                            )
+                        else:
+                            network_connected = bool(explicit_network)
 
                         entry = {
-                            "power_state": "on" if is_on else "off",
-                            "is_network_connected": vm_info.get("is_network_connected", is_on),
-                            "guest_ip": guest_ip if (guest_ip and guest_ip not in ("0.0.0.0", "127.0.0.1")) else None,
-                            "name": vm_name
+                            "id": vm_id,
+                            "raw_id": vm_info.get("id") or vm_info.get("vm_id") or vm_info.get("vmId"),
+                            "name": vm_name,
+                            "guest_ip": (
+                                guest_ip
+                                if is_valid_ip(guest_ip)
+                                else None
+                            ),
+                            "power_state": power_state,
+                            "is_network_connected": network_connected,
+                            "network_status": (
+                                "Connected"
+                                if network_connected
+                                else "Disconnected"
+                            ),
+                            "node": vm_info.get("node"),
+                            "cpu": vm_info.get("cpu"),
+                            "ram": vm_info.get("ram"),
+                            "hdd": vm_info.get("hdd"),
+                            "osAndExpiry": vm_info.get("osAndExpiry"),
+                            "applications": vm_info.get("applications")
                         }
 
-                        if guest_ip and guest_ip not in ("0.0.0.0", "127.0.0.1"):
+                        if is_valid_ip(guest_ip):
                             vcenter_ip_map[guest_ip] = entry
+
                         if vm_name:
-                            vcenter_name_map[vm_name.lower()] = entry
+                            vcenter_name_map[vm_name] = entry
 
-                    logger.info(f"Sync status: collected {len(all_vms)} VMs from live vCenter {vc_ip}")
+                        if vm_id:
+                            vcenter_id_map[vm_id] = entry
+
+                    logger.info(
+                        f"Collected {len(all_vms)} VMs from live "
+                        f"vCenter {vc_ip}"
+                    )
+
             except Exception as e:
-                logger.warning(f"Failed live vCenter sync for {vc_ip}: {e}")
 
-    if not vcenter_ip_map and not vcenter_name_map:
-        return {"matchedCount": 0, "updatedCount": 0, "message": "No VMs found from any vCenter"}
+                logger.warning(
+                    f"Failed live vCenter sync for {vc_ip}: {e}"
+                )
 
-    # Iterate all DCM vm_details and match by IP or VM Name
+    # ---------------------------------------------------------
+    # 4. Nothing found
+    # ---------------------------------------------------------
+
+    if (
+        not vcenter_ip_map
+        and not vcenter_name_map
+        and not vcenter_id_map
+    ):
+        return {
+            "matchedCount": 0,
+            "updatedCount": 0,
+            "message": "No VMs found from telemetry or vCenter API"
+        }
+
+    logger.info(
+        f"vCenter VM maps created: "
+        f"IP={len(vcenter_ip_map)}, "
+        f"Name={len(vcenter_name_map)}, "
+        f"ID={len(vcenter_id_map)}"
+    )
+
+    # ---------------------------------------------------------
+    # 5. Load DCM VMs
+    # ---------------------------------------------------------
+
     all_dcm_vms = await vms_col.find(
         {},
-        {"_id": 1, "ipAddress": 1, "vmName": 1, "applications": 1, "vmId": 1, "powerStatus": 1, "isNetworkConnected": 1}
+        {
+            "_id": 1,
+            "ipAddress": 1,
+            "vmName": 1,
+            "applications": 1,
+            "vmId": 1,
+            "powerStatus": 1,
+            "isNetworkConnected": 1,
+            "networkStatus": 1,
+            "node": 1,
+            "cpu": 1,
+            "ram": 1,
+            "hdd": 1,
+            "osAndExpiry": 1
+        }
     ).to_list(length=None)
 
     matched_count = 0
-    now_ts = datetime.now(timezone.utc).isoformat()
+    updated_count = 0
+
     bulk_ops = []
 
+    now_ts = datetime.now(timezone.utc).isoformat()
+
+    # ---------------------------------------------------------
+    # 6. Match DCM VMs
+    # ---------------------------------------------------------
+
     for dcm_vm in all_dcm_vms:
-        dcm_ip_raw = str(dcm_vm.get("ipAddress") or "").strip()
+
         matched_entry = None
+        match_type = None
 
-        # Priority 1: Match by IP address
-        if dcm_ip_raw:
-            dcm_ips = [ip.strip() for ip in dcm_ip_raw.split(",") if ip.strip()]
-            for ip in dcm_ips:
-                if ip in vcenter_ip_map:
-                    matched_entry = vcenter_ip_map[ip]
-                    break
+        # =====================================================
+        # VM ID Match
+        # =====================================================
 
-        # Priority 2: Fallback to match by VM Name / Applications / VM ID (handles powered off VMs missing IP)
-        if not matched_entry:
-            name_candidates = []
-            if dcm_vm.get("vmName"):
-                name_candidates.append(str(dcm_vm["vmName"]).strip().lower())
-            if dcm_vm.get("applications"):
-                name_candidates.append(str(dcm_vm["applications"]).strip().lower())
-            if dcm_vm.get("vmId"):
-                name_candidates.append(str(dcm_vm["vmId"]).strip().lower())
+        dcm_vm_id = normalize(
+            dcm_vm.get("vmId")
+        )
 
-            for cand in name_candidates:
-                if cand and cand in vcenter_name_map:
-                    matched_entry = vcenter_name_map[cand]
-                    break
+        if (
+            dcm_vm_id
+            and dcm_vm_id in vcenter_id_map
+        ):
+
+            matched_entry = vcenter_id_map[dcm_vm_id]
+            match_type = "VM_ID"
+
+        # =====================================================
+        # No match
+        # =====================================================
 
         if not matched_entry:
-            continue  # No match by IP or Name
+            continue
 
         matched_count += 1
 
-        new_power = matched_entry["power_state"]
-        new_net_connected = matched_entry["is_network_connected"]
-        new_net_status = "Connected" if new_net_connected else "Disconnected"
+        # -----------------------------------------------------
+        # New values
+        # -----------------------------------------------------
 
-        # Check if update is needed
-        current_power = str(dcm_vm.get("powerStatus", "")).lower()
-        current_net = dcm_vm.get("isNetworkConnected")
+        new_power = matched_entry["power_state"]
+
+        new_network = matched_entry[
+            "is_network_connected"
+        ]
+
+        new_network_status = matched_entry[
+            "network_status"
+        ]
 
         update_fields = {}
-        if current_power != new_power:
-            update_fields["powerStatus"] = new_power
-        if current_net != new_net_connected:
-            update_fields["isNetworkConnected"] = new_net_connected
-            update_fields["networkStatus"] = new_net_status
 
-        # If matched by name and vCenter reports a valid guest IP while DCM VM has no IP, update ipAddress as well
-        if matched_entry.get("guest_ip") and not dcm_ip_raw:
-            update_fields["ipAddress"] = matched_entry["guest_ip"]
+        # -----------------------------------------------------
+        # Power status
+        # -----------------------------------------------------
+
+        current_power = normalize(
+            dcm_vm.get("powerStatus")
+        )
+
+        if current_power != new_power:
+
+            update_fields["powerStatus"] = new_power
+
+        # -----------------------------------------------------
+        # Network status
+        # -----------------------------------------------------
+
+        current_network = dcm_vm.get(
+            "isNetworkConnected"
+        )
+
+        if current_network != new_network:
+
+            update_fields[
+                "isNetworkConnected"
+            ] = new_network
+
+            update_fields[
+                "networkStatus"
+            ] = new_network_status
+
+        # -----------------------------------------------------
+        # Update IP when DCM has no IP
+        # -----------------------------------------------------
+
+        guest_ip = matched_entry.get(
+            "guest_ip"
+        )
+
+        if guest_ip and not str(dcm_vm.get("ipAddress") or "").strip():
+
+            update_fields[
+                "ipAddress"
+            ] = guest_ip
+
+        # -----------------------------------------------------
+        # Update other hardware fields and node
+        # -----------------------------------------------------
+        for dcm_f, telem_f in [
+            ("node", "node"),
+            ("cpu", "cpu"),
+            ("ram", "ram"),
+            ("hdd", "hdd"),
+            ("osAndExpiry", "osAndExpiry"),
+            ("applications", "applications")
+        ]:
+            new_val = matched_entry.get(telem_f)
+            if new_val:
+                new_val_str = str(new_val).strip()
+                if new_val_str and dcm_vm.get(dcm_f) != new_val_str:
+                    update_fields[dcm_f] = new_val_str
+
+        # -----------------------------------------------------
+        # Update VM ID
+        # -----------------------------------------------------
+        raw_id = matched_entry.get("raw_id")
+        if raw_id:
+            raw_id_str = str(raw_id).strip()
+            if raw_id_str and dcm_vm.get("vmId") != raw_id_str:
+                update_fields["vmId"] = raw_id_str
+
+        # -----------------------------------------------------
+        # Update
+        # -----------------------------------------------------
 
         if update_fields:
-            update_fields["updatedAt"] = now_ts
-            bulk_ops.append(UpdateOne({"_id": dcm_vm["_id"]}, {"$set": update_fields}))
 
-    updated_count = 0
+            update_fields[
+                "updatedAt"
+            ] = now_ts
+
+            bulk_ops.append(
+                UpdateOne(
+                    {
+                        "_id": dcm_vm["_id"]
+                    },
+                    {
+                        "$set": update_fields
+                    }
+                )
+            )
+
+            logger.debug(
+                f"VM sync: "
+                f"DCM={dcm_vm.get('vmName')} "
+                f"matched by {match_type}, "
+                f"updates={update_fields}"
+            )
+
+    # ---------------------------------------------------------
+    # 7. Bulk update
+    # ---------------------------------------------------------
+
     if bulk_ops:
-        res = await vms_col.bulk_write(bulk_ops)
-        updated_count = res.modified_count or len(bulk_ops)
 
-    logger.info(f"vCenter VM status sync complete: {matched_count} matched (by IP/Name), {updated_count} updated")
+        result = await vms_col.bulk_write(
+            bulk_ops,
+            ordered=False
+        )
+
+        updated_count = result.modified_count
+
+    # ---------------------------------------------------------
+    # 8. Final response
+    # ---------------------------------------------------------
+
+    logger.info(
+        f"vCenter VM status sync complete: "
+        f"{matched_count} matched, "
+        f"{updated_count} updated, "
+        f"{total_telemetry_vms} telemetry VMs processed"
+    )
+
     return {
         "matchedCount": matched_count,
         "updatedCount": updated_count,
-        "message": f"Sync complete: {matched_count} VMs matched by IP/Name, {updated_count} updated."
+        "telemetryVmCount": total_telemetry_vms,
+        "message": (
+            f"Sync complete: "
+            f"{matched_count} VMs matched by IP/Name/VM ID, "
+            f"{updated_count} updated."
+        )
     }
-
-
-@router.post("/sync-vcenter-status", dependencies=[Depends(require_any_privilege(["Create Server Details", "View Server Details", "View All Server Details"]))])
-async def sync_vcenter_vm_status(current_user: dict = Depends(get_current_user)):
-    """Sync power and network status of all DCM VMs from vCenter by IP address mapping."""
-    try:
-        # Force fresh telemetry collection from each vCenter before syncing
-        try:
-            from tasks.telemetry_scheduler import vcenter_telemetry_scheduler
-            vcenters_col = db.get_collection("vcenter_details")
-            vcenters = await vcenters_col.find({}).to_list(length=None)
-            for vc in vcenters:
-                if vc.get("ipAddress") and vc.get("username") and vc.get("password"):
-                    try:
-                        await asyncio.wait_for(
-                            vcenter_telemetry_scheduler.force_refresh_vcenter(vc),
-                            timeout=30.0
-                        )
-                    except asyncio.TimeoutError:
-                        logger.warning(f"Telemetry refresh timed out for vCenter {vc.get('ipAddress')}")
-        except Exception as te:
-            logger.warning(f"Pre-sync telemetry refresh failed (continuing with snapshot): {te}")
-
-        result = await sync_vms_from_vcenter_by_ip()
-        return result
-    except Exception as e:
-        logger.error(f"Error in sync_vcenter_vm_status endpoint: {e}")
-        raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
 
 @router.put("/{id}", response_description="Update VM details", response_model=VMDetailsModel, response_model_by_alias=False, dependencies=[Depends(require_any_privilege(["Create Server Details", "Update Server Details", "Update VMs (Restricted)"]))])
 async def update_item(id: str, request: Request, payload: UpdateVMDetailsModel = Body(...), current_user: dict = Depends(get_current_user)):
