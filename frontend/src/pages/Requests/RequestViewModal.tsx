@@ -29,6 +29,27 @@ interface RequestViewModalProps {
   hasUpdatePrivilege: boolean;
 }
 
+const REQUEST_STATUS_UPDATE_BUTTON_MAP: Record<string, string> = {
+    'Dep Head Approval': 'Mark as approved',
+    'DC Manager Approval':'Mark as approved',
+    'Mark Entry Time':'Entry time marked',
+    'Mark Exit Time':'Exit time marked',
+    'Mark as completed':'Mark as completed',
+    'Hardware issued':'Mark as issued',
+    'Mark as verified':'Mark as verified',
+    'Connection Issuance':'Mark as connection issued',
+    'Verification':'Mark as verified',
+    'Cluster Identification':'Mark as cluster identified',
+    'IP Issuance':'Mark as IP issued',
+    'VM Creation': 'Mark as VM Created',
+    'Verify VM': 'Mark as VM verified',
+    'VM Created':'VM configured and pass to take backup',
+    'Take OVF':'OVF taken',
+    'Deploy OVF':'OVF deployed',
+    'Take VM Backup':'VM backup taken',
+    'Delete OVF File':'Mark as OVF deleted'
+};
+
 const RequestViewModal: React.FC<RequestViewModalProps> = ({
   isOpen,
   onClose,
@@ -53,6 +74,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
   const [isSendBackOpen, setIsSendBackOpen] = useState(false);
   const [sendBackReason, setSendBackReason] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [advanceError, setAdvanceError] = useState<string>('');
 
   // Cluster Selection States
   const [clusters, setClusters] = useState<any[]>([]);
@@ -167,6 +189,11 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
 
   const getAdvanceButtonLabel = () => {
     if (checkingAssignees || submitting) return 'Processing...';
+
+    const currentStatus = request?.status || '';
+    if (REQUEST_STATUS_UPDATE_BUTTON_MAP[currentStatus]) {
+      return REQUEST_STATUS_UPDATE_BUTTON_MAP[currentStatus];
+    }
 
     const stageLabel = nextStageName
       ? (nextStageName.toLowerCase() === 'completed' ? 'Complete Request' : `Advance to ${nextStageName}`)
@@ -303,6 +330,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
 
   const executeAdvance = async (assignee?: string) => {
     setSubmitting(true);
+    setAdvanceError('');
     try {
       let payload: any = { remarks };
       if (assignee) {
@@ -347,12 +375,23 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
           keptItemsOnExit: !!keptItemsOnExit
         };
       }
-      await onAdvance(request.id || request._id || '', payload);
+      const result: any = await onAdvance(request.id || request._id || '', payload);
+      
+      if (result && result.success === false) {
+        const err = result.error;
+        if (err?.response?.status === 400 || err?.status === 400 || err?.message?.includes('not yet created') || err?.message?.includes('not created')) {
+          setAdvanceError('VM is not created in the Vcenter, please create it before advancing to the next status');
+        } else {
+          setAdvanceError(err?.message || 'Failed to advance request');
+        }
+        return; // Do not close the modal
+      }
+
       setAssigneeSelectionOpen(false);
       setSelectedAssignee('');
       onClose();
-    } catch (err) {
-      // toast is handled in parent
+    } catch (err: any) {
+      setAdvanceError(err?.message || 'Failed to advance request');
     } finally {
       setSubmitting(false);
     }
@@ -1235,6 +1274,13 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
             </Grid>
           )}
         </Grid>
+        {advanceError && (
+          <Box sx={{ mt: 2, p: 2, bgcolor: '#fee', borderRadius: 1, border: '1px solid #fcc' }}>
+            <Typography color="error" variant="body2" sx={{ fontWeight: 500 }}>
+              {advanceError}
+            </Typography>
+          </Box>
+        )}
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
         {canAction && !isTerminal && canSendBack && (

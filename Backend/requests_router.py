@@ -1407,6 +1407,51 @@ async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), c
     current_index = next((i for i, s in enumerate(stages) if s.get("stageName") == curr_status), existing.get("currentStageIndex", 0))
     next_index = current_index + 1
 
+    if request_type == "VM Creation" and curr_status == "VM Creation":
+        details = existing.get("details") or {}
+        target_name = details.get("vmName") or details.get("applications") or f"VM_{details.get('ip', '').replace('.', '_')}"
+        
+        cluster_name = details.get("cluster")
+        if cluster_name:
+            clusters_col = db.get_collection("clusters")
+            cluster_obj = await clusters_col.find_one({"clusterName": cluster_name})
+            vc_ip = cluster_obj.get("ipAddress") if cluster_obj else None
+            
+            if vc_ip:
+                vc_col = db.get_collection("vcenter_details")
+                vc = await vc_col.find_one({"ipAddress": vc_ip})
+                
+                if vc:
+                    from services.vcenter.session_manager import vcenter_session_manager
+                    from services.vcenter.inventory_service import vcenter_inventory_service
+                    
+                    try:
+                        session_id = await vcenter_session_manager.get_session(vc["ipAddress"], vc["username"], vc["password"])
+                        if session_id:
+                            all_vms = await vcenter_inventory_service.get_vms(vc["ipAddress"], session_id, cluster_id=None)
+                            
+                            matched_vm_id = None
+                            for vm in all_vms:
+                                vm_name_vc = vm.get("name") or vm.get("vmName") or ""
+                                if vm_name_vc.lower() == target_name.lower():
+                                    matched_vm_id = vm.get("vm") or vm.get("vm_id") or vm.get("id")
+                                    break
+                                    
+                            if not matched_vm_id:
+                                raise HTTPException(status_code=400, detail=f"VM '{target_name}' is not yet created in vCenter. Cannot advance stage.")
+                                
+                            # If created, give vm id to the app vm same as of the vcenter vm
+                            update_fields_details = details.copy()
+                            update_fields_details["vmId"] = matched_vm_id
+                            await collection.update_one({"_id": ObjectId(id)}, {"$set": {"details": update_fields_details}})
+                            existing["details"] = update_fields_details
+                    except HTTPException:
+                        raise
+                    except Exception as e:
+                        import logging
+                        logging.getLogger("requests_router").error(f"Error checking VM creation in vCenter: {e}")
+                        raise HTTPException(status_code=500, detail=f"Error communicating with vCenter: {e}")
+
     if next_index >= len(stages):
         # All stages completed
         update_data = {

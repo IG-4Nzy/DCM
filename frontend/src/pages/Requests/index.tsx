@@ -245,8 +245,13 @@ const Requests: React.FC = () => {
             await advanceRequest(id, payload);
             showToast('Request advanced to the next stage successfully', 'success');
             loadData();
+            return { success: true };
         } catch (err: any) {
-            showToast(err.message || 'Failed to advance request', 'error');
+            const isVmNotCreated = err?.response?.status === 400 && (err?.response?.data?.detail?.includes('not yet created') || err?.response?.data?.detail?.includes('not created'));
+            if (!isVmNotCreated) {
+                showToast(err.response?.data?.detail || err.message || 'Failed to advance request', 'error');
+            }
+            return { success: false, error: err };
         } finally {
             setLoading(false);
         }

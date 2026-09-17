@@ -1,0 +1,20 @@
+export const REQUEST_STATUS_UPDATE_BUTTON_MAP = {
+    'Dep Head Approval': 'Mark as approved',
+    'DC Manager Approval':'Mark as approved',
+    'Mark Entry Time':'Entry time marked',
+    'Mark Exit Time':'Exit time marked',
+    'Mark as completed':'Mark as completed',
+    'Hardware issued':'Mark as issued',
+    'Mark as verified':'Mark as verified',
+    'Connection Issuance':'Mark as connection issued',
+    'Verification':'Mark as verified',
+    'Cluster Identification':'Mark as cluster identified',
+    'IP Issuance':'Mark as IP issued',
+    'VM Creation': 'Mark as VM Created',
+    'Verify VM': 'Mark as VM verified',
+    'VM Created':'VM configured and pass to take backup',
+    'Take OVF':'OVF taken',
+    'Deploy OVF':'OVF deployed',
+    'Take VM Backup':'VM backup taken',
+    'Delete OVF File':'Mark as OVF deleted'
+}
