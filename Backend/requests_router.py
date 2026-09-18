@@ -1335,8 +1335,16 @@ async def get_next_assignees(id: str, current_user: dict = Depends(get_current_u
     sorted_stages = sorted(routing["stages"], key=lambda s: s.get("order", 0))
     stages = get_applicable_stages(sorted_stages, existing)
     curr_status = existing.get("status", "")
-    current_index = next((i for i, s in enumerate(stages) if s.get("stageName") == curr_status), existing.get("currentStageIndex", 0))
-    next_index = current_index + 1
+
+    # Find current stage in the filtered list by name
+    found_index = next((i for i, s in enumerate(stages) if s.get("stageName") == curr_status), None)
+    if found_index is not None:
+        next_index = found_index + 1
+    else:
+        # Current stage was filtered out (its condition changed after it was entered).
+        # Use the stage's order from the full list to find the correct next applicable stage.
+        curr_order = next((s.get("order", 0) for s in sorted_stages if s.get("stageName") == curr_status), 0)
+        next_index = next((i for i, s in enumerate(stages) if s.get("order", 0) > curr_order), len(stages))
 
     if next_index >= len(stages):
         return {"assignees": []}
@@ -1416,8 +1424,16 @@ async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), c
     sorted_stages = sorted(routing["stages"], key=lambda s: s.get("order", 0))
     stages = get_applicable_stages(sorted_stages, existing)
     curr_status = existing.get("status", "")
-    current_index = next((i for i, s in enumerate(stages) if s.get("stageName") == curr_status), existing.get("currentStageIndex", 0))
-    next_index = current_index + 1
+
+    # Find current stage in the filtered list by name
+    found_index = next((i for i, s in enumerate(stages) if s.get("stageName") == curr_status), None)
+    if found_index is not None:
+        next_index = found_index + 1
+    else:
+        # Current stage was filtered out (its condition changed after it was entered).
+        # Use the stage's order from the full list to find the correct next applicable stage.
+        curr_order = next((s.get("order", 0) for s in sorted_stages if s.get("stageName") == curr_status), 0)
+        next_index = next((i for i, s in enumerate(stages) if s.get("order", 0) > curr_order), len(stages))
 
     if request_type in ["VM Creation", "VM Management"] and ("creation" in curr_status.lower() or "created" in curr_status.lower()):
         details = existing.get("details") or {}
