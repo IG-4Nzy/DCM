@@ -431,7 +431,7 @@ const RequestRoutingModal: React.FC<RequestRoutingModalProps> = ({
     const newErrors = stages.map((stage) => {
       if (!stage.stageName) return "Status Name is required";
       if (!/^[a-zA-Z\s]+$/.test(stage.stageName)) return "Status Name must contain alphabets and spaces only";
-      if (stage.stageName.length > 20) return "Status Name must be maximum 20 characters";
+      if (stage.stageName.length > 100) return "Status Name must be maximum 100 characters";
       return "";
     });
 

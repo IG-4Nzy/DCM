@@ -69,7 +69,7 @@ const VisitorLogs: React.FC = () => {
     ) : "";
 
     const itemsToBringErr = formFields.itemsToBring ? (
-        !/^[a-zA-Z0-9\s]+$/.test(formFields.itemsToBring) ? "Tools/items to bring must be alphanumeric only" : ""
+        !/^[a-zA-Z0-9\s,]+$/.test(formFields.itemsToBring) ? "Tools/items to bring must be alphanumeric and comma only" : ""
     ) : "";
 
     const hasFormErrors = !!visitorNameErr || !!divisionErr || !!purposeErr || !!itemsToBringErr;

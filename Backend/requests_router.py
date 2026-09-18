@@ -427,11 +427,14 @@ def is_stage_applicable(stage: dict, request_doc: dict) -> bool:
     c_val = stage.get("conditionValue")
     c_operator = stage.get("conditionOperator", "equals")
 
-    if not c_field:
-        return True  # No condition set, so stage is always applicable
-
-    if c_operator not in ["is_empty", "is_not_empty"] and (c_val is None or str(c_val).strip() == ""):
-        return True
+    # For standard operators, if condition is incomplete, assume it's always applicable
+    if c_operator not in ["is_empty", "is_not_empty"]:
+        if not c_field or c_val is None or str(c_val).strip() == "":
+            return True
+    else:
+        # For is_empty/is_not_empty, we only need the field
+        if not c_field:
+            return True
 
     details = request_doc.get("details") if isinstance(request_doc.get("details"), dict) else {}
 
@@ -1416,7 +1419,7 @@ async def advance_stage(id: str, payload: Optional[dict] = Body(default=None), c
     current_index = next((i for i, s in enumerate(stages) if s.get("stageName") == curr_status), existing.get("currentStageIndex", 0))
     next_index = current_index + 1
 
-    if request_type == "VM Creation" and curr_status == "VM Creation":
+    if request_type in ["VM Creation", "VM Management"] and ("creation" in curr_status.lower() or "created" in curr_status.lower()):
         details = existing.get("details") or {}
         target_name = details.get("vmName") or details.get("applications") or f"VM_{details.get('ip', '').replace('.', '_')}"
         

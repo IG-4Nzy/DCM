@@ -221,6 +221,7 @@ const RequestViewModal: React.FC<RequestViewModalProps> = ({
     if (isOpen && !hasInitializedRef.current && request && (request.id === requestId || request._id === requestId)) {
       setRemarks('');
       setErrors({});
+      setAdvanceError('');
       setIpAddress(request.details?.ip || '');
       setIpError(false);
       setBackupName(request.details?.backupName || '');
