@@ -2100,8 +2100,6 @@ class CreateVMDetailsModel(BaseModel):
             if v_trimmed:
                 if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
                     raise ValueError("VM Name must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
-                if len(v_trimmed) > 50:
-                    raise ValueError("VM Name must be maximum 50 characters")
             return v_trimmed
         return v
 
@@ -2226,8 +2224,6 @@ class UpdateVMDetailsModel(BaseModel):
             if v_trimmed:
                 if not re.match(r"^[a-zA-Z0-9\s._-]+$", v_trimmed):
                     raise ValueError("VM Name must contain alphanumeric characters, spaces, dots, underscores, or dashes only")
-                if len(v_trimmed) > 50:
-                    raise ValueError("VM Name must be maximum 50 characters")
             return v_trimmed
         return v
 

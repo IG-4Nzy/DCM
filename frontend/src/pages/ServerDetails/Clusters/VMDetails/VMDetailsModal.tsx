@@ -325,7 +325,7 @@ const VMDetailsModal: React.FC<VMDetailsModalProps> = ({ open, onClose, onSubmit
         e.preventDefault();
 
         // --- Validate all fields ---
-        const vmNameErr = validators.alphanumericSpacesDotsDashesUnderscores(formData.vmName || '', 50, 'VM Name');
+        const vmNameErr = validators.alphanumericSpacesDotsDashesUnderscores(formData.vmName || '', undefined, 'VM Name');
         const ipErr = validators.ipv4CommaSeparated(formData.ipAddress || '', 'IP Address');
         const osErr = validators.osExpiry(formData.osAndExpiry || '', 100, 'OS and Expiry');
         const appsErr = validators.applicationsGeneral(formData.applications || '', 200, 'Applications');
