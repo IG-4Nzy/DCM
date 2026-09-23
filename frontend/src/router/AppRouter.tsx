@@ -33,6 +33,7 @@ const IpAndPhoneDirectory = lazy(() => import("../pages/IpAndPhoneDirectory"));
 const ServerDetails = lazy(() => import("../pages/ServerDetails"));
 const Salary = lazy(() => import("../pages/Salary"));
 const About = lazy(() => import("../pages/About"));
+const MetricsMonitoring = lazy(() => import("../pages/MetricsMonitoring"));
 
 const AppRouter: React.FC = () => {
   return (
@@ -80,6 +81,7 @@ const AppRouter: React.FC = () => {
             <Route path={ROUTE_CONSTANTS.PHONE_DIRECTORY} element={<IpAndPhoneDirectory />} />
             <Route path={ROUTE_CONSTANTS.SALARY} element={<Salary />} />
             <Route path={ROUTE_CONSTANTS.ABOUT} element={<About />} />
+            <Route path={ROUTE_CONSTANTS.METRICS_MONITORING} element={<MetricsMonitoring />} />
           </Route>
 
           <Route path="*" element={<PageNotFound />} />

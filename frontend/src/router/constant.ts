@@ -35,4 +35,5 @@ export const ROUTE_CONSTANTS = {
     PHONE_DIRECTORY: "/phone-directory",
     SALARY: "/salary",
     ABOUT: "/about",
+    METRICS_MONITORING: "/metrics-monitoring",
 }

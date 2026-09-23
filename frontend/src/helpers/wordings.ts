@@ -42,4 +42,5 @@ export default {
   phoneDirectory: "Phone Directory",
   salary: "Salary Calculation",
   about: "About App",
+  metricsMonitoring: "Metrics Monitoring",
 };

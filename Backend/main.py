@@ -47,6 +47,7 @@ from phone_directory import router as phone_directory_router
 from infrastructure_history import router as infrastructure_history_router
 from routers.about import router as about_router
 from routers.mail_config import router as mail_config_router
+from routers.metrics_monitoring import router as metrics_monitoring_router
 from work_logs import router as work_logs_router
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -400,6 +401,17 @@ def get_audit_details(username: str, method: str, path: str, status_code: int, b
         if method == "DELETE":
             name = before.get("name") if before else "unknown entry"
             return f'"{username}" deleted phone directory entry - {name}'
+        
+    if "metrics-monitoring" in parts:
+            if method == "POST":
+                name = body.get("name", "unknown entry")
+                return f'"{username}" created metrics-monitoring entry - {name}'
+            if method == "PUT":
+                name = before.get("name") if before else body.get("name", "unknown entry")
+                return f'"{username}" updated metrics-monitoring entry - {name}'
+            if method == "DELETE":
+                name = before.get("name") if before else "unknown entry"
+                return f'"{username}" deleted metrics-monitoring entry - {name}'
 
     return default_desc
 
@@ -452,6 +464,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             elif "periodic-activities" in parts: collection_name = "periodic_activities"
             elif "observations" in parts: collection_name = "observations"
             elif "ip-list" in parts: collection_name = "ip_list"
+            elif "metrics-monitoring" in parts: collection_name = "metrics_applications"
             
             from bson import ObjectId
             for p in reversed(parts):
@@ -785,6 +798,7 @@ mount_api_router(about_router, "about", "about")
 mount_api_router(infrastructure_history_router, "infrastructure_history", "infrastructure-history")
 mount_api_router(mail_config_router, "mail_config", "mail-config")
 mount_api_router(work_logs_router, "work_logs", "work-logs")
+mount_api_router(metrics_monitoring_router, "metrics_monitoring", "metrics-monitoring")
 
 # Mount the new split telemetry monitor endpoints under same prefix for backwards compatibility
 mount_api_router(vcenter_monitor_router, "vcenter_telemetry", "vcenter-details")
@@ -828,6 +842,7 @@ async def on_startup():
         await db.works.create_index([("status", 1), ("assignee", 1)])
         await db.requests.create_index([("status", 1), ("createdBy", 1)])
         await db.audit_logs.create_index([("timestamp", -1)])
+        await db.metrics_applications.create_index("name")
     except Exception as e:
         print(f"Database index initialization notice: {e}")
 
