@@ -60,19 +60,19 @@ const InventoryFormModal: React.FC<PropType> = ({
 
   const validateItemName = (v: string) => {
     if (!v) return "";
-    if (!/^[a-zA-Z0-9\s]+$/.test(v)) return "Item name must be alphanumeric with spaces only";
+    if (!/^[a-zA-Z0-9\s,.\/|\-]+$/.test(v)) return "Item name must be alphanumeric with spaces only";
     if (v.length > 20) return "Item name must be maximum 20 characters";
     return "";
   };
   const validateAlmiraNumber = (v: string) => {
     if (!v) return "";
-    if (!/^[a-zA-Z0-9]+$/.test(v)) return "Almira number must be alphanumeric only";
+    if (!/^[a-zA-Z0-9,.\/|\-]+$/.test(v)) return "Almira number must be alphanumeric only";
     if (v.length > 5) return "Almira number must be maximum 5 characters";
     return "";
   };
   const validateRackNumber = (v: string) => {
     if (!v) return "";
-    if (!/^[a-zA-Z0-9]+$/.test(v)) return "Rack number must be alphanumeric only";
+    if (!/^[a-zA-Z0-9,.\/|\-]+$/.test(v)) return "Rack number must be alphanumeric only";
     if (v.length > 5) return "Rack number must be maximum 5 characters";
     return "";
   };

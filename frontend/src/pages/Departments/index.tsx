@@ -86,7 +86,7 @@ const Departments: React.FC = () => {
       showToast("Department name is required", "error");
       return;
     }
-    if (!/^[a-zA-Z0-9\s-]+$/.test(formName)) {
+    if (!/^[a-zA-Z0-9\s-,.\/|\-]+$/.test(formName)) {
       showToast("Department name must be alphanumeric with spaces or dashes only", "error");
       return;
     }

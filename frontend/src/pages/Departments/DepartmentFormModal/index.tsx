@@ -36,7 +36,7 @@ const DepartmentFormModal = ({
 }: PropType) => {
   const validateDeptName = (v: string) => {
     if (!v) return "";
-    if (!/^[a-zA-Z0-9\s-]+$/.test(v)) return "Department name must be alphanumeric with spaces or dashes only";
+    if (!/^[a-zA-Z0-9\s-,.\/|\-]+$/.test(v)) return "Department name must be alphanumeric with spaces or dashes only";
     if (v.length < 2 || v.length > 50) return "Department name must be between 2 to 50 characters";
     return "";
   };

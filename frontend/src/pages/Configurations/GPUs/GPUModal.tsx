@@ -35,9 +35,9 @@ const GPUModal: React.FC<GPUModalProps> = ({ open, onClose, onSubmit, editingIte
         e.preventDefault();
         
         const nameErr = !gpuName ? "GPU Name is required" :
-                        !/^[a-zA-Z0-9\s/+-]+$/.test(gpuName) ? "GPU Name must contain alphanumeric characters, spaces, slashes, pluses or dashes only" :
+                        !/^[a-zA-Z0-9\s/+-,.|\-]+$/.test(gpuName) ? "GPU Name must contain alphanumeric characters, spaces, slashes, pluses or dashes only" :
                         gpuName.length > 50 ? "GPU Name must be maximum 50 characters" : "";
-        const remarksErr = remarks && !/^[a-zA-Z0-9\s,.-]+$/.test(remarks) ? "Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only" :
+        const remarksErr = remarks && !/^[a-zA-Z0-9\s,.-\/|\-]+$/.test(remarks) ? "Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only" :
                            remarks.length > 125 ? "Remarks must be maximum 125 characters" : "";
 
         const newErrors = {

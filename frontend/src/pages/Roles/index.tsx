@@ -84,7 +84,7 @@ const Roles: React.FC = () => {
       showToast("Role name is required", "error");
       return;
     }
-    if (!/^[a-zA-Z0-9\s]+$/.test(formName)) {
+    if (!/^[a-zA-Z0-9\s,.\/|\-]+$/.test(formName)) {
       showToast("Role name must be alphanumeric and spaces only", "error");
       return;
     }

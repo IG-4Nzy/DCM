@@ -76,18 +76,18 @@ const DatastoreModal: React.FC<DatastoreModalProps> = ({
         e.preventDefault();
         
         const nameErr = !name ? "Datastore Name is required" :
-                        !/^[a-zA-Z0-9\s,.-_]+$/.test(name) ? "Datastore Name must contain alphanumeric characters, spaces, commas, periods, dashes, or underscores only" :
+                        !/^[a-zA-Z0-9\s,.-_\/|\-]+$/.test(name) ? "Datastore Name must contain alphanumeric characters, spaces, commas, periods, dashes, or underscores only" :
                         name.length > 50 ? "Datastore Name must be maximum 50 characters" : "";
         const capacityErr = capacity ? (
-                            !/^[a-zA-Z0-9\s]+$/.test(capacity) ? "Capacity must contain alphanumeric characters and spaces only" :
+                            !/^[a-zA-Z0-9\s,.\/|\-]+$/.test(capacity) ? "Capacity must contain alphanumeric characters and spaces only" :
                             capacity.length > 20 ? "Capacity must be maximum 20 characters" : ""
                         ) : "";
         const mountPathErr = mountPath ? (
-                             !/^[a-zA-Z0-9\s,.-_/]+$/.test(mountPath) ? "Mount Path must contain alphanumeric characters, spaces, slashes, periods, dashes, or underscores only" :
+                             !/^[a-zA-Z0-9\s,.-_/|\-]+$/.test(mountPath) ? "Mount Path must contain alphanumeric characters, spaces, slashes, periods, dashes, or underscores only" :
                              mountPath.length > 100 ? "Mount Path must be maximum 100 characters" : ""
                          ) : "";
         const remarksErr = remarks ? (
-                           !/^[a-zA-Z0-9\s,.-]+$/.test(remarks) ? "Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only" :
+                           !/^[a-zA-Z0-9\s,.-\/|\-]+$/.test(remarks) ? "Remarks must contain alphanumeric characters, spaces, commas, periods, or dashes only" :
                            remarks.length > 125 ? "Remarks must be maximum 125 characters" : ""
                        ) : "";
 

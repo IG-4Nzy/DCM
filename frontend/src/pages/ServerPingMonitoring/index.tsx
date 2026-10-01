@@ -270,7 +270,7 @@ const ServerPingMonitoring: React.FC = () => {
 
   const validateServerName = (v: string) => {
     if (!v) return "";
-    if (!/^[a-zA-Z0-9\s._-]+$/.test(v)) return "Friendly name must be alphanumeric with spaces, dashes, dots or underscores only";
+    if (!/^[a-zA-Z0-9\s._-,\/|\-]+$/.test(v)) return "Friendly name must be alphanumeric with spaces, dashes, dots or underscores only";
     if (v.length < 2 || v.length > 50) return "Friendly name must be between 2 to 50 characters";
     return "";
   };

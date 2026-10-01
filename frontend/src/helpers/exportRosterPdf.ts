@@ -26,7 +26,7 @@ export async function exportRosterPdf(options: RosterPdfOptions): Promise<string
   return await html2pdf().from(element).set(opt).outputPdf('datauristring');
 }
 
-export async function exportHtmlToPdfBase64(htmlString: string, filename: string): Promise<string> {
+export async function exportHtmlToPdfBase64(htmlString: string, filename: string, orientation: 'portrait' | 'landscape' = 'portrait'): Promise<string> {
   // Create a temporary same-origin iframe for rendering isolation
   const iframe = document.createElement('iframe');
   
@@ -34,8 +34,8 @@ export async function exportHtmlToPdfBase64(htmlString: string, filename: string
   iframe.style.position = 'fixed';
   iframe.style.top = '0';
   iframe.style.left = '0';
-  iframe.style.width = '800px';
-  iframe.style.height = '1200px';
+  iframe.style.width = orientation === 'landscape' ? '1200px' : '800px';
+  iframe.style.height = orientation === 'landscape' ? '800px' : '1200px';
   iframe.style.zIndex = '-9999';
   iframe.style.pointerEvents = 'none';
   iframe.style.border = 'none';
@@ -70,9 +70,9 @@ export async function exportHtmlToPdfBase64(htmlString: string, filename: string
         useCORS: true, 
         logging: false,
         letterRendering: true,
-        windowWidth: 800
+        windowWidth: orientation === 'landscape' ? 1200 : 800
       },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: orientation }
     };
 
     return await html2pdf().from(doc.body).set(opt).outputPdf('datauristring');

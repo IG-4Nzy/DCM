@@ -1794,6 +1794,7 @@ const Salary = () => {
         <title>All Splitup Reports</title>
         <style>
           body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #000; font-size: 12px; }
+          @page { size: landscape; }
           @media print {
             .page-break { page-break-after: always; break-after: page; }
           }
@@ -1828,6 +1829,7 @@ const Salary = () => {
         splitupReportPdfBase64 = await exportHtmlToPdfBase64(
           splitupReportHtml,
           `Salary_All_Splitups_${currentMonth}.pdf`,
+          'landscape'
         );
       } catch (pdfErr) {
         console.error(

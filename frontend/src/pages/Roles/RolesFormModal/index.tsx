@@ -36,7 +36,10 @@ const PRIVILEGE_GROUPS: { [category: string]: string[] } = {
         "view_own_vcenter_vm_monitoring",
         "Create vCenter Appliance",
         "Update vCenter Appliance",
-        "Delete vCenter Appliance"
+        "Delete vCenter Appliance",
+        "view_metrics_monitoring",
+        "create_update_metrics_monitoring",
+        "delete_metrics_monitoring"
     ],
     "Users & Roles": [
         "View All Users",
@@ -245,7 +248,7 @@ const RoleFormModal = ({
 
     const validateRoleName = (v: string) => {
         if (!v) return "";
-        if (!/^[a-zA-Z0-9\s]+$/.test(v)) return "Role name must be alphanumeric and spaces only";
+        if (!/^[a-zA-Z0-9\s,.\/|\-]+$/.test(v)) return "Role name must be alphanumeric and spaces only";
         if (v.length < 2 || v.length > 30) return "Role name must be between 2 to 30 characters";
         return "";
     };

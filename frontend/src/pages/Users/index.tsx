@@ -242,7 +242,7 @@ const Users: React.FC = () => {
       showToast("Username is required", "error");
       return;
     }
-    if (!/^[a-zA-Z0-9_]+$/.test(formUsername)) {
+    if (!/^[a-zA-Z0-9_,.\/|\-]+$/.test(formUsername)) {
       showToast("Username must contain alphabets, underscore, and numbers only", "error");
       return;
     }
@@ -258,7 +258,7 @@ const Users: React.FC = () => {
       showToast("Password must be maximum 20 characters", "error");
       return;
     }
-    if (formFirstName && !/^[a-zA-Z0-9_.\s]+$/.test(formFirstName)) {
+    if (formFirstName && !/^[a-zA-Z0-9_.\s,\/|\-]+$/.test(formFirstName)) {
       showToast("First name must contain alphanumeric characters, spaces, dots, or underscores only", "error");
       return;
     }
@@ -266,7 +266,7 @@ const Users: React.FC = () => {
       showToast("First name must be maximum 20 characters", "error");
       return;
     }
-    if (formLastName && !/^[a-zA-Z0-9_.\s]+$/.test(formLastName)) {
+    if (formLastName && !/^[a-zA-Z0-9_.\s,\/|\-]+$/.test(formLastName)) {
       showToast("Last name must contain alphanumeric characters, spaces, dots, or underscores only", "error");
       return;
     }
@@ -274,11 +274,11 @@ const Users: React.FC = () => {
       showToast("Last name must be maximum 20 characters", "error");
       return;
     }
-    if (formMobile && !/^[0-9,]+$/.test(formMobile)) {
+    if (formMobile && !/^[0-9,.\/|\-]+$/.test(formMobile)) {
       showToast("Mobile number must contain numbers and commas only", "error");
       return;
     }
-    if (formPassNumber && !/^[a-zA-Z0-9]+$/.test(formPassNumber)) {
+    if (formPassNumber && !/^[a-zA-Z0-9,.\/|\-]+$/.test(formPassNumber)) {
       showToast("Pass number must be alphanumeric only", "error");
       return;
     }

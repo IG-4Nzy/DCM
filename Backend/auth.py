@@ -354,7 +354,7 @@ async def login(credentials: LoginRequest, request: Request):
 
                     if late_status == "Pending":
                         raise HTTPException(
-                            status_code=status.HTTP_403_FORBIDDEN,
+                            status_code=status.HTTP_200_OK,
                             detail={
                                 "message": "You are late, you are not allowed to login, contact your department head",
                                 "restricted_token": restricted_token,
@@ -367,7 +367,7 @@ async def login(credentials: LoginRequest, request: Request):
                         )
                     elif late_status == "Rejected":
                         raise HTTPException(
-                            status_code=status.HTTP_403_FORBIDDEN,
+                            status_code=status.HTTP_200_OK,
                             detail={
                                 "message": "Your late login request has been rejected, contact your department head",
                                 "restricted_token": restricted_token,

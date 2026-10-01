@@ -54,22 +54,22 @@ const VisitorLogs: React.FC = () => {
     });
 
     const visitorNameErr = formFields.visitorName ? (
-        !/^[a-zA-Z0-9\s,]+$/.test(formFields.visitorName) ? "Visitor name must contain only letters, numbers, spaces, or commas" :
+        !/^[a-zA-Z0-9\s,.\/|\-]+$/.test(formFields.visitorName) ? "Visitor name must contain only letters, numbers, spaces, or commas" :
         formFields.visitorName.length > 40 ? "Visitor name must be maximum 40 characters" : ""
     ) : "";
 
     const divisionErr = formFields.division ? (
-        !/^[a-zA-Z0-9\s]+$/.test(formFields.division) ? "Division must be alphanumeric only" :
+        !/^[a-zA-Z0-9\s,.\/|\-]+$/.test(formFields.division) ? "Division must be alphanumeric only" :
         formFields.division.length > 60 ? "Division must be maximum 60 characters" : ""
     ) : "";
 
     const purposeErr = formFields.purpose ? (
-        !/^[a-zA-Z0-9\s]+$/.test(formFields.purpose) ? "Purpose of visit must be alphanumeric only" :
+        !/^[a-zA-Z0-9\s,.\/|\-]+$/.test(formFields.purpose) ? "Purpose of visit must be alphanumeric only" :
         formFields.purpose.length > 125 ? "Purpose of visit must be maximum 125 characters" : ""
     ) : "";
 
     const itemsToBringErr = formFields.itemsToBring ? (
-        !/^[a-zA-Z0-9\s,]+$/.test(formFields.itemsToBring) ? "Tools/items to bring must be alphanumeric and comma only" : ""
+        !/^[a-zA-Z0-9\s,.\/|\-]+$/.test(formFields.itemsToBring) ? "Tools/items to bring must be alphanumeric and comma only" : ""
     ) : "";
 
     const hasFormErrors = !!visitorNameErr || !!divisionErr || !!purposeErr || !!itemsToBringErr;

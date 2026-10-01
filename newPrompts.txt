@@ -1,4 +1,10 @@
-take vcenter vm list and map them to the vm list for updating power and network status
+in metrics monitoring,it sohuld show based on privileges
 
-add vcenter validation when a vm is created,check that vm exists on vcenter and allow to change the status only if there is VM exists in the vcenter (validate with the vm name in vcenter and the name given on request)
+in roles page,add these new privileges too
+also add option to monitor models - model throughput,waiting,queue,running,kv cache,health....etc...
 
+
+and store the monitored values into a log and  should able to see the graphs and datas based on filter - live,last week,specific day,last month,specific month, specific week,specific time period,..etc....
+
+show gpu utilisation graphs for individual nodes, if multiple gpus are there,then use multiple lines
+show cpu/ram utilisation graphs for individual nodes

@@ -186,16 +186,16 @@ export const SIDEBAR_OPTIONS = [
       PRIVILEGES.VIEW_OWN_VCENTER_VM_MONITORING,
     ],
   },
-  {
-    label: wordings.metricsMonitoring,
-    icon: Icons.GpuIcon,
-    route: ROUTE_CONSTANTS.METRICS_MONITORING,
-    privileges: [
-      PRIVILEGES.VIEW_METRICS_MONITORING,
-      PRIVILEGES.DELETE_METRICS_MONITORING,
-      PRIVILEGES.CREATE_UPDATE_METRICS_MONITORING,
-    ],
-  },
+  //{
+  // label: wordings.metricsMonitoring,
+  // icon: Icons.GpuIcon,
+  //route: ROUTE_CONSTANTS.METRICS_MONITORING,
+  //privileges: [
+  //  PRIVILEGES.VIEW_METRICS_MONITORING,
+  //  PRIVILEGES.DELETE_METRICS_MONITORING,
+  //  PRIVILEGES.CREATE_UPDATE_METRICS_MONITORING,
+  //],
+  //},
   {
     label: wordings.attendance,
     icon: Icons.AttendanceIcon,

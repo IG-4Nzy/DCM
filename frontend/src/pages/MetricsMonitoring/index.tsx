@@ -40,6 +40,8 @@ import {
   fetchApplications, createApplication, updateApplication, deleteApplication,
   addTarget, updateTarget, deleteTarget, liveScrapeApplication
 } from './action';
+import { hasPrivilege } from '../../helpers/authUtils';
+import { PRIVILEGES } from '../../helpers/privileges';
 
 // ────────────────────────────────────────────────────
 // Constants
@@ -407,6 +409,12 @@ const DcgmMetricsDisplay = ({ data }: { data: any }) => {
 // ────────────────────────────────────────────────────
 
 const MetricsMonitoring: React.FC = () => {
+  const { isSuperuser } = useSelector((state: RootState) => state.auth);
+
+  const canView = isSuperuser || hasPrivilege(PRIVILEGES.VIEW_METRICS_MONITORING) || hasPrivilege(PRIVILEGES.CREATE_UPDATE_METRICS_MONITORING) || hasPrivilege(PRIVILEGES.DELETE_METRICS_MONITORING);
+  const canCreateUpdate = isSuperuser || hasPrivilege(PRIVILEGES.CREATE_UPDATE_METRICS_MONITORING);
+  const canDelete = isSuperuser || hasPrivilege(PRIVILEGES.DELETE_METRICS_MONITORING);
+
   // ── State ──
   const [applications, setApplications] = useState<any[]>([]);
   const [totalApps, setTotalApps] = useState(0);
@@ -662,6 +670,24 @@ const MetricsMonitoring: React.FC = () => {
   // ────────────────────────────────────────────────────
   // Render: Application List View
   // ────────────────────────────────────────────────────
+  if (!canView) {
+    return (
+      <div className={styles.pageContainer}>
+        <div className={styles.pageHeader}>
+          <h1 className={styles.pageTitle}>
+            <MetricsIcon size={26} style={{ color: '#6366f1' }} />
+            Metrics Monitoring
+          </h1>
+        </div>
+        <Box sx={{ p: 4, textAlign: "center" }}>
+          <Typography variant="h6" color="textSecondary">
+            You need the View Metrics Monitoring privilege to access this feature.
+          </Typography>
+        </Box>
+      </div>
+    );
+  }
+
   if (!selectedApp) {
     return (
       <div className={styles.pageContainer}>
@@ -677,21 +703,24 @@ const MetricsMonitoring: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className={styles.searchBar}
+              className={styles.searchBar}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
             />
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => { setEditingApp(null); setAppForm({ name: '', description: '' }); setShowAppModal(true); }}
-              sx={{
-                borderRadius: '10px',
-                textTransform: 'none',
-                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                '&:hover': { background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' },
-              }}
-            >
-              Add Application
-            </Button>
+            {canCreateUpdate && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => { setEditingApp(null); setAppForm({ name: '', description: '' }); setShowAppModal(true); }}
+                sx={{
+                  borderRadius: '10px',
+                  textTransform: 'none',
+                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  '&:hover': { background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' },
+                }}
+              >
+                Add Application
+              </Button>
+            )}
           </div>
         </div>
 
@@ -712,12 +741,16 @@ const MetricsMonitoring: React.FC = () => {
                 <div className={styles.appCardHeader}>
                   <h3 className={styles.appName}>{app.name}</h3>
                   <div style={{ display: 'flex', gap: 4 }}>
-                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); openEditApp(app); }}>
-                      <EditIcon size={16} />
-                    </IconButton>
-                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ type: 'app', id: app.id }); }}>
-                      <DeleteIcon size={16} color="#ef4444" />
-                    </IconButton>
+                    {canCreateUpdate && (
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); openEditApp(app); }}>
+                        <EditIcon size={16} />
+                      </IconButton>
+                    )}
+                    {canDelete && (
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ type: 'app', id: app.id }); }}>
+                        <DeleteIcon size={16} color="#ef4444" />
+                      </IconButton>
+                    )}
                   </div>
                 </div>
                 {app.description && <p className={styles.appDescription}>{app.description}</p>}
@@ -817,21 +850,25 @@ const MetricsMonitoring: React.FC = () => {
               </Button>
             </span>
           </Tooltip>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={openAddTarget}
-            sx={{
-              borderRadius: '10px', textTransform: 'none',
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              '&:hover': { background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' },
-            }}
-          >
-            Add Target
-          </Button>
-          <IconButton onClick={() => openEditApp(selectedApp)} size="small">
-            <EditIcon />
-          </IconButton>
+          {canCreateUpdate && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={openAddTarget}
+              sx={{
+                borderRadius: '10px', textTransform: 'none',
+                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                '&:hover': { background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' },
+              }}
+            >
+              Add Target
+            </Button>
+          )}
+          {canCreateUpdate && (
+            <IconButton onClick={() => openEditApp(selectedApp)} size="small">
+              <EditIcon />
+            </IconButton>
+          )}
         </div>
       </div>
 

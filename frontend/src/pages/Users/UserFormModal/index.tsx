@@ -110,7 +110,7 @@ const UserFormModal = ({
     // Validation helpers
     const validateUsername = (v: string) => {
         if (!v) return "";
-        if (!/^[a-zA-Z0-9_]+$/.test(v)) return "Username must contain alphabets, underscore, and numbers only";
+        if (!/^[a-zA-Z0-9_,.\/|\-]+$/.test(v)) return "Username must contain alphabets, underscore, and numbers only";
         if (v.length > 20) return "Username must be maximum 20 characters";
         return "";
     };
@@ -123,14 +123,14 @@ const UserFormModal = ({
 
     const validateName = (v: string, label: string) => {
         if (!v) return "";
-        if (!/^[a-zA-Z0-9_.\s]+$/.test(v)) return `${label} must contain alphanumeric characters, spaces, dots, or underscores only`;
+        if (!/^[a-zA-Z0-9_.\s,\/|\-]+$/.test(v)) return `${label} must contain alphanumeric characters, spaces, dots, or underscores only`;
         if (v.length > 20) return `${label} must be maximum 20 characters`;
         return "";
     };
 
     const validateMobile = (v: string) => {
         if (!v) return "";
-        if (!/^[0-9,]+$/.test(v)) return "Mobile number must contain numbers and commas only";
+        if (!/^[0-9,.\/|\-]+$/.test(v)) return "Mobile number must contain numbers and commas only";
         return "";
     };
 
@@ -143,7 +143,7 @@ const UserFormModal = ({
 
     const validatePassNumber = (v: string) => {
         if (!v) return "";
-        if (!/^[a-zA-Z0-9]+$/.test(v)) return "Pass number must contain alphanumeric characters only";
+        if (!/^[a-zA-Z0-9,.\/|\-]+$/.test(v)) return "Pass number must contain alphanumeric characters only";
         if (v.length > 20) return "Pass number must be maximum 20 characters";
         return "";
     };

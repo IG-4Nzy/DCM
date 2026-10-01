@@ -240,7 +240,7 @@ const PeriodicActivities: React.FC = () => {
     }
 
     if (remarks) {
-      const err = validators.maxLength(remarks, 220, 'Remarks');
+      const err = validators.maxLength(remarks, 4000, 'Remarks');
       if (err) newErrors.remarks = err;
     }
 
